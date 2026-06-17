@@ -5,7 +5,7 @@ use nimi_shell_tauri::runtime_bridge;
 use nimi_shell_tauri::session_logging;
 
 #[tauri::command]
-fn realm_agent_studio_start_window_drag(window: tauri::WebviewWindow) -> Result<(), String> {
+fn realm_persona_studio_start_window_drag(window: tauri::WebviewWindow) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     if window.is_fullscreen().unwrap_or(false) {
         return Ok(());
@@ -63,7 +63,7 @@ fn main() {
 
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
-            realm_agent_studio_start_window_drag,
+            realm_persona_studio_start_window_drag,
             oauth_commands::open_external_url,
             oauth_commands::oauth_listen_for_code,
             runtime_bridge::runtime_bridge_unary,
