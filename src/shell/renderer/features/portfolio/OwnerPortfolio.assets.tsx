@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Checkbox, EmptyState, FieldShell, InlineAlert, SelectField, StatusBadge, Surface, TextareaField, TextField } from '@nimiplatform/kit/ui';
-import type { OwnerPortfolioAgentDetail } from './portfolio-data.js';
+import type { OwnerPortfolioPersonaDetail } from './portfolio-data.js';
 import {
   generateReviewedAvatarPackageCandidate,
   generateReviewedVisualImageCandidate,
-  selectReviewedAgentAvatarUrl,
+  selectReviewedPersonaAvatarUrl,
   synthesizeReviewedVoiceDemo,
-  type RealmAgentAvatarSelectResult,
+  type RealmPersonaAvatarSelectResult,
   type RuntimeVisualImageGenerationResult,
   type RuntimeVoiceDemoSynthesisResult,
 } from './portfolio-client.js';
@@ -34,7 +34,7 @@ import {
   type CreativeAssetHistoryRecord,
 } from './creative-asset-history.js';
 import {
-  buildIdentityPackFromAgent,
+  buildIdentityPackFromPersona,
   type IdentityPackBuildResult,
   type IdentityPackCandidate,
 } from './identity-pack.js';
@@ -46,7 +46,7 @@ import type { StudioTranslateOptions } from '../../i18n/studio-i18n.js';
 export function createVisualMediaCandidateInput(): VisualMediaCandidateInput {
   return {
     resourceType: 'IMAGE',
-    bindingPoint: 'AGENT_CANDIDATE',
+    bindingPoint: 'PERSONA_CANDIDATE',
     prompt: '',
     notes: '',
   };
@@ -67,7 +67,7 @@ export function createAvatarPackageCandidateDraft(): VisualMediaCandidateInput &
 } {
   return {
     ...createVisualMediaCandidateInput(),
-    bindingPoint: 'AGENT_AVATAR',
+    bindingPoint: 'PERSONA_AVATAR',
     aspectRatio: '1:1',
     packageTarget: 'LIVE2D',
     motionNotes: '',
@@ -75,9 +75,9 @@ export function createAvatarPackageCandidateDraft(): VisualMediaCandidateInput &
   };
 }
 
-export function createVoiceDemoCandidateInput(agent: OwnerPortfolioAgentDetail): VoiceDemoCandidateInput {
+export function createVoiceDemoCandidateInput(persona: OwnerPortfolioPersonaDetail): VoiceDemoCandidateInput {
   return {
-    scriptText: agent.greeting.value || '',
+    scriptText: persona.greeting.value || '',
   };
 }
 
@@ -94,14 +94,14 @@ const IDENTITY_PACK_CANDIDATE_TITLE_KEYS: Record<IdentityPackCandidate['key'], S
 const IDENTITY_PACK_PUBLIC_WRITE_KEYS: Record<IdentityPackCandidate['publicWrite'], StudioCopyKey> = {
   'avatar-url-selection-admitted-after-owner-url-review': 'assets.identityPack.publicWrite.avatarUrlSelection',
   'profile-cover-publication-blocked': 'assets.identityPack.publicWrite.profileCoverBlocked',
-  'resource-agent-binding-blocked': 'assets.identityPack.publicWrite.resourceBindingBlocked',
+  'resource-persona-binding-blocked': 'assets.identityPack.publicWrite.resourceBindingBlocked',
   'voice-publication-blocked': 'assets.identityPack.publicWrite.voicePublicationBlocked',
   'post-attachment-candidate-only': 'assets.identityPack.publicWrite.postAttachmentCandidateOnly',
 };
 
 const FIXED_ASSET_MESSAGE_KEYS: Record<string, StudioCopyKey> = {
   'Owner-scoped profile cover write path is not admitted.': 'assets.identityPack.blocked.profileCover',
-  'Resource-to-Agent Binding publication is not admitted for this app.': 'assets.identityPack.blocked.resourceBinding',
+  'Resource-to-Persona Binding publication is not admitted for this app.': 'assets.identityPack.blocked.resourceBinding',
   'Voice sample publication as public profile asset is not admitted.': 'assets.identityPack.blocked.voicePublication',
   'display name source unavailable or empty': 'assets.identityPack.error.displayNameMissing',
   'profile description or greeting required for identity pack': 'assets.identityPack.error.profileVoiceMissing',
@@ -160,7 +160,7 @@ function translateIdentityPackSourceFields(fields: string[], t: StudioTranslator
     .join(', ');
 }
 
-export function MediaVoiceCandidateWorkspace({ agent, onAgentWrite }: { agent: OwnerPortfolioAgentDetail; onAgentWrite: () => Promise<void> }) {
+export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { persona: OwnerPortfolioPersonaDetail; onPersonaWrite: () => Promise<void> }) {
   const { t } = useStudioI18n();
   const [identityPack, setIdentityPack] = useState<IdentityPackBuildResult | null>(null);
   const [visualImageDraft, setVisualImageDraft] = useState(() => createVisualImageGenerationDraft());
@@ -174,20 +174,20 @@ export function MediaVoiceCandidateWorkspace({ agent, onAgentWrite }: { agent: O
   const [identityUploadResult, setIdentityUploadResult] = useState<DirectMediaResourceUploadResult | null>(null);
   const [isUploadingIdentityResource, setIsUploadingIdentityResource] = useState(false);
   const [creativeHistory, setCreativeHistory] = useState<CreativeAssetHistoryRecord[]>([]);
-  const [avatarUrlDraft, setAvatarUrlDraft] = useState(() => agent.avatarUrl || '');
+  const [avatarUrlDraft, setAvatarUrlDraft] = useState(() => persona.avatarUrl || '');
   const [avatarReviewed, setAvatarReviewed] = useState(false);
-  const [avatarResult, setAvatarResult] = useState<RealmAgentAvatarSelectResult | null>(null);
+  const [avatarResult, setAvatarResult] = useState<RealmPersonaAvatarSelectResult | null>(null);
   const [isSelectingAvatar, setIsSelectingAvatar] = useState(false);
-  const [voiceDraft, setVoiceDraft] = useState<VoiceDemoCandidateInput>(() => createVoiceDemoCandidateInput(agent));
+  const [voiceDraft, setVoiceDraft] = useState<VoiceDemoCandidateInput>(() => createVoiceDemoCandidateInput(persona));
   const [voiceResult, setVoiceResult] = useState<RuntimeVoiceDemoSynthesisResult | null>(null);
   const [isSynthesizingVoice, setIsSynthesizingVoice] = useState(false);
-  const visualImagePayload = useMemo(() => buildReviewedVisualImageCandidatePayload(visualImageDraft, agent), [agent, visualImageDraft]);
-  const avatarPackagePayload = useMemo(() => buildReviewedAvatarPackageCandidatePayload(avatarPackageDraft, agent), [agent, avatarPackageDraft]);
-  const voicePayload = useMemo(() => buildReviewedVoiceDemoCandidatePayload(voiceDraft, agent), [agent, voiceDraft]);
-  const avatarUrlChanged = avatarUrlDraft.trim() !== (agent.avatarUrl || '');
+  const visualImagePayload = useMemo(() => buildReviewedVisualImageCandidatePayload(visualImageDraft, persona), [persona, visualImageDraft]);
+  const avatarPackagePayload = useMemo(() => buildReviewedAvatarPackageCandidatePayload(avatarPackageDraft, persona), [persona, avatarPackageDraft]);
+  const voicePayload = useMemo(() => buildReviewedVoiceDemoCandidatePayload(voiceDraft, persona), [persona, voiceDraft]);
+  const avatarUrlChanged = avatarUrlDraft.trim() !== (persona.avatarUrl || '');
   const profileMediaChanged = avatarUrlChanged;
   const visualResourceTypes = MEDIA_CANDIDATE_RESOURCE_TYPES.filter((resourceType): resourceType is VisualCandidateResourceType => resourceType === 'IMAGE');
-  const visualBindingPoints = MEDIA_CANDIDATE_BINDING_POINTS.filter((bindingPoint) => bindingPoint !== 'AGENT_VOICE_SAMPLE');
+  const visualBindingPoints = MEDIA_CANDIDATE_BINDING_POINTS.filter((bindingPoint) => bindingPoint !== 'PERSONA_VOICE_SAMPLE');
   const visualPreviewUrl = visualImageResult?.ok ? visualImageResult.runtime.previewUrls[0] || '' : '';
   const avatarPackagePreviewUrl = avatarPackageResult?.ok ? avatarPackageResult.runtime.previewUrls[0] || '' : '';
   const voicePreviewUrl = voiceResult?.ok ? voiceResult.runtime.previewUrls[0] || '' : '';
@@ -204,18 +204,18 @@ export function MediaVoiceCandidateWorkspace({ agent, onAgentWrite }: { agent: O
     setIdentityUploadFile(null);
     setIdentityUploadResult(null);
     setIsUploadingIdentityResource(false);
-    setCreativeHistory(loadLocalCreativeAssetHistory(agent.id));
-    setAvatarUrlDraft(agent.avatarUrl || '');
+    setCreativeHistory(loadLocalCreativeAssetHistory(persona.id));
+    setAvatarUrlDraft(persona.avatarUrl || '');
     setAvatarReviewed(false);
     setAvatarResult(null);
     setIsSelectingAvatar(false);
-    setVoiceDraft(createVoiceDemoCandidateInput(agent));
+    setVoiceDraft(createVoiceDemoCandidateInput(persona));
     setVoiceResult(null);
     setIsSynthesizingVoice(false);
-  }, [agent.id]);
+  }, [persona.id]);
 
   function buildIdentityPack() {
-    setIdentityPack(buildIdentityPackFromAgent(agent));
+    setIdentityPack(buildIdentityPackFromPersona(persona));
   }
 
   function useIdentityCandidate(candidate: IdentityPackCandidate) {
@@ -229,10 +229,10 @@ export function MediaVoiceCandidateWorkspace({ agent, onAgentWrite }: { agent: O
       prompt: candidate.prompt,
       notes: t('assets.identityPack.notesFromPack', { title: candidateTitle, publicWrite }),
       bindingPoint: candidate.key === 'avatar'
-        ? 'AGENT_AVATAR'
+        ? 'PERSONA_AVATAR'
         : candidate.key === 'portrait-reference'
-          ? 'AGENT_PORTRAIT'
-          : 'AGENT_CANDIDATE',
+          ? 'PERSONA_PORTRAIT'
+          : 'PERSONA_CANDIDATE',
       aspectRatio: candidate.key === 'profile-cover' || candidate.key === 'post-image-style' ? '16:9' : '1:1',
     });
   }
@@ -262,10 +262,10 @@ export function MediaVoiceCandidateWorkspace({ agent, onAgentWrite }: { agent: O
     setIsSelectingAvatar(true);
     setAvatarResult(null);
     try {
-      const result = await selectReviewedAgentAvatarUrl(agent.id, avatarUrlDraft);
+      const result = await selectReviewedPersonaAvatarUrl(persona.id, avatarUrlDraft);
       setAvatarResult(result);
       if (result.ok) {
-        await onAgentWrite();
+        await onPersonaWrite();
       }
     } finally {
       setIsSelectingAvatar(false);
@@ -276,10 +276,10 @@ export function MediaVoiceCandidateWorkspace({ agent, onAgentWrite }: { agent: O
     setIsGeneratingVisualImage(true);
     setVisualImageResult(null);
     try {
-      const result = await generateReviewedVisualImageCandidate(visualImageDraft, agent);
+      const result = await generateReviewedVisualImageCandidate(visualImageDraft, persona);
       setVisualImageResult(result);
       if (result.ok) {
-        setCreativeHistory(appendLocalCreativeAssetHistory(agent.id, {
+        setCreativeHistory(appendLocalCreativeAssetHistory(persona.id, {
           kind: 'runtime-image-candidate',
           label: 'Runtime image candidate',
           source: result.source,
@@ -297,13 +297,13 @@ export function MediaVoiceCandidateWorkspace({ agent, onAgentWrite }: { agent: O
     setIsGeneratingAvatarPackage(true);
     setAvatarPackageResult(null);
     try {
-      const result = await generateReviewedAvatarPackageCandidate(avatarPackageDraft, agent);
+      const result = await generateReviewedAvatarPackageCandidate(avatarPackageDraft, persona);
       setAvatarPackageResult(result);
       if (result.ok) {
-        const avatarPackage = result.draft.source === 'realm-agent-studio.reviewed-avatar-package-candidate'
+        const avatarPackage = result.draft.source === 'realm-persona-studio.reviewed-avatar-package-candidate'
           ? result.draft.avatarPackage
           : null;
-        setCreativeHistory(appendLocalCreativeAssetHistory(agent.id, {
+        setCreativeHistory(appendLocalCreativeAssetHistory(persona.id, {
           kind: 'avatar-package-candidate',
           label: 'Avatar package candidate',
           source: result.source,
@@ -340,12 +340,12 @@ export function MediaVoiceCandidateWorkspace({ agent, onAgentWrite }: { agent: O
       const result = await uploadReviewedIdentityMediaResource({
         resourceType: 'IMAGE',
         file: identityUploadFile,
-        agent,
-        tags: ['realm-agent-studio', 'identity-candidate'],
+        persona,
+        tags: ['realm-persona-studio', 'identity-candidate'],
       });
       setIdentityUploadResult(result);
       if (result.ok) {
-        setCreativeHistory(appendLocalCreativeAssetHistory(agent.id, {
+        setCreativeHistory(appendLocalCreativeAssetHistory(persona.id, {
           kind: 'identity-resource-upload',
           label: 'Identity Resource upload',
           source: result.source,
@@ -362,10 +362,10 @@ export function MediaVoiceCandidateWorkspace({ agent, onAgentWrite }: { agent: O
     setIsSynthesizingVoice(true);
     setVoiceResult(null);
     try {
-      const result = await synthesizeReviewedVoiceDemo(voiceDraft, agent);
+      const result = await synthesizeReviewedVoiceDemo(voiceDraft, persona);
       setVoiceResult(result);
       if (result.ok) {
-        setCreativeHistory(appendLocalCreativeAssetHistory(agent.id, {
+        setCreativeHistory(appendLocalCreativeAssetHistory(persona.id, {
           kind: 'voice-demo-candidate',
           label: 'Voice demo candidate',
           source: result.source,
@@ -702,7 +702,7 @@ export function MediaVoiceCandidateWorkspace({ agent, onAgentWrite }: { agent: O
                   <CandidateFactGrid
                     facts={[{
                       label: t('assets.packageTarget'),
-                      value: avatarPackageResult.draft.source === 'realm-agent-studio.reviewed-avatar-package-candidate'
+                      value: avatarPackageResult.draft.source === 'realm-persona-studio.reviewed-avatar-package-candidate'
                         ? avatarPackageResult.draft.avatarPackage.target
                         : avatarPackageDraft.packageTarget,
                     }, {

@@ -29,7 +29,7 @@ describe('studio host boundary', () => {
     const source = readFileSync(join(process.cwd(), 'src-tauri/src/main.rs'), 'utf8');
     const cargoToml = readFileSync(join(process.cwd(), 'src-tauri/Cargo.toml'), 'utf8');
 
-    expect(source).not.toContain('realm_agent_studio_storage_dirs');
+    expect(source).not.toContain('realm_persona_studio_storage_dirs');
     expect(source).not.toContain('allow_directory');
     expect(source).not.toContain('resolve_nimi_data_dir');
     expect(source).not.toContain('resolve_nimi_dir');

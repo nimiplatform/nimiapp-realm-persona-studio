@@ -1,9 +1,8 @@
 import type {
-  RealmAgentControllerGetVisibilityOperationResponse,
-  RealmGetMyRealmAgentSettingsOperationResponse,
-  RealmProjectRuntimePayloadOperationRequest,
-  RealmProjectRuntimePayloadOperationResponse,
-  RealmUpdateMyRealmAgentSettingsOperationRequest,
+  RealmPersonaDto,
+  ReplaceRealmPersonaDto,
+  CreateRuntimeSourceSnapshotDto,
+  RuntimeSourceSnapshotDto,
 } from '@nimiplatform/sdk/realm/generated';
 import { createStudioRealmClient, type StudioRealmSurface } from '@renderer/data/realm-client.js';
 import { createStudioRuntimeClient } from '@renderer/data/runtime-client.js';
@@ -13,15 +12,17 @@ import {
   type StudioRuntimeAIClient,
   type StudioTextGeneratePayload,
 } from './studio-ai-runtime.js';
-import type { OwnerPortfolioAgentDetail, SettingField } from './portfolio-data.js';
+import type { OwnerPortfolioPersonaDetail, SettingField } from './portfolio-data.js';
 import {
   OWNER_SETTINGS_SAVE_SOURCE,
   SETTINGS_AI_PROPOSAL_SOURCE,
-  buildRealmOwnerAgentSettingsUpdateInput,
+  buildRealmOwnerPersonaSettingsUpdateInput,
   buildRuntimeOwnerSettingsProposalPrompt,
   normalizeRuntimeOwnerSettingsProposal,
-  type OwnerAgentSettingsProposalContext,
-  type OwnerAgentSettingsDraft,
+  type OwnerPersonaSettingsProposalContext,
+  type OwnerPersonaSettingsDraft,
+  type OwnerPersonaSettingsSnapshot,
+  type OwnerPersonaSettingsUpdateInput,
   type RuntimeOwnerSettingsProposal,
 } from './setting-proposal.js';
 
@@ -29,18 +30,24 @@ type StudioRealmClient = StudioRealmSurface;
 
 type RuntimeTextClient = StudioRuntimeAIClient;
 
-export type RealmAgentVisibilitySettings = RealmAgentControllerGetVisibilityOperationResponse;
-type RealmAgentVisibilityUpdateInput = Partial<Record<AgentVisibilityField, AgentVisibilityValue>>;
-export type RealmOwnerAgentSettings = RealmGetMyRealmAgentSettingsOperationResponse;
-type RealmOwnerAgentSettingsUpdateInput = RealmUpdateMyRealmAgentSettingsOperationRequest['body'];
-type RealmRuntimeProjectionInput = RealmProjectRuntimePayloadOperationRequest['body'];
-type RealmRuntimeProjectionResponse = RealmProjectRuntimePayloadOperationResponse;
-type AgentChatReadinessSubmittedInput = RealmRuntimeProjectionInput;
+export type RealmPersonaVisibilitySettings = Record<PersonaVisibilityField, PersonaVisibilityValue>;
+type RealmPersonaVisibilityUpdateInput = Partial<Record<PersonaVisibilityField, PersonaVisibilityValue>>;
+export type RealmOwnerPersonaSettings = OwnerPersonaSettingsSnapshot & {
+  id: string;
+  contentHash: string;
+  homeWorldId: string;
+  origin: RealmPersonaDto['origin'];
+  core: Record<string, unknown>;
+};
+type RealmOwnerPersonaSettingsUpdateInput = ReplaceRealmPersonaDto;
+type RealmRuntimeProjectionInput = CreateRuntimeSourceSnapshotDto;
+type RealmRuntimeProjectionResponse = RuntimeSourceSnapshotDto;
+type PersonaChatReadinessSubmittedInput = RealmRuntimeProjectionInput;
 
-export const REALM_RUNTIME_PROJECTION_SOURCE = 'Realm RuntimeProjectionsService.projectRuntimePayload';
-export const REALM_AGENT_VISIBILITY_SOURCE = 'Realm AgentsService.agentControllerUpdateVisibility';
-export const AGENT_VISIBILITY_VALUES = ['PUBLIC', 'FRIENDS', 'PRIVATE'] as const;
-export const AGENT_VISIBILITY_FIELDS = [
+export const REALM_RUNTIME_PROJECTION_SOURCE = 'Realm WorldCoreController.createRuntimeSourceSnapshot';
+export const REALM_PERSONA_VISIBILITY_SOURCE = 'Realm WorldCoreController.replaceRealmPersona';
+export const PERSONA_VISIBILITY_VALUES = ['PUBLIC', 'FRIENDS', 'PRIVATE'] as const;
+export const PERSONA_VISIBILITY_FIELDS = [
   'accountVisibility',
   'defaultPostVisibility',
   'dmVisibility',
@@ -58,9 +65,9 @@ export type RuntimeProjectionSummary = {
   rawRuleContentExposed: false;
 };
 
-export type AgentChatReadinessProjectionSummary = RuntimeProjectionSummary & {
-  agentId: string;
-  agentRuleCount: number;
+export type PersonaChatReadinessProjectionSummary = RuntimeProjectionSummary & {
+  personaId: string;
+  personaRuleCount: number;
   selectedOwnerSettingFields: string[];
 };
 
@@ -69,7 +76,7 @@ export type RuntimeProjectionSummaryResult =
     ok: true;
     source: typeof REALM_RUNTIME_PROJECTION_SOURCE;
     truthWrite: false;
-    summary: RuntimeProjectionSummary | AgentChatReadinessProjectionSummary;
+    summary: RuntimeProjectionSummary | PersonaChatReadinessProjectionSummary;
     submitted: RealmRuntimeProjectionInput;
   }
   | {
@@ -84,13 +91,13 @@ export type RuntimeProjectionSummaryResult =
     submitted: RealmRuntimeProjectionInput | null;
   };
 
-export type AgentChatReadinessSummaryResult =
+export type PersonaChatReadinessSummaryResult =
   | {
     ok: true;
     source: typeof REALM_RUNTIME_PROJECTION_SOURCE;
     truthWrite: false;
-    summary: AgentChatReadinessProjectionSummary;
-    submitted: AgentChatReadinessSubmittedInput;
+    summary: PersonaChatReadinessProjectionSummary;
+    submitted: PersonaChatReadinessSubmittedInput;
   }
   | {
     ok: false;
@@ -101,37 +108,37 @@ export type AgentChatReadinessSummaryResult =
       | 'runtime-projection-failed'
       | 'runtime-projection-invalid-response';
     message: string;
-    submitted: AgentChatReadinessSubmittedInput | null;
+    submitted: PersonaChatReadinessSubmittedInput | null;
   };
-export type AgentVisibilityValue = typeof AGENT_VISIBILITY_VALUES[number];
-export type AgentVisibilityField = typeof AGENT_VISIBILITY_FIELDS[number];
-export type AgentVisibilityDraft = Record<AgentVisibilityField, string>;
+export type PersonaVisibilityValue = typeof PERSONA_VISIBILITY_VALUES[number];
+export type PersonaVisibilityField = typeof PERSONA_VISIBILITY_FIELDS[number];
+export type PersonaVisibilityDraft = Record<PersonaVisibilityField, string>;
 
-export type RealmAgentVisibilityUpdateResult =
+export type RealmPersonaVisibilityUpdateResult =
   | {
     ok: true;
-    source: typeof REALM_AGENT_VISIBILITY_SOURCE;
+    source: typeof REALM_PERSONA_VISIBILITY_SOURCE;
     lifecycleTruth: false;
-    submitted: RealmAgentVisibilityUpdateInput;
-    settings: RealmAgentVisibilitySettings;
+    submitted: RealmPersonaVisibilityUpdateInput;
+    settings: RealmPersonaVisibilitySettings;
   }
   | {
     ok: false;
-    source: typeof REALM_AGENT_VISIBILITY_SOURCE;
+    source: typeof REALM_PERSONA_VISIBILITY_SOURCE;
     lifecycleTruth: false;
     failure: 'visibility-payload-invalid' | 'visibility-no-changes' | 'realm-update-visibility-failed';
     message: string;
-    submitted: RealmAgentVisibilityUpdateInput | null;
-    draft: AgentVisibilityDraft;
+    submitted: RealmPersonaVisibilityUpdateInput | null;
+    draft: PersonaVisibilityDraft;
   };
 
-export type RealmOwnerAgentSettingsUpdateResult =
+export type RealmOwnerPersonaSettingsUpdateResult =
   | {
     ok: true;
     source: typeof OWNER_SETTINGS_SAVE_SOURCE;
     truthWrite: true;
-    submitted: RealmOwnerAgentSettingsUpdateInput;
-    settings: RealmOwnerAgentSettings;
+    submitted: RealmOwnerPersonaSettingsUpdateInput;
+    settings: RealmOwnerPersonaSettings;
   }
   | {
     ok: false;
@@ -139,8 +146,8 @@ export type RealmOwnerAgentSettingsUpdateResult =
     truthWrite: false;
     failure: 'owner-settings-payload-invalid' | 'owner-settings-no-changes' | 'realm-update-owner-settings-failed';
     message: string;
-    submitted: RealmOwnerAgentSettingsUpdateInput | null;
-    draft: OwnerAgentSettingsDraft;
+    submitted: RealmOwnerPersonaSettingsUpdateInput | null;
+    draft: OwnerPersonaSettingsDraft;
   };
 
 export type RuntimeOwnerSettingsProposalResult =
@@ -179,13 +186,13 @@ function proposalContextText(field: SettingField): string | null {
   return null;
 }
 
-export function buildPortfolioSettingsProposalContext(agent: OwnerPortfolioAgentDetail): OwnerAgentSettingsProposalContext {
+export function buildPortfolioSettingsProposalContext(persona: OwnerPortfolioPersonaDetail): OwnerPersonaSettingsProposalContext {
   return {
-    ownerScope: agent.ownerScope,
-    displayName: proposalContextText(agent.displayName),
-    handle: proposalContextText(agent.handle),
-    worldId: proposalContextText(agent.world),
-    worldName: proposalContextText(agent.world),
+    ownerScope: persona.ownerScope,
+    displayName: proposalContextText(persona.displayName),
+    handle: proposalContextText(persona.handle),
+    worldId: proposalContextText(persona.world),
+    worldName: proposalContextText(persona.world),
   };
 }
 
@@ -198,11 +205,87 @@ function readArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
-function isAgentVisibilityValue(value: string): value is AgentVisibilityValue {
-  return AGENT_VISIBILITY_VALUES.includes(value as AgentVisibilityValue);
+function readRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' ? value as Record<string, unknown> : {};
 }
 
-export function createAgentVisibilityDraft(settings: RealmAgentVisibilitySettings): AgentVisibilityDraft {
+function readPersonaSocialVisibility(persona: RealmPersonaDto): RealmPersonaVisibilitySettings {
+  const core = readRecord(persona.core);
+  const socialVisibility = readRecord(core.socialVisibility);
+  return {
+    accountVisibility: isPersonaVisibilityValue(String(socialVisibility.accountVisibility || ''))
+      ? socialVisibility.accountVisibility as PersonaVisibilityValue
+      : 'PRIVATE',
+    defaultPostVisibility: isPersonaVisibilityValue(String(socialVisibility.defaultPostVisibility || ''))
+      ? socialVisibility.defaultPostVisibility as PersonaVisibilityValue
+      : 'PRIVATE',
+    dmVisibility: isPersonaVisibilityValue(String(socialVisibility.dmVisibility || ''))
+      ? socialVisibility.dmVisibility as PersonaVisibilityValue
+      : 'PRIVATE',
+    profileVisibility: isPersonaVisibilityValue(String(socialVisibility.profileVisibility || ''))
+      ? socialVisibility.profileVisibility as PersonaVisibilityValue
+      : 'PRIVATE',
+  };
+}
+
+function readPersonaSettings(persona: RealmPersonaDto): RealmOwnerPersonaSettings {
+  const core = readRecord(persona.core);
+  return {
+    id: persona.id,
+    contentHash: persona.contentHash,
+    homeWorldId: persona.homeWorldId,
+    origin: persona.origin,
+    core,
+    displayName: readOptionalString(core, 'displayName') ?? null,
+    description: readOptionalString(core, 'description') ?? null,
+    greeting: readOptionalString(core, 'greeting') ?? null,
+    naturalLanguageIntent: readOptionalString(core, 'naturalLanguageIntent') ?? null,
+    identity: readRecord(core.identity),
+    personality: readRecord(core.personality),
+    communication: readRecord(core.communication),
+    boundaries: readRecord(core.boundaries),
+    positioning: readRecord(core.positioning),
+  };
+}
+
+function mergeOwnerSettingsCore(
+  current: RealmOwnerPersonaSettings,
+  patch: OwnerPersonaSettingsUpdateInput,
+): Record<string, unknown> {
+  const next: Record<string, unknown> = { ...current.core };
+  for (const key of ['displayName', 'description', 'greeting', 'naturalLanguageIntent'] as const) {
+    if (Object.prototype.hasOwnProperty.call(patch, key)) {
+      next[key] = patch[key];
+    }
+  }
+  for (const key of ['identity', 'personality', 'communication', 'boundaries', 'positioning'] as const) {
+    if (patch[key]) {
+      next[key] = {
+        ...readRecord(next[key]),
+        ...patch[key],
+      };
+    }
+  }
+  return next;
+}
+
+function buildReplaceRealmPersonaInput(
+  current: RealmOwnerPersonaSettings,
+  core: Record<string, unknown>,
+): ReplaceRealmPersonaDto {
+  return {
+    baseContentHash: current.contentHash,
+    homeWorldId: current.homeWorldId,
+    origin: current.origin,
+    core,
+  };
+}
+
+function isPersonaVisibilityValue(value: string): value is PersonaVisibilityValue {
+  return PERSONA_VISIBILITY_VALUES.includes(value as PersonaVisibilityValue);
+}
+
+export function createPersonaVisibilityDraft(settings: RealmPersonaVisibilitySettings): PersonaVisibilityDraft {
   return {
     accountVisibility: settings.accountVisibility,
     defaultPostVisibility: settings.defaultPostVisibility,
@@ -212,15 +295,15 @@ export function createAgentVisibilityDraft(settings: RealmAgentVisibilitySetting
 }
 
 export function buildRealmUpdateVisibilityInput(
-  draft: AgentVisibilityDraft,
-  current: RealmAgentVisibilitySettings,
-): { input: RealmAgentVisibilityUpdateInput | null; errors: string[] } {
-  const input: RealmAgentVisibilityUpdateInput = {};
+  draft: PersonaVisibilityDraft,
+  current: RealmPersonaVisibilitySettings,
+): { input: RealmPersonaVisibilityUpdateInput | null; errors: string[] } {
+  const input: RealmPersonaVisibilityUpdateInput = {};
   const errors: string[] = [];
 
-  for (const field of AGENT_VISIBILITY_FIELDS) {
+  for (const field of PERSONA_VISIBILITY_FIELDS) {
     const value = draft[field];
-    if (!isAgentVisibilityValue(value)) {
+    if (!isPersonaVisibilityValue(value)) {
       errors.push(`${field} must be PUBLIC, FRIENDS, or PRIVATE`);
       continue;
     }
@@ -239,44 +322,23 @@ export function buildRealmUpdateVisibilityInput(
 
   return { input, errors: [] };
 }
-export function buildRuntimeProjectionInput(agent: OwnerPortfolioAgentDetail): RealmRuntimeProjectionInput | null {
-  if (agent.world.status !== 'available' || !agent.world.value.trim()) {
+export function buildRuntimeProjectionInput(persona: OwnerPortfolioPersonaDetail): RealmRuntimeProjectionInput | null {
+  if (!persona.homeWorldId.trim() || !persona.contentHash.trim()) {
     return null;
   }
 
   return {
-    worldId: agent.world.value.trim(),
-    contextEnvelope: {
-      allowedWorldScopes: ['WORLD', 'REGION', 'FACTION', 'INDIVIDUAL', 'SCENE'],
-      includeInheritedAgentRules: false,
-      focusKeywords: ['realm-agent-studio', 'owner-reviewed-runtime-context'],
+    sourceRef: {
+      kind: 'realmPersona',
+      worldId: persona.homeWorldId.trim(),
+      sourceId: persona.id.trim(),
+      sourceContentHash: persona.contentHash.trim(),
     },
   };
 }
 
-export function buildAgentChatReadinessProjectionInput(agent: OwnerPortfolioAgentDetail): RealmRuntimeProjectionInput | null {
-  if (agent.world.status !== 'available' || !agent.world.value.trim() || !agent.id.trim()) {
-    return null;
-  }
-
-  return {
-    worldId: agent.world.value.trim(),
-    agentId: agent.id.trim(),
-    contextEnvelope: {
-      allowedWorldScopes: ['WORLD', 'REGION', 'FACTION', 'INDIVIDUAL', 'SCENE'],
-      allowedAgentLayers: ['DNA', 'BEHAVIORAL', 'CONTEXTUAL'],
-      allowedAgentScopes: ['SELF'],
-      includeInheritedAgentRules: false,
-      requestedAgentRuleKeys: [
-        'behavioral:style:content',
-        'behavioral:theme:allowed',
-        'behavioral:theme:disallowed',
-        'contextual:audience:target',
-        'contextual:positioning:public',
-      ],
-      focusKeywords: ['content', 'theme', 'audience', 'positioning'],
-    },
-  };
+export function buildPersonaChatReadinessProjectionInput(persona: OwnerPortfolioPersonaDetail): RealmRuntimeProjectionInput | null {
+  return buildRuntimeProjectionInput(persona);
 }
 
 function readStructuredOwnerSettingField(input: unknown): string | null {
@@ -302,87 +364,86 @@ export function normalizeRuntimeProjectionSummary(response: RealmRuntimeProjecti
     return null;
   }
   const record = response as unknown as Record<string, unknown>;
-  const consumerSurface = record.consumerSurface;
-  const worldId = readOptionalString(record, 'worldId');
-  const checksum = readOptionalString(record, 'checksum');
-  if (consumerSurface !== 'RUNTIME_PAYLOAD' || !worldId || !checksum) {
+  const worldId = readOptionalString(record, 'sourceWorldId');
+  const checksum = readOptionalString(record, 'payloadHash');
+  if (!worldId || !checksum) {
     return null;
   }
 
   const payload = record.payload && typeof record.payload === 'object' ? record.payload as Record<string, unknown> : {};
-  const trace = record.trace && typeof record.trace === 'object' ? record.trace as Record<string, unknown> : {};
 
   return {
     source: REALM_RUNTIME_PROJECTION_SOURCE,
-    consumerSurface,
+    consumerSurface: 'RUNTIME_PAYLOAD',
     worldId,
     checksum,
-    selectedInputCount: readArray(record.selectedInputs).length,
-    suppressedInputCount: readArray(trace.suppressedInputs).length,
+    selectedInputCount: 1,
+    suppressedInputCount: 0,
     worldRuleCount: readArray(payload.worldRules).length,
     rawRuleContentExposed: false,
   };
 }
 
-export function normalizeAgentChatReadinessProjectionSummary(
+export function normalizePersonaChatReadinessProjectionSummary(
   response: RealmRuntimeProjectionResponse,
-): AgentChatReadinessProjectionSummary | null {
+): PersonaChatReadinessProjectionSummary | null {
   const base = normalizeRuntimeProjectionSummary(response);
   if (!base) {
     return null;
   }
   const record = response as unknown as Record<string, unknown>;
-  const agentId = readOptionalString(record, 'agentId');
-  if (!agentId) {
+  const personaId = readOptionalString(record, 'sourceId');
+  if (!personaId) {
     return null;
   }
 
   const payload = record.payload && typeof record.payload === 'object' ? record.payload as Record<string, unknown> : {};
-  const agentRules = readArray(payload.agentRules);
   return {
     ...base,
-    agentId,
-    agentRuleCount: agentRules.length,
+    personaId,
+    personaRuleCount: 0,
     selectedOwnerSettingFields: uniqueSorted(
-      agentRules
-        .map((input) => readStructuredOwnerSettingField(input))
+      Object.keys(payload)
+        .map((key) => readStructuredOwnerSettingField({ structured: { ownerSettingField: key } }))
         .filter((value): value is string => Boolean(value)),
     ),
   };
 }
 
-export async function getAgentVisibilitySettings(
-  agentId: string,
+export async function getPersonaVisibilitySettings(
+  personaId: string,
   realm: StudioRealmClient = createStudioRealmClient(),
-): Promise<RealmAgentVisibilitySettings> {
-  return realm.agentControllerGetVisibility({ path: { id: agentId } });
+): Promise<RealmPersonaVisibilitySettings> {
+  const persona = await realm.worldCoreControllerGetRealmPersona({ path: { personaId: personaId } });
+  return readPersonaSocialVisibility(persona);
 }
 
-export async function getOwnerAgentSettings(
-  agentId: string,
+export async function getOwnerPersonaSettings(
+  personaId: string,
   realm: StudioRealmClient = createStudioRealmClient(),
-): Promise<RealmOwnerAgentSettings> {
-  return realm.getMyRealmAgentSettings({ path: { agentId } });
+): Promise<RealmOwnerPersonaSettings> {
+  const persona = await realm.worldCoreControllerGetRealmPersona({ path: { personaId: personaId } });
+  return readPersonaSettings(persona);
 }
 
-export async function getPortfolioAgentSettings(
-  agent: OwnerPortfolioAgentDetail,
+export async function getPortfolioPersonaSettings(
+  persona: OwnerPortfolioPersonaDetail,
   realm: StudioRealmClient = createStudioRealmClient(),
-): Promise<RealmOwnerAgentSettings> {
-  return getOwnerAgentSettings(agent.id, realm);
+): Promise<RealmOwnerPersonaSettings> {
+  return getOwnerPersonaSettings(persona.id, realm);
 }
 
-export async function updateReviewedAgentVisibility(
-  agentId: string,
-  draft: AgentVisibilityDraft,
-  current: RealmAgentVisibilitySettings,
+export async function updateReviewedPersonaVisibility(
+  personaId: string,
+  draft: PersonaVisibilityDraft,
+  current: RealmPersonaVisibilitySettings,
   realm: StudioRealmClient = createStudioRealmClient(),
-): Promise<RealmAgentVisibilityUpdateResult> {
+): Promise<RealmPersonaVisibilityUpdateResult> {
   const { input, errors } = buildRealmUpdateVisibilityInput(draft, current);
   if (!input) {
     return {
       ok: false,
-      source: REALM_AGENT_VISIBILITY_SOURCE,
+      source: REALM_PERSONA_VISIBILITY_SOURCE,
       lifecycleTruth: false,
       failure: errors.some((error) => error.includes('no reviewed changes'))
         ? 'visibility-no-changes'
@@ -394,21 +455,28 @@ export async function updateReviewedAgentVisibility(
   }
 
   try {
-    const settings = await realm.agentControllerUpdateVisibility({
-      path: { id: agentId },
-      body: input,
+    const current = await getOwnerPersonaSettings(personaId, realm);
+    const settings = await realm.worldCoreControllerReplaceRealmPersona({
+      path: { personaId: personaId },
+      body: buildReplaceRealmPersonaInput(current, {
+        ...current.core,
+        socialVisibility: {
+          ...readRecord(current.core.socialVisibility),
+          ...input,
+        },
+      }),
     });
     return {
       ok: true,
-      source: REALM_AGENT_VISIBILITY_SOURCE,
+      source: REALM_PERSONA_VISIBILITY_SOURCE,
       lifecycleTruth: false,
       submitted: input,
-      settings,
+      settings: readPersonaSocialVisibility(settings),
     };
   } catch (error) {
     return {
       ok: false,
-      source: REALM_AGENT_VISIBILITY_SOURCE,
+      source: REALM_PERSONA_VISIBILITY_SOURCE,
       lifecycleTruth: false,
       failure: 'realm-update-visibility-failed',
       message: error instanceof Error ? error.message : 'Realm visibility update failed.',
@@ -418,20 +486,20 @@ export async function updateReviewedAgentVisibility(
   }
 }
 
-export async function proposeReviewedOwnerAgentSettings(
-  agentId: string,
-  draft: OwnerAgentSettingsDraft,
-  current: RealmOwnerAgentSettings,
+export async function proposeReviewedOwnerPersonaSettings(
+  personaId: string,
+  draft: OwnerPersonaSettingsDraft,
+  current: RealmOwnerPersonaSettings,
   runtime?: RuntimeTextClient | null,
-  agentContext?: OwnerAgentSettingsProposalContext,
+  personaContext?: OwnerPersonaSettingsProposalContext,
 ): Promise<RuntimeOwnerSettingsProposalResult> {
   // The prompt starts with the unresolved marker; studio-ai-runtime must bind a
   // concrete text.generate route before dispatch.
   const built = buildRuntimeOwnerSettingsProposalPrompt({
-    agentId,
+    personaId,
     draft,
     current,
-    ...(agentContext ? { agentContext } : {}),
+    ...(personaContext ? { personaContext } : {}),
   });
   if (!built.ok) {
     return {
@@ -501,27 +569,27 @@ export async function proposeReviewedOwnerAgentSettings(
   }
 }
 
-export async function proposeReviewedPortfolioAgentSettings(
-  agent: OwnerPortfolioAgentDetail,
-  draft: OwnerAgentSettingsDraft,
-  current: RealmOwnerAgentSettings,
+export async function proposeReviewedPortfolioPersonaSettings(
+  persona: OwnerPortfolioPersonaDetail,
+  draft: OwnerPersonaSettingsDraft,
+  current: RealmOwnerPersonaSettings,
   runtime?: RuntimeTextClient | null,
 ): Promise<RuntimeOwnerSettingsProposalResult> {
-  return proposeReviewedOwnerAgentSettings(
-    agent.id,
+  return proposeReviewedOwnerPersonaSettings(
+    persona.id,
     draft,
     current,
     runtime,
-    buildPortfolioSettingsProposalContext(agent),
+    buildPortfolioSettingsProposalContext(persona),
   );
 }
-export async function updateReviewedOwnerAgentSettings(
-  agentId: string,
-  draft: OwnerAgentSettingsDraft,
-  current: RealmOwnerAgentSettings,
+export async function updateReviewedOwnerPersonaSettings(
+  personaId: string,
+  draft: OwnerPersonaSettingsDraft,
+  current: RealmOwnerPersonaSettings,
   realm: StudioRealmClient = createStudioRealmClient(),
-): Promise<RealmOwnerAgentSettingsUpdateResult> {
-  const built = buildRealmOwnerAgentSettingsUpdateInput(draft, current);
+): Promise<RealmOwnerPersonaSettingsUpdateResult> {
+  const built = buildRealmOwnerPersonaSettingsUpdateInput(draft, current);
   if (!built.ok) {
     return {
       ok: false,
@@ -534,10 +602,11 @@ export async function updateReviewedOwnerAgentSettings(
     };
   }
 
-  const submitted = built.input as RealmOwnerAgentSettingsUpdateInput;
+  const nextCore = mergeOwnerSettingsCore(current, built.input);
+  const submitted = buildReplaceRealmPersonaInput(current, nextCore);
   try {
-    const settings = await realm.updateMyRealmAgentSettings({
-      path: { agentId },
+    const settings = await realm.worldCoreControllerReplaceRealmPersona({
+      path: { personaId: personaId },
       body: submitted,
     });
     return {
@@ -545,7 +614,7 @@ export async function updateReviewedOwnerAgentSettings(
       source: OWNER_SETTINGS_SAVE_SOURCE,
       truthWrite: true,
       submitted,
-      settings,
+      settings: readPersonaSettings(settings),
     };
   } catch (error) {
     return {
@@ -560,32 +629,32 @@ export async function updateReviewedOwnerAgentSettings(
   }
 }
 
-export async function updateReviewedPortfolioAgentSettings(
-  agent: OwnerPortfolioAgentDetail,
-  draft: OwnerAgentSettingsDraft,
-  current: RealmOwnerAgentSettings,
+export async function updateReviewedPortfolioPersonaSettings(
+  persona: OwnerPortfolioPersonaDetail,
+  draft: OwnerPersonaSettingsDraft,
+  current: RealmOwnerPersonaSettings,
   realm: StudioRealmClient = createStudioRealmClient(),
-): Promise<RealmOwnerAgentSettingsUpdateResult> {
-  return updateReviewedOwnerAgentSettings(agent.id, draft, current, realm);
+): Promise<RealmOwnerPersonaSettingsUpdateResult> {
+  return updateReviewedOwnerPersonaSettings(persona.id, draft, current, realm);
 }
-export async function projectAgentRuntimeContextSummary(
-  agent: OwnerPortfolioAgentDetail,
+export async function projectPersonaRuntimeContextSummary(
+  persona: OwnerPortfolioPersonaDetail,
   realm: StudioRealmClient = createStudioRealmClient(),
 ): Promise<RuntimeProjectionSummaryResult> {
-  const submitted = buildRuntimeProjectionInput(agent);
+  const submitted = buildRuntimeProjectionInput(persona);
   if (!submitted) {
     return {
       ok: false,
       source: REALM_RUNTIME_PROJECTION_SOURCE,
       truthWrite: false,
       failure: 'runtime-projection-world-unavailable',
-      message: 'Runtime projection requires worldId evidence from Realm MeService.getMyRealmAgent.',
+      message: 'Runtime projection requires worldId evidence from Realm WorldCoreController.getRealmPersona.',
       submitted: null,
     };
   }
 
   try {
-    const response = await realm.projectRuntimePayload({
+    const response = await realm.worldCoreControllerCreateRuntimeSourceSnapshot({
       path: {},
       body: submitted,
     });
@@ -596,7 +665,7 @@ export async function projectAgentRuntimeContextSummary(
         source: REALM_RUNTIME_PROJECTION_SOURCE,
         truthWrite: false,
         failure: 'runtime-projection-invalid-response',
-        message: 'Runtime projection response did not include RUNTIME_PAYLOAD checksum summary.',
+        message: 'RuntimeSourceSnapshot response did not include payload hash summary.',
         submitted,
       };
     }
@@ -613,41 +682,41 @@ export async function projectAgentRuntimeContextSummary(
       source: REALM_RUNTIME_PROJECTION_SOURCE,
       truthWrite: false,
       failure: 'runtime-projection-failed',
-      message: error instanceof Error ? error.message : 'Realm runtime projection failed.',
+      message: error instanceof Error ? error.message : 'Realm RuntimeSourceSnapshot creation failed.',
       submitted,
     };
   }
 }
 
-export async function projectAgentChatReadinessContextSummary(
-  agent: OwnerPortfolioAgentDetail,
+export async function projectPersonaChatReadinessContextSummary(
+  persona: OwnerPortfolioPersonaDetail,
   realm: StudioRealmClient = createStudioRealmClient(),
-): Promise<AgentChatReadinessSummaryResult> {
-  const submitted = buildAgentChatReadinessProjectionInput(agent);
+): Promise<PersonaChatReadinessSummaryResult> {
+  const submitted = buildPersonaChatReadinessProjectionInput(persona);
   if (!submitted) {
     return {
       ok: false,
       source: REALM_RUNTIME_PROJECTION_SOURCE,
       truthWrite: false,
       failure: 'runtime-projection-world-unavailable',
-      message: 'Agent Chat readiness projection requires RealmAgent id and worldId evidence.',
+      message: 'localAgent Chat readiness projection requires RealmPersona id and worldId evidence.',
       submitted: null,
     };
   }
 
   try {
-    const response = await realm.projectRuntimePayload({
+    const response = await realm.worldCoreControllerCreateRuntimeSourceSnapshot({
       path: {},
       body: submitted,
     });
-    const summary = normalizeAgentChatReadinessProjectionSummary(response);
+    const summary = normalizePersonaChatReadinessProjectionSummary(response);
     if (!summary) {
       return {
         ok: false,
         source: REALM_RUNTIME_PROJECTION_SOURCE,
         truthWrite: false,
         failure: 'runtime-projection-invalid-response',
-        message: 'Agent Chat readiness projection response did not include agent-specific RUNTIME_PAYLOAD summary.',
+        message: 'RuntimeSourceSnapshot response did not include source-specific payload summary.',
         submitted,
       };
     }
@@ -664,7 +733,7 @@ export async function projectAgentChatReadinessContextSummary(
       source: REALM_RUNTIME_PROJECTION_SOURCE,
       truthWrite: false,
       failure: 'runtime-projection-failed',
-      message: error instanceof Error ? error.message : 'Realm Agent Chat readiness projection failed.',
+      message: error instanceof Error ? error.message : 'Realm RuntimeSourceSnapshot creation failed.',
       submitted,
     };
   }

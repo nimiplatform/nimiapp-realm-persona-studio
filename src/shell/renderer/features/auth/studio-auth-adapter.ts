@@ -14,13 +14,13 @@ import {
 } from '../../app-shell/studio-platform.js';
 
 const STUDIO_EMBEDDED_AUTH_UNSUPPORTED =
-  'Embedded auth flow is not supported in Realm Agent Studio desktop-browser mode.';
+  'Embedded auth flow is not supported in Realm Persona Studio desktop-browser mode.';
 
 const STUDIO_TOKEN_PROXY_FORBIDDEN =
-  'Realm Agent Studio does not own access/refresh token custody. Runtime is the sole owner; '
+  'Realm Persona Studio does not own access/refresh token custody. Runtime is the sole owner; '
   + 'login through the desktop browser broker.';
 const STUDIO_ACCOUNT_CONTROL_FORBIDDEN =
-  'Realm Agent Studio is a first-party Studio app but cannot own Runtime account logout. '
+  'Realm Persona Studio is a first-party Studio app but cannot own Runtime account logout. '
   + 'Use the first-party Desktop account surface.';
 
 function unsupported<T>(): Promise<T> {
@@ -38,7 +38,7 @@ export async function logoutStudioRuntimeAccount(): Promise<void> {
 }
 
 /**
- * Adapter for the kit's `<DesktopShellAuthPage>` in Realm Agent Studio
+ * Adapter for the kit's `<DesktopShellAuthPage>` in Realm Persona Studio
  * desktop-browser mode. Account/session truth is owned by RuntimeAccountService;
  * this adapter intentionally rejects every app-owned token surface so a
  * regression that tries to flow a bearer or refresh token through the kit fails

@@ -51,17 +51,17 @@ import {
  * reaches ScenarioService.
  */
 
-export const STUDIO_APP_ID = 'nimi.realm-agent-studio' as const;
+export const STUDIO_APP_ID = 'nimi.realm-persona-studio' as const;
 
 export type StudioAISurfaceId =
-  | 'realm-agent-studio.agent-seed'
-  | 'realm-agent-studio.agent-reference-image'
-  | 'realm-agent-studio.settings-proposal'
-  | 'realm-agent-studio.post-copy'
-  | 'realm-agent-studio.visual-image-candidate'
-  | 'realm-agent-studio.avatar-package-candidate'
-  | 'realm-agent-studio.voice-demo-candidate'
-  | 'realm-agent-studio.world-context-projection';
+  | 'realm-persona-studio.persona-seed'
+  | 'realm-persona-studio.persona-reference-image'
+  | 'realm-persona-studio.settings-proposal'
+  | 'realm-persona-studio.post-copy'
+  | 'realm-persona-studio.visual-image-candidate'
+  | 'realm-persona-studio.avatar-package-candidate'
+  | 'realm-persona-studio.voice-demo-candidate'
+  | 'realm-persona-studio.world-context-projection';
 
 /**
  * Call metadata stamped on every runtime call so the Runtime broker can
@@ -192,7 +192,7 @@ type StudioResolvedRuntimeRouteBinding = {
 type StudioRuntimeRouteCapability = 'text.generate' | 'image.generate' | 'audio.synthesize';
 type StudioScenarioExtension = ExecuteScenarioRequest['extensions'][number];
 
-const STUDIO_BOUND_ROUTE_SYMBOL: unique symbol = Symbol('realm-agent-studio.bound-route');
+const STUDIO_BOUND_ROUTE_SYMBOL: unique symbol = Symbol('realm-persona-studio.bound-route');
 
 type StudioBoundRouteEvidence = {
   readonly capability: StudioRuntimeRouteCapability;

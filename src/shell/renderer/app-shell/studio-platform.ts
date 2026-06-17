@@ -27,7 +27,7 @@ import { getStudioNimiClient, setStudioNimiClient } from '../infra/studio-nimi-c
 // Studio is a Nimi first-party local Runtime account/session consumer. Runtime
 // owns login custody, app sessions, and protected access metadata. Raw Realm
 // account tokens are not exposed here.
-export const STUDIO_RUNTIME_APP_ID = 'nimi.realm-agent-studio';
+export const STUDIO_RUNTIME_APP_ID = 'nimi.realm-persona-studio';
 export const STUDIO_RUNTIME_APP_INSTANCE_ID = `${STUDIO_RUNTIME_APP_ID}.local-first-party`;
 export const STUDIO_RUNTIME_DEVICE_ID = 'local-first-party-device';
 
@@ -39,7 +39,7 @@ const STUDIO_RUNTIME_PROTECTED_SCOPES = ['ai.spend.meter'] as const;
 const STUDIO_RUNTIME_PROTECTED_SCOPE_CATALOG_VERSION = 'sdk-v2';
 const STUDIO_RUNTIME_PROTECTED_TOKEN_TTL_SECONDS = 3600;
 const STUDIO_RUNTIME_PROTECTED_TOKEN_REFRESH_SKEW_MS = 60_000;
-const STUDIO_RUNTIME_PROTECTED_CONSENT_ID = 'realm-agent-studio-runtime-account';
+const STUDIO_RUNTIME_PROTECTED_CONSENT_ID = 'realm-persona-studio-runtime-account';
 const STUDIO_RUNTIME_DEVELOPER_REGISTRATION = false;
 export const STUDIO_REALM_API_SCOPES = [
   'realm.me.agents.read',
@@ -100,7 +100,7 @@ function studioRuntimeOptions(authMetadata?: () => Promise<CoreMetadata>): Runti
     appId: STUDIO_RUNTIME_APP_ID,
     metadata: {
       callerId: STUDIO_RUNTIME_APP_ID,
-      surfaceId: 'realm-agent-studio',
+      surfaceId: 'realm-persona-studio',
     },
     ...(authMetadata ? { authMetadata } : {}),
     transport: {
@@ -120,7 +120,7 @@ async function registerStudioRuntimeAccountCaller(accountRuntime: Runtime): Prom
       deviceId: studioRuntimeAccountCaller.deviceId,
       capabilities: [...STUDIO_RUNTIME_PROTECTED_SCOPES],
       developerRegistration: STUDIO_RUNTIME_DEVELOPER_REGISTRATION,
-      rejectionLabel: 'Realm Agent Studio Runtime account caller registration rejected',
+      rejectionLabel: 'Realm Persona Studio Runtime account caller registration rejected',
     },
   )();
 }
@@ -192,7 +192,7 @@ async function issueStudioRuntimeProtectedAccessMetadata(
     consentId: STUDIO_RUNTIME_PROTECTED_CONSENT_ID,
     consentVersion: 'v1',
     decisionAt: toNimiRuntimeTimestamp(new Date()),
-    policyVersion: 'realm-agent-studio-runtime-account-v1',
+    policyVersion: 'realm-persona-studio-runtime-account-v1',
     policyMode: PolicyMode.CUSTOM,
     preset: AuthorizationPreset.UNSPECIFIED,
     scopes: [...STUDIO_RUNTIME_PROTECTED_SCOPES],
@@ -209,12 +209,12 @@ async function issueStudioRuntimeProtectedAccessMetadata(
     policyOverride: false,
   }, withNimiRuntimeIdempotencyMetadata({
     metadata: { domain: 'app-auth' },
-  }, createNimiClientId(`realm-agent-studio-runtime-protected-${sanitizeProtectedAccessId(subjectUserId)}`)));
+  }, createNimiClientId(`realm-persona-studio-runtime-protected-${sanitizeProtectedAccessId(subjectUserId)}`)));
   const tokenId = normalizeStudioText(token.tokenId);
   const secret = normalizeStudioText(token.secret);
   if (!tokenId || !secret) {
     throw createNimiError({
-      message: 'Realm Agent Studio Runtime protected access token response is missing credentials.',
+      message: 'Realm Persona Studio Runtime protected access token response is missing credentials.',
       reasonCode: ReasonCode.PRINCIPAL_UNAUTHORIZED,
       actionHint: 'authorize_studio_runtime_protected_access',
       source: 'runtime',
@@ -253,7 +253,7 @@ export async function buildStudioNimiClient(options: { realmBaseUrl?: string | n
   const realmBaseUrl = normalizeStudioText(options.realmBaseUrl);
   if (!realmBaseUrl) {
     throw createNimiError({
-      message: 'Realm Agent Studio Realm base URL is unavailable from Runtime defaults.',
+      message: 'Realm Persona Studio Realm base URL is unavailable from Runtime defaults.',
       reasonCode: ReasonCode.SDK_REALM_BASE_URL_REQUIRED,
       actionHint: 'provide_studio_runtime_realm_defaults',
       source: 'sdk',

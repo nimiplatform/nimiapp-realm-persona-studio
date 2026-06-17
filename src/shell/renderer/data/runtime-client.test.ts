@@ -50,7 +50,7 @@ describe('studio runtime client gate', () => {
     expect(studioPlatformSource).toContain('createNimiRuntimeAppSessionMetadataProvider');
     expect(studioPlatformSource).toContain('createStudioRealmBridgeOptions');
     expect(realmTransportSource).toContain('invokeRealmUnary');
-    expect(realmTransportSource).not.toContain('realm_agent_studio_realm_unary');
+    expect(realmTransportSource).not.toContain('realm_persona_studio_realm_unary');
     expect(realmTransportSource).not.toContain('getAccessToken');
     expect(studioPlatformSource).not.toContain('getAccessToken');
     expect(studioPlatformSource).not.toContain('createRealmFetchTransport');

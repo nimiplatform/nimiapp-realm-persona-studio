@@ -7,8 +7,8 @@ const buildProfile = readFileSync(new URL('../.nimi/admission/build-profile.yaml
 if (!manifest.includes('manifest_role: submitted-input')) {
   throw new Error('submitted manifest role marker missing in nimi.app.yaml');
 }
-if (!manifest.includes('app_id: nimi.realm-agent-studio')) {
-  throw new Error('manifest app_id must be nimi.realm-agent-studio');
+if (!manifest.includes('app_id: nimi.realm-persona-studio')) {
+  throw new Error('manifest app_id must be nimi.realm-persona-studio');
 }
 if (!submission.includes('submission_role: developer-submitted-input')) {
   throw new Error('developer submission role marker missing in submission.yaml');
@@ -26,4 +26,4 @@ if (!buildProfile.includes('lockfile_policy: author-install-generates-lockfile')
   throw new Error('lockfile_policy marker missing in build-profile.yaml');
 }
 
-console.log('[realm-agent-studio] validate pre-submission self-check passed');
+console.log('[realm-persona-studio] validate pre-submission self-check passed');

@@ -1,7 +1,7 @@
 [package]
-name = "nimiapp-realm-agent-studio"
+name = "nimiapp-realm-persona-studio"
 version = "0.1.0"
-description = "Realm Agent Studio — Owner-facing creation and operation desktop app for user-owned public Realm Agents."
+description = "Realm Persona Studio — Owner-facing creation and operation desktop app for user-owned public Realm Personas."
 authors = ["Nimi Team"]
 edition = "2021"
 

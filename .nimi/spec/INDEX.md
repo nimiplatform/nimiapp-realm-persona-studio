@@ -1,6 +1,6 @@
 # Spec Index
 
-`.nimi/spec/**` is the active product/app contract source for Realm Agent Studio in this repository. Topic notes, renderer screenshots, conversation summaries, generated artifacts, and `.nimi/local/**` execution state are evidence, not authority.
+`.nimi/spec/**` is the active product/app contract source for Realm Persona Studio in this repository. Topic notes, renderer screenshots, conversation summaries, generated artifacts, and `.nimi/local/**` execution state are evidence, not authority.
 
 ## Active Authority
 
@@ -16,7 +16,7 @@
 1. `.nimi/spec/INDEX.md` (this file)
 2. `.nimi/spec/project/kernel/index.md` (kernel authority entry; declares the rule ID format and the kernel doc set)
 3. `.nimi/spec/project/kernel/core-rules.md` (cross-cutting kernel invariants)
-4. Target domain kernel doc (`product-scope.md`, `realm-agent-object.md`, ...)
+4. Target domain kernel doc (`product-scope.md`, `realm-persona-object.md`, ...)
 5. `.nimi/spec/project/kernel/tables/rule-catalog.yaml` (full enumerated rule registry)
 
 ## Rule ID Format

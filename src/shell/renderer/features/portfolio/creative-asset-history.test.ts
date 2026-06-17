@@ -15,10 +15,10 @@ function createStorage() {
 }
 
 describe('local creative asset history', () => {
-  it('persists app-local candidate history per agent without public truth', () => {
+  it('persists app-local candidate history per persona without public truth', () => {
     const storage = createStorage();
 
-    const next = appendLocalCreativeAssetHistory('agent-1', {
+    const next = appendLocalCreativeAssetHistory('persona-1', {
       id: 'history-1',
       createdAt: '2026-05-22T00:00:00.000Z',
       kind: 'runtime-image-candidate',
@@ -30,7 +30,7 @@ describe('local creative asset history', () => {
 
     expect(next).toEqual([{
       id: 'history-1',
-      agentId: 'agent-1',
+      personaId: 'persona-1',
       createdAt: '2026-05-22T00:00:00.000Z',
       kind: 'runtime-image-candidate',
       label: 'Runtime image candidate',
@@ -39,13 +39,13 @@ describe('local creative asset history', () => {
       detail: 'artifact-image-1',
       artifactIds: ['artifact-image-1'],
     }]);
-    expect(loadLocalCreativeAssetHistory('agent-1', storage)).toEqual(next);
-    expect(loadLocalCreativeAssetHistory('agent-2', storage)).toEqual([]);
+    expect(loadLocalCreativeAssetHistory('persona-1', storage)).toEqual(next);
+    expect(loadLocalCreativeAssetHistory('persona-2', storage)).toEqual([]);
   });
 
   it('drops malformed or public-truth records when loading', () => {
     const storage = createStorage();
-    storage.setItem('realm-agent-studio.creative-asset-history.agent-1', JSON.stringify([
+    storage.setItem('realm-persona-studio.creative-asset-history.persona-1', JSON.stringify([
       {
         id: 'bad-public',
         kind: 'identity-resource-upload',
@@ -67,9 +67,9 @@ describe('local creative asset history', () => {
       },
     ]));
 
-    expect(loadLocalCreativeAssetHistory('agent-1', storage)).toEqual([{
+    expect(loadLocalCreativeAssetHistory('persona-1', storage)).toEqual([{
       id: 'good-local',
-      agentId: 'agent-1',
+      personaId: 'persona-1',
       kind: 'identity-resource-upload',
       label: 'Identity Resource upload',
       createdAt: '2026-05-22T00:00:00.000Z',
@@ -83,7 +83,7 @@ describe('local creative asset history', () => {
   it('persists avatar package candidates as local-only history', () => {
     const storage = createStorage();
 
-    const next = appendLocalCreativeAssetHistory('agent-1', {
+    const next = appendLocalCreativeAssetHistory('persona-1', {
       id: 'avatar-package-1',
       createdAt: '2026-05-22T00:00:00.000Z',
       kind: 'avatar-package-candidate',
@@ -95,13 +95,13 @@ describe('local creative asset history', () => {
 
     expect(next[0]).toMatchObject({
       id: 'avatar-package-1',
-      agentId: 'agent-1',
+      personaId: 'persona-1',
       kind: 'avatar-package-candidate',
       label: 'Avatar package candidate',
       publicTruth: false,
       detail: 'LIVE2D / artifact-avatar-design-sheet',
       artifactIds: ['artifact-avatar-design-sheet'],
     });
-    expect(loadLocalCreativeAssetHistory('agent-1', storage)).toEqual(next);
+    expect(loadLocalCreativeAssetHistory('persona-1', storage)).toEqual(next);
   });
 });

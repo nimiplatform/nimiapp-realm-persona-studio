@@ -2,57 +2,57 @@ import type { StudioRealmSurface } from '@renderer/data/realm-client.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildFinalizeDirectMediaResourceInput,
-  buildRealmCreateAgentInput,
+  buildRealmCreatePersonaInput,
   buildRealmCreatePostInput,
   buildRealmPostTextResourceInput,
   buildRealmSelectAvatarInput,
   buildRealmUpdateVisibilityInput,
   buildRuntimeProjectionInput,
-  checkCreateRealmAgentHandleAvailability,
-  createAgentVisibilityDraft,
+  checkCreateRealmPersonaHandleAvailability,
+  createPersonaVisibilityDraft,
   createReviewedPostTextResource,
-  createReviewedRealmAgent,
-  createReviewedRealmAgentWithProfileSettings,
+  createReviewedRealmPersona,
+  createReviewedRealmPersonaWithProfileSettings,
   generateReviewedVisualImageCandidate,
-  getAgentVisibilitySettings,
-  getCreateRealmAgentWorldPreview,
-  getOwnerAgentSettings,
-  getOwnerPortfolioAgentDetail,
-  getPortfolioAgentSettings,
-  listCreateRealmAgentSelectableWorlds,
-  listOwnerPortfolioAgents,
+  getPersonaVisibilitySettings,
+  getCreateRealmPersonaWorldPreview,
+  getOwnerPersonaSettings,
+  getOwnerPortfolioPersonaDetail,
+  getPortfolioPersonaSettings,
+  listCreateRealmPersonaSelectableWorlds,
+  listOwnerPortfolioPersonas,
   listReadyPostAttachmentResources,
   normalizeFinalizedDirectMediaResource,
   normalizePostAttachmentResourceOptions,
-  normalizeRealmAgentAvatarSelectResult,
-  normalizeRealmAgentCreateResult,
+  normalizeRealmPersonaAvatarSelectResult,
+  normalizeRealmPersonaCreateResult,
   normalizeRealmPostPublishResult,
   normalizeRealmTextResourceCreateResult,
   normalizeRuntimeProjectionSummary,
-  projectAgentRuntimeContextSummary,
-  proposeReviewedOwnerAgentSettings,
+  projectPersonaRuntimeContextSummary,
+  proposeReviewedOwnerPersonaSettings,
   proposeReviewedPostCopy,
   publishReviewedPostDraft,
-  selectReviewedAgentAvatarUrl,
+  selectReviewedPersonaAvatarUrl,
   synthesizeReviewedVoiceDemo,
-  updateReviewedAgentVisibility,
-  updateReviewedOwnerAgentSettings,
-  updateReviewedPortfolioAgentSettings,
+  updateReviewedPersonaVisibility,
+  updateReviewedOwnerPersonaSettings,
+  updateReviewedPortfolioPersonaSettings,
   uploadReviewedIdentityMediaResource,
   uploadReviewedPostMediaResource,
-  type AgentVisibilityDraft,
-  type RealmAgentVisibilitySettings,
+  type PersonaVisibilityDraft,
+  type RealmPersonaVisibilitySettings,
 } from './portfolio-client.js';
-import { REALM_AGENT_CREATE_SOURCE, type ReviewedCreateRealmAgentPayload } from './create-agent-draft.js';
-import { createOwnerAgentSettingsDraft } from './setting-proposal.js';
+import { REALM_PERSONA_CREATE_SOURCE, type ReviewedCreateRealmPersonaPayload } from './create-persona-draft.js';
+import { createOwnerPersonaSettingsDraft } from './setting-proposal.js';
 import {
   candidatePayload,
   collectKeys,
   createPayload,
   detailField,
   mockRealm,
-  ownerAgentDetail,
-  ownerAgentDetailWithWorldId,
+  ownerPersonaDetail,
+  ownerPersonaDetailWithWorldId,
   resetStudioAIConfigForTest,
 } from './portfolio-client.test-helpers.js';
 
@@ -61,81 +61,72 @@ beforeEach(() => {
 });
 
 describe('owner portfolio core client', () => {
-    it('uses listMyRealmAgents only for portfolio list data', async () => {
+    it('uses WorldCoreController.listRealmPersonas only for portfolio list data', async () => {
       const realm = mockRealm();
-      const agents = await listOwnerPortfolioAgents(realm);
+      const personas = await listOwnerPortfolioPersonas(realm);
 
-      expect(realm.listMyRealmAgents).toHaveBeenCalledTimes(1);
-      expect(realm.getMyRealmAgent).not.toHaveBeenCalled();
-      expect(agents[0]?.source).toBe('Realm MeService.listMyRealmAgents');
+      expect(realm.worldCoreControllerListRealmPersonas).toHaveBeenCalledTimes(1);
+      expect(realm.worldCoreControllerGetRealmPersona).not.toHaveBeenCalled();
+      expect(personas[0]?.source).toBe('Realm WorldCoreController.listRealmPersonas');
     });
 
     it('does not fall through from owner detail reads when owner authority is missing', async () => {
       const realm = mockRealm();
-      vi.mocked(realm.getMyRealmAgent).mockRejectedValueOnce(new Error('owner authority missing'));
+      vi.mocked(realm.worldCoreControllerGetRealmPersona).mockRejectedValueOnce(new Error('owner authority missing'));
 
-      await expect(getOwnerPortfolioAgentDetail('agent-not-owned', realm)).rejects.toThrow(
+      await expect(getOwnerPortfolioPersonaDetail('persona-not-owned', realm)).rejects.toThrow(
         'owner authority missing',
       );
 
-      expect(realm.getMyRealmAgent).toHaveBeenCalledWith({ path: { agentId: 'agent-not-owned' } });
+      expect(realm.worldCoreControllerGetRealmPersona).toHaveBeenCalledWith({ path: { personaId: 'persona-not-owned' } });
     });
 
-    it('fetches selected detail through getMyRealmAgent', async () => {
+    it('fetches selected detail through WorldCoreController.getRealmPersona', async () => {
       const realm = mockRealm();
-      const detail = await getOwnerPortfolioAgentDetail('agent-detail-1', realm);
+      const detail = await getOwnerPortfolioPersonaDetail('persona-detail-1', realm);
 
-      expect(realm.getMyRealmAgent).toHaveBeenCalledWith({ path: { agentId: 'agent-detail-1' } });
-      expect(realm.listMyRealmAgents).not.toHaveBeenCalled();
-      expect(detail.id).toBe('agent-detail-1');
-      expect(detail.bio.value).toBe('Detail bio');
-      expect(detail.source).toBe('Realm MeService.getMyRealmAgent');
+      expect(realm.worldCoreControllerGetRealmPersona).toHaveBeenCalledWith({ path: { personaId: 'persona-detail-1' } });
+      expect(detail.id).toBe('persona-detail-1');
+      expect(detail.bio.value).toBe('Quiet strategist');
+      expect(detail.source).toBe('Realm WorldCoreController.getRealmPersona');
     });
 
-    it('uses WorldsService only for create readiness world list reads', async () => {
+    it('uses WorldCoreController only for create readiness world list reads', async () => {
       const realm = mockRealm();
-      const worlds = await listCreateRealmAgentSelectableWorlds(realm);
+      const worlds = await listCreateRealmPersonaSelectableWorlds(realm);
 
-      expect(realm.worldControllerListWorlds).toHaveBeenCalledTimes(1);
-      expect(realm.agentControllerCreate).not.toHaveBeenCalled();
+      expect(realm.worldCoreControllerListWorldCores).toHaveBeenCalledTimes(1);
+      expect(realm.worldCoreControllerCreateRealmPersona).not.toHaveBeenCalled();
       expect(worlds[0]).toMatchObject({
         id: 'world-oasis',
-        source: 'Realm WorldsService.worldControllerListWorlds',
+        source: 'Realm WorldCoreController.listWorldCores',
       });
     });
 
-    it('uses WorldsService detail-with-agents for selected world preview', async () => {
+    it('uses WorldCoreController.getWorldCore for selected world preview', async () => {
       const realm = mockRealm();
-      const preview = await getCreateRealmAgentWorldPreview('world-oasis', realm);
+      const preview = await getCreateRealmPersonaWorldPreview('world-oasis', realm);
 
-      expect(realm.worldControllerGetWorldDetailWithAgents).toHaveBeenCalledWith({
-        path: { id: 'world-oasis' },
-        query: { recommendedAgentLimit: 4 },
+      expect(realm.worldCoreControllerGetWorldCore).toHaveBeenCalledWith({
+        path: { worldId: 'world-oasis' },
       });
-      expect(realm.agentControllerCreate).not.toHaveBeenCalled();
-      expect(preview.source).toBe('Realm WorldsService.worldControllerGetWorldDetailWithAgents');
+      expect(realm.worldCoreControllerCreateRealmPersona).not.toHaveBeenCalled();
+      expect(preview.source).toBe('Realm WorldCoreController.getWorldCore');
     });
 
-    it('checks create handle availability through AgentsService before create', async () => {
+    it('checks create handle availability through WorldCoreController.listRealmPersonas before create', async () => {
       const realm = mockRealm();
-      const available = await checkCreateRealmAgentHandleAvailability(' @Mira.Agent ', realm);
-      const unavailable = await checkCreateRealmAgentHandleAvailability('taken-handle', realm);
+      const available = await checkCreateRealmPersonaHandleAvailability(' @Mira.Persona ', realm);
+      const unavailable = await checkCreateRealmPersonaHandleAvailability('taken.persona', realm);
 
-      expect(realm.agentControllerCheckHandle).toHaveBeenCalledWith({
-        path: {},
-        query: { handle: 'mira_agent' },
-      });
-      expect(realm.agentControllerCheckHandle).toHaveBeenCalledWith({
-        path: {},
-        query: { handle: 'taken_handle' },
-      });
+      expect(realm.worldCoreControllerListRealmPersonas).toHaveBeenCalledTimes(2);
       expect(available).toMatchObject({
         ok: true,
         truthWrite: false,
         availability: {
-          source: 'Realm AgentsService.agentControllerCheckHandle',
-          handle: 'mira_agent',
-          normalized: 'mira_agent',
+          source: 'Realm WorldCoreController.listRealmPersonas',
+          handle: 'mira.persona',
+          normalized: 'mira.persona',
           available: true,
         },
       });
@@ -143,33 +134,26 @@ describe('owner portfolio core client', () => {
         ok: true,
         truthWrite: false,
         availability: {
-          handle: 'taken_handle',
+          handle: 'taken.persona',
           available: false,
-          message: 'Handle already taken.',
+          message: 'A RealmPersona with this handle already exists in the owner portfolio.',
         },
       });
-      expect(realm.agentControllerCreate).not.toHaveBeenCalled();
+      expect(realm.worldCoreControllerCreateRealmPersona).not.toHaveBeenCalled();
     });
 
-    it('creates a Realm Agent through AgentsService.agentControllerCreate with CreateAgentDto allowlist only', async () => {
+    it('creates a RealmPersona through WorldCoreController.createRealmPersona with core allowlist only', async () => {
       const realm = mockRealm();
-      const result = await createReviewedRealmAgent(createPayload, realm);
-      const createAgent = realm.agentControllerCreate;
-      const submittedPayload = vi.mocked(createAgent).mock.calls[0]?.[0]?.body;
+      const result = await createReviewedRealmPersona(createPayload, realm);
+      const createPersona = realm.worldCoreControllerCreateRealmPersona;
+      const submittedPayload = vi.mocked(createPersona).mock.calls[0]?.[0]?.body;
 
-      expect(createAgent).toHaveBeenCalledTimes(1);
+      expect(createPersona).toHaveBeenCalledTimes(1);
       expect(submittedPayload).toEqual(createPayload.body);
       expect(Object.keys(submittedPayload || {}).sort()).toEqual([
-        'concept',
-        'description',
-        'displayName',
-        'dna',
-        'dnaPrimary',
-        'dnaSecondary',
-        'handle',
-        'ownershipType',
-        'rules',
-        'worldId',
+        'core',
+        'homeWorldId',
+        'origin',
       ]);
       expect(collectKeys(submittedPayload).has('publicBio')).toBe(false);
       expect(collectKeys(submittedPayload).has('id')).toBe(false);
@@ -182,15 +166,14 @@ describe('owner portfolio core client', () => {
       expect(collectKeys(submittedPayload).has('provider')).toBe(false);
       expect(collectKeys(submittedPayload).has('model')).toBe(false);
       expect(collectKeys(submittedPayload).has('LocalAgent')).toBe(false);
-      expect(collectKeys(submittedPayload).has('dna')).toBe(true);
+      expect(collectKeys(submittedPayload).has('dna')).toBe(false);
       expect(collectKeys(submittedPayload).has('dnaPrimary')).toBe(true);
       expect(collectKeys(submittedPayload).has('dnaSecondary')).toBe(true);
-      expect(collectKeys(submittedPayload).has('referenceImageUrl')).toBe(false);
       expect(result).toMatchObject({
         ok: true,
-        source: REALM_AGENT_CREATE_SOURCE,
+        source: REALM_PERSONA_CREATE_SOURCE,
         canonical: {
-          id: 'agent-created-1',
+          id: 'persona-created-1',
           state: 'INCUBATING',
         },
       });
@@ -198,34 +181,39 @@ describe('owner portfolio core client', () => {
 
     it('completes reviewed profile description through owner settings after create', async () => {
       const realm = mockRealm();
-      const result = await createReviewedRealmAgentWithProfileSettings(createPayload, realm);
-      const settingsUpdate = realm.updateMyRealmAgentSettings;
+      const result = await createReviewedRealmPersonaWithProfileSettings(createPayload, realm);
+      const settingsUpdate = realm.worldCoreControllerReplaceRealmPersona;
 
       expect(result).toMatchObject({
         ok: true,
-        canonical: { id: 'agent-created-1' },
+        canonical: { id: 'persona-created-1' },
         profileSettings: {
           status: 'updated',
-          source: 'Realm MeService.updateMyRealmAgentSettings',
+          source: 'Realm WorldCoreController.replaceRealmPersona',
           truthWrite: true,
           description: 'Owner-created public identity',
         },
       });
-      expect(realm.getMyRealmAgentSettings).toHaveBeenCalledWith({ path: { agentId: 'agent-created-1' } });
+      expect(realm.worldCoreControllerGetRealmPersona).toHaveBeenCalledWith({ path: { personaId: 'persona-created-1' } });
       expect(settingsUpdate).toHaveBeenCalledWith({
-        path: { agentId: 'agent-created-1' },
-        body: { description: 'Owner-created public identity' },
+        path: { personaId: 'persona-created-1' },
+        body: expect.objectContaining({
+          baseContentHash: 'hash-persona-created-1',
+          core: expect.objectContaining({
+            description: 'Owner-created public identity',
+          }),
+        }),
       });
     });
 
     it('does not require or call a Creator service for create reads or writes', async () => {
       const realm = mockRealm();
 
-      await listCreateRealmAgentSelectableWorlds(realm);
-      await getCreateRealmAgentWorldPreview('world-oasis', realm);
-      await createReviewedRealmAgent(createPayload, realm);
+      await listCreateRealmPersonaSelectableWorlds(realm);
+      await getCreateRealmPersonaWorldPreview('world-oasis', realm);
+      await createReviewedRealmPersona(createPayload, realm);
 
-      expect(realm.agentControllerCreate).toHaveBeenCalledTimes(1);
+      expect(realm.worldCoreControllerCreateRealmPersona).toHaveBeenCalledTimes(1);
     });
 
     it('creates audio upload session with metadata and finalizes after storage upload', async () => {
@@ -234,17 +222,18 @@ describe('owner portfolio core client', () => {
       const result = await uploadReviewedPostMediaResource({
         resourceType: 'AUDIO',
         file: { name: 'voice.mp3', type: 'audio/mpeg', size: 4096 },
-        agent: ownerAgentDetailWithWorldId(),
+        persona: ownerPersonaDetailWithWorldId(),
       }, realm, storageUpload);
       const audioPayload = vi.mocked(realm.createAudioDirectUpload).mock.calls[0]?.[0]?.body;
 
       expect(audioPayload).toMatchObject({
-        agentId: 'agent-1',
         filename: 'voice.mp3',
         mimeType: 'audio/mpeg',
         metadata: {
-          source: 'realm-agent-studio.reviewed-post-media-resource',
+          source: 'realmPersona:world-oasis:persona-1:hash-persona-1:reviewed-post-media-resource',
           resourceType: 'AUDIO',
+          sourceKind: 'realmPersona',
+          sourceId: 'persona-1',
         },
       });
       expect(storageUpload).toHaveBeenCalledWith({
@@ -262,34 +251,31 @@ describe('owner portfolio core client', () => {
       });
     });
 
-    it('normalizes Create Agent responses without canonical id as create failure', () => {
-      const result = normalizeRealmAgentCreateResult({} as Awaited<ReturnType<StudioRealmSurface['agentControllerCreate']>>);
+    it('normalizes Create Persona responses without canonical id as create failure', () => {
+      const result = normalizeRealmPersonaCreateResult({} as Awaited<ReturnType<StudioRealmSurface['worldCoreControllerCreateRealmPersona']>>);
 
       expect(result).toMatchObject({
         ok: false,
-        source: REALM_AGENT_CREATE_SOURCE,
-        failure: 'realm-create-agent-missing-canonical-id',
+        source: REALM_PERSONA_CREATE_SOURCE,
+        failure: 'realm-create-persona-missing-canonical-id',
       });
     });
 
-    it('builds CreateAgentDto shape from reviewed payload body only', () => {
-      const input = buildRealmCreateAgentInput(createPayload);
+    it('builds CreatePersonaDto shape from reviewed payload body only', () => {
+      const input = buildRealmCreatePersonaInput(createPayload);
 
       expect(input).toEqual(createPayload.body);
       expect(collectKeys(input).has('publicFields')).toBe(false);
-      expect(Object.prototype.hasOwnProperty.call(input, 'path')).toBe(false);
-      expect(Object.prototype.hasOwnProperty.call(input, 'source')).toBe(false);
+      expect(collectKeys(input).has('path')).toBe(false);
+      expect(collectKeys(input).has('source')).toBe(false);
     });
 
-    it('rebuilds CreateAgentDto from a narrow allowlist and forces MASTER_OWNED at submit boundary', () => {
-      // The dirty payload spreads forbidden control-plane fields into body to
-      // prove buildRealmCreateAgentInput strips them.
-      // `dnaSecondary` / `referenceImageUrl` are no longer forbidden — Realm
-      // `dna` is rebuilt from reviewed create fields instead of passing hidden input through.
+    it('passes the reviewed RealmPersona core package without restoring old create fields', () => {
       const dirtyPayload = {
         ...createPayload,
         body: {
           ...createPayload.body,
+          worldId: 'world-oasis',
           ownershipType: 'WORLD_OWNED',
           dna: { hidden: true },
           lifecycle: 'ACTIVE',
@@ -297,33 +283,35 @@ describe('owner portfolio core client', () => {
           model: 'forbidden',
           ownerId: 'owner-1',
         },
-      } as unknown as ReviewedCreateRealmAgentPayload;
-      const input = buildRealmCreateAgentInput(dirtyPayload);
+      } as unknown as ReviewedCreateRealmPersonaPayload;
+      const input = buildRealmCreatePersonaInput(dirtyPayload);
 
       expect(input).toEqual(createPayload.body);
-      expect(input.ownershipType).toBe('MASTER_OWNED');
-      expect(collectKeys(input).has('dna')).toBe(true);
-      expect(collectKeys(input).has('hidden')).toBe(false);
+      expect(collectKeys(input).has('worldId')).toBe(false);
+      expect(input.core).toEqual(createPayload.body.core);
+      expect(collectKeys(input).has('dna')).toBe(false);
       expect(collectKeys(input).has('lifecycle')).toBe(false);
       expect(collectKeys(input).has('provider')).toBe(false);
       expect(collectKeys(input).has('model')).toBe(false);
       expect(collectKeys(input).has('ownerId')).toBe(false);
-      // dnaPrimary / dnaSecondary are now legitimate and pass through:
-      expect(input.dnaPrimary).toBe('CARING');
-      expect(input.dnaSecondary).toEqual(['GENTLE', 'WISE']);
+      expect(collectKeys(input.core).has('dnaPrimary')).toBe(true);
+      expect(collectKeys(input.core).has('dnaSecondary')).toBe(true);
     });
 
     it('admits reviewed referenceImageUrl without treating it as asset binding truth', () => {
-      const payloadWithReference: ReviewedCreateRealmAgentPayload = {
+      const payloadWithReference: ReviewedCreateRealmPersonaPayload = {
         ...createPayload,
         body: {
           ...createPayload.body,
-          referenceImageUrl: 'https://cdn.example.test/reviewed-reference.png',
+          core: {
+            ...createPayload.body.core,
+            referenceImageUrl: 'https://cdn.example.test/reviewed-reference.png',
+          },
         },
       };
-      const input = buildRealmCreateAgentInput(payloadWithReference);
+      const input = buildRealmCreatePersonaInput(payloadWithReference);
 
-      expect(input.referenceImageUrl).toBe('https://cdn.example.test/reviewed-reference.png');
+      expect(input.core.referenceImageUrl).toBe('https://cdn.example.test/reviewed-reference.png');
       expect(collectKeys(input).has('bindingPoint')).toBe(false);
       expect(collectKeys(input).has('assetId')).toBe(false);
       expect(collectKeys(input).has('resourceId')).toBe(false);
@@ -332,7 +320,7 @@ describe('owner portfolio core client', () => {
     it('fails closed when Runtime Tauri IPC transport is unavailable', async () => {
       const result = await synthesizeReviewedVoiceDemo({
         scriptText: 'Welcome in.',
-      }, ownerAgentDetail(), null);
+      }, ownerPersonaDetail(), null);
 
       expect(result).toMatchObject({
         ok: false,

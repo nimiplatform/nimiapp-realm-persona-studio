@@ -19,8 +19,8 @@
       ".spec."
     ],
     "allowTextPatterns": [
-      "^Realm Agent Studio$",
-      "^RAS$",
+      "^Realm Persona Studio$",
+      "^RPS$",
       "^https://\\.\\.\\.$",
       "^[A-Z0-9_]+$",
       "^[-–—]$",

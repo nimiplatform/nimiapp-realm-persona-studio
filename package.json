@@ -1,5 +1,5 @@
 {
-  "name": "nimiapp-realm-agent-studio",
+  "name": "nimiapp-realm-persona-studio",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -16,7 +16,7 @@
     "typecheck": "tsc --noEmit",
     "build": "pnpm run typecheck && pnpm run build:renderer && (cd src-tauri && cargo check)",
     "lint": "pnpm run typecheck && eslint . --max-warnings 0 && (cd src-tauri && cargo check)",
-    "check:spec-consistency": "npx tsx scripts/check-realm-agent-studio-spec.ts",
+    "check:spec-consistency": "npx tsx scripts/check-realm-persona-studio-spec.ts",
     "i18n:check": "vitest run src/shell/renderer/i18n/studio-i18n.test.ts",
     "i18n:audit": "node scripts/i18n-audit.mjs",
     "check:phase1-closeout": "pnpm run check:spec-consistency && pnpm run typecheck && pnpm run test && pnpm run lint && cargo test --manifest-path src-tauri/Cargo.toml",

@@ -1,4 +1,4 @@
-import type { OwnerPortfolioAgentDetail, PortfolioAgentDetailSource } from './portfolio-data.js';
+import type { OwnerPortfolioPersonaDetail, PortfolioPersonaDetailSource } from './portfolio-data.js';
 import {
   buildStudioTextRequestParameters,
   buildStudioRuntimeMetadata,
@@ -35,10 +35,14 @@ export type LocalPostDraft = {
 
 export type CandidatePostPayload = {
   candidate: true;
-  source: 'realm-agent-studio.local-post-draft';
-  agentRef: {
-    source: PortfolioAgentDetailSource;
-    agentKey: string;
+  source: 'realm-persona-studio.local-post-draft';
+  personaRef: {
+    source: PortfolioPersonaDetailSource;
+    sourceKind: 'realmPersona';
+    sourceId: string;
+    sourceWorldId: string;
+    sourceContentHash: string;
+    sourceRef: string;
     handle: string;
     displayName: string;
   };
@@ -82,7 +86,7 @@ export type NormalizedLocalPostScheduleInput = {
 
 export type LocalPostScheduleCandidate = {
   candidate: true;
-  source: 'realm-agent-studio.local-single-post-schedule';
+  source: 'realm-persona-studio.local-single-post-schedule';
   appLocalOnly: true;
   localRunAt: string;
   boundary: {
@@ -215,7 +219,7 @@ export function normalizeLocalPostDraft(input: LocalPostDraftInput): LocalPostDr
 
 export function validateLocalPostDraft(
   input: LocalPostDraftInput,
-  agent: OwnerPortfolioAgentDetail,
+  persona: OwnerPortfolioPersonaDetail,
 ): PostDraftValidationResult {
   const draft = normalizeLocalPostDraft(input);
   const errors: string[] = [];
@@ -236,12 +240,16 @@ export function validateLocalPostDraft(
 
   const payload: CandidatePostPayload = {
     candidate: true,
-    source: 'realm-agent-studio.local-post-draft',
-    agentRef: {
-      source: agent.source,
-      agentKey: agent.id,
-      handle: agent.handle.value,
-      displayName: agent.displayName.value,
+    source: 'realm-persona-studio.local-post-draft',
+    personaRef: {
+      source: persona.source,
+      sourceKind: 'realmPersona',
+      sourceId: persona.id,
+      sourceWorldId: persona.homeWorldId,
+      sourceContentHash: persona.contentHash,
+      sourceRef: `realmPersona:${persona.homeWorldId}:${persona.id}:${persona.contentHash}`,
+      handle: persona.handle.value,
+      displayName: persona.displayName.value,
     },
     realmCreatePost: {
       attachments: draft.attachment.enabled
@@ -332,7 +340,7 @@ export function buildLocalPostScheduleCandidate(
 
   const candidate: LocalPostScheduleCandidate = {
     candidate: true,
-    source: 'realm-agent-studio.local-single-post-schedule',
+    source: 'realm-persona-studio.local-single-post-schedule',
     appLocalOnly: true,
     localRunAt: normalized.localRunAt,
     boundary: {
@@ -357,11 +365,11 @@ export function buildLocalPostScheduleCandidate(
 }
 
 export function buildRuntimePostCopyPrompt(input: {
-  agent: OwnerPortfolioAgentDetail;
+  persona: OwnerPortfolioPersonaDetail;
   draft: LocalPostDraftInput;
   intent: string;
 }): { ok: true; errors: []; payload: StudioTextGeneratePayload } | { ok: false; errors: string[]; payload: null } {
-  const callParams = resolveStudioTextCallParams('realm-agent-studio.post-copy', {
+  const callParams = resolveStudioTextCallParams('realm-persona-studio.post-copy', {
     maxTokens: 700,
     temperature: 0.5,
   });
@@ -381,7 +389,7 @@ export function buildRuntimePostCopyPrompt(input: {
     ok: true,
     errors: [],
     payload: {
-      surfaceId: 'realm-agent-studio.post-copy',
+      surfaceId: 'realm-persona-studio.post-copy',
       params: {
         ...callParams,
       },
@@ -389,7 +397,7 @@ export function buildRuntimePostCopyPrompt(input: {
         model: { modelId: callParams.model },
         messages: [
           studioTextMessage('system', [
-            'You draft candidate Realm Agent post copy for owner review.',
+            'You draft candidate RealmPersona post copy for owner review.',
             'Return one JSON object with caption, tagsText, and rationale only.',
             'Do not include provider, model, LocalAgent, worldId, authorId, id, scheduledAt, scheduleId, queue, campaign, recurrence, moderation, or publish success fields.',
             'The owner must review the result before Realm publish.',
@@ -397,21 +405,24 @@ export function buildRuntimePostCopyPrompt(input: {
           studioTextMessage('user', JSON.stringify({
             ownerIntent: intent,
             currentDraft: normalizedDraft,
-            agentPublicContext: {
-              source: input.agent.source,
-              agentKey: input.agent.id,
-              handle: input.agent.handle.value,
-              displayName: input.agent.displayName.value,
-              bio: input.agent.bio.value,
-              greeting: input.agent.greeting.value,
+            personaPublicContext: {
+              source: input.persona.source,
+              sourceKind: 'realmPersona',
+              sourceId: input.persona.id,
+              sourceWorldId: input.persona.homeWorldId,
+              sourceContentHash: input.persona.contentHash,
+              handle: input.persona.handle.value,
+              displayName: input.persona.displayName.value,
+              bio: input.persona.bio.value,
+              greeting: input.persona.greeting.value,
             },
           })),
         ],
         parameters: buildStudioTextRequestParameters(
           callParams,
           {
-            ...buildStudioRuntimeMetadata('realm-agent-studio.post-copy'),
-            domain: 'realm-agent-studio.post-copy',
+            ...buildStudioRuntimeMetadata('realm-persona-studio.post-copy'),
+            domain: 'realm-persona-studio.post-copy',
           },
         ),
       },

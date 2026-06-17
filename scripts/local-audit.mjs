@@ -45,4 +45,4 @@ if (!security.includes('refresh-token custody lives in Runtime')) {
   throw new Error('SECURITY.md must declare refresh-token custody boundary');
 }
 
-console.log('[realm-agent-studio] local-audit pre-submission self-check passed');
+console.log('[realm-persona-studio] local-audit pre-submission self-check passed');

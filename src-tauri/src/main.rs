@@ -35,13 +35,13 @@ fn load_dotenv_files() {
                 }
             }
             eprintln!(
-                "[realm-agent-studio] dotenv loaded path={}",
+                "[realm-persona-studio] dotenv loaded path={}",
                 root_env_path.display()
             );
         }
         Err(error) => {
             eprintln!(
-                "[realm-agent-studio] dotenv load failed path={} error={error}",
+                "[realm-persona-studio] dotenv load failed path={} error={error}",
                 root_env_path.display()
             );
         }
@@ -57,9 +57,9 @@ fn configure_runtime_bridge_env() {
 fn main() {
     load_dotenv_files();
     configure_runtime_bridge_env();
-    session_logging::set_app_session_prefix("realm-agent-studio");
+    session_logging::set_app_session_prefix("realm-persona-studio");
     session_logging::install_panic_hook();
-    session_logging::log_boot_marker("realm-agent-studio main() entered");
+    session_logging::log_boot_marker("realm-persona-studio main() entered");
 
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
@@ -73,5 +73,5 @@ fn main() {
             session_logging::log_renderer_event,
         ])
         .run(tauri::generate_context!())
-        .expect("failed to run Realm Agent Studio");
+        .expect("failed to run Realm Persona Studio");
 }

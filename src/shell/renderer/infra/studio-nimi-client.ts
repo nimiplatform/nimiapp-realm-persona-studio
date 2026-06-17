@@ -12,7 +12,7 @@ export function hasStudioNimiClient(): boolean {
 
 export function getStudioNimiClient(): NimiClient {
   if (!studioNimiClient) {
-    throw new Error('Realm Agent Studio Nimi client is not ready.');
+    throw new Error('Realm Persona Studio Nimi client is not ready.');
   }
   return studioNimiClient;
 }

@@ -1,6 +1,5 @@
 import type {
-  RealmAgentControllerSelectAvatarOperationRequest,
-  RealmAgentControllerSelectAvatarOperationResponse,
+  RealmPersonaDto,
 } from '@nimiplatform/sdk/realm/generated';
 import type { Runtime } from '@nimiplatform/sdk/runtime';
 import type { ExecuteScenarioResponse, ScenarioArtifact } from '@nimiplatform/sdk/runtime/generated';
@@ -13,7 +12,7 @@ import {
   executeStudioSpeechSynthesize,
   isStudioAIRouteBindingFailure,
 } from './studio-ai-runtime.js';
-import type { OwnerPortfolioAgentDetail } from './portfolio-data.js';
+import type { OwnerPortfolioPersonaDetail } from './portfolio-data.js';
 import {
   VISUAL_IMAGE_GENERATION_SOURCE,
   VOICE_DEMO_SYNTHESIS_SOURCE,
@@ -37,18 +36,18 @@ import {
 
 type StudioRealmClient = StudioRealmSurface;
 
-type RealmSelectAvatarInput = RealmAgentControllerSelectAvatarOperationRequest['body'];
-type RealmSelectAvatarResponse = RealmAgentControllerSelectAvatarOperationResponse;
+type RealmSelectAvatarInput = { avatarUrl: string };
+type RealmSelectAvatarResponse = RealmPersonaDto;
 
-export const REALM_AGENT_AVATAR_SELECT_SOURCE = 'Realm AgentsService.agentControllerSelectAvatar';
+export const REALM_PERSONA_AVATAR_SELECT_SOURCE = 'Realm WorldCoreController.replaceRealmPersona';
 
 type RuntimeVoiceClient = Runtime;
 type RuntimeImageClient = Runtime;
 
-export type RealmAgentAvatarSelectResult =
+export type RealmPersonaAvatarSelectResult =
   | {
     ok: true;
-    source: typeof REALM_AGENT_AVATAR_SELECT_SOURCE;
+    source: typeof REALM_PERSONA_AVATAR_SELECT_SOURCE;
     publicTruth: true;
     submitted: RealmSelectAvatarInput;
     realm: {
@@ -57,7 +56,7 @@ export type RealmAgentAvatarSelectResult =
   }
   | {
     ok: false;
-    source: typeof REALM_AGENT_AVATAR_SELECT_SOURCE;
+    source: typeof REALM_PERSONA_AVATAR_SELECT_SOURCE;
     publicTruth: false;
     failure: 'avatar-url-invalid' | 'realm-select-avatar-failed' | 'realm-select-avatar-rejected';
     message: string;
@@ -240,24 +239,27 @@ export function buildRealmSelectAvatarInput(avatarUrl: string): RealmSelectAvata
   };
 }
 
-export function normalizeRealmAgentAvatarSelectResult(
+export function normalizeRealmPersonaAvatarSelectResult(
   response: RealmSelectAvatarResponse,
   submitted: RealmSelectAvatarInput,
-): RealmAgentAvatarSelectResult {
-  if (!response || typeof response !== 'object' || (response as unknown as Record<string, unknown>).success !== true) {
+): RealmPersonaAvatarSelectResult {
+  const core = response && typeof response === 'object' && response.core && typeof response.core === 'object'
+    ? response.core as Record<string, unknown>
+    : {};
+  if (core.avatarUrl !== submitted.avatarUrl) {
     return {
       ok: false,
-      source: REALM_AGENT_AVATAR_SELECT_SOURCE,
+      source: REALM_PERSONA_AVATAR_SELECT_SOURCE,
       publicTruth: false,
       failure: 'realm-select-avatar-rejected',
-      message: 'Realm avatar selection did not confirm success.',
+      message: 'RealmPersona replacement did not persist the reviewed avatarUrl.',
       submitted,
     };
   }
 
   return {
     ok: true,
-    source: REALM_AGENT_AVATAR_SELECT_SOURCE,
+    source: REALM_PERSONA_AVATAR_SELECT_SOURCE,
     publicTruth: true,
     submitted,
     realm: {
@@ -267,16 +269,16 @@ export function normalizeRealmAgentAvatarSelectResult(
 }
 
 
-export async function selectReviewedAgentAvatarUrl(
-  agentId: string,
+export async function selectReviewedPersonaAvatarUrl(
+  personaId: string,
   avatarUrl: string,
   realm: StudioRealmClient = createStudioRealmClient(),
-): Promise<RealmAgentAvatarSelectResult> {
+): Promise<RealmPersonaAvatarSelectResult> {
   const submitted = buildRealmSelectAvatarInput(avatarUrl);
   if (!submitted) {
     return {
       ok: false,
-      source: REALM_AGENT_AVATAR_SELECT_SOURCE,
+      source: REALM_PERSONA_AVATAR_SELECT_SOURCE,
       publicTruth: false,
       failure: 'avatar-url-invalid',
       message: 'Avatar URL selection requires a valid http(s) URL.',
@@ -285,15 +287,24 @@ export async function selectReviewedAgentAvatarUrl(
   }
 
   try {
-    const response = await realm.agentControllerSelectAvatar({
-      path: { id: agentId },
-      body: submitted,
+    const current = await realm.worldCoreControllerGetRealmPersona({ path: { personaId: personaId } });
+    const response = await realm.worldCoreControllerReplaceRealmPersona({
+      path: { personaId: personaId },
+      body: {
+        baseContentHash: current.contentHash,
+        homeWorldId: current.homeWorldId,
+        origin: current.origin,
+        core: {
+          ...current.core,
+          avatarUrl: submitted.avatarUrl,
+        },
+      },
     });
-    return normalizeRealmAgentAvatarSelectResult(response, submitted);
+    return normalizeRealmPersonaAvatarSelectResult(response, submitted);
   } catch (error) {
     return {
       ok: false,
-      source: REALM_AGENT_AVATAR_SELECT_SOURCE,
+      source: REALM_PERSONA_AVATAR_SELECT_SOURCE,
       publicTruth: false,
       failure: 'realm-select-avatar-failed',
       message: error instanceof Error ? error.message : 'Realm avatar selection failed.',
@@ -303,10 +314,10 @@ export async function selectReviewedAgentAvatarUrl(
 }
 export async function synthesizeReviewedVoiceDemo(
   input: VoiceDemoCandidateInput,
-  agent: OwnerPortfolioAgentDetail,
+  persona: OwnerPortfolioPersonaDetail,
   runtime?: RuntimeVoiceClient | null,
 ): Promise<RuntimeVoiceDemoSynthesisResult> {
-  const draft = buildReviewedVoiceDemoCandidatePayload(input, agent);
+  const draft = buildReviewedVoiceDemoCandidatePayload(input, persona);
   const synthesisPayload = buildReviewedVoiceSynthesisPayload(input);
 
   if (!draft.payload || !synthesisPayload.payload) {
@@ -356,11 +367,11 @@ export async function synthesizeReviewedVoiceDemo(
 }
 export async function generateReviewedVisualImageCandidate(
   input: VisualImageGenerationInput,
-  agent: OwnerPortfolioAgentDetail,
+  persona: OwnerPortfolioPersonaDetail,
   runtime?: RuntimeImageClient | null,
 ): Promise<RuntimeVisualImageGenerationResult> {
-  const draft = buildReviewedVisualImageCandidatePayload(input, agent);
-  const imagePayload = buildReviewedVisualImageGenerationPayload(input, agent);
+  const draft = buildReviewedVisualImageCandidatePayload(input, persona);
+  const imagePayload = buildReviewedVisualImageGenerationPayload(input, persona);
 
   if (!draft.payload || !imagePayload.payload) {
     return {
@@ -410,11 +421,11 @@ export async function generateReviewedVisualImageCandidate(
 
 export async function generateReviewedAvatarPackageCandidate(
   input: AvatarPackageCandidateInput,
-  agent: OwnerPortfolioAgentDetail,
+  persona: OwnerPortfolioPersonaDetail,
   runtime?: RuntimeImageClient | null,
 ): Promise<RuntimeVisualImageGenerationResult> {
-  const draft = buildReviewedAvatarPackageCandidatePayload(input, agent);
-  const imagePayload = buildReviewedAvatarPackageImageGenerationPayload(input, agent);
+  const draft = buildReviewedAvatarPackageCandidatePayload(input, persona);
+  const imagePayload = buildReviewedAvatarPackageImageGenerationPayload(input, persona);
 
   if (!draft.payload || !imagePayload.payload) {
     return {

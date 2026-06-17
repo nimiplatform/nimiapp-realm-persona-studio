@@ -2,10 +2,10 @@ import type { LocalPostScheduleCandidate } from './post-draft.js';
 
 export type LocalPostScheduleRecord = {
   localKey: string;
-  agentId: string;
+  personaId: string;
   savedAt: string;
   localRunAt: string;
-  source: 'realm-agent-studio.local-single-post-schedule-store';
+  source: 'realm-persona-studio.local-single-post-schedule-store';
   appLocalOnly: true;
   execution: {
     mode: 'foreground-when-due';
@@ -16,10 +16,10 @@ export type LocalPostScheduleRecord = {
 
 type LocalStorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
-const SCHEDULE_PREFIX = 'realm-agent-studio.local-post-schedule.';
+const SCHEDULE_PREFIX = 'realm-persona-studio.local-post-schedule.';
 
-function scheduleKey(agentId: string): string {
-  return `${SCHEDULE_PREFIX}${agentId}`;
+function scheduleKey(personaId: string): string {
+  return `${SCHEDULE_PREFIX}${personaId}`;
 }
 
 function resolveStorage(storage?: LocalStorageLike | null): LocalStorageLike | null {
@@ -29,7 +29,7 @@ function resolveStorage(storage?: LocalStorageLike | null): LocalStorageLike | n
   return typeof window !== 'undefined' ? window.localStorage : null;
 }
 
-function normalizeRecord(value: unknown, agentId: string): LocalPostScheduleRecord | null {
+function normalizeRecord(value: unknown, personaId: string): LocalPostScheduleRecord | null {
   if (!value || typeof value !== 'object') {
     return null;
   }
@@ -45,11 +45,11 @@ function normalizeRecord(value: unknown, agentId: string): LocalPostScheduleReco
     !localKey
     || !savedAt
     || !localRunAt
-    || record.agentId !== agentId
-    || record.source !== 'realm-agent-studio.local-single-post-schedule-store'
+    || record.personaId !== personaId
+    || record.source !== 'realm-persona-studio.local-single-post-schedule-store'
     || record.appLocalOnly !== true
     || !candidate
-    || candidate.source !== 'realm-agent-studio.local-single-post-schedule'
+    || candidate.source !== 'realm-persona-studio.local-single-post-schedule'
     || candidate.appLocalOnly !== true
   ) {
     return null;
@@ -57,10 +57,10 @@ function normalizeRecord(value: unknown, agentId: string): LocalPostScheduleReco
 
   return {
     localKey,
-    agentId,
+    personaId,
     savedAt,
     localRunAt,
-    source: 'realm-agent-studio.local-single-post-schedule-store',
+    source: 'realm-persona-studio.local-single-post-schedule-store',
     appLocalOnly: true,
     execution: {
       mode: 'foreground-when-due',
@@ -70,32 +70,32 @@ function normalizeRecord(value: unknown, agentId: string): LocalPostScheduleReco
   };
 }
 
-export function loadLocalPostSchedule(agentId: string, storage?: LocalStorageLike | null): LocalPostScheduleRecord | null {
+export function loadLocalPostSchedule(personaId: string, storage?: LocalStorageLike | null): LocalPostScheduleRecord | null {
   const targetStorage = resolveStorage(storage);
   if (!targetStorage) {
     return null;
   }
 
   try {
-    const raw = targetStorage.getItem(scheduleKey(agentId));
-    return raw ? normalizeRecord(JSON.parse(raw), agentId) : null;
+    const raw = targetStorage.getItem(scheduleKey(personaId));
+    return raw ? normalizeRecord(JSON.parse(raw), personaId) : null;
   } catch {
     return null;
   }
 }
 
 export function saveLocalPostSchedule(
-  agentId: string,
+  personaId: string,
   candidate: LocalPostScheduleCandidate,
   storage?: LocalStorageLike | null,
   now = new Date(),
 ): LocalPostScheduleRecord {
   const record: LocalPostScheduleRecord = {
-    localKey: `${agentId}:${candidate.localRunAt}`,
-    agentId,
+    localKey: `${personaId}:${candidate.localRunAt}`,
+    personaId,
     savedAt: now.toISOString(),
     localRunAt: candidate.localRunAt,
-    source: 'realm-agent-studio.local-single-post-schedule-store',
+    source: 'realm-persona-studio.local-single-post-schedule-store',
     appLocalOnly: true,
     execution: {
       mode: 'foreground-when-due',
@@ -105,14 +105,14 @@ export function saveLocalPostSchedule(
   };
   const targetStorage = resolveStorage(storage);
   if (targetStorage) {
-    targetStorage.setItem(scheduleKey(agentId), JSON.stringify(record));
+    targetStorage.setItem(scheduleKey(personaId), JSON.stringify(record));
   }
   return record;
 }
 
-export function clearLocalPostSchedule(agentId: string, storage?: LocalStorageLike | null): void {
+export function clearLocalPostSchedule(personaId: string, storage?: LocalStorageLike | null): void {
   const targetStorage = resolveStorage(storage);
-  targetStorage?.removeItem(scheduleKey(agentId));
+  targetStorage?.removeItem(scheduleKey(personaId));
 }
 
 export function isLocalPostScheduleDue(record: LocalPostScheduleRecord, now = new Date()): boolean {

@@ -1,6 +1,6 @@
-# Realm Agent Studio Spec AGENTS
+# Realm Persona Studio Spec AGENTS
 
-This is the module-level AI agent instruction surface for the Realm Agent Studio canonical product/app contract under `.nimi/spec/project/**`. Read `.nimi/spec/INDEX.md` first, then this file, before editing.
+This is the module-level AI agent instruction surface for the Realm Persona Studio canonical product/app contract under `.nimi/spec/project/**`. Read `.nimi/spec/INDEX.md` first, then this file, before editing.
 
 ## Authority Layout
 
@@ -13,7 +13,7 @@ This is the module-level AI agent instruction surface for the Realm Agent Studio
 
 This file is thin guidance and does not restate rule bodies or identifiers. The rules below cover the editing workflow itself, not product rules:
 
-1. `.nimi/spec/project/kernel/**` is the active product/app authority root for Realm Agent Studio in this repo. Parallel roots (e.g. `apps/realm-agent-studio/spec/**`, repo-root `spec/**`, sibling `.nimi/spec/<other>/**`) are not opened.
+1. `.nimi/spec/project/kernel/**` is the active product/app authority root for Realm Persona Studio in this repo. Parallel roots (e.g. `apps/realm-persona-studio/spec/**`, repo-root `spec/**`, sibling `.nimi/spec/<other>/**`) are not opened.
 2. Adding, removing, or rewording a rule statement requires editing both the affected kernel doc AND `kernel/tables/rule-catalog.yaml` in the same change. Catalog drift is treated as a fail-closed offense and is rejected by `pnpm run check:spec-consistency`.
 3. New domain prefixes require updating the prefix table in `kernel/index.md`, adding a kernel doc that owns the prefix, and extending the catalog.
 4. Inline rule identifier format inside kernel docs is documented in `kernel/index.md`. One identifier per atomic obligation; compound English may carry multiple sequential identifiers.

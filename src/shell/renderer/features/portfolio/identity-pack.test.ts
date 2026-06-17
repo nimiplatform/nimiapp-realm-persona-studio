@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildIdentityPackFromAgent } from './identity-pack.js';
-import type { OwnerPortfolioAgentDetail, SettingField } from './portfolio-data.js';
+import { buildIdentityPackFromPersona } from './identity-pack.js';
+import type { OwnerPortfolioPersonaDetail, SettingField } from './portfolio-data.js';
 
 function field(key: SettingField['key'], label: string, value: string, status: SettingField['status'] = 'available'): SettingField {
   return {
@@ -8,13 +8,16 @@ function field(key: SettingField['key'], label: string, value: string, status: S
     label,
     value,
     status,
-    source: 'Realm MeService.getMyRealmAgent',
+    source: 'Realm WorldCoreController.getRealmPersona',
     readOnly: true,
   };
 }
 
-const agent: OwnerPortfolioAgentDetail = {
-  id: 'agent-1',
+const persona: OwnerPortfolioPersonaDetail = {
+  id: 'persona-1',
+  contentHash: 'hash-persona-1',
+  contentRevision: 1,
+  homeWorldId: 'world-oasis',
   displayName: field('displayName', 'Display name', 'Mira Prime'),
   handle: field('handle', 'Handle', 'mira-prime'),
   bio: field('bio', 'Profile description', 'A calm artifact review strategist.'),
@@ -26,12 +29,12 @@ const agent: OwnerPortfolioAgentDetail = {
   avatarUrl: null,
   friendCount: { status: 'available', value: 1 },
   ownerScope: 'owner-created',
-  source: 'Realm MeService.getMyRealmAgent',
+  source: 'Realm WorldCoreController.getRealmPersona',
 };
 
 describe('identity pack', () => {
-  it('builds candidate-only identity outputs from source-backed agent fields', () => {
-    const pack = buildIdentityPackFromAgent(agent);
+  it('builds candidate-only identity outputs from source-backed persona fields', () => {
+    const pack = buildIdentityPackFromPersona(persona);
 
     expect(pack.changed).toBe(true);
     if (!pack.changed) return;
@@ -48,7 +51,7 @@ describe('identity pack', () => {
       blockedReason: 'Owner-scoped profile cover write path is not admitted.',
     });
     expect(pack.candidates.find((candidate) => candidate.key === 'portrait-reference')).toMatchObject({
-      publicWrite: 'resource-agent-binding-blocked',
+      publicWrite: 'resource-persona-binding-blocked',
     });
     expect(pack.candidates.find((candidate) => candidate.key === 'avatar')).toMatchObject({
       publicWrite: 'avatar-url-selection-admitted-after-owner-url-review',
@@ -56,8 +59,8 @@ describe('identity pack', () => {
   });
 
   it('fails closed when required source-backed identity text is missing', () => {
-    expect(buildIdentityPackFromAgent({
-      ...agent,
+    expect(buildIdentityPackFromPersona({
+      ...persona,
       displayName: field('displayName', 'Display name', '', 'available-empty'),
       bio: field('bio', 'Profile description', '', 'available-empty'),
       greeting: field('greeting', 'Greeting', '', 'available-empty'),
@@ -67,7 +70,7 @@ describe('identity pack', () => {
         'display name source unavailable or empty',
         'profile description or greeting required for identity pack',
       ],
-      source: 'realm-agent-studio.identity-pack-from-current-agent',
+      source: 'realm-persona-studio.identity-pack-from-current-persona',
       candidates: [],
     });
   });

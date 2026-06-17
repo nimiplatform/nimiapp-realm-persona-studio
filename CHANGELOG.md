@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
-- Standalone packaging of Realm Agent Studio migrated from the `apps/realm-agent-studio` workspace in `nimi-realm`.
+- Standalone packaging of Realm Persona Studio migrated from the `apps/realm-persona-studio` workspace in `nimi-realm`.
 - React Router 7 routing across the ten storybook routes (Portfolio, Create, Detail, Settings + Review, Assets + Voice, Posts + Schedule, Insights).
 - Login flow built on `@nimiplatform/kit/auth` `DesktopShellAuthPage` and `nimi-shell-tauri` OAuth bridge, replacing the previous external-broker-only stub.
 - Glass-morphism shell built with `@nimiplatform/kit/ui` `Surface material="glass-thick"` surfaces, sidebar tooltips, and ambient mesh background.

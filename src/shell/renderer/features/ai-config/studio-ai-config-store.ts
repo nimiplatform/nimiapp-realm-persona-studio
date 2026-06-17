@@ -25,11 +25,11 @@ import {
 import { STUDIO_RUNTIME_APP_ID } from '@renderer/app-shell/studio-platform.js';
 
 export const STUDIO_AI_CONFIG_SURFACE_ID = 'owner-workbench';
-export const STUDIO_AI_CONFIG_STORAGE_INDEX_KEY = 'realm-agent-studio:ai-config:index:v1';
-export const STUDIO_AI_CONFIG_STORAGE_PREFIX = 'realm-agent-studio:ai-config:';
-export const STUDIO_AI_SNAPSHOT_INDEX_KEY = 'realm-agent-studio:ai-snapshot:index:v1';
-export const STUDIO_AI_SNAPSHOT_STORAGE_PREFIX = 'realm-agent-studio:ai-snapshot:';
-export const STUDIO_AI_PROFILE_LIBRARY_STORAGE_KEY = 'realm-agent-studio:ai-profiles:v1';
+export const STUDIO_AI_CONFIG_STORAGE_INDEX_KEY = 'realm-persona-studio:ai-config:index:v1';
+export const STUDIO_AI_CONFIG_STORAGE_PREFIX = 'realm-persona-studio:ai-config:';
+export const STUDIO_AI_SNAPSHOT_INDEX_KEY = 'realm-persona-studio:ai-snapshot:index:v1';
+export const STUDIO_AI_SNAPSHOT_STORAGE_PREFIX = 'realm-persona-studio:ai-snapshot:';
+export const STUDIO_AI_PROFILE_LIBRARY_STORAGE_KEY = 'realm-persona-studio:ai-profiles:v1';
 export const STUDIO_AI_PROFILE_LIBRARY_SCHEMA_VERSION = 1;
 
 type StudioAIProfileLibraryStore = {

@@ -1,13 +1,13 @@
-# Realm Agent Studio AGENTS.md
+# Realm Persona Studio AGENTS.md
 
-> Authoritative module-level instructions for AI agents working on Realm Agent Studio.
+> Authoritative module-level instructions for AI agents working on Realm Persona Studio.
 
 ## Identity
 
-- **App name (English)**: Realm Agent Studio
-- **Canonical Nimi app_id**: `nimi.realm-agent-studio`
-- **Tauri identifier**: `nimi.realm-agent-studio`
-- **One-line**: Owner-facing creation and operation desktop app for user-owned public Realm Agents.
+- **App name (English)**: Realm Persona Studio
+- **Canonical Nimi app_id**: `nimi.realm-persona-studio`
+- **Tauri identifier**: `nimi.realm-persona-studio`
+- **One-line**: Owner-facing creation and operation desktop app for user-owned public Realm Personas.
 - **Status**: Pre-Alpha, not yet launched.
 
 ## Architecture
@@ -25,24 +25,28 @@
 
 ## Spec Authority & Sync
 
-`.nimi/spec/project/kernel/**` is Realm Agent Studio's canonical product/app
+`.nimi/spec/project/kernel/**` is Realm Persona Studio's canonical product/app
 authority. Active authority documents are the kernel doc set declared by
 `.nimi/spec/project/kernel/index.md`, and every rule carries an explicit
-`R-RAS-<DOMAIN>-NNN` identifier. The full enumerated rule registry is
+`R-RPS-<DOMAIN>-NNN` identifier. The full enumerated rule registry is
 `.nimi/spec/project/kernel/tables/rule-catalog.yaml`. Editing rules live in
 `.nimi/spec/project/AGENTS.md`; do not create parallel authority roots
-(`apps/realm-agent-studio/spec/**`, repo-root `spec/**`, sibling
+(`apps/realm-persona-studio/spec/**`, repo-root `spec/**`, sibling
 `.nimi/spec/<other>/**`).
 
 `.nimi/{config,contracts,methodology}/**` are package-canonical projections
 from `@nimiplatform/nimi-coding`; refresh with `pnpm exec nimicoding start
 --yes` after bumping the package.
 
-Studio canonical owner portfolio surfaces are `/api/me/agents` and
-`/api/me/agents/{agentId}`. `/portfolio` must not call Forge-imported system,
-creator, world-maintainer, or dev-agent surfaces. `/api/creator/agents`,
-`/api/agent/dev/my-agents`, and `/api/agent/forge-imported-system/**` belong
-outside Realm Agent Studio.
+Studio canonical owner portfolio surfaces are
+`Realm WorldCoreController.listRealmPersonas` and
+`Realm WorldCoreController.getRealmPersona`. Create and update use
+`createRealmPersona` and `replaceRealmPersona`; home-world reads use
+`listWorldCores` / `getWorldCore`; runtime materialization uses
+`createRuntimeSourceSnapshot`. `/portfolio` must not call Forge-imported system,
+creator, world-maintainer, or dev surfaces. `/api/creator/agents`,
+`/api/agent/dev/my-agents`, and `/api/agent/forge-imported-system/**` are
+explicitly non-current legacy anti-targets.
 
 The first-version owner-visible metric field is top-level `friendCount`.
 Do not invent `agentFriendCount`. Do not zero-fill if the source is
@@ -51,8 +55,8 @@ unavailable — render an explicit "source unavailable" state.
 ## Hard Boundaries
 
 ### Scope boundary
-- **In scope:** owner-created Realm Agents, public profile/settings, visual identity candidates, agent-authored posts, single local schedule, source-backed `friendCount`.
-- **Out of scope:** LocalAgent private runtime / memory / emotion state, creator/world-created agent management, Forge-imported system curation, agent direct chat from Studio, version history / rollback diffs, performance analytics, gift/economic settlement, team collaboration.
+- **In scope:** owner-created Realm Personas, public profile/settings, visual identity candidates, persona-authored posts, single local schedule, source-backed `friendCount`.
+- **Out of scope:** LocalAgent private runtime / memory / emotion state, creator-world character management, Forge-imported system curation, direct persona chat from Studio, version history / rollback diffs, performance analytics, gift/economic settlement, team collaboration.
 
 ### Failure mode
 - Fail-closed on every typed contract or source-availability gap. No pseudo-success, no synthesized placeholders, no zero-fill metrics, no parallel app-local shadow truth.
@@ -97,7 +101,7 @@ field into a release/permission claim.
 
 When editing admission inputs:
 
-- Keep `app_id: nimi.realm-agent-studio` identical across the manifest,
+- Keep `app_id: nimi.realm-persona-studio` identical across the manifest,
   `submission.yaml`, `scripts/pack.mjs`, Runtime/SDK callers, and the Tauri
   identifier. Do not introduce a second OS-bundle-only app identity.
 - New scope declarations in `nimi.app.yaml` must carry an explicit

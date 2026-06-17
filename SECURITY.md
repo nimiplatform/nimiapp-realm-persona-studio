@@ -18,4 +18,4 @@
 
 ## Reporting a vulnerability
 
-If you discover a vulnerability in Realm Agent Studio, do not open a public issue. Contact the Nimi Platform security team through the channel listed in the Nimi developer portal.
+If you discover a vulnerability in Realm Persona Studio, do not open a public issue. Contact the Nimi Platform security team through the channel listed in the Nimi developer portal.

@@ -14,7 +14,7 @@
 @source "../../../node_modules/.pnpm";
 
 /* ─────────────────────────────────────────────────────────────
- * Realm Agent Studio — hand-authored shell + layout CSS
+ * Realm Persona Studio — hand-authored shell + layout CSS
  *
  * Kit CSS variables and primitives remain the source of truth for
  * color, radius, shadow, motion, material, and interactive controls.
@@ -527,10 +527,10 @@ a {
 }
 
 /* ─────────────────────────────────────────────────────────────
- * Agent grid
+ * Persona grid
  * ───────────────────────────────────────────────────────────── */
 
-.ras-agent-grid {
+.ras-persona-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 14px;
@@ -1551,7 +1551,7 @@ a {
 .ras-text-size-label { font-size: var(--nimi-type-label-size); }
 
 /* ─────────────────────────────────────────────────────────────
- * Page-wrapper helpers used by per-agent route pages
+ * Page-wrapper helpers used by per-persona route pages
  * ───────────────────────────────────────────────────────────── */
 
 .ras-workspace-intro {
@@ -1586,16 +1586,16 @@ a {
   max-width: 64ch;
 }
 
-/* Agent header (compact bar at top of /portfolio/:agentId/*) */
+/* Persona header (compact bar at top of /portfolio/:personaId/*) */
 
-.ras-agent-header {
+.ras-persona-header {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 14px;
 }
 
-.ras-agent-header__identity {
+.ras-persona-header__identity {
   display: flex;
   align-items: center;
   min-width: 0;
@@ -1603,7 +1603,7 @@ a {
   gap: 12px;
 }
 
-.ras-agent-header__name {
+.ras-persona-header__name {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
@@ -1614,7 +1614,7 @@ a {
   text-overflow: ellipsis;
 }
 
-.ras-agent-header__handle {
+.ras-persona-header__handle {
   color: var(--nimi-text-muted);
   font-size: 13px;
   white-space: nowrap;
@@ -1622,7 +1622,7 @@ a {
   text-overflow: ellipsis;
 }
 
-.ras-agent-header__meta {
+.ras-persona-header__meta {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -1665,7 +1665,7 @@ a {
 }
 
 /* ─────────────────────────────────────────────────────────────
- * AgentProfileOverview
+ * PersonaProfileOverview
  * ───────────────────────────────────────────────────────────── */
 
 .ras-profile-grid {

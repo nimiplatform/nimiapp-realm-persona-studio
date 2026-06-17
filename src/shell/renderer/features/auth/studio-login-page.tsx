@@ -47,8 +47,8 @@ export function StudioLoginPage() {
         hintVisibility: 'always',
       }}
       testIds={{
-        screen: 'realm-agent-studio-login-page',
-        logoTrigger: 'realm-agent-studio-login-trigger',
+        screen: 'realm-persona-studio-login-page',
+        logoTrigger: 'realm-persona-studio-login-trigger',
       }}
     />
   );

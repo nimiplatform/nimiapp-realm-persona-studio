@@ -1,21 +1,21 @@
-# nimiapp-realm-agent-studio
+# nimiapp-realm-persona-studio
 
-Realm Agent Studio — Owner-facing creation and operation desktop app for user-owned public Realm Agents. Packaged as a standalone Tauri 2 + React 19 desktop app.
+Realm Persona Studio — Owner-facing creation and operation desktop app for user-owned public Realm Personas. Packaged as a standalone Tauri 2 + React 19 desktop app.
 
-> Migrated from the `apps/realm-agent-studio` workspace in the `nimi-realm`
+> Migrated from the `apps/realm-persona-studio` workspace in the `nimi-realm`
 > monorepo. The nimi-realm copy remains in place pending manual removal;
 > this project is the canonical standalone distribution.
 
 ## What this is
 
-Realm Agent Studio is the creation and operation center where an owner
-incubates, ships, and operates user-owned public **Realm Agents** as durable
-Agent IP. It supports:
+Realm Persona Studio is the creation and operation center where an owner
+incubates, ships, and operates user-owned public **Realm Personas** as durable
+persona IP. It supports:
 
-- Building a coherent agent identity (personality, worldview, role)
+- Building a coherent persona identity (personality, worldview, role)
 - Managing public settings through natural language + AI assistance
 - Cultivating visual identity (avatar, profile cover candidates, post images)
-- Composing and publishing agent-authored posts to the Realm feed
+- Composing and publishing persona-authored posts to the Realm feed
 - Monitoring source-backed adoption signals (`friendCount`)
 
 It is **not** a LocalAgent runtime center, world maintenance tool, Forge
@@ -72,7 +72,7 @@ pnpm lint                             # typecheck + eslint + cargo check
 
 ## Login flow
 
-Realm Agent Studio inherits the Runtime account session from the Nimi
+Realm Persona Studio inherits the Runtime account session from the Nimi
 desktop shell. On first launch:
 
 1. `runStudioBootstrap` loads `RuntimeDefaults` and constructs a
@@ -91,16 +91,16 @@ access or refresh tokens locally (PO-SHELL-008 / K-ACCSVC-008 equivalent).
 
 | Route | Purpose |
 |-------|---------|
-| `/portfolio` | Current-user owner-created agent list, search, filter, sort, source warnings |
-| `/portfolio/create` | Create a Realm Agent (handle preflight, world select, identity fields) |
-| `/portfolio/:agentId` | Current public profile, ownership, world, state, friendCount |
-| `/portfolio/:agentId/settings` | Visibility + setting proposal + AI context projection |
-| `/portfolio/:agentId/settings/review` | Runtime consistency review (advisory critique) |
-| `/portfolio/:agentId/assets` | Avatar, profile cover, post-image candidates |
-| `/portfolio/:agentId/assets/voice` | Voice-demo candidates via `audio.synthesize` |
-| `/portfolio/:agentId/posts` | Agent-authored post draft, attachment, publish |
-| `/portfolio/:agentId/posts/schedule` | Single app-local foreground-only post schedule |
-| `/portfolio/:agentId/insights` | friendCount, source availability, stale warnings |
+| `/portfolio` | Current-user owner-created persona list, search, filter, sort, source warnings |
+| `/portfolio/create` | Create a Realm Persona (handle preflight, world select, identity fields) |
+| `/portfolio/:personaId` | Current public profile, ownership, world, state, friendCount |
+| `/portfolio/:personaId/settings` | Visibility + setting proposal + RuntimeSourceSnapshot materialization |
+| `/portfolio/:personaId/settings/review` | Runtime consistency review (advisory critique) |
+| `/portfolio/:personaId/assets` | Avatar, profile cover, post-image candidates |
+| `/portfolio/:personaId/assets/voice` | Voice-demo candidates via `audio.synthesize` |
+| `/portfolio/:personaId/posts` | Persona-authored post draft, attachment, publish |
+| `/portfolio/:personaId/posts/schedule` | Single app-local foreground-only post schedule |
+| `/portfolio/:personaId/insights` | friendCount, source availability, stale warnings |
 
 ## Spec Authority
 
@@ -109,13 +109,17 @@ Normative product authority lives under [`.nimi/spec/project/kernel/`](./.nimi/s
 [`tables/rule-catalog.yaml`](./.nimi/spec/project/kernel/tables/rule-catalog.yaml)).
 Top-level index is [`.nimi/spec/INDEX.md`](./.nimi/spec/INDEX.md); editing rules
 are in [`.nimi/spec/project/AGENTS.md`](./.nimi/spec/project/AGENTS.md). Every rule
-carries an explicit `R-RAS-<DOMAIN>-NNN` identifier.
+carries an explicit `R-RPS-<DOMAIN>-NNN` identifier.
 
-Studio canonical owner portfolio surfaces are `/api/me/agents` and
-`/api/me/agents/{agentId}`. `/api/creator/agents`,
-`/api/agent/forge-imported-system/**`, and `/api/agent/dev/my-agents` belong
-outside Realm Agent Studio and must not be promoted into owner portfolio
-surfaces.
+Studio canonical owner portfolio surfaces are
+`Realm WorldCoreController.listRealmPersonas` and
+`Realm WorldCoreController.getRealmPersona`. Create/update use
+`createRealmPersona` and `replaceRealmPersona`; home-world reads use
+`listWorldCores` / `getWorldCore`; runtime materialization uses
+`createRuntimeSourceSnapshot`. `/api/creator/agents`,
+`/api/agent/forge-imported-system/**`, and `/api/agent/dev/my-agents` are
+explicitly non-current legacy anti-targets and must not be promoted into owner
+portfolio surfaces.
 
 `.nimi/{config,contracts,methodology}/**` are package-canonical projections from
 `@nimiplatform/nimi-coding`; refresh with `pnpm exec nimicoding start --yes`

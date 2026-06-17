@@ -20,11 +20,11 @@ if (!submission.includes('submission_role: developer-submitted-input')) {
 if (!buildProfile.includes('profile_role: developer-workflow-input')) {
   throw new Error('developer build profile marker missing in build-profile.yaml');
 }
-if (!manifest.includes('app_id: nimi.realm-agent-studio')) {
-  throw new Error('manifest app_id must be nimi.realm-agent-studio');
+if (!manifest.includes('app_id: nimi.realm-persona-studio')) {
+  throw new Error('manifest app_id must be nimi.realm-persona-studio');
 }
-if (tauriConfig.identifier !== 'nimi.realm-agent-studio') {
-  throw new Error(`tauri identifier mismatch: expected nimi.realm-agent-studio, got ${tauriConfig.identifier}`);
+if (tauriConfig.identifier !== 'nimi.realm-persona-studio') {
+  throw new Error(`tauri identifier mismatch: expected nimi.realm-persona-studio, got ${tauriConfig.identifier}`);
 }
 
 mkdirSync('dist', { recursive: true });
@@ -33,7 +33,7 @@ const packet = {
   packetRole: 'developer-submitted-input',
   packageName: packageJson.name,
   appVersion: tauriConfig.version,
-  appId: 'nimi.realm-agent-studio',
+  appId: 'nimi.realm-persona-studio',
   displayName: tauriConfig.productName,
   tauriIdentifier: tauriConfig.identifier,
   rendererEntry: 'dist/index.html',
@@ -48,4 +48,4 @@ const packet = {
 
 const outPath = join('dist', 'nimi-app-submission.json');
 writeFileSync(outPath, `${JSON.stringify(packet, null, 2)}\n`);
-console.log(`[realm-agent-studio] pack wrote ${outPath}`);
+console.log(`[realm-persona-studio] pack wrote ${outPath}`);

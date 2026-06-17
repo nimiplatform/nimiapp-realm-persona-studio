@@ -24,7 +24,7 @@ const entryModuleLoader = createRendererEntryModuleLoader({
 });
 
 const App = lazy(async () => {
-  const mod = await entryModuleLoader.load('entry:realm-agent-studio-app', () => import('./App.js'));
+  const mod = await entryModuleLoader.load('entry:realm-persona-studio-app', () => import('./App.js'));
   return { default: mod.App };
 });
 
@@ -41,7 +41,7 @@ function EntryFallback() {
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
-  throw new Error('REALM_AGENT_STUDIO_ROOT_MISSING');
+  throw new Error('REALM_PERSONA_STUDIO_ROOT_MISSING');
 }
 
 createRoot(rootElement).render(

@@ -1,14 +1,6 @@
 import type { Runtime } from '@nimiplatform/sdk/runtime';
 import type { NimiAIConfigTargetRef } from '@nimiplatform/sdk/ai';
 import type { NimiJsonValue } from '@nimiplatform/sdk/contracts';
-import {
-  ExecutionMode,
-  ReasonCode,
-  RoutePolicy,
-  ScenarioJobEventType,
-  ScenarioJobStatus,
-  ScenarioType,
-} from '@nimiplatform/sdk/runtime/generated';
 import type { StudioRealmSurface } from '@renderer/data/realm-client.js';
 import {
   createStudioAIScopeRef,
@@ -16,15 +8,14 @@ import {
   saveStudioAIConfig,
 } from '@renderer/features/ai-config/studio-ai-config-store.js';
 import { vi } from 'vitest';
-import type { MyRealmAgentDto, OwnerPortfolioAgentDetail, SettingField } from './portfolio-data.js';
+import type { MyRealmPersonaDto, OwnerPortfolioPersonaDetail, SettingField } from './portfolio-data.js';
 import {
-  REALM_AGENT_CREATE_PATH,
-  REALM_AGENT_CREATE_SOURCE,
-  type RealmAgentCreationWorldDto,
-  type ReviewedCreateRealmAgentPayload,
-} from './create-agent-draft.js';
+  REALM_PERSONA_CREATE_PATH,
+  REALM_PERSONA_CREATE_SOURCE,
+  type RealmPersonaCreationWorldDto,
+  type ReviewedCreateRealmPersonaPayload,
+} from './create-persona-draft.js';
 import type { CandidatePostPayload } from './post-draft.js';
-import type { RealmAgentVisibilitySettings } from './portfolio-settings-client.js';
 
 export type MockRuntimeRoute = {
   readonly capability: 'text.generate' | 'image.generate' | 'audio.synthesize';
@@ -75,179 +66,133 @@ export function configureStudioAIConfigTargetRefsForTest(input: {
   }, scopeRef);
 }
 
-export const agent: MyRealmAgentDto = {
-  id: 'agent-1',
-  handle: 'mira',
-  displayName: 'Mira',
+export const persona: MyRealmPersonaDto = {
+  id: 'persona-1',
+  schemaVersion: 'realm-persona-core/v1',
+  contentRevision: 1,
+  contentHash: 'hash-persona-1',
+  origin: { kind: 'manual', sourceId: 'test' },
+  ownerId: 'user-1',
+  homeWorldId: 'world-oasis',
+  core: {
+    handle: 'mira',
+    displayName: 'Mira',
+    description: 'Quiet strategist',
+    greeting: 'Welcome in.',
+    state: 'ACTIVE',
+    socialVisibility: {
+      accountVisibility: 'PUBLIC',
+      defaultPostVisibility: 'PUBLIC',
+      dmVisibility: 'FRIENDS',
+      profileVisibility: 'PUBLIC',
+    },
+    identity: {
+      publicRole: 'Guide',
+      worldview: 'Layered world.',
+    },
+    personality: {
+      summary: 'Patient strategist.',
+      relationshipMode: 'mentor',
+      interests: ['strategy'],
+      goals: ['keep lore coherent'],
+    },
+    communication: {
+      contentStyle: 'Concise.',
+      formality: 'casual',
+      responseLength: 'medium',
+      sentiment: 'neutral',
+    },
+    boundaries: {
+      allowedThemes: ['adventure'],
+      disallowedThemes: ['gore'],
+    },
+    positioning: {
+      targetAudience: 'builders',
+      positioning: 'guide',
+    },
+  },
   createdAt: '2026-05-21T00:00:00.000Z',
-  isAgent: true,
+  updatedAt: '2026-05-21T00:00:00.000Z',
 };
 
-export const world: RealmAgentCreationWorldDto = {
+export const world: RealmPersonaCreationWorldDto = {
   id: 'world-oasis',
-  name: 'OASIS',
-  type: 'OASIS',
-  status: 'ACTIVE',
-  contentRating: 'PG13',
+  schemaVersion: 'world-core/v1',
+  contentRevision: 1,
+  contentHash: 'hash-world-oasis',
+  origin: { kind: 'system', sourceId: 'OASIS' },
+  creatorId: null,
+  visibility: 'system',
+  core: {
+    name: 'OASIS',
+    type: 'OASIS',
+    status: 'ACTIVE',
+    contentRating: 'PG13',
+    nativeCreationState: 'OPEN',
+    characterCount: 0,
+    themes: [],
+  },
   createdAt: '2026-05-21T00:00:00.000Z',
-  level: 1,
-  lorebookEntryLimit: 10,
-  nativeAgentLimit: 10,
-  nativeCreationState: 'OPEN',
-  scoreA: 0,
-  scoreC: 0,
-  scoreE: 0,
-  scoreEwma: 0,
-  scoreQ: 0,
-  transitInLimit: 10,
-  agentCount: 0,
-  computed: {
-    entry: { recommendedAgents: [] },
-    featuredAgentCount: 0,
-    languages: { common: [] },
-    score: { scoreEwma: 0 },
-    time: { flowRatio: 1, isPaused: false },
-  },
-  truth: {
-    rules: [],
-  },
+  updatedAt: '2026-05-21T00:00:00.000Z',
 };
 
 export function mockRealm(): StudioRealmSurface {
   return {
-      agentControllerCheckHandle: vi.fn(async (request: { readonly query?: { readonly handle?: string } }) => {
-        const handle = String(request.query?.handle || '');
-        return {
-          available: handle !== 'taken_handle',
-          normalized: handle ? `~${handle}` : '',
-          ...(handle === 'taken_handle' ? { message: 'Handle already taken.' } : {}),
-        };
-      }),
-      agentControllerCreate: vi.fn(async () => ({
-          id: 'agent-created-1',
-          state: 'INCUBATING',
-          dna: {},
-          user: {
-            id: 'agent-created-1',
-            handle: '~mira_agent',
-            displayName: 'Mira Agent',
+      worldCoreControllerListRealmPersonas: vi.fn(async () => [
+        persona,
+        {
+          ...persona,
+          id: 'persona-taken',
+          contentHash: 'hash-persona-taken',
+          core: { ...persona.core, handle: 'taken.persona', displayName: 'Taken' },
+        },
+      ]),
+      worldCoreControllerGetRealmPersona: vi.fn(async (request: { readonly path: { readonly personaId: string } }) => ({
+        ...persona,
+        id: request.path.personaId,
+        contentHash: request.path.personaId === 'persona-1' ? persona.contentHash : `hash-${request.path.personaId}`,
+      })),
+      worldCoreControllerCreateRealmPersona: vi.fn(async (request: { readonly body: Record<string, unknown> }) => ({
+          ...persona,
+          id: 'persona-created-1',
+          contentHash: 'hash-persona-created-1',
+          core: {
+            ...(request.body.core && typeof request.body.core === 'object' ? request.body.core as Record<string, unknown> : {}),
+            state: 'INCUBATING',
           },
       })),
-      agentControllerSelectAvatar: vi.fn(async () => ({
-        success: true,
+      worldCoreControllerReplaceRealmPersona: vi.fn(async (request: { readonly path: { readonly personaId: string }; readonly body: Record<string, unknown> }) => ({
+        ...persona,
+        id: request.path.personaId,
+        contentHash: 'hash-replaced',
+        homeWorldId: typeof request.body.homeWorldId === 'string' ? request.body.homeWorldId : persona.homeWorldId,
+        origin: request.body.origin && typeof request.body.origin === 'object'
+          ? request.body.origin as typeof persona.origin
+          : persona.origin,
+        core: request.body.core && typeof request.body.core === 'object' ? request.body.core as Record<string, unknown> : persona.core,
+        updatedAt: '2026-05-22T00:00:00.000Z',
       })),
-      agentControllerGetVisibility: vi.fn(async () => ({
-        accountVisibility: 'PUBLIC',
-        defaultPostVisibility: 'PUBLIC',
-        dmVisibility: 'FRIENDS',
-        profileVisibility: 'PUBLIC',
-      })),
-      agentControllerUpdateVisibility: vi.fn(async (request: { readonly body: Partial<RealmAgentVisibilitySettings> }) => {
-        const input = request.body;
-        return {
-          accountVisibility: input.accountVisibility || 'PUBLIC',
-          defaultPostVisibility: input.defaultPostVisibility || 'PUBLIC',
-          dmVisibility: input.dmVisibility || 'FRIENDS',
-          profileVisibility: input.profileVisibility || 'PUBLIC',
-        };
-      }),
-      listMyRealmAgents: vi.fn(async () => [agent]),
-      getMyRealmAgent: vi.fn(async (request: { readonly path: { readonly agentId: string } }) => ({
-        ...agent,
-        id: request.path.agentId,
-        bio: 'Detail bio',
-      })),
-      getMyRealmAgentSettings: vi.fn(async (request: { readonly path: { readonly agentId: string } }) => ({
-          agentId: request.path.agentId,
-          worldId: 'world-oasis',
-          agentRuleVersion: 3,
-          displayName: 'Mira',
-          description: 'Quiet strategist',
-          greeting: 'Welcome in.',
-          naturalLanguageIntent: null,
-          identity: {
-            publicRole: 'Guide',
-            worldview: 'Layered world.',
-          },
-          personality: {
-            summary: 'Patient strategist.',
-            relationshipMode: 'mentor',
-            interests: ['strategy'],
-            goals: ['keep lore coherent'],
-          },
-          communication: {
-            contentStyle: 'Concise.',
-            formality: 'casual',
-            responseLength: 'medium',
-            sentiment: 'neutral',
-          },
-          boundaries: {
-            allowedThemes: ['adventure'],
-            disallowedThemes: ['gore'],
-          },
-          positioning: {
-            targetAudience: 'builders',
-            positioning: 'guide',
-          },
-          updatedAt: '2026-05-21T00:00:00.000Z',
-      })),
-      updateMyRealmAgentSettings: vi.fn(async (request: { readonly path: { readonly agentId: string }; readonly body: Record<string, unknown> }) => {
-        const input = request.body;
-        return {
-          agentId: request.path.agentId,
-          worldId: 'world-oasis',
-          agentRuleVersion: 4,
-          displayName: typeof input.displayName === 'string' ? input.displayName : 'Mira',
-          description: typeof input.description === 'string' ? input.description : 'Quiet strategist',
-          greeting: typeof input.greeting === 'string' ? input.greeting : 'Welcome in.',
-          naturalLanguageIntent: typeof input.naturalLanguageIntent === 'string' ? input.naturalLanguageIntent : null,
-          identity: {
-            publicRole: 'Guide',
-            worldview: 'Layered world.',
-            ...((input.identity && typeof input.identity === 'object') ? input.identity as Record<string, unknown> : {}),
-          },
-          personality: {
-            summary: 'Patient strategist.',
-            relationshipMode: 'mentor',
-            interests: ['strategy'],
-            goals: ['keep lore coherent'],
-            ...((input.personality && typeof input.personality === 'object') ? input.personality as Record<string, unknown> : {}),
-          },
-          communication: {
-            contentStyle: 'Concise.',
-            formality: 'casual',
-            responseLength: 'medium',
-            sentiment: 'neutral',
-            ...((input.communication && typeof input.communication === 'object') ? input.communication as Record<string, unknown> : {}),
-          },
-          boundaries: {
-            allowedThemes: ['adventure'],
-            disallowedThemes: ['gore'],
-            ...((input.boundaries && typeof input.boundaries === 'object') ? input.boundaries as Record<string, unknown> : {}),
-          },
-          positioning: {
-            targetAudience: 'builders',
-            positioning: 'guide',
-            ...((input.positioning && typeof input.positioning === 'object') ? input.positioning as Record<string, unknown> : {}),
-          },
-          updatedAt: '2026-05-22T00:00:00.000Z',
-        };
-      }),
-      worldControllerListWorlds: vi.fn(async () => [world]),
-      worldControllerGetWorldDetailWithAgents: vi.fn(async (request: { readonly path: { readonly id: string } }) => ({
+      worldCoreControllerListWorldCores: vi.fn(async () => [world]),
+      worldCoreControllerGetWorldCore: vi.fn(async (request: { readonly path: { readonly worldId: string } }) => ({
           ...world,
-          id: request.path.id,
-          agentRuleSummary: {
-            byLayer: {
-              BEHAVIORAL: 0,
-              CONTEXTUAL: 0,
-              DNA: 0,
-              RELATIONAL: 0,
-            },
-            totalAgentRuleCount: 0,
-            worldLinkedRuleCount: 0,
-          },
-          agents: [],
+          id: request.path.worldId,
+      })),
+      worldCoreControllerGetOasisWorld: vi.fn(async () => world),
+      worldCoreControllerCreateRuntimeSourceSnapshot: vi.fn(async (request: { readonly body: { readonly sourceRef: { readonly kind: 'realmPersona' | 'worldCharacter'; readonly worldId: string; readonly sourceId: string; readonly sourceContentHash: string } } }) => ({
+        snapshotSchemaVersion: 'runtime-source-snapshot/v1',
+        snapshotId: `snapshot-${request.body.sourceRef.sourceId}`,
+        sourceKind: request.body.sourceRef.kind,
+        sourceId: request.body.sourceRef.sourceId,
+        sourceWorldId: request.body.sourceRef.worldId,
+        sourceContentRevision: 1,
+        sourceContentHash: request.body.sourceRef.sourceContentHash,
+        capturedAt: '2026-05-22T00:00:00.000Z',
+        payloadHash: 'checksum-runtime-1',
+        runtimeSourceRef: `runtime-source:${request.body.sourceRef.kind}:${request.body.sourceRef.sourceId}:checksum-runtime-1`,
+        payload: {
+          displayName: 'Mira',
+          communication: { contentStyle: 'Concise.' },
+        },
       })),
       createPost: vi.fn(async () => ({
           id: 'post-1',
@@ -278,10 +223,16 @@ export function mockRealm(): StudioRealmSurface {
               controllerKind: 'ACCOUNT',
               controllerId: 'user-1',
               deliveryAccess: 'SIGNED',
-              agentId: 'agent-1',
               label: 'Reviewed post text for @mira',
               tags: ['studio'],
               title: 'Published caption',
+              metadata: {
+                sourceKind: 'realmPersona',
+                sourceId: 'persona-1',
+                sourceWorldId: 'world-oasis',
+                sourceContentHash: 'hash-persona-1',
+                sourceRef: 'realmPersona:world-oasis:persona-1:hash-persona-1',
+              },
               createdAt: '2026-05-21T00:00:00.000Z',
               updatedAt: '2026-05-21T00:00:00.000Z',
             },
@@ -348,7 +299,6 @@ export function mockRealm(): StudioRealmSurface {
           controllerKind: 'ACCOUNT',
           controllerId: 'user-1',
           deliveryAccess: input.deliveryAccess || 'SIGNED',
-          agentId: input.agentId,
           label: input.label,
           tags: input.tags || [],
           title: input.title,
@@ -369,115 +319,19 @@ export function mockRealm(): StudioRealmSurface {
         controllerKind: 'ACCOUNT',
         controllerId: 'user-1',
         deliveryAccess: 'SIGNED',
-        agentId: 'agent-1',
         label: 'Reviewed post text for @mira',
         tags: ['studio'],
         title: 'Published caption',
+        metadata: {
+          sourceKind: 'realmPersona',
+          sourceId: 'persona-1',
+          sourceWorldId: 'world-oasis',
+          sourceContentHash: 'hash-persona-1',
+          sourceRef: 'realmPersona:world-oasis:persona-1:hash-persona-1',
+        },
         createdAt: '2026-05-21T00:00:00.000Z',
         updatedAt: '2026-05-21T00:00:00.000Z',
       })),
-      projectRuntimePayload: vi.fn(async (request: { readonly body?: { readonly agentId?: string; readonly worldId?: string } }) => {
-        if (request.body?.agentId) {
-          const worldId = request.body.worldId || 'cbdb-song-slice-real-20260614-world';
-          const agentId = request.body.agentId;
-          const agentRuleInput = {
-            id: 'agent-rule-input-1',
-            sourceType: 'AGENT_RULE',
-            sourceId: 'agent-rule-content-style',
-            lineageId: 'lineage-agent-content-style',
-            worldId,
-            agentId,
-            ruleKey: 'behavioral:style:content',
-            title: 'Owner Content Style',
-            statement: 'Reviewed content style that must not reach Studio UI.',
-            hardness: 'SOFT',
-            priority: 70,
-            scope: 'SELF',
-            layer: 'BEHAVIORAL',
-            provenance: 'SYSTEM',
-            structured: {
-              ownerSettingField: 'communication.contentStyle',
-              contentStyle: 'Uses reviewed Song-literati register.',
-            },
-          };
-          return {
-            worldId,
-            agentId,
-            consumerSurface: 'RUNTIME_PAYLOAD',
-            releaseAnchor: null,
-            checksum: 'checksum-runtime-agent-1',
-            selectedInputs: [agentRuleInput],
-            trace: {
-              selectedInputIds: ['agent-rule-input-1'],
-              suppressedInputs: [],
-              resolutionOutcomes: [],
-            },
-            payload: {
-              worldRules: [],
-              agentRules: [agentRuleInput],
-            },
-          };
-        }
-        return {
-          worldId: 'OASIS',
-          consumerSurface: 'RUNTIME_PAYLOAD',
-          releaseAnchor: null,
-          checksum: 'checksum-runtime-1',
-          selectedInputs: [{
-            id: 'rule-input-1',
-            sourceType: 'WORLD_RULE',
-            sourceId: 'world-rule-1',
-            lineageId: 'lineage-1',
-            worldId: 'OASIS',
-            ruleKey: 'hidden.raw.rule',
-            title: 'Hidden raw rule title',
-            statement: 'Hidden raw rule statement that must not reach Studio UI.',
-            hardness: 'HARD',
-            priority: 1,
-            scope: 'WORLD',
-            provenance: 'WORLD',
-          }],
-          trace: {
-            selectedInputIds: ['rule-input-1'],
-            suppressedInputs: [{
-              input: {
-                id: 'rule-input-suppressed',
-                sourceType: 'AGENT_RULE',
-                sourceId: 'agent-rule-1',
-                lineageId: 'lineage-suppressed',
-                worldId: 'OASIS',
-                agentId: 'agent-1',
-                ruleKey: 'hidden.agent.rule',
-                title: 'Suppressed raw rule title',
-                statement: 'Suppressed raw rule statement that must not reach Studio UI.',
-                hardness: 'SOFT',
-                priority: 1,
-                scope: 'SELF',
-                provenance: 'OWNER',
-              },
-              reason: 'SURFACE_POLICY',
-            }],
-            resolutionOutcomes: [],
-          },
-          payload: {
-            worldRules: [{
-              id: 'rule-input-1',
-              sourceType: 'WORLD_RULE',
-              sourceId: 'world-rule-1',
-              lineageId: 'lineage-1',
-              worldId: 'OASIS',
-              ruleKey: 'hidden.raw.rule',
-              title: 'Hidden raw rule title',
-              statement: 'Hidden raw rule statement that must not reach Studio UI.',
-              hardness: 'HARD',
-              priority: 1,
-              scope: 'WORLD',
-              provenance: 'WORLD',
-            }],
-            agentRules: [],
-          },
-        };
-      }),
   } as unknown as StudioRealmSurface;
 }
 
@@ -489,70 +343,14 @@ function localKindForCapability(capability: MockRuntimeRoute['capability']): str
 
 export function mockRuntimeWithRoutes(input: {
   readonly executeScenario: ReturnType<typeof vi.fn>;
-  readonly submitScenarioJob?: ReturnType<typeof vi.fn>;
-  readonly getScenarioArtifacts?: ReturnType<typeof vi.fn>;
-  readonly getScenarioJob?: ReturnType<typeof vi.fn>;
-  readonly cancelScenarioJob?: ReturnType<typeof vi.fn>;
-  readonly subscribeScenarioJobEvents?: ReturnType<typeof vi.fn>;
-  readonly resolveLocalEnvironmentPlan?: ReturnType<typeof vi.fn>;
-  readonly listLocalEnvironmentDependencyJobs?: ReturnType<typeof vi.fn>;
-  readonly startLocalEnvironmentDependencyJob?: ReturnType<typeof vi.fn>;
   readonly routes: readonly MockRuntimeRoute[];
 }): Runtime {
   const cloudRoutes = input.routes.filter((route) => route.connectorId);
   const localRoutes = input.routes.filter((route) => !route.connectorId);
-  const defaultScenarioJob = {
-    jobId: 'runtime-scenario-job-1',
-    scenarioType: ScenarioType.IMAGE_GENERATE,
-    executionMode: ExecutionMode.ASYNC_JOB,
-    routeDecision: RoutePolicy.UNSPECIFIED,
-    modelResolved: '',
-    status: ScenarioJobStatus.COMPLETED,
-    providerJobId: '',
-    reasonCode: ReasonCode.REASON_CODE_UNSPECIFIED,
-    reasonDetail: '',
-    retryCount: 0,
-    artifacts: [],
-    traceId: '',
-    ignoredExtensions: [],
-    progressPercent: 100,
-    progressCurrentStep: 0,
-    progressTotalSteps: 0,
-  };
   return {
     ai: {
       executeScenario: input.executeScenario,
       streamScenario: async function* () {},
-      submitScenarioJob: input.submitScenarioJob ?? vi.fn(async (request: { readonly scenarioType?: ScenarioType; readonly head?: unknown; readonly executionMode?: ExecutionMode }) => ({
-        job: {
-          ...defaultScenarioJob,
-          head: request.head,
-          scenarioType: request.scenarioType ?? ScenarioType.IMAGE_GENERATE,
-          executionMode: request.executionMode ?? ExecutionMode.ASYNC_JOB,
-        },
-      })),
-      getScenarioJob: input.getScenarioJob ?? vi.fn(async () => ({
-        job: defaultScenarioJob,
-      })),
-      cancelScenarioJob: input.cancelScenarioJob ?? vi.fn(async () => ({
-        job: {
-          ...defaultScenarioJob,
-          status: ScenarioJobStatus.CANCELED,
-        },
-      })),
-      subscribeScenarioJobEvents: input.subscribeScenarioJobEvents ?? vi.fn(async function* () {
-        yield {
-          eventType: ScenarioJobEventType.SCENARIO_JOB_EVENT_COMPLETED,
-          sequence: 1,
-          jobId: defaultScenarioJob.jobId,
-          message: '',
-          job: defaultScenarioJob,
-        };
-      }),
-      getScenarioArtifacts: input.getScenarioArtifacts ?? vi.fn(async () => ({
-        artifacts: [],
-        traceId: '',
-      })),
     },
     connectors: {
       listConnectors: vi.fn(async () => ({
@@ -591,54 +389,6 @@ export function mockRuntimeWithRoutes(input: {
         })),
         nextPageToken: '',
       })),
-      resolveLocalEnvironmentPlan: input.resolveLocalEnvironmentPlan ?? vi.fn(async () => ({
-        plan: {
-          planId: 'local-image-native-plan-ready',
-          packId: 'local-image-native',
-          productLabel: 'Local image native',
-          hostProfileId: 'test-host',
-          platformTuple: 'test-platform',
-          runtimeDataRoot: '',
-          consumerScope: 'local-image-native',
-          cloudOnlyImpact: '',
-          state: 'ready',
-          reasonCode: '',
-          dependencies: [],
-        },
-      })),
-      listLocalEnvironmentDependencyJobs: input.listLocalEnvironmentDependencyJobs ?? vi.fn(async () => ({
-        jobs: [],
-      })),
-      startLocalEnvironmentDependencyJob: input.startLocalEnvironmentDependencyJob ?? vi.fn(async (request: {
-        readonly environmentKey?: string;
-        readonly dependencyFamily?: string;
-        readonly dependencyId?: string;
-        readonly consumerScope?: string;
-        readonly sourceKind?: string;
-      }) => ({
-        job: {
-          jobId: 'local-environment-dependency-job-1',
-          environmentKey: request.environmentKey || 'local-image-native',
-          dependencyFamily: request.dependencyFamily || 'python.tool.uv',
-          dependencyId: request.dependencyId || 'uv',
-          consumerScope: request.consumerScope || 'local-image-native',
-          state: 'queued',
-          sourceKind: request.sourceKind || 'runtime_managed',
-          canonicalRoot: '',
-          selectedSourceRecordId: '',
-          failureDetail: '',
-          retryable: false,
-          createdAt: '2026-05-21T00:00:00.000Z',
-          updatedAt: '2026-05-21T00:00:00.000Z',
-          reasonCode: '',
-          recoveryDisposition: '',
-          bytesReceived: 0,
-          bytesTotal: 0,
-          percent: 0,
-          speedBytesPerSec: 0,
-          etaSeconds: 0,
-        },
-      })),
     },
   } as unknown as Runtime;
 }
@@ -663,7 +413,7 @@ export function detailField(key: SettingField['key'], label: string, value: stri
       label,
       value,
       status: 'available-empty',
-      source: 'Realm MeService.getMyRealmAgent',
+      source: 'Realm WorldCoreController.getRealmPersona',
       readOnly: true,
       emptyLabel: 'not set',
     };
@@ -673,23 +423,26 @@ export function detailField(key: SettingField['key'], label: string, value: stri
     label,
     value,
     status: 'available',
-    source: 'Realm MeService.getMyRealmAgent',
+    source: 'Realm WorldCoreController.getRealmPersona',
     readOnly: true,
   };
 }
 
-export function ownerAgentDetail(): OwnerPortfolioAgentDetail {
+export function ownerPersonaDetail(): OwnerPortfolioPersonaDetail {
   return {
-    id: 'agent-1',
+    id: 'persona-1',
     displayName: detailField('displayName', 'Display name', 'Mira'),
     handle: detailField('handle', 'Handle', 'mira'),
     bio: detailField('bio', 'Profile description', ''),
     greeting: detailField('greeting', 'Greeting', ''),
     profileCoverUrl: detailField('profileCoverUrl', 'Profile cover URL', ''),
-    ownership: detailField('ownership', 'Ownership evidence', 'MASTER_OWNED'),
+    ownership: detailField('ownership', 'Ownership evidence', 'owner-created RealmPersona'),
     world: detailField('world', 'World evidence', 'OASIS'),
     state: detailField('state', 'State evidence', 'ACTIVE'),
     avatarUrl: null,
+    contentHash: 'hash-persona-1',
+    contentRevision: 1,
+    homeWorldId: 'world-oasis',
     voice: {
       voiceId: '',
       description: '',
@@ -701,23 +454,27 @@ export function ownerAgentDetail(): OwnerPortfolioAgentDetail {
     },
     friendCount: { status: 'source-unavailable', label: 'friendCount source unavailable' },
     ownerScope: 'owner-created',
-    source: 'Realm MeService.getMyRealmAgent',
+    source: 'Realm WorldCoreController.getRealmPersona',
   };
 }
 
-export function ownerAgentDetailWithWorldId(worldId = 'world-oasis'): OwnerPortfolioAgentDetail {
+export function ownerPersonaDetailWithWorldId(worldId = 'world-oasis'): OwnerPortfolioPersonaDetail {
   return {
-    ...ownerAgentDetail(),
+    ...ownerPersonaDetail(),
     world: detailField('world', 'World id evidence', worldId),
   };
 }
 
 export const candidatePayload: CandidatePostPayload = {
   candidate: true,
-  source: 'realm-agent-studio.local-post-draft',
-  agentRef: {
-    source: 'Realm MeService.getMyRealmAgent',
-    agentKey: 'agent-1',
+  source: 'realm-persona-studio.local-post-draft',
+  personaRef: {
+    source: 'Realm WorldCoreController.getRealmPersona',
+    sourceKind: 'realmPersona',
+    sourceId: 'persona-1',
+    sourceWorldId: 'world-oasis',
+    sourceContentHash: 'hash-persona-1',
+    sourceRef: 'realmPersona:world-oasis:persona-1:hash-persona-1',
     handle: 'mira',
     displayName: 'Mira',
   },
@@ -734,50 +491,36 @@ export const candidatePayload: CandidatePostPayload = {
   },
 };
 
-export const createPayload: ReviewedCreateRealmAgentPayload = {
-  source: REALM_AGENT_CREATE_SOURCE,
-  path: REALM_AGENT_CREATE_PATH,
+export const createPayload: ReviewedCreateRealmPersonaPayload = {
+  source: REALM_PERSONA_CREATE_SOURCE,
+  path: REALM_PERSONA_CREATE_PATH,
   publicFields: {
-    handle: 'mira_agent',
-    displayName: 'Mira Agent',
-    concept: 'Durable public Realm Agent',
+    handle: 'mira.persona',
+    displayName: 'Mira Persona',
+    concept: 'Durable public Realm Persona',
     description: 'Owner-created public identity',
     rulesText: 'Stay visible.\nStay owner-reviewed.',
   },
   body: {
-    handle: 'mira_agent',
-    displayName: 'Mira Agent',
-    concept: 'Durable public Realm Agent',
-    description: 'Owner-created public identity',
-    worldId: 'world-oasis',
-    ownershipType: 'MASTER_OWNED',
-    dna: {
-      source: 'realm-agent-studio.reviewed-create-dna.v1',
-      primaryArchetype: 'CARING',
-      secondaryTraits: ['GENTLE', 'WISE'],
-      identity: {
-        name: 'Mira Agent',
-        role: 'Owner-created public Realm Agent',
-        species: 'Realm Agent',
-        worldview: 'Durable public Realm Agent',
-        summary: 'Owner-created public identity',
-      },
-      personality: {
-        primaryArchetype: 'CARING',
-        secondaryTraits: ['GENTLE', 'WISE'],
-        summary: 'Owner-created public identity',
-        behavioralDirectives: ['Stay visible.', 'Stay owner-reviewed.'],
-      },
-      communication: {
-        sourceText: 'Stay visible.\nStay owner-reviewed.',
-      },
+    homeWorldId: 'world-oasis',
+    origin: {
+      kind: 'manual',
+      sourceId: 'realm-persona-studio:mira.persona',
+      sourceVersion: 'owner-reviewed-v1',
     },
-    dnaPrimary: 'CARING',
-    dnaSecondary: ['GENTLE', 'WISE'],
-    rules: {
-      format: 'rule-lines-v1',
-      lines: ['Stay visible.', 'Stay owner-reviewed.'],
-      text: 'Stay visible.\nStay owner-reviewed.',
+    core: {
+      handle: 'mira.persona',
+      displayName: 'Mira Persona',
+      concept: 'Durable public RealmPersona',
+      description: 'Owner-created public identity',
+      homeWorldId: 'world-oasis',
+      dnaPrimary: 'CARING',
+      dnaSecondary: ['GENTLE', 'WISE'],
+      ownerReviewedGuidelines: {
+        format: 'line-list-v1',
+        lines: ['Stay visible.', 'Stay owner-reviewed.'],
+        text: 'Stay visible.\nStay owner-reviewed.',
+      },
     },
   },
 };

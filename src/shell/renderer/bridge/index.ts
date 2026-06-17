@@ -31,7 +31,7 @@ import {
 } from '@nimiplatform/kit/shell/renderer/bridge';
 
 export const STUDIO_TOKEN_EXCHANGE_FORBIDDEN =
-  'Realm Agent Studio does not expose OAuth token exchange; Runtime account service owns token custody.';
+  'Realm Persona Studio does not expose OAuth token exchange; Runtime account service owns token custody.';
 
 export type StudioRuntimeDefaults = {
   readonly realm: {

@@ -25,7 +25,7 @@ beforeEach(() => {
 
 function textPayload(model = 'auto'): StudioTextGeneratePayload {
   return {
-    surfaceId: 'realm-agent-studio.post-copy',
+    surfaceId: 'realm-persona-studio.post-copy',
     params: { model },
     request: {
       model: { modelId: model },
@@ -37,7 +37,7 @@ function textPayload(model = 'auto'): StudioTextGeneratePayload {
 
 function imagePayload(model = 'auto'): StudioImageGeneratePayload {
   return createStudioImageGeneratePayload({
-    surfaceId: 'realm-agent-studio.visual-image-candidate',
+    surfaceId: 'realm-persona-studio.visual-image-candidate',
     params: { model, aspectRatio: '1:1', responseFormat: 'url' },
     spec: {
       prompt: 'Warm profile portrait.',
@@ -57,7 +57,7 @@ function imagePayload(model = 'auto'): StudioImageGeneratePayload {
 
 function speechPayload(model = 'auto'): StudioSpeechSynthesizePayload {
   return createStudioSpeechSynthesizePayload({
-    surfaceId: 'realm-agent-studio.voice-demo-candidate',
+    surfaceId: 'realm-persona-studio.voice-demo-candidate',
     params: { model },
     spec: {
       text: 'Welcome in.',

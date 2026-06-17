@@ -30,7 +30,7 @@ describe('studio platform runtime auth boundary', () => {
     expect(studioPlatformSource).toContain("'realm.worlds.read'");
     expect(studioPlatformSource).toContain('scopes: [...STUDIO_REALM_API_SCOPES]');
     expect(studioPlatformSource).toContain('realmBaseUrl');
-    expect(studioPlatformSource).toContain("'nimi.realm-agent-studio'");
+    expect(studioPlatformSource).toContain("'nimi.realm-persona-studio'");
     expect(studioPlatformSource).toContain('.local-first-party');
     expect(studioPlatformSource).not.toContain('createNimiDeveloperRegisteredRuntimeAccountCaller');
     expect(studioPlatformSource).not.toContain('getAccessToken');

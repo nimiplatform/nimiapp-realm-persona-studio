@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button, Checkbox, EmptyState, FieldShell, InlineAlert, SelectField, StatusBadge, Surface, TextareaField, TextField } from '@nimiplatform/kit/ui';
-import type { OwnerPortfolioAgentDetail } from './portfolio-data.js';
+import type { OwnerPortfolioPersonaDetail } from './portfolio-data.js';
 import {
   createReviewedPostTextResource,
   listReadyPostAttachmentResources,
@@ -33,7 +33,7 @@ import {
   type LocalPostScheduleRecord,
 } from './local-post-schedule-store.js';
 import {
-  buildContentVariantsFromAgent,
+  buildContentVariantsFromPersona,
   type ContentVariant,
   type ContentVariantBuildResult,
 } from './content-variant.js';
@@ -74,7 +74,7 @@ const POST_REVIEW_ITEM_KEYS: Record<string, StudioCopyKey> = {
 };
 
 const POST_FIXED_MESSAGE_KEYS: Record<string, StudioCopyKey> = {
-  'agent identity source unavailable or empty': 'posts.error.agentIdentityMissing',
+  'persona identity source unavailable or empty': 'posts.error.personaIdentityMissing',
   'owner intent, draft caption, profile description, or greeting required': 'posts.error.variantAnchorMissing',
   'caption missing': 'posts.error.captionMissing',
   'candidate not publishable: human review missing': 'posts.error.humanReviewMissing',
@@ -127,7 +127,7 @@ export function createEmptyLocalPostScheduleInput(): LocalPostScheduleInput {
   };
 }
 
-export function CreativePostWorkspace({ agent, mode }: { agent: OwnerPortfolioAgentDetail; mode: 'posts' | 'schedule' }) {
+export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfolioPersonaDetail; mode: 'posts' | 'schedule' }) {
   const { t } = useStudioI18n();
   const [draft, setDraft] = useState<LocalPostDraftInput>(() => createEmptyPostDraft());
   const [contentVariantIntent, setContentVariantIntent] = useState('');
@@ -154,8 +154,8 @@ export function CreativePostWorkspace({ agent, mode }: { agent: OwnerPortfolioAg
   const [isPublishingSchedule, setIsPublishingSchedule] = useState(false);
   const [scheduleErrors, setScheduleErrors] = useState<string[]>([]);
   const [assetCandidates, setAssetCandidates] = useState<LocalCreativeAssetCandidate[]>([]);
-  const validation = validateLocalPostDraft(draft, agent);
-  const postTextResourceDraft = validateLocalPostDraft({ ...draft, attachmentEnabled: false, attachmentTargetId: '' }, agent);
+  const validation = validateLocalPostDraft(draft, persona);
+  const postTextResourceDraft = validateLocalPostDraft({ ...draft, attachmentEnabled: false, attachmentTargetId: '' }, persona);
   const isScheduleWorkspace = mode === 'schedule';
 
   useEffect(() => {
@@ -179,12 +179,12 @@ export function CreativePostWorkspace({ agent, mode }: { agent: OwnerPortfolioAg
     setIsUploadingMediaResource(false);
     setScheduleInput(createEmptyLocalPostScheduleInput());
     setSchedulePreview(null);
-    setSavedSchedule(loadLocalPostSchedule(agent.id));
+    setSavedSchedule(loadLocalPostSchedule(persona.id));
     setSchedulePublishResult(null);
     setIsPublishingSchedule(false);
     setScheduleErrors([]);
     setAssetCandidates([]);
-  }, [agent.id]);
+  }, [persona.id]);
 
   function updateDraft(patch: Partial<LocalPostDraftInput>) {
     setDraft((current) => ({ ...current, ...patch }));
@@ -201,7 +201,7 @@ export function CreativePostWorkspace({ agent, mode }: { agent: OwnerPortfolioAg
   }
 
   function buildContentVariantBoard() {
-    setContentVariants(buildContentVariantsFromAgent(agent, draft, contentVariantIntent));
+    setContentVariants(buildContentVariantsFromPersona(persona, draft, contentVariantIntent));
   }
 
   function useContentVariant(variant: ContentVariant) {
@@ -225,7 +225,7 @@ export function CreativePostWorkspace({ agent, mode }: { agent: OwnerPortfolioAg
     setIsProposingPostCopy(true);
     setPostCopyResult(null);
     try {
-      const result = await proposeReviewedPostCopy(agent, draft, postCopyIntent);
+      const result = await proposeReviewedPostCopy(persona, draft, postCopyIntent);
       setPostCopyResult(result);
     } finally {
       setIsProposingPostCopy(false);
@@ -247,7 +247,7 @@ export function CreativePostWorkspace({ agent, mode }: { agent: OwnerPortfolioAg
     if (!schedulePreview) {
       return;
     }
-    setSavedSchedule(saveLocalPostSchedule(agent.id, schedulePreview));
+    setSavedSchedule(saveLocalPostSchedule(persona.id, schedulePreview));
     setSchedulePublishResult(null);
   }
 
@@ -261,7 +261,7 @@ export function CreativePostWorkspace({ agent, mode }: { agent: OwnerPortfolioAg
       const result = await publishReviewedPostDraft(savedSchedule.candidate.postCandidate);
       setSchedulePublishResult(result);
       if (result.ok) {
-        clearLocalPostSchedule(agent.id);
+        clearLocalPostSchedule(persona.id);
         setSavedSchedule(null);
       }
     } finally {
@@ -378,7 +378,7 @@ export function CreativePostWorkspace({ agent, mode }: { agent: OwnerPortfolioAg
       const result = await uploadReviewedPostMediaResource({
         resourceType: mediaResourceType,
         file: mediaUploadFile,
-        agent,
+        persona,
       });
       setMediaUploadResult(result);
       if (result.ok) {
@@ -416,7 +416,7 @@ export function CreativePostWorkspace({ agent, mode }: { agent: OwnerPortfolioAg
           <p className="m-0 mt-1 text-[length:var(--nimi-type-body-sm-size)] text-[var(--nimi-text-muted)]">
             {isScheduleWorkspace
               ? t('posts.scheduleDescription')
-              : t('posts.agentIntegrated', { agent: agent.handle.value ? `@${agent.handle.value}` : agent.displayName.value || agent.id })}
+              : t('posts.personaIntegrated', { persona: persona.handle.value ? `@${persona.handle.value}` : persona.displayName.value || persona.id })}
           </p>
 
           <div className="mt-4 grid gap-4">

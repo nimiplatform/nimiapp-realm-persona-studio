@@ -22,7 +22,7 @@ export function createStudioRealmBridgeTransport(
       const requestJson = JSON.stringify(request.body ?? {});
       if (typeof requestJson !== 'string') {
         throw createNimiError({
-          message: `Realm Agent Studio Realm request is not JSON-serializable: ${request.methodId}`,
+          message: `Realm Persona Studio Realm request is not JSON-serializable: ${request.methodId}`,
           reasonCode: ReasonCode.SDK_REALM_OPERATION_UNKNOWN,
           actionHint: 'provide_json_realm_request',
           source: 'sdk',
@@ -37,7 +37,7 @@ export function createStudioRealmBridgeTransport(
       }, withNimiRuntimeIdempotencyMetadata({
         timeoutMs: request.timeoutMs,
         signal: request.signal,
-      }, createNimiClientId(`realm-agent-studio-realm-${sanitizeMethodId(request.methodId)}`)));
+      }, createNimiClientId(`realm-persona-studio-realm-${sanitizeMethodId(request.methodId)}`)));
       request.responseMetadataObserver?.({
         ...(result.httpStatus ? { status: String(result.httpStatus) } : {}),
       });
@@ -59,7 +59,7 @@ export function createStudioRealmBridgeTransport(
     },
     serverStream() {
       throw createNimiError({
-        message: 'Realm Agent Studio Realm bridge does not support server streams.',
+        message: 'Realm Persona Studio Realm bridge does not support server streams.',
         reasonCode: ReasonCode.SDK_REALM_FETCH_STREAM_UNSUPPORTED,
         actionHint: 'use_unary_realm_operation',
         source: 'sdk',

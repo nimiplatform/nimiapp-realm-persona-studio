@@ -3,52 +3,36 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { Surface } from '@nimiplatform/kit/ui';
 import { useStudioI18n } from '../i18n/use-studio-i18n.js';
 
-const AgentListPage = lazy(() =>
-  import('../features/agent-list/agent-list-page.js').then((m) => ({ default: m.AgentListPage })),
+const PersonaListPage = lazy(() =>
+  import('../features/persona-list/persona-list-page.js').then((m) => ({ default: m.PersonaListPage })),
 );
-const AgentCreatePage = lazy(() =>
-  import('../features/agent-create/agent-create-page.js').then((m) => ({ default: m.AgentCreatePage })),
+const PersonaCreatePage = lazy(() =>
+  import('../features/persona-create/persona-create-page.js').then((m) => ({ default: m.PersonaCreatePage })),
 );
-const AgentDetailPage = lazy(() =>
-  import('../features/agent-detail/agent-detail-page.js').then((m) => ({ default: m.AgentDetailPage })),
+const PersonaDetailPage = lazy(() =>
+  import('../features/persona-detail/persona-detail-page.js').then((m) => ({ default: m.PersonaDetailPage })),
 );
-const AgentLaunchPage = lazy(() =>
-  import('../features/agent-launch/agent-launch-page.js').then((m) => ({ default: m.AgentLaunchPage })),
+const PersonaSettingsPage = lazy(() =>
+  import('../features/persona-settings/persona-settings-page.js').then((m) => ({ default: m.PersonaSettingsPage })),
 );
-const AgentPublicPreviewPage = lazy(() =>
-  import('../features/agent-preview/agent-public-preview-page.js').then((m) => ({
-    default: m.AgentPublicPreviewPage,
+const PersonaSettingsReviewPage = lazy(() =>
+  import('../features/persona-settings-review/persona-settings-review-page.js').then((m) => ({
+    default: m.PersonaSettingsReviewPage,
   })),
 );
-const AgentSettingsPage = lazy(() =>
-  import('../features/agent-settings/agent-settings-page.js').then((m) => ({ default: m.AgentSettingsPage })),
+const PersonaAssetsPage = lazy(() =>
+  import('../features/persona-assets/persona-assets-page.js').then((m) => ({ default: m.PersonaAssetsPage })),
 );
-const AgentSettingsReviewPage = lazy(() =>
-  import('../features/agent-settings-review/agent-settings-review-page.js').then((m) => ({
-    default: m.AgentSettingsReviewPage,
+const PersonaPostsPage = lazy(() =>
+  import('../features/persona-posts/persona-posts-page.js').then((m) => ({ default: m.PersonaPostsPage })),
+);
+const PersonaPostsSchedulePage = lazy(() =>
+  import('../features/persona-posts-schedule/persona-posts-schedule-page.js').then((m) => ({
+    default: m.PersonaPostsSchedulePage,
   })),
 );
-const AgentAssetsPage = lazy(() =>
-  import('../features/agent-assets/agent-assets-page.js').then((m) => ({ default: m.AgentAssetsPage })),
-);
-const AgentVoiceConfigPage = lazy(() =>
-  import('../features/agent-voice/agent-voice-config-page.js').then((m) => ({ default: m.AgentVoiceConfigPage })),
-);
-const AgentPostsPage = lazy(() =>
-  import('../features/agent-posts/agent-posts-page.js').then((m) => ({ default: m.AgentPostsPage })),
-);
-const AgentPostsSchedulePage = lazy(() =>
-  import('../features/agent-posts-schedule/agent-posts-schedule-page.js').then((m) => ({
-    default: m.AgentPostsSchedulePage,
-  })),
-);
-const AgentContentManagementPage = lazy(() =>
-  import('../features/agent-content-management/agent-content-management-page.js').then((m) => ({
-    default: m.AgentContentManagementPage,
-  })),
-);
-const AgentInsightsPage = lazy(() =>
-  import('../features/agent-insights/agent-insights-page.js').then((m) => ({ default: m.AgentInsightsPage })),
+const PersonaInsightsPage = lazy(() =>
+  import('../features/persona-insights/persona-insights-page.js').then((m) => ({ default: m.PersonaInsightsPage })),
 );
 const StudioAIConfigPage = lazy(() =>
   import('../features/ai-config/studio-ai-config-page.js').then((m) => ({ default: m.StudioAIConfigPage })),
@@ -67,19 +51,15 @@ export function AppRoutes() {
   return (
     <Suspense fallback={<PageFallback />}>
       <Routes>
-        <Route path="/portfolio" element={<AgentListPage />} />
-        <Route path="/portfolio/create" element={<AgentCreatePage />} />
-        <Route path="/portfolio/:agentId" element={<AgentDetailPage />} />
-        <Route path="/portfolio/:agentId/launch" element={<AgentLaunchPage />} />
-        <Route path="/portfolio/:agentId/preview" element={<AgentPublicPreviewPage />} />
-        <Route path="/portfolio/:agentId/settings" element={<AgentSettingsPage />} />
-        <Route path="/portfolio/:agentId/settings/review" element={<AgentSettingsReviewPage />} />
-        <Route path="/portfolio/:agentId/assets" element={<AgentAssetsPage />} />
-        <Route path="/portfolio/:agentId/assets/voice" element={<AgentVoiceConfigPage />} />
-        <Route path="/portfolio/:agentId/posts" element={<AgentPostsPage />} />
-        <Route path="/portfolio/:agentId/posts/manage" element={<AgentContentManagementPage />} />
-        <Route path="/portfolio/:agentId/posts/schedule" element={<AgentPostsSchedulePage />} />
-        <Route path="/portfolio/:agentId/insights" element={<AgentInsightsPage />} />
+        <Route path="/portfolio" element={<PersonaListPage />} />
+        <Route path="/portfolio/create" element={<PersonaCreatePage />} />
+        <Route path="/portfolio/:personaId" element={<PersonaDetailPage />} />
+        <Route path="/portfolio/:personaId/settings" element={<PersonaSettingsPage />} />
+        <Route path="/portfolio/:personaId/settings/review" element={<PersonaSettingsReviewPage />} />
+        <Route path="/portfolio/:personaId/assets" element={<PersonaAssetsPage />} />
+        <Route path="/portfolio/:personaId/posts" element={<PersonaPostsPage />} />
+        <Route path="/portfolio/:personaId/posts/schedule" element={<PersonaPostsSchedulePage />} />
+        <Route path="/portfolio/:personaId/insights" element={<PersonaInsightsPage />} />
         <Route path="/ai-config" element={<StudioAIConfigPage />} />
         <Route path="*" element={<Navigate to="/portfolio" replace />} />
       </Routes>

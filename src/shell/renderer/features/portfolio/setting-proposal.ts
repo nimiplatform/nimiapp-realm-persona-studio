@@ -7,11 +7,11 @@ import {
 } from './studio-ai-runtime.js';
 import { parseStrictRuntimeJsonObject } from './strict-runtime-json.js';
 
-export const OWNER_SETTINGS_SAVE_SOURCE = 'Realm MeService.updateMyRealmAgentSettings';
+export const OWNER_SETTINGS_SAVE_SOURCE = 'Realm WorldCoreController.replaceRealmPersona';
 export const SETTINGS_AI_PROPOSAL_SOURCE = 'Runtime runtime.ai.text.generate';
-export const RAW_RULE_REVIEW_DEFERRED_REASON = 'raw AgentRule review deferred: Realm has not admitted a dedicated owner-scoped rule-content read surface';
+export const RAW_RULE_REVIEW_DEFERRED_REASON = 'raw rule text is not a RealmPersona core field; owner guidelines must be structured before save';
 
-export type OwnerAgentSettingsSnapshot = {
+export type OwnerPersonaSettingsSnapshot = {
   displayName?: string | null;
   description?: string | null;
   greeting?: string | null;
@@ -42,7 +42,7 @@ export type OwnerAgentSettingsSnapshot = {
   };
 };
 
-export type OwnerAgentSettingsDraft = {
+export type OwnerPersonaSettingsDraft = {
   displayName: string;
   description: string;
   greeting: string;
@@ -65,7 +65,7 @@ export type OwnerAgentSettingsDraft = {
 };
 
 export type RuntimeOwnerSettingsProposalPatch = Partial<Pick<
-  OwnerAgentSettingsDraft,
+  OwnerPersonaSettingsDraft,
   | 'displayName'
   | 'description'
   | 'greeting'
@@ -97,7 +97,7 @@ export type RuntimeOwnerSettingsProposal = {
   rawText: string;
 };
 
-export type OwnerAgentSettingsProposalContext = {
+export type OwnerPersonaSettingsProposalContext = {
   ownerScope?: 'owner-created';
   displayName?: string | null;
   handle?: string | null;
@@ -105,14 +105,14 @@ export type OwnerAgentSettingsProposalContext = {
   worldName?: string | null;
 };
 
-export type NormalizedOwnerAgentSettingsDraft = OwnerAgentSettingsDraft & {
+export type NormalizedOwnerPersonaSettingsDraft = OwnerPersonaSettingsDraft & {
   interests: string[];
   goals: string[];
   allowedThemes: string[];
   disallowedThemes: string[];
 };
 
-export type OwnerAgentSettingsUpdateInput = {
+export type OwnerPersonaSettingsUpdateInput = {
   displayName?: string | null;
   description?: string | null;
   greeting?: string | null;
@@ -146,7 +146,7 @@ export type OwnerAgentSettingsUpdateInput = {
 export type OwnerSettingsPayloadPreview = {
   source: typeof OWNER_SETTINGS_SAVE_SOURCE;
   ownerReviewed: true;
-  submitted: OwnerAgentSettingsUpdateInput;
+  submitted: OwnerPersonaSettingsUpdateInput;
   rawRuleReview?: {
     deferred: true;
     reason: typeof RAW_RULE_REVIEW_DEFERRED_REASON;
@@ -159,7 +159,7 @@ export type OwnerSettingsUpdateBuildResult =
     ok: true;
     changed: true;
     source: typeof OWNER_SETTINGS_SAVE_SOURCE;
-    input: OwnerAgentSettingsUpdateInput;
+    input: OwnerPersonaSettingsUpdateInput;
     changedSettingKeys: string[];
     rawRuleTextCandidate?: string;
     preview: OwnerSettingsPayloadPreview;
@@ -188,8 +188,8 @@ const FORBIDDEN_SETTING_KEYS = new Set([
   'lifecycle',
   'state',
   'dna',
-  'agentRule',
-  'agentRules',
+  'personaRule',
+  'personaRules',
   'ruleText',
 ]);
 
@@ -309,7 +309,7 @@ function validateEnum<T extends readonly string[]>(value: string, allowed: T, la
   return normalized as T[number];
 }
 
-export function createOwnerAgentSettingsDraft(settings: OwnerAgentSettingsSnapshot): OwnerAgentSettingsDraft {
+export function createOwnerPersonaSettingsDraft(settings: OwnerPersonaSettingsSnapshot): OwnerPersonaSettingsDraft {
   return {
     displayName: settings.displayName ?? '',
     description: settings.description ?? '',
@@ -333,7 +333,7 @@ export function createOwnerAgentSettingsDraft(settings: OwnerAgentSettingsSnapsh
   };
 }
 
-export function normalizeOwnerAgentSettingsDraft(draft: OwnerAgentSettingsDraft): NormalizedOwnerAgentSettingsDraft {
+export function normalizeOwnerPersonaSettingsDraft(draft: OwnerPersonaSettingsDraft): NormalizedOwnerPersonaSettingsDraft {
   return {
     displayName: compactProfileText(draft.displayName),
     description: normalizeLineText(draft.description),
@@ -380,14 +380,14 @@ export function assertNoForbiddenOwnerSettingsFields(value: unknown): string | n
 }
 
 export function buildRuntimeOwnerSettingsProposalPrompt(input: {
-  agentId: string;
-  current: OwnerAgentSettingsSnapshot;
-  draft: OwnerAgentSettingsDraft;
-  agentContext?: OwnerAgentSettingsProposalContext;
+  personaId: string;
+  current: OwnerPersonaSettingsSnapshot;
+  draft: OwnerPersonaSettingsDraft;
+  personaContext?: OwnerPersonaSettingsProposalContext;
 }): { ok: true; errors: []; payload: StudioTextGeneratePayload } | { ok: false; errors: string[]; payload: null } {
-  const normalizedDraft = normalizeOwnerAgentSettingsDraft(input.draft);
-  const agentContext = input.agentContext;
-  const callParams = resolveStudioTextCallParams('realm-agent-studio.settings-proposal', {
+  const normalizedDraft = normalizeOwnerPersonaSettingsDraft(input.draft);
+  const personaContext = input.personaContext;
+  const callParams = resolveStudioTextCallParams('realm-persona-studio.settings-proposal', {
     maxTokens: 900,
     temperature: 0.2,
   });
@@ -406,7 +406,7 @@ export function buildRuntimeOwnerSettingsProposalPrompt(input: {
     ok: true as const,
     errors: [],
     payload: {
-      surfaceId: 'realm-agent-studio.settings-proposal',
+      surfaceId: 'realm-persona-studio.settings-proposal',
       params: {
         ...callParams,
       },
@@ -414,21 +414,21 @@ export function buildRuntimeOwnerSettingsProposalPrompt(input: {
         model: { modelId: callParams.model },
         messages: [
           studioTextMessage('system', [
-            'You propose owner-reviewed Realm Agent settings only.',
+            'You propose owner-reviewed RealmPersona core settings only.',
             'Return one JSON object with admitted draft field names only.',
             'Allowed fields: displayName, description, greeting, naturalLanguageIntent, publicRole, worldview, personalitySummary, relationshipMode, interestsText, goalsText, contentStyle, formality, responseLength, sentiment, allowedThemesText, disallowedThemesText, targetAudience, positioning, rawRuleTextCandidate, rationale.',
-            'Do not include provider, model, LocalAgent, lifecycle, state, worldId, handle, avatarUrl, profileCoverUrl, dna, agentRule, or agentRules.',
+            'Do not include provider, model, LocalAgent, lifecycle, state, worldId, handle, avatarUrl, profileCoverUrl, dna, personaRule, or personaRules.',
             'The owner must review the result before any Realm save.',
           ].join('\n')),
           studioTextMessage('user', JSON.stringify({
-            agentId: input.agentId,
-            ...(agentContext ? {
-              agentContext: {
-                ownerScope: agentContext.ownerScope ?? 'owner-created',
-                displayName: agentContext.displayName ?? null,
-                handle: agentContext.handle ?? null,
-                worldId: agentContext.worldId ?? null,
-                worldName: agentContext.worldName ?? null,
+            personaId: input.personaId,
+            ...(personaContext ? {
+              personaContext: {
+                ownerScope: personaContext.ownerScope ?? 'owner-created',
+                displayName: personaContext.displayName ?? null,
+                handle: personaContext.handle ?? null,
+                worldId: personaContext.worldId ?? null,
+                worldName: personaContext.worldName ?? null,
               },
             } : {}),
             ownerIntent: intent,
@@ -439,8 +439,8 @@ export function buildRuntimeOwnerSettingsProposalPrompt(input: {
         parameters: buildStudioTextRequestParameters(
           callParams,
           {
-            ...buildStudioRuntimeMetadata('realm-agent-studio.settings-proposal'),
-            domain: 'realm-agent-studio.settings-proposal',
+            ...buildStudioRuntimeMetadata('realm-persona-studio.settings-proposal'),
+            domain: 'realm-persona-studio.settings-proposal',
           },
         ),
       },
@@ -450,7 +450,7 @@ export function buildRuntimeOwnerSettingsProposalPrompt(input: {
 
 export function normalizeRuntimeOwnerSettingsProposal(
   outputText: string,
-  baseDraft: OwnerAgentSettingsDraft,
+  baseDraft: OwnerPersonaSettingsDraft,
 ): RuntimeOwnerSettingsProposal {
   const record = parseStrictRuntimeJsonObject({
     rawText: outputText,
@@ -505,21 +505,21 @@ export function normalizeRuntimeOwnerSettingsProposal(
 }
 
 export function applyRuntimeOwnerSettingsProposal(
-  draft: OwnerAgentSettingsDraft,
+  draft: OwnerPersonaSettingsDraft,
   proposal: RuntimeOwnerSettingsProposal,
-): OwnerAgentSettingsDraft {
+): OwnerPersonaSettingsDraft {
   return {
     ...draft,
     ...proposal.draftPatch,
   };
 }
 
-export function buildRealmOwnerAgentSettingsUpdateInput(
-  draft: OwnerAgentSettingsDraft,
-  current: OwnerAgentSettingsSnapshot,
+export function buildRealmOwnerPersonaSettingsUpdateInput(
+  draft: OwnerPersonaSettingsDraft,
+  current: OwnerPersonaSettingsSnapshot,
 ): OwnerSettingsUpdateBuildResult {
-  const normalized = normalizeOwnerAgentSettingsDraft(draft);
-  const input: OwnerAgentSettingsUpdateInput = {};
+  const normalized = normalizeOwnerPersonaSettingsDraft(draft);
+  const input: OwnerPersonaSettingsUpdateInput = {};
   const changedSettingKeys: string[] = [];
   const errors: string[] = [];
 
@@ -528,14 +528,14 @@ export function buildRealmOwnerAgentSettingsUpdateInput(
   addNullableChange(input, 'greeting', normalizeNullableText(normalized.greeting), current.greeting);
   addNullableChange(input, 'naturalLanguageIntent', normalizeNullableText(normalized.naturalLanguageIntent), current.naturalLanguageIntent);
 
-  const identity: NonNullable<OwnerAgentSettingsUpdateInput['identity']> = {};
+  const identity: NonNullable<OwnerPersonaSettingsUpdateInput['identity']> = {};
   addNullableChange(identity, 'publicRole', normalizeNullableSingleLine(normalized.publicRole), current.identity?.publicRole);
   addNullableChange(identity, 'worldview', normalizeNullableText(normalized.worldview), current.identity?.worldview);
   if (hasOwnKeys(identity)) {
     input.identity = identity;
   }
 
-  const personality: NonNullable<OwnerAgentSettingsUpdateInput['personality']> = {};
+  const personality: NonNullable<OwnerPersonaSettingsUpdateInput['personality']> = {};
   addNullableChange(personality, 'summary', normalizeNullableText(normalized.personalitySummary), current.personality?.summary);
   addNullableChange(personality, 'relationshipMode', normalizeNullableSingleLine(normalized.relationshipMode), current.personality?.relationshipMode);
   addStringArrayChange(personality, 'interests', normalized.interests, current.personality?.interests);
@@ -544,7 +544,7 @@ export function buildRealmOwnerAgentSettingsUpdateInput(
     input.personality = personality;
   }
 
-  const communication: NonNullable<OwnerAgentSettingsUpdateInput['communication']> = {};
+  const communication: NonNullable<OwnerPersonaSettingsUpdateInput['communication']> = {};
   addNullableChange(communication, 'contentStyle', normalizeNullableText(normalized.contentStyle), current.communication?.contentStyle);
   const formality = validateEnum(normalized.formality, FORMALITY_VALUES, 'formality', errors);
   const responseLength = validateEnum(normalized.responseLength, RESPONSE_LENGTH_VALUES, 'response length', errors);
@@ -562,14 +562,14 @@ export function buildRealmOwnerAgentSettingsUpdateInput(
     input.communication = communication;
   }
 
-  const boundaries: NonNullable<OwnerAgentSettingsUpdateInput['boundaries']> = {};
+  const boundaries: NonNullable<OwnerPersonaSettingsUpdateInput['boundaries']> = {};
   addStringArrayChange(boundaries, 'allowedThemes', normalized.allowedThemes, current.boundaries?.allowedThemes);
   addStringArrayChange(boundaries, 'disallowedThemes', normalized.disallowedThemes, current.boundaries?.disallowedThemes);
   if (hasOwnKeys(boundaries)) {
     input.boundaries = boundaries;
   }
 
-  const positioning: NonNullable<OwnerAgentSettingsUpdateInput['positioning']> = {};
+  const positioning: NonNullable<OwnerPersonaSettingsUpdateInput['positioning']> = {};
   addNullableChange(positioning, 'targetAudience', normalizeNullableText(normalized.targetAudience), current.positioning?.targetAudience);
   addNullableChange(positioning, 'positioning', normalizeNullableText(normalized.positioning), current.positioning?.positioning);
   if (hasOwnKeys(positioning)) {

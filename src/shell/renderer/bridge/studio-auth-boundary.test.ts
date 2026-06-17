@@ -45,7 +45,7 @@ describe('studio auth bridge boundary', () => {
   it('fails closed if the kit auth bridge type tries to exchange tokens', async () => {
     await expect(bridge.studioTauriOAuthBridge.oauthTokenExchange({
       provider: 'CODEX',
-      clientId: 'nimi.realm-agent-studio',
+      clientId: 'nimi.realm-persona-studio',
       code: 'code',
       redirectUri: 'http://127.0.0.1/callback',
       codeVerifier: 'verifier',

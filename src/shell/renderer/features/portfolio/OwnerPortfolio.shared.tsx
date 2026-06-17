@@ -3,7 +3,7 @@ import { FieldShell, StatusBadge, Surface, TextareaField, TextField } from '@nim
 import { translateStudioCopy, type StudioTranslateOptions } from '../../i18n/studio-i18n.js';
 import { useStudioI18n } from '../../i18n/use-studio-i18n.js';
 import type { StudioCopyKey } from '../../i18n/studio-copy.js';
-import type { OwnerPortfolioAgent, OwnerPortfolioAgentDetail, SettingField, SettingFieldKey } from './portfolio-data.js';
+import type { OwnerPortfolioPersona, OwnerPortfolioPersonaDetail, SettingField, SettingFieldKey } from './portfolio-data.js';
 
 type StudioTranslator = (key: StudioCopyKey, options?: StudioTranslateOptions) => string;
 
@@ -46,22 +46,22 @@ export function CandidateFactGrid({
   );
 }
 
-export function friendCountLabel(agent: OwnerPortfolioAgent, t: StudioTranslator = translateStudioCopy) {
-  if (agent.friendCount.status === 'available') {
-    return t('shared.friendCount.available', { count: agent.friendCount.value });
+export function friendCountLabel(persona: OwnerPortfolioPersona, t: StudioTranslator = translateStudioCopy) {
+  if (persona.friendCount.status === 'available') {
+    return t('shared.friendCount.available', { count: persona.friendCount.value });
   }
   return t('shared.friendCount.unavailable');
 }
 
-export function detailFriendCountLabel(agent: OwnerPortfolioAgentDetail, t: StudioTranslator = translateStudioCopy) {
-  if (agent.friendCount.status === 'available') {
-    return t('shared.friendCount.available', { count: agent.friendCount.value });
+export function detailFriendCountLabel(persona: OwnerPortfolioPersonaDetail, t: StudioTranslator = translateStudioCopy) {
+  if (persona.friendCount.status === 'available') {
+    return t('shared.friendCount.available', { count: persona.friendCount.value });
   }
   return t('shared.friendCount.unavailable');
 }
 
 export function ownerScopeLabel(
-  scope: OwnerPortfolioAgent['ownerScope'] | OwnerPortfolioAgentDetail['ownerScope'],
+  scope: OwnerPortfolioPersona['ownerScope'] | OwnerPortfolioPersonaDetail['ownerScope'],
   t: StudioTranslator = translateStudioCopy,
 ): string {
   if (scope === 'owner-created') return t('shared.ownerScope.ownerCreated');
@@ -94,7 +94,7 @@ function settingFieldStatusTone(field: SettingField): 'success' | 'neutral' | 'w
   return 'warning';
 }
 
-export function AgentCard({ agent, active, onSelect }: { agent: OwnerPortfolioAgent; active: boolean; onSelect: () => void }) {
+export function PersonaCard({ persona, active, onSelect }: { persona: OwnerPortfolioPersona; active: boolean; onSelect: () => void }) {
   const { t } = useStudioI18n();
   return (
     <Surface
@@ -108,23 +108,23 @@ export function AgentCard({ agent, active, onSelect }: { agent: OwnerPortfolioAg
       onClick={onSelect}
     >
       <div className="h-14 w-14 overflow-hidden rounded-[var(--nimi-radius-md)] bg-[var(--nimi-surface-active)]">
-        {agent.avatarUrl ? <img src={agent.avatarUrl} alt="" className="h-full w-full object-cover" /> : null}
+        {persona.avatarUrl ? <img src={persona.avatarUrl} alt="" className="h-full w-full object-cover" /> : null}
       </div>
       <div className="min-w-0">
         <div className="flex min-w-0 items-center gap-2">
           <div className="ras-break-anywhere truncate text-[length:var(--nimi-type-label-size)] font-[var(--nimi-type-label-weight)]">
-            {agent.displayName}
+            {persona.displayName}
           </div>
-          <StatusBadge tone={agent.friendCount.status === 'available' ? 'success' : 'warning'} shape="dot">
-            {friendCountLabel(agent, t)}
+          <StatusBadge tone={persona.friendCount.status === 'available' ? 'success' : 'warning'} shape="dot">
+            {friendCountLabel(persona, t)}
           </StatusBadge>
         </div>
         <div className="ras-break-anywhere mt-1 text-[length:var(--nimi-type-body-sm-size)] text-[var(--nimi-text-muted)]">
-          @{agent.handle}
+          @{persona.handle}
         </div>
         <div className="mt-2 flex flex-wrap gap-2">
-          <StatusBadge tone="info">{ownerScopeLabel(agent.ownerScope, t)}</StatusBadge>
-          <StatusBadge tone="neutral">{agent.worldName || t('shared.worldUnavailable')}</StatusBadge>
+          <StatusBadge tone="info">{ownerScopeLabel(persona.ownerScope, t)}</StatusBadge>
+          <StatusBadge tone="neutral">{persona.worldName || t('shared.worldUnavailable')}</StatusBadge>
         </div>
       </div>
     </Surface>

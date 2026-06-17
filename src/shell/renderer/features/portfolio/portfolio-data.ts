@@ -1,27 +1,26 @@
 import type {
-  RealmGetMyRealmAgentOperationResponse,
-  RealmListMyRealmAgentsOperationResponse,
+  RealmPersonaDto,
 } from '@nimiplatform/sdk/realm/generated';
 
-export type MyRealmAgentDto = RealmListMyRealmAgentsOperationResponse[number];
-export type MyRealmAgentDetailDto = RealmGetMyRealmAgentOperationResponse;
+export type MyRealmPersonaDto = RealmPersonaDto;
+export type MyRealmPersonaDetailDto = RealmPersonaDto;
 
-export type PortfolioAgentOwnerScope = 'owner-created';
-export type PortfolioAgentListSource = 'Realm MeService.listMyRealmAgents';
-export type PortfolioAgentDetailSource = 'Realm MeService.getMyRealmAgent';
+export type PortfolioPersonaOwnerScope = 'owner-created';
+export type PortfolioPersonaListSource = 'Realm WorldCoreController.listRealmPersonas';
+export type PortfolioPersonaDetailSource = 'Realm WorldCoreController.getRealmPersona';
 
 export type FriendCountMetric =
   | { status: 'available'; value: number }
   | { status: 'source-unavailable'; label: 'friendCount source unavailable' };
 
-export type OwnerPortfolioAgent = {
+export type OwnerPortfolioPersona = {
   id: string;
   displayName: string;
   handle: string;
   coverUrl: string | null;
   avatarUrl: string | null;
-  ownerScope: PortfolioAgentOwnerScope;
-  source: PortfolioAgentListSource;
+  ownerScope: PortfolioPersonaOwnerScope;
+  source: PortfolioPersonaListSource;
   realmState: string | null;
   worldName: string | null;
   updatedAt: string | null;
@@ -52,13 +51,13 @@ export type SettingField = {
   label: string;
   value: string;
   status: 'available' | 'available-empty' | 'source-unavailable';
-  source: PortfolioAgentDetailSource;
+  source: PortfolioPersonaDetailSource;
   readOnly: true;
   unavailableLabel?: 'setting source unavailable';
   emptyLabel?: 'not set';
 };
 
-export type PortfolioAgentVoiceConfig = {
+export type PortfolioPersonaVoiceConfig = {
   voiceId: string;
   description: string;
   emotionEnabled: boolean | null;
@@ -68,7 +67,7 @@ export type PortfolioAgentVoiceConfig = {
   speechRoutePolicy: 'local' | 'cloud' | null;
 };
 
-export type OwnerPortfolioAgentDetail = {
+export type OwnerPortfolioPersonaDetail = {
   id: string;
   displayName: SettingField;
   handle: SettingField;
@@ -79,10 +78,13 @@ export type OwnerPortfolioAgentDetail = {
   world: SettingField;
   state: SettingField;
   avatarUrl: string | null;
-  voice?: PortfolioAgentVoiceConfig;
+  contentHash: string;
+  contentRevision: number;
+  homeWorldId: string;
+  voice?: PortfolioPersonaVoiceConfig;
   friendCount: FriendCountMetric;
-  ownerScope: PortfolioAgentOwnerScope;
-  source: PortfolioAgentDetailSource;
+  ownerScope: PortfolioPersonaOwnerScope;
+  source: PortfolioPersonaDetailSource;
 };
 
 export type PortfolioFailureKind =
@@ -149,54 +151,50 @@ function readFirstStringField(
   return { present: false };
 }
 
-function readWorldName(agentProfile: Record<string, unknown> | null): string | null {
-  const world = readOptionalRecord(agentProfile?.world);
-  return readString(world?.name) || readString(agentProfile?.worldName) || readString(agentProfile?.worldId);
+function readPersonaCore(persona: MyRealmPersonaDto | MyRealmPersonaDetailDto): Record<string, unknown> {
+  return readOptionalRecord(persona.core) ?? {};
 }
 
-function readUpdatedAt(agent: MyRealmAgentDto): string | null {
-  const record = agent as unknown as Record<string, unknown>;
-  const profile = readOptionalRecord(record.agentProfile);
-  const metadata = readOptionalRecord(record.agent);
-  return readString(profile?.updatedAt) || readString(metadata?.updatedAt) || readString(record.createdAt);
+function readWorldName(core: Record<string, unknown>, homeWorldId: string): string | null {
+  const world = readOptionalRecord(core.world);
+  return readString(world?.name) || readString(core.worldName) || readString(core.worldId) || homeWorldId;
 }
 
-export function normalizeFriendCount(agent: MyRealmAgentDto | MyRealmAgentDetailDto): FriendCountMetric {
-  if (Object.prototype.hasOwnProperty.call(agent, 'friendCount') && typeof agent.friendCount === 'number') {
-    return { status: 'available', value: agent.friendCount };
-  }
+export function normalizeFriendCount(_persona: MyRealmPersonaDto | MyRealmPersonaDetailDto): FriendCountMetric {
   return { status: 'source-unavailable', label: 'friendCount source unavailable' };
 }
 
-export function normalizeOwnerPortfolioAgent(
-  agent: MyRealmAgentDto,
-): OwnerPortfolioAgent {
-  const profile = readOptionalRecord(agent.agentProfile);
+export function normalizeOwnerPortfolioPersona(
+  persona: MyRealmPersonaDto,
+): OwnerPortfolioPersona {
+  const core = readPersonaCore(persona);
+  const displayName = readString(core.displayName) || readString(core.name) || persona.id;
+  const handle = readString(core.handle) || persona.id;
 
   return {
-    id: agent.id,
-    displayName: agent.displayName,
-    handle: agent.handle,
-    coverUrl: agent.profileCoverUrl || null,
-    avatarUrl: agent.avatarUrl || null,
+    id: persona.id,
+    displayName,
+    handle,
+    coverUrl: readString(core.profileCoverUrl),
+    avatarUrl: readString(core.avatarUrl) || readString(core.referenceImageUrl),
     ownerScope: 'owner-created',
-    source: 'Realm MeService.listMyRealmAgents',
-    realmState: readString(profile?.state),
-    worldName: readWorldName(profile),
-    updatedAt: readUpdatedAt(agent),
-    friendCount: normalizeFriendCount(agent),
+    source: 'Realm WorldCoreController.listRealmPersonas',
+    realmState: readString(core.state),
+    worldName: readWorldName(core, persona.homeWorldId),
+    updatedAt: persona.updatedAt,
+    friendCount: normalizeFriendCount(persona),
   };
 }
 
-export function normalizeOwnerPortfolio(agents: readonly MyRealmAgentDto[]): OwnerPortfolioAgent[] {
-  return agents.map((agent) => normalizeOwnerPortfolioAgent(agent));
+export function normalizeOwnerPortfolio(personas: readonly MyRealmPersonaDto[]): OwnerPortfolioPersona[] {
+  return personas.map((persona) => normalizeOwnerPortfolioPersona(persona));
 }
 
 function compareText(left: string, right: string): number {
   return left.localeCompare(right, undefined, { sensitivity: 'base', numeric: true });
 }
 
-function compareUpdatedDesc(left: OwnerPortfolioAgent, right: OwnerPortfolioAgent): number {
+function compareUpdatedDesc(left: OwnerPortfolioPersona, right: OwnerPortfolioPersona): number {
   if (left.updatedAt && right.updatedAt) {
     return right.updatedAt.localeCompare(left.updatedAt) || compareText(left.displayName, right.displayName);
   }
@@ -209,7 +207,7 @@ function compareUpdatedDesc(left: OwnerPortfolioAgent, right: OwnerPortfolioAgen
   return compareText(left.displayName, right.displayName);
 }
 
-function compareFriendCount(left: OwnerPortfolioAgent, right: OwnerPortfolioAgent, direction: 'asc' | 'desc'): number {
+function compareFriendCount(left: OwnerPortfolioPersona, right: OwnerPortfolioPersona, direction: 'asc' | 'desc'): number {
   const leftMetric = left.friendCount;
   const rightMetric = right.friendCount;
   const leftAvailable = leftMetric.status === 'available';
@@ -229,44 +227,44 @@ function compareFriendCount(left: OwnerPortfolioAgent, right: OwnerPortfolioAgen
   return compareText(left.displayName, right.displayName);
 }
 
-function agentMatchesQuery(agent: OwnerPortfolioAgent, normalizedQuery: string): boolean {
+function personaMatchesQuery(persona: OwnerPortfolioPersona, normalizedQuery: string): boolean {
   if (!normalizedQuery) {
     return true;
   }
 
   return [
-    agent.id,
-    agent.displayName,
-    agent.handle,
-    agent.worldName || '',
-    agent.realmState || '',
+    persona.id,
+    persona.displayName,
+    persona.handle,
+    persona.worldName || '',
+    persona.realmState || '',
   ].some((value) => value.toLocaleLowerCase().includes(normalizedQuery));
 }
 
-function agentMatchesFilter(agent: OwnerPortfolioAgent, filter: OwnerPortfolioFilter): boolean {
+function personaMatchesFilter(persona: OwnerPortfolioPersona, filter: OwnerPortfolioFilter): boolean {
   if (filter === 'friend-count-available') {
-    return agent.friendCount.status === 'available';
+    return persona.friendCount.status === 'available';
   }
   if (filter === 'friend-count-unavailable') {
-    return agent.friendCount.status === 'source-unavailable';
+    return persona.friendCount.status === 'source-unavailable';
   }
   return true;
 }
 
 export function applyOwnerPortfolioView(
-  agents: OwnerPortfolioAgent[],
+  personas: OwnerPortfolioPersona[],
   controls: OwnerPortfolioViewControls,
-): OwnerPortfolioAgent[] {
+): OwnerPortfolioPersona[] {
   const normalizedQuery = controls.query.trim().toLocaleLowerCase();
-  const visibleAgents = agents.filter((agent) => (
-    agentMatchesQuery(agent, normalizedQuery) && agentMatchesFilter(agent, controls.filter)
+  const visiblePersonas = personas.filter((persona) => (
+    personaMatchesQuery(persona, normalizedQuery) && personaMatchesFilter(persona, controls.filter)
   ));
 
   if (controls.sort === 'realm-order') {
-    return visibleAgents;
+    return visiblePersonas;
   }
 
-  return [...visibleAgents].sort((left, right) => {
+  return [...visiblePersonas].sort((left, right) => {
     if (controls.sort === 'updated-desc') {
       return compareUpdatedDesc(left, right);
     }
@@ -284,7 +282,7 @@ function settingField(
   key: SettingFieldKey,
   label: string,
   field: StringFieldRead,
-  source: PortfolioAgentDetailSource,
+  source: PortfolioPersonaDetailSource,
 ): SettingField {
   if (!field.present) {
     return {
@@ -320,9 +318,9 @@ function settingField(
   };
 }
 
-function readAgentVoiceConfig(profile: Record<string, unknown> | null): PortfolioAgentVoiceConfig {
-  const dna = readOptionalRecord(profile?.dna);
-  const voice = readOptionalRecord(dna?.voice);
+function readPersonaVoiceConfig(core: Record<string, unknown>): PortfolioPersonaVoiceConfig {
+  const dna = readOptionalRecord(core.dna);
+  const voice = readOptionalRecord(core.voice) ?? readOptionalRecord(dna?.voice);
   const speechRoutePolicy = readString(voice?.speechRoutePolicy);
   return {
     voiceId: readString(voice?.voiceId) || '',
@@ -337,40 +335,42 @@ function readAgentVoiceConfig(profile: Record<string, unknown> | null): Portfoli
   };
 }
 
-export function normalizeOwnerPortfolioAgentDetail(
-  agent: MyRealmAgentDetailDto,
-): OwnerPortfolioAgentDetail {
-  const agentRecord = agent as unknown as Record<string, unknown>;
-  const profile = readOptionalRecord(agent.agentProfile);
-  const bio = readFirstStringField(agentRecord, ['bio', 'description']);
-  const source: PortfolioAgentDetailSource = 'Realm MeService.getMyRealmAgent';
+export function normalizeOwnerPortfolioPersonaDetail(
+  persona: MyRealmPersonaDetailDto,
+): OwnerPortfolioPersonaDetail {
+  const core = readPersonaCore(persona);
+  const bio = readFirstStringField(core, ['bio', 'description', 'concept']);
+  const source: PortfolioPersonaDetailSource = 'Realm WorldCoreController.getRealmPersona';
   return {
-    id: agent.id,
-    displayName: settingField('displayName', 'Display name', readStringField(agentRecord, 'displayName'), source),
-    handle: settingField('handle', 'Handle', readStringField(agentRecord, 'handle'), source),
-    bio: settingField('bio', 'Profile description', bio.present ? bio : readFirstStringField(profile, ['bio', 'description']), source),
-    greeting: settingField('greeting', 'Greeting', readStringField(profile, 'greeting'), source),
-    profileCoverUrl: settingField('profileCoverUrl', 'Profile cover URL', readStringField(agentRecord, 'profileCoverUrl'), source),
-    ownership: settingField('ownership', 'Ownership evidence', readStringField(profile, 'ownershipType'), source),
-    world: settingField('world', 'World evidence', readFirstStringField(profile, ['activeWorldId', 'ownerWorldId', 'worldId']), source),
-    state: settingField('state', 'State evidence', readStringField(profile, 'state'), source),
-    avatarUrl: agent.avatarUrl || null,
-    voice: readAgentVoiceConfig(profile),
-    friendCount: normalizeFriendCount(agent),
+    id: persona.id,
+    displayName: settingField('displayName', 'Display name', readFirstStringField(core, ['displayName', 'name']), source),
+    handle: settingField('handle', 'Handle', readStringField(core, 'handle'), source),
+    bio: settingField('bio', 'Profile description', bio, source),
+    greeting: settingField('greeting', 'Greeting', readStringField(core, 'greeting'), source),
+    profileCoverUrl: settingField('profileCoverUrl', 'Profile cover URL', readStringField(core, 'profileCoverUrl'), source),
+    ownership: settingField('ownership', 'Ownership evidence', { present: true, value: 'owner-created RealmPersona' }, source),
+    world: settingField('world', 'World evidence', { present: true, value: persona.homeWorldId }, source),
+    state: settingField('state', 'State evidence', readStringField(core, 'state'), source),
+    avatarUrl: readString(core.avatarUrl) || readString(core.referenceImageUrl),
+    contentHash: persona.contentHash,
+    contentRevision: persona.contentRevision,
+    homeWorldId: persona.homeWorldId,
+    voice: readPersonaVoiceConfig(core),
+    friendCount: normalizeFriendCount(persona),
     ownerScope: 'owner-created',
     source,
   };
 }
 
-export function classifyRealmAgentReadFailure(error: unknown, read: 'portfolio' | 'detail'): PortfolioFailure {
+export function classifyRealmPersonaReadFailure(error: unknown, read: 'portfolio' | 'detail'): PortfolioFailure {
   const status = readHttpStatus(error);
   if (status === 401 || status === 403) {
     return {
       kind: 'permission-missing',
       title: 'Permission missing',
       detail: read === 'detail'
-        ? 'This Runtime account session is not authorized to read that Realm Agent.'
-        : 'This Runtime account session is not authorized to read your Realm Agent portfolio.',
+        ? 'This Runtime account session is not authorized to read that Realm Persona.'
+        : 'This Runtime account session is not authorized to read your Realm Persona portfolio.',
     };
   }
 
@@ -380,7 +380,7 @@ export function classifyRealmAgentReadFailure(error: unknown, read: 'portfolio' 
       kind: 'owner-authority-missing',
       title: 'owner authority missing',
       detail: read === 'detail'
-        ? 'Realm did not prove current-user owner-created authority for this Realm Agent detail.'
+        ? 'Realm did not prove current-user owner-created authority for this Realm Persona detail.'
         : 'Realm did not prove current-user owner-created authority for this portfolio.',
     };
   }
@@ -389,7 +389,7 @@ export function classifyRealmAgentReadFailure(error: unknown, read: 'portfolio' 
     return {
       kind: 'realm-unavailable',
       title: 'Realm unavailable',
-      detail: read === 'detail' ? 'Realm Agent detail could not reach Realm.' : 'Owner portfolio could not reach Realm.',
+      detail: read === 'detail' ? 'Realm Persona detail could not reach Realm.' : 'Owner portfolio could not reach Realm.',
     };
   }
 
@@ -398,7 +398,7 @@ export function classifyRealmAgentReadFailure(error: unknown, read: 'portfolio' 
       kind: 'setting-read-unavailable',
       title: 'Setting read unavailable',
       detail: read === 'detail'
-        ? 'Realm did not return usable read-only setting fields for this agent.'
+        ? 'Realm did not return usable read-only setting fields for this persona.'
         : 'Realm did not return usable portfolio fields.',
     };
   }
@@ -407,15 +407,15 @@ export function classifyRealmAgentReadFailure(error: unknown, read: 'portfolio' 
     kind: read === 'detail' ? 'setting-read-unavailable' : 'unknown',
     title: read === 'detail' ? 'Setting read unavailable' : 'Portfolio unavailable',
     detail: read === 'detail'
-      ? 'Realm did not return a usable user-owned Realm Agent detail.'
+      ? 'Realm did not return a usable user-owned Realm Persona detail.'
       : 'Realm did not return a usable owner portfolio.',
   };
 }
 
 export function classifyPortfolioFailure(error: unknown): PortfolioFailure {
-  return classifyRealmAgentReadFailure(error, 'portfolio');
+  return classifyRealmPersonaReadFailure(error, 'portfolio');
 }
 
-export function classifyAgentDetailFailure(error: unknown): PortfolioFailure {
-  return classifyRealmAgentReadFailure(error, 'detail');
+export function classifyPersonaDetailFailure(error: unknown): PortfolioFailure {
+  return classifyRealmPersonaReadFailure(error, 'detail');
 }

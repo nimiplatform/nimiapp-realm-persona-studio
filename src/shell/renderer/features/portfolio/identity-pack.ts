@@ -1,4 +1,4 @@
-import type { OwnerPortfolioAgentDetail, SettingField } from './portfolio-data.js';
+import type { OwnerPortfolioPersonaDetail, SettingField } from './portfolio-data.js';
 
 export type IdentityPackCandidateKey =
   | 'avatar'
@@ -15,7 +15,7 @@ export type IdentityPackCandidate = {
   publicWrite:
     | 'avatar-url-selection-admitted-after-owner-url-review'
     | 'profile-cover-publication-blocked'
-    | 'resource-agent-binding-blocked'
+    | 'resource-persona-binding-blocked'
     | 'voice-publication-blocked'
     | 'post-attachment-candidate-only';
   sourceFields: string[];
@@ -26,13 +26,13 @@ export type IdentityPackBuildResult =
   | {
     changed: true;
     errors: [];
-    source: 'realm-agent-studio.identity-pack-from-current-agent';
+    source: 'realm-persona-studio.identity-pack-from-current-persona';
     candidates: IdentityPackCandidate[];
   }
   | {
     changed: false;
     errors: string[];
-    source: 'realm-agent-studio.identity-pack-from-current-agent';
+    source: 'realm-persona-studio.identity-pack-from-current-persona';
     candidates: [];
   };
 
@@ -44,23 +44,23 @@ function joinPrompt(parts: string[]): string {
   return parts.map((part) => part.trim()).filter(Boolean).join('\n');
 }
 
-function sourceFields(agent: OwnerPortfolioAgentDetail): string[] {
+function sourceFields(persona: OwnerPortfolioPersonaDetail): string[] {
   return [
-    ...(available(agent.displayName) ? ['displayName'] : []),
-    ...(available(agent.handle) ? ['handle'] : []),
-    ...(available(agent.bio) ? ['bio'] : []),
-    ...(available(agent.greeting) ? ['greeting'] : []),
-    ...(available(agent.world) ? ['world'] : []),
-    ...(agent.avatarUrl ? ['avatarUrl'] : []),
+    ...(available(persona.displayName) ? ['displayName'] : []),
+    ...(available(persona.handle) ? ['handle'] : []),
+    ...(available(persona.bio) ? ['bio'] : []),
+    ...(available(persona.greeting) ? ['greeting'] : []),
+    ...(available(persona.world) ? ['world'] : []),
+    ...(persona.avatarUrl ? ['avatarUrl'] : []),
   ];
 }
 
-export function buildIdentityPackFromAgent(agent: OwnerPortfolioAgentDetail): IdentityPackBuildResult {
-  const displayName = available(agent.displayName);
-  const bio = available(agent.bio);
-  const greeting = available(agent.greeting);
-  const world = available(agent.world);
-  const fields = sourceFields(agent);
+export function buildIdentityPackFromPersona(persona: OwnerPortfolioPersonaDetail): IdentityPackBuildResult {
+  const displayName = available(persona.displayName);
+  const bio = available(persona.bio);
+  const greeting = available(persona.greeting);
+  const world = available(persona.world);
+  const fields = sourceFields(persona);
   const errors: string[] = [];
   if (!displayName) errors.push('display name source unavailable or empty');
   if (!bio && !greeting) errors.push('profile description or greeting required for identity pack');
@@ -68,13 +68,13 @@ export function buildIdentityPackFromAgent(agent: OwnerPortfolioAgentDetail): Id
     return {
       changed: false,
       errors,
-      source: 'realm-agent-studio.identity-pack-from-current-agent',
+      source: 'realm-persona-studio.identity-pack-from-current-persona',
       candidates: [],
     };
   }
 
   const common = joinPrompt([
-    `Realm Agent: ${displayName}`,
+    `Realm Persona: ${displayName}`,
     bio ? `Profile description: ${bio}` : '',
     greeting ? `Greeting voice: ${greeting}` : '',
     world ? `World context: ${world}` : '',
@@ -83,7 +83,7 @@ export function buildIdentityPackFromAgent(agent: OwnerPortfolioAgentDetail): Id
   return {
     changed: true,
     errors: [],
-    source: 'realm-agent-studio.identity-pack-from-current-agent',
+    source: 'realm-persona-studio.identity-pack-from-current-persona',
     candidates: [
       {
         key: 'avatar',
@@ -116,16 +116,16 @@ export function buildIdentityPackFromAgent(agent: OwnerPortfolioAgentDetail): Id
           'Create a portrait/reference image for future visual consistency. Keep it inspectable and neutral.',
         ]),
         reviewState: 'candidate-only',
-        publicWrite: 'resource-agent-binding-blocked',
+        publicWrite: 'resource-persona-binding-blocked',
         sourceFields: fields,
-        blockedReason: 'Resource-to-Agent Binding publication is not admitted for this app.',
+        blockedReason: 'Resource-to-Persona Binding publication is not admitted for this app.',
       },
       {
         key: 'post-image-style',
         title: 'Post Image Style',
         prompt: joinPrompt([
           common,
-          'Create a reusable image style direction for future agent-authored posts.',
+          'Create a reusable image style direction for future persona-authored posts.',
         ]),
         reviewState: 'candidate-only',
         publicWrite: 'post-attachment-candidate-only',

@@ -1,4 +1,4 @@
-import type { OwnerPortfolioAgentDetail } from './portfolio-data.js';
+import type { OwnerPortfolioPersonaDetail } from './portfolio-data.js';
 import type { LocalPostDraftInput } from './post-draft.js';
 
 export type ContentVariant = {
@@ -17,13 +17,13 @@ export type ContentVariantBuildResult =
   | {
     changed: true;
     errors: [];
-    source: 'realm-agent-studio.content-variant-board';
+    source: 'realm-persona-studio.content-variant-board';
     variants: ContentVariant[];
   }
   | {
     changed: false;
     errors: string[];
-    source: 'realm-agent-studio.content-variant-board';
+    source: 'realm-persona-studio.content-variant-board';
     variants: [];
   };
 
@@ -57,26 +57,26 @@ function tags(...items: string[]): string {
   return out.join(', ');
 }
 
-export function buildContentVariantsFromAgent(
-  agent: OwnerPortfolioAgentDetail,
+export function buildContentVariantsFromPersona(
+  persona: OwnerPortfolioPersonaDetail,
   draft: LocalPostDraftInput,
   ownerIntent: string,
 ): ContentVariantBuildResult {
-  const displayName = fieldValue(agent.displayName);
-  const handle = fieldValue(agent.handle);
-  const bio = fieldValue(agent.bio);
-  const greeting = fieldValue(agent.greeting);
+  const displayName = fieldValue(persona.displayName);
+  const handle = fieldValue(persona.handle);
+  const bio = fieldValue(persona.bio);
+  const greeting = fieldValue(persona.greeting);
   const intent = value(ownerIntent);
   const existingCaption = value(draft.caption);
   const anchor = intent || existingCaption || bio || greeting;
   const errors: string[] = [];
-  if (!displayName && !handle) errors.push('agent identity source unavailable or empty');
+  if (!displayName && !handle) errors.push('persona identity source unavailable or empty');
   if (!anchor) errors.push('owner intent, draft caption, profile description, or greeting required');
   if (errors.length > 0) {
     return {
       changed: false,
       errors,
-      source: 'realm-agent-studio.content-variant-board',
+      source: 'realm-persona-studio.content-variant-board',
       variants: [],
     };
   }
@@ -84,12 +84,12 @@ export function buildContentVariantsFromAgent(
   const name = displayName || `@${handle}`;
   const voice = greeting || bio;
   const core = intent || existingCaption || bio || greeting;
-  const baseTagInputs = [handle, name, 'realm-agent', 'studio'];
+  const baseTagInputs = [handle, name, 'realm-persona', 'studio'];
 
   return {
     changed: true,
     errors: [],
-    source: 'realm-agent-studio.content-variant-board',
+    source: 'realm-persona-studio.content-variant-board',
     variants: [
       {
         key: 'announcement',

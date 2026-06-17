@@ -9,7 +9,7 @@ import {
 export const STUDIO_LOCALES = ['en', 'zh'] as const;
 export type StudioLocale = typeof STUDIO_LOCALES[number];
 
-export const STUDIO_LOCALE_STORAGE_KEY = 'nimi.realm-agent-studio.locale';
+export const STUDIO_LOCALE_STORAGE_KEY = 'nimi.realm-persona-studio.locale';
 
 export const studioI18nResources = {
   en: { translation: studioEnglishCopy },

@@ -1,104 +1,27 @@
 ---
-id: SPEC-REALM-AGENT-STUDIO-PRODUCT-SCOPE-001
-title: Realm Agent Studio Product Scope
+id: SPEC-REALM-PERSONA-STUDIO-PRODUCT-SCOPE-001
+title: Realm Persona Studio Product Scope
 status: active
 owner: "@team"
-updated: 2026-05-22
+updated: 2026-06-18
 ---
 
 # Product Scope
 
-## Product Position
-
-Realm Agent Studio is for agent owners who incubate and operate user-owned
-public Realm Agents as durable Agent IP. **[R-RAS-SCOPE-001]** It is not a general agent management
-center. **[R-RAS-SCOPE-002]** It does not manage LocalAgent private runtime forks, generic world-created
-agents, world NPCs, Forge-imported system curation, or Forge package sources.
-
-The primary user is an agent owner who may operate one public Realm Agent or a
-portfolio of public Realm Agents. **[R-RAS-SCOPE-003]** The first-version depth is owner-led: no
-invited editors, no team workspace, and no world-owner override over
-owner-created agents.
-
 ## In Scope
 
-- **[R-RAS-SCOPE-004]** Portfolio scan of user-owned Realm Agents with app-local draft or
-  Realm-created status, selected world, last updated state, and source
-  availability.
-- **[R-RAS-SCOPE-005]** Create Realm Agent with public identity, `OASIS` default world, optional world
-  selection from any Realm `listWorlds` result by product decision,
-  handle availability preflight, selected-world basic setting preview from
-  existing world detail, and visible public fields before submit.
-- **[R-RAS-SCOPE-006]** Update canonical public setting through owner settings input: natural
-  language, structured setting fields, AI proposal/review, and canonical rule
-  review only when an admitted owner-scoped rule-content read surface exists.
-- **[R-RAS-SCOPE-007]** Generate or upload visual/media candidates, keep app-local preview/history
-  only, and mark assets public only after Realm write succeeds.
-- **[R-RAS-SCOPE-008]** Generate voice-demo candidates through Runtime `audio.synthesize` when the
-  route is available, with current SDK use through `media.tts.synthesize`.
-- **[R-RAS-SCOPE-009]** Compose agent-authored Realm posts with canonical attachment envelope targets,
-  human review, moderation status, and Realm publish result.
-- **[R-RAS-SCOPE-010]** App-local single schedule for one human-reviewed local post draft.
-- **[R-RAS-SCOPE-011]** `friendCount` / 好友数 from Realm `UserLiteDto.friendCount` when the source
-  field is present. For RealmAgent users, Realm derives it from human-agent
-  Friendship rows.
-- **[R-RAS-SCOPE-012]** App shell, session posture, navigation, loading/failure states, and SDK client
-  construction must follow `apps/parentos` / `apps/desktop` patterns. **[R-RAS-SCOPE-013]** The app
-  must use `nimi-kit` as the visible interaction system and `@nimiplatform/sdk`
-  for Realm/Runtime access.
+- **[R-RPS-SCOPE-001]** The app manages current-user owned RealmPersona source objects.
+- **[R-RPS-SCOPE-002]** Portfolio list, detail, create, settings, visibility, identity assets, post drafting, Runtime-assisted review, and local schedule workspaces are in scope only when they remain source-backed or candidate-only.
+- **[R-RPS-SCOPE-003]** Home-world selection is read from Realm WorldCore data and submitted into RealmPersona.homeWorldId.
+- **[R-RPS-SCOPE-004]** Owner settings are stored as reviewed RealmPersona.core replacements, not as hidden app state.
+- **[R-RPS-SCOPE-005]** Local creative history and local schedules are desktop-local operation aids and must not claim Realm public state.
 
 ## Out Of Scope
 
-- **[R-RAS-SCOPE-014]** LocalAgent private memory, emotion, cognition, runtime state, or app-specific
-  memory fragments.
-- **[R-RAS-SCOPE-015]** RealmAgent direct chat as a Studio feature.
-- **[R-RAS-SCOPE-016]** Generic world-created agents, world-owned NPCs,
-  Forge-imported system curation, and world maintainer tooling.
-- **[R-RAS-SCOPE-017]** Forge `agentBlueprint` provenance or package-to-RealmAgent import mapping.
-- **[R-RAS-SCOPE-018]** World transfer.
-- **[R-RAS-SCOPE-019]** Team collaboration, invited editors, shared operation, or workspace roles.
-- **[R-RAS-SCOPE-020]** Explicit raw `AgentRule` CRUD as the default owner-facing editing model.
-- **[R-RAS-SCOPE-021]** Setting version history, rollback, diff impact attribution, and productized
-  notification to existing LocalAgent forks.
-- **[R-RAS-SCOPE-022]** Campaign calendars, recurring schedules, auto queues, bulk automation, and
-  post performance analytics.
-- **[R-RAS-SCOPE-023]** Gift, revenue, settlement, payout, and economic surfaces.
-- **[R-RAS-SCOPE-024]** Profile-view metrics until Realm admits view-event authority.
-- **[R-RAS-SCOPE-025]** A standalone visual shell, ad hoc design system, app-owned long-lived auth
-  token storage, or app-level REST bypass around the SDK.
-- **[R-RAS-SCOPE-033]** Forge-imported `WORLD_OWNED` system-agent curation belongs outside
-  Realm Agent Studio and must not become owner quota, listing, detail, settings,
-  media, voice, chat-readiness, or metric truth.
-
-## First-Version Depth
-
-Many-agent operation is list, filter, sort, and manual action. **[R-RAS-SCOPE-026]** Saved filters may
-exist only as app-local view preferences and must not become queue, cohort, or
-campaign truth.
-
-AI is embedded inside concrete owner workflows. **[R-RAS-SCOPE-027]** AI output is draft or candidate
-material until the owner accepts it and the relevant Realm write succeeds.
-
-`AgentRule` remains the canonical Realm truth anchor for owner-created agent
-behavior and policy. **[R-RAS-SCOPE-028]** Studio does not make explicit raw `AgentRule` editing the
-default owner UX. **[R-RAS-SCOPE-029]** The default owner model is settings input, proposal, review,
-and acceptance; raw rule text/lines are review, audit, or expert semantics only
-after an admitted owner-scoped rule-content read surface exists.
-
-Accepted owner setting edits flow through the canonical owner-scoped Realm
-ingress `PATCH /api/me/agents/{agentId}/settings`, which derives or compiles
-canonical truth writes. **[R-RAS-SCOPE-030]** Studio must not reuse `AgentRulesService` world-scoped
-`/api/world/.../rules` CRUD semantics as the default owner save path.
-
-**[R-RAS-SCOPE-031]** Public success requires the authoritative operation to succeed. **[R-RAS-SCOPE-032]** Local draft
-save, local asset preview, AI generation, and local schedule creation are never
-Realm publish or public asset success.
-
-## Source References
-
-- Topic product authority draft:
-  `.nimi/topics/ongoing/2026-05-21-realm-agent-studio-product-flow-storybook/product-document.md`
-- Topic detailed storybook:
-  `.nimi/topics/ongoing/2026-05-21-realm-agent-studio-product-flow-storybook/user-storybook-detailed.md`
-- Topic boundary and forbidden shortcuts:
-  `.nimi/topics/ongoing/2026-05-21-realm-agent-studio-product-flow-storybook/topic.yaml`
+- **[R-RPS-SCOPE-006]** Realm World Studio world-character maintenance is out of scope.
+- **[R-RPS-SCOPE-007]** Forge-imported system curation and preset world authoring are out of scope.
+- **[R-RPS-SCOPE-008]** LocalAgent private memory, emotion, cognition, transcript, and autonomous runtime state are out of scope.
+- **[R-RPS-SCOPE-009]** Direct raw rule editing, CharacterCard import, and rule/truth/projection package publication are out of scope.
+- **[R-RPS-SCOPE-010]** Version history, rollback, economic settlement, team collaboration, recurring campaign automation, and public scheduling authority are out of scope until admitted by a future kernel change.
+- **[R-RPS-SCOPE-011]** Creator/world-maintainer routes cannot be used as fallback for owner persona reads or writes.
+- **[R-RPS-SCOPE-012]** Public profile or account data cannot be used to prove owner write authority for a persona.

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { OwnerPortfolioAgentDetail, SettingField } from './portfolio-data.js';
+import type { OwnerPortfolioPersonaDetail, SettingField } from './portfolio-data.js';
 import { resetStudioAIConfigForTest } from './portfolio-client.test-helpers.js';
 import {
   assertNoForbiddenMediaCandidateFields,
@@ -24,14 +24,17 @@ function settingField(key: SettingField['key'], label: string, value: string): S
     label,
     value,
     status: hasValue ? 'available' : 'available-empty',
-    source: 'Realm MeService.getMyRealmAgent',
+    source: 'Realm WorldCoreController.getRealmPersona',
     readOnly: true,
     emptyLabel: hasValue ? undefined : 'not set',
   };
 }
 
-const agent: OwnerPortfolioAgentDetail = {
-  id: 'agent-1',
+const persona: OwnerPortfolioPersonaDetail = {
+  id: 'persona-1',
+  contentHash: 'hash-persona-1',
+  contentRevision: 1,
+  homeWorldId: 'world-oasis',
   displayName: settingField('displayName', 'Display name', 'Mira'),
   handle: settingField('handle', 'Handle', 'mira'),
   bio: settingField('bio', 'Profile description', 'Public strategist bio'),
@@ -43,7 +46,7 @@ const agent: OwnerPortfolioAgentDetail = {
   avatarUrl: 'https://cdn.example.test/avatar.png',
   friendCount: { status: 'available', value: 7 },
   ownerScope: 'owner-created',
-  source: 'Realm MeService.getMyRealmAgent',
+  source: 'Realm WorldCoreController.getRealmPersona',
 };
 
 function collectKeys(value: unknown, keys = new Set<string>()) {
@@ -67,8 +70,8 @@ describe('media and voice candidate normalization', () => {
     expect(isAllowedMediaCandidateResourceType('VIDEO')).toBe(true);
     expect(isAllowedMediaCandidateResourceType('AUDIO')).toBe(true);
     expect(isAllowedMediaCandidateResourceType('VOICE')).toBe(false);
-    expect(isAllowedMediaCandidateBindingPoint('AGENT_AVATAR')).toBe(true);
-    expect(isAllowedMediaCandidateBindingPoint('AGENT_VOICE_SAMPLE')).toBe(true);
+    expect(isAllowedMediaCandidateBindingPoint('PERSONA_AVATAR')).toBe(true);
+    expect(isAllowedMediaCandidateBindingPoint('PERSONA_VOICE_SAMPLE')).toBe(true);
     expect(isAllowedMediaCandidateBindingPoint('WORLD_SCENE')).toBe(false);
   });
 
@@ -80,18 +83,18 @@ describe('media and voice candidate normalization', () => {
       notes: '  owner reviewed only  ',
     })).toEqual({
       resourceType: 'IMAGE',
-      bindingPoint: 'AGENT_CANDIDATE',
+      bindingPoint: 'PERSONA_CANDIDATE',
       prompt: 'cinematic portrait\nsoft light',
       notes: 'owner reviewed only',
     });
   });
 
-  it('normalizes voice input to Resource(AUDIO) and AGENT_VOICE_SAMPLE', () => {
+  it('normalizes voice input to Resource(AUDIO) and PERSONA_VOICE_SAMPLE', () => {
     expect(normalizeVoiceDemoCandidateInput({
       scriptText: '  Hello\r\nfrom the public demo.  ',
     })).toEqual({
       resourceType: 'AUDIO',
-      bindingPoint: 'AGENT_VOICE_SAMPLE',
+      bindingPoint: 'PERSONA_VOICE_SAMPLE',
       scriptText: 'Hello\nfrom the public demo.',
     });
   });
@@ -107,31 +110,31 @@ describe('reviewed media and voice candidate payloads', () => {
   it('builds an allowlisted Runtime image generation candidate', () => {
     const result = buildReviewedVisualImageGenerationPayload({
       resourceType: 'IMAGE',
-      bindingPoint: 'AGENT_CANDIDATE',
+      bindingPoint: 'PERSONA_CANDIDATE',
       prompt: '  warm public portrait  ',
       notes: 'blue accent',
       aspectRatio: '4:5',
-    }, agent);
+    }, persona);
 
     expect(result).toMatchObject({
       changed: true,
       errors: [],
       payload: {
-        surfaceId: 'realm-agent-studio.visual-image-candidate',
+        surfaceId: 'realm-persona-studio.visual-image-candidate',
         params: {
           model: 'auto',
           aspectRatio: '4:5',
         },
         request: {
           head: {
-            appId: 'nimi.realm-agent-studio',
+            appId: 'nimi.realm-persona-studio',
             modelId: 'auto',
           },
           spec: {
             spec: {
               oneofKind: 'imageGenerate',
               imageGenerate: {
-                prompt: 'warm public portrait\nOwner notes: blue accent\nRealm Agent display name: Mira\nProfile description context: Public strategist bio',
+                prompt: 'warm public portrait\nOwner notes: blue accent\nRealm Persona display name: Mira\nProfile description context: Public strategist bio',
                 n: 1,
                 aspectRatio: '4:5',
                 responseFormat: 'url',
@@ -149,16 +152,16 @@ describe('reviewed media and voice candidate payloads', () => {
   it('builds visual image candidate evidence without claiming public asset truth', () => {
     const result = buildReviewedVisualImageCandidatePayload({
       resourceType: 'IMAGE',
-      bindingPoint: 'AGENT_PORTRAIT',
+      bindingPoint: 'PERSONA_PORTRAIT',
       prompt: 'Reference portrait.',
       notes: '',
       aspectRatio: '1:1',
-    }, agent);
+    }, persona);
 
     expect(result.payload).toMatchObject({
       candidate: true,
       publicTruth: false,
-      source: 'realm-agent-studio.reviewed-visual-image-candidate',
+      source: 'realm-persona-studio.reviewed-visual-image-candidate',
       runtime: {
         capabilityToken: 'image.generate',
         runtimeScenario: 'imageGenerate',
@@ -172,9 +175,9 @@ describe('reviewed media and voice candidate payloads', () => {
         },
         binding: {
           family: 'Binding',
-          hostType: 'AGENT',
+          hostType: 'PERSONA',
           objectType: 'RESOURCE',
-          bindingPoint: 'AGENT_PORTRAIT',
+          bindingPoint: 'PERSONA_PORTRAIT',
           status: 'candidate-only',
         },
       },
@@ -184,23 +187,23 @@ describe('reviewed media and voice candidate payloads', () => {
   it('builds a Live2D avatar package candidate as a design-sheet request only', () => {
     const result = buildReviewedAvatarPackageImageGenerationPayload({
       resourceType: 'IMAGE',
-      bindingPoint: 'AGENT_AVATAR',
+      bindingPoint: 'PERSONA_AVATAR',
       prompt: 'Song literati portrait identity.',
       notes: 'Keep source-backed clothing details.',
       aspectRatio: '1:1',
       packageTarget: 'LIVE2D',
       motionNotes: 'Idle breathing, speaking mouth shapes, listening nod.',
       interactionNotes: 'No unsupported props.',
-    }, agent);
+    }, persona);
 
     expect(result).toMatchObject({
       changed: true,
       errors: [],
       payload: {
-        surfaceId: 'realm-agent-studio.avatar-package-candidate',
+        surfaceId: 'realm-persona-studio.avatar-package-candidate',
         request: {
           head: {
-            appId: 'nimi.realm-agent-studio',
+            appId: 'nimi.realm-persona-studio',
             modelId: 'auto',
           },
           spec: {
@@ -223,19 +226,19 @@ describe('reviewed media and voice candidate payloads', () => {
   it('builds avatar package candidate evidence without claiming published Live2D or VRM assets', () => {
     const result = buildReviewedAvatarPackageCandidatePayload({
       resourceType: 'IMAGE',
-      bindingPoint: 'AGENT_AVATAR',
+      bindingPoint: 'PERSONA_AVATAR',
       prompt: 'Song literati portrait identity.',
       notes: '',
       aspectRatio: '1:1',
       packageTarget: 'VRM',
       motionNotes: '',
       interactionNotes: '',
-    }, agent);
+    }, persona);
 
     expect(result.payload).toMatchObject({
       candidate: true,
       publicTruth: false,
-      source: 'realm-agent-studio.reviewed-avatar-package-candidate',
+      source: 'realm-persona-studio.reviewed-avatar-package-candidate',
       avatarPackage: {
         target: 'VRM',
         status: 'candidate-only',
@@ -252,9 +255,9 @@ describe('reviewed media and voice candidate payloads', () => {
         },
         binding: {
           family: 'Binding',
-          hostType: 'AGENT',
+          hostType: 'PERSONA',
           objectType: 'RESOURCE',
-          bindingPoint: 'AGENT_AVATAR',
+          bindingPoint: 'PERSONA_AVATAR',
           status: 'candidate-only',
         },
         runtimePresentation: {
@@ -273,11 +276,11 @@ describe('reviewed media and voice candidate payloads', () => {
   it('fails closed when Runtime image generation prompt is missing', () => {
     const result = buildReviewedVisualImageGenerationPayload({
       resourceType: 'IMAGE',
-      bindingPoint: 'AGENT_CANDIDATE',
+      bindingPoint: 'PERSONA_CANDIDATE',
       prompt: ' ',
       notes: '',
       aspectRatio: '1:1',
-    }, agent);
+    }, persona);
 
     expect(result).toEqual({
       changed: false,
@@ -295,13 +298,13 @@ describe('reviewed media and voice candidate payloads', () => {
       changed: true,
       errors: [],
       payload: {
-        surfaceId: 'realm-agent-studio.voice-demo-candidate',
+        surfaceId: 'realm-persona-studio.voice-demo-candidate',
         params: {
           model: 'auto',
         },
         request: {
           head: {
-            appId: 'nimi.realm-agent-studio',
+            appId: 'nimi.realm-persona-studio',
             modelId: 'auto',
           },
           spec: {
@@ -334,16 +337,16 @@ describe('reviewed media and voice candidate payloads', () => {
   it('builds a candidate-only Runtime voice payload without public Resource or Binding success', () => {
     const result = buildReviewedVoiceDemoCandidatePayload({
       scriptText: 'Welcome in.',
-    }, agent);
+    }, persona);
 
     expect(result.changed).toBe(true);
     expect(result.payload).toMatchObject({
       candidate: true,
       publicTruth: false,
-      source: 'realm-agent-studio.reviewed-voice-demo-candidate',
-      agentContext: {
-        source: 'Realm MeService.getMyRealmAgent',
-        agentKey: 'agent-1',
+      source: 'realm-persona-studio.reviewed-voice-demo-candidate',
+      personaContext: {
+        source: 'Realm WorldCoreController.getRealmPersona',
+        personaKey: 'persona-1',
         handle: 'mira',
         displayName: 'Mira',
         bio: 'Public strategist bio',
@@ -355,13 +358,13 @@ describe('reviewed media and voice candidate payloads', () => {
         runtimeScenario: 'speechSynthesize',
         source: 'Runtime ScenarioService.executeScenario audio.synthesize',
         request: {
-          surfaceId: 'realm-agent-studio.voice-demo-candidate',
+          surfaceId: 'realm-persona-studio.voice-demo-candidate',
           params: {
             model: 'auto',
           },
           request: {
             head: {
-              appId: 'nimi.realm-agent-studio',
+              appId: 'nimi.realm-persona-studio',
               modelId: 'auto',
             },
             spec: {
@@ -384,9 +387,9 @@ describe('reviewed media and voice candidate payloads', () => {
         },
         binding: {
           family: 'Binding',
-          hostType: 'AGENT',
+          hostType: 'PERSONA',
           objectType: 'RESOURCE',
-          bindingPoint: 'AGENT_VOICE_SAMPLE',
+          bindingPoint: 'PERSONA_VOICE_SAMPLE',
           status: 'candidate-only',
         },
       },

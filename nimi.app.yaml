@@ -1,29 +1,32 @@
-app_id: nimi.realm-agent-studio
-display_name: Realm Agent Studio
+app_id: nimi.realm-persona-studio
+display_name: Realm Persona Studio
 profile: standalone
 manifest_role: submitted-input
 summary: >-
   Owner-facing creation and operation desktop app for user-owned public
-  Realm Agents. Builds agent identity, manages public settings, cultivates
-  visual identity candidates, publishes agent-authored posts, and surfaces
+  Realm Personas. Builds persona identity, manages public settings, cultivates
+  visual identity candidates, publishes persona-authored posts, and surfaces
   source-backed friendCount adoption signals.
 permissions:
   declared_nimi_api_scopes:
-    - scope: realm.me.agents.read
+    - scope: realm.core.personas.read
       qualifier: owner-portfolio
-      purpose: List the signed-in owner's Realm Agents in the studio portfolio.
-    - scope: realm.me.agents.write
+      purpose: List the signed-in owner's Realm Personas in the studio portfolio.
+    - scope: realm.core.personas.write
       qualifier: owner-portfolio
-      purpose: Create, update, and retire user-owned public Realm Agents.
-    - scope: realm.worlds.read
-      qualifier: create-agent-world-selection
-      purpose: List Realm worlds and preview the selected world for reviewed Realm Agent creation.
+      purpose: Create, update, and retire user-owned public Realm Personas.
+    - scope: realm.core.worlds.read
+      qualifier: home-world-selection
+      purpose: Read WorldCore records for persona home-world selection and preview.
+    - scope: realm.core.runtime-snapshots.write
+      qualifier: local-agent-materialization
+      purpose: Create RuntimeSourceSnapshot payloads for localAgent runtime materialization.
     - scope: realm.posts.write
-      qualifier: agent-authored-post
-      purpose: Publish agent-authored posts to the Realm feed after owner review.
+      qualifier: persona-authored-post
+      purpose: Publish persona-authored posts to the Realm feed after owner review.
     - scope: runtime.ai.text.generate
       qualifier: studio-text
-      purpose: Generate candidate agent seeds, settings proposals, and post copy.
+      purpose: Generate candidate persona seeds, settings proposals, and post copy.
     - scope: runtime.ai.executeScenario.image.generate
       qualifier: studio-image
       purpose: Generate reference image, avatar, profile cover, and post-image candidates.

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { resetStudioAIConfigForTest } from './portfolio-client.test-helpers.js';
-import type { OwnerPortfolioAgentDetail } from './portfolio-data.js';
+import type { OwnerPortfolioPersonaDetail } from './portfolio-data.js';
 import {
   applyRuntimePostCopyProposal,
   buildLocalPostScheduleCandidate,
@@ -13,14 +13,17 @@ import {
   type LocalPostDraftInput,
 } from './post-draft.js';
 
-const agent: OwnerPortfolioAgentDetail = {
-  id: 'agent-1',
+const persona: OwnerPortfolioPersonaDetail = {
+  id: 'persona-1',
+  contentHash: 'hash-persona-1',
+  contentRevision: 1,
+  homeWorldId: 'world-oasis',
   displayName: {
     key: 'displayName',
     label: 'Display name',
     value: 'Mira',
     status: 'available',
-    source: 'Realm MeService.getMyRealmAgent',
+    source: 'Realm WorldCoreController.getRealmPersona',
     readOnly: true,
   },
   handle: {
@@ -28,7 +31,7 @@ const agent: OwnerPortfolioAgentDetail = {
     label: 'Handle',
     value: 'mira',
     status: 'available',
-    source: 'Realm MeService.getMyRealmAgent',
+    source: 'Realm WorldCoreController.getRealmPersona',
     readOnly: true,
   },
   bio: {
@@ -36,7 +39,7 @@ const agent: OwnerPortfolioAgentDetail = {
     label: 'Profile description',
     value: '',
     status: 'available-empty',
-    source: 'Realm MeService.getMyRealmAgent',
+    source: 'Realm WorldCoreController.getRealmPersona',
     readOnly: true,
     emptyLabel: 'not set',
   },
@@ -45,7 +48,7 @@ const agent: OwnerPortfolioAgentDetail = {
     label: 'Greeting',
     value: '',
     status: 'available-empty',
-    source: 'Realm MeService.getMyRealmAgent',
+    source: 'Realm WorldCoreController.getRealmPersona',
     readOnly: true,
     emptyLabel: 'not set',
   },
@@ -54,7 +57,7 @@ const agent: OwnerPortfolioAgentDetail = {
     label: 'Profile cover URL',
     value: '',
     status: 'available-empty',
-    source: 'Realm MeService.getMyRealmAgent',
+    source: 'Realm WorldCoreController.getRealmPersona',
     readOnly: true,
     emptyLabel: 'not set',
   },
@@ -63,7 +66,7 @@ const agent: OwnerPortfolioAgentDetail = {
     label: 'Ownership evidence',
     value: 'MASTER_OWNED',
     status: 'available',
-    source: 'Realm MeService.getMyRealmAgent',
+    source: 'Realm WorldCoreController.getRealmPersona',
     readOnly: true,
   },
   world: {
@@ -71,7 +74,7 @@ const agent: OwnerPortfolioAgentDetail = {
     label: 'World evidence',
     value: 'world-1',
     status: 'available',
-    source: 'Realm MeService.getMyRealmAgent',
+    source: 'Realm WorldCoreController.getRealmPersona',
     readOnly: true,
   },
   state: {
@@ -79,13 +82,13 @@ const agent: OwnerPortfolioAgentDetail = {
     label: 'State evidence',
     value: 'ACTIVE',
     status: 'available',
-    source: 'Realm MeService.getMyRealmAgent',
+    source: 'Realm WorldCoreController.getRealmPersona',
     readOnly: true,
   },
   avatarUrl: null,
   friendCount: { status: 'available', value: 7 },
   ownerScope: 'owner-created',
-  source: 'Realm MeService.getMyRealmAgent',
+  source: 'Realm WorldCoreController.getRealmPersona',
 };
 
 const baseInput: LocalPostDraftInput = {
@@ -137,7 +140,7 @@ describe('local post draft normalization', () => {
 
 describe('local post draft validation', () => {
   it('fails closed when human review is missing', () => {
-    const result = validateLocalPostDraft({ ...baseInput, humanReviewed: false }, agent);
+    const result = validateLocalPostDraft({ ...baseInput, humanReviewed: false }, persona);
 
     expect(result.publishable).toBe(false);
     expect(result.errors).toContain('candidate not publishable: human review missing');
@@ -145,7 +148,7 @@ describe('local post draft validation', () => {
   });
 
   it('fails closed when attachment is enabled without a target', () => {
-    const result = validateLocalPostDraft({ ...baseInput, attachmentTargetId: ' ' }, agent);
+    const result = validateLocalPostDraft({ ...baseInput, attachmentTargetId: ' ' }, persona);
 
     expect(result.publishable).toBe(false);
     expect(result.errors).toContain('attachment validation failed: attachment target missing');
@@ -153,15 +156,19 @@ describe('local post draft validation', () => {
   });
 
   it('builds a reviewed candidate payload without forbidden Realm write fields', () => {
-    const result = validateLocalPostDraft(baseInput, agent);
+    const result = validateLocalPostDraft(baseInput, persona);
 
     expect(result.publishable).toBe(true);
     expect(result.payload).toEqual({
       candidate: true,
-      source: 'realm-agent-studio.local-post-draft',
-      agentRef: {
-        source: 'Realm MeService.getMyRealmAgent',
-        agentKey: 'agent-1',
+      source: 'realm-persona-studio.local-post-draft',
+      personaRef: {
+        source: 'Realm WorldCoreController.getRealmPersona',
+        sourceKind: 'realmPersona',
+        sourceId: 'persona-1',
+        sourceWorldId: 'world-oasis',
+        sourceContentHash: 'hash-persona-1',
+        sourceRef: 'realmPersona:world-oasis:persona-1:hash-persona-1',
         handle: 'mira',
         displayName: 'Mira',
       },
@@ -183,7 +190,7 @@ describe('local post draft validation', () => {
   });
 
   it('omits attachment envelope when no local target is selected', () => {
-    const result = validateLocalPostDraft({ ...baseInput, attachmentEnabled: false, attachmentTargetId: '' }, agent);
+    const result = validateLocalPostDraft({ ...baseInput, attachmentEnabled: false, attachmentTargetId: '' }, persona);
 
     expect(result.publishable).toBe(true);
     expect(result.payload?.realmCreatePost.attachments).toEqual([]);
@@ -193,7 +200,7 @@ describe('local post draft validation', () => {
 describe('app-local post schedule candidate', () => {
   it('builds Runtime post copy prompt from owner intent without private state', () => {
     const result = buildRuntimePostCopyPrompt({
-      agent,
+      persona,
       draft: baseInput,
       intent: 'Announce the new artifact pass.',
     });
@@ -204,7 +211,7 @@ describe('app-local post schedule candidate', () => {
         model: { modelId: 'auto' },
         parameters: {
           metadata: {
-            domain: 'realm-agent-studio.post-copy',
+            domain: 'realm-persona-studio.post-copy',
           },
         },
       },
@@ -276,7 +283,7 @@ describe('app-local post schedule candidate', () => {
   });
 
   it('wraps an already reviewed candidate payload without Realm schedule or success fields', () => {
-    const postValidation = validateLocalPostDraft(baseInput, agent);
+    const postValidation = validateLocalPostDraft(baseInput, persona);
     const result = buildLocalPostScheduleCandidate(
       postValidation,
       { localDate: '2026-05-22', localTime: '09:30' },
@@ -286,7 +293,7 @@ describe('app-local post schedule candidate', () => {
     expect(result.scheduleable).toBe(true);
     expect(result.candidate).toMatchObject({
       candidate: true,
-      source: 'realm-agent-studio.local-single-post-schedule',
+      source: 'realm-persona-studio.local-single-post-schedule',
       appLocalOnly: true,
       localRunAt: '2026-05-22T09:30',
       boundary: {
@@ -311,7 +318,7 @@ describe('app-local post schedule candidate', () => {
   });
 
   it('fails closed when the post draft is not reviewed and publishable', () => {
-    const postValidation = validateLocalPostDraft({ ...baseInput, humanReviewed: false }, agent);
+    const postValidation = validateLocalPostDraft({ ...baseInput, humanReviewed: false }, persona);
     const result = buildLocalPostScheduleCandidate(
       postValidation,
       { localDate: '2026-05-22', localTime: '09:30' },
@@ -324,7 +331,7 @@ describe('app-local post schedule candidate', () => {
   });
 
   it('fails closed when the local run time is not future-ish', () => {
-    const postValidation = validateLocalPostDraft(baseInput, agent);
+    const postValidation = validateLocalPostDraft(baseInput, persona);
     const result = buildLocalPostScheduleCandidate(
       postValidation,
       { localDate: '2026-05-21', localTime: '09:30' },

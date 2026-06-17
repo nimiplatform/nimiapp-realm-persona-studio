@@ -1,76 +1,18 @@
 ---
-id: SPEC-REALM-AGENT-STUDIO-POST-PUBLISHING-001
-title: Post Publishing
+id: SPEC-REALM-PERSONA-STUDIO-POST-PUBLISHING-001
+title: Persona Post Publishing
 status: active
 owner: "@team"
-updated: 2026-05-21
+updated: 2026-06-18
 ---
 
-# Post Publishing
+# Persona Post Publishing
 
-Agent Post is a Realm `Post` authored by the public Realm Agent identity.
-Publishing targets Realm Feed; Studio does not create an app-local post truth
-store.
-
-## World Boundary
-
-Post truth remains world-attached. `R-FEED-002` requires canonical `Post` fields
-including `id`, `authorId`, `worldId`, `visibility`, and `createdAt`, and states
-that each Post belongs to exactly one World
-(`.nimi/spec/realm/kernel/feed-contract.md:47` to `:54`).
-
-**[R-RAS-POST-001]** Realm Agent Studio UX must not expose a creator-selected world destination for
-post publishing. `R-FEED-008` makes Create Post the only Post truth-write
-admission entry, uses the authenticated account as author, rejects caller-owned
-`id`, `authorId`, and `worldId`, and resolves `worldId` server-side from author
-context (`.nimi/spec/realm/kernel/feed-contract.md:107` to `:118`).
-
-Generated DTO evidence aligns with this boundary: `CreatePostDto` contains
-`attachments`, optional `caption`, and optional `tags`, but no `worldId`
-(`sdk/src/realm/generated/schema.ts:4668` to `:4676`); the create operation
-returns `PostDto` (`sdk/src/realm/generated/schema.ts:12958` to `:12980`), whose
-read model may carry `worldId` (`sdk/src/realm/generated/schema.ts:5709` to
-`:5725`).
-
-## Attachment Envelope
-
-**[R-RAS-POST-002]** Post attachments must use the canonical attachment envelope. The envelope is
-`targetType + targetId`, distinct from Resource, OwnableAsset, Bundle, and
-Binding (`.nimi/spec/realm/kernel/attachment-contract.md:18` to `:32`).
-
-Feed contract requires post `attachments[*]` to reference a READY `RESOURCE`, a
-readable `ASSET`, or a readable `BUNDLE`, and requires fail-closed validation
-when targets are not ready/readable (`.nimi/spec/realm/kernel/feed-contract.md:56`
-to `:62`; `:120` to `:127`).
-
-Generated DTO evidence:
-
-- `CreatePostAttachmentDto.targetType` and `targetId`
-  (`sdk/src/realm/generated/schema.ts:4668` to `:4676`);
-- `PostAttachmentDto.targetType`, `targetId`, optional display metadata, URL,
-  thumbnail, preview, and dimensions (`sdk/src/realm/generated/schema.ts:5696`
-  to `:5708`).
-
-## Human Review And Schedule
-
-AI-generated post text or media is candidate material. **[R-RAS-POST-003]** It cannot be submitted or
-**[R-RAS-POST-004]** scheduled until a human owner reviews it. **[R-RAS-POST-005]** A schedule is allowed only for one
-reviewed local post draft and **[R-RAS-POST-006]** is app-local. **[R-RAS-POST-007]** Local schedule creation is not Realm
-publish success.
-
-App-local schedule boundary:
-
-- Current generated `CreatePostDto` has `attachments`, optional `caption`, and
-  optional `tags`, but no `scheduledAt`, schedule id, or draft scheduling field
-  (`sdk/src/realm/generated/schema.ts:4668` to `:4676`).
-- **[R-RAS-POST-008]** Studio must not treat app-local scheduling as a Realm scheduling layer or **[R-RAS-POST-009]** as
-  Realm publish success.
-- **[R-RAS-POST-010]** Moderation state is read from Realm publish result. **[R-RAS-POST-011]** Studio must not synthesize
-  moderation success from local review or AI output.
-
-## Publish Success
-
-**[R-RAS-POST-012]** Publish success exists only after Realm Create Post succeeds and returns
-canonical post identity. **[R-RAS-POST-013]** Local draft persistence, AI generation, attachment
-candidate selection, and local schedule creation are separate states and cannot be
-reported as public posting success.
+- **[R-RPS-POST-001]** Post drafts are owner-reviewed local candidates until Realm post creation returns canonical post identity.
+- **[R-RPS-POST-002]** Copy assistance may use only owner-visible persona fields, owner prompt text, and reviewed local draft state.
+- **[R-RPS-POST-003]** Post publish must not expose caller-selected world destination when Realm resolves author/world context server-side.
+- **[R-RPS-POST-004]** Attachment drafts must reference reviewed media candidates or canonical Realm resources; missing resources fail closed.
+- **[R-RPS-POST-005]** The app must not publish from private LocalAgent state, hidden provider state, or unreviewed Runtime output.
+- **[R-RPS-POST-006]** Local schedule stores at most one foreground executable draft per persona and is not Realm schedule authority.
+- **[R-RPS-POST-007]** Publish success requires Realm response identity; a scheduled local action is not publish success.
+- **[R-RPS-POST-008]** Post failures preserve the draft and display source failure without retrying through alternate legacy routes.

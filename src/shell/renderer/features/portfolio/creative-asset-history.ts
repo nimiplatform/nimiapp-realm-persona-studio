@@ -6,7 +6,7 @@ export type CreativeAssetHistoryKind =
 
 export type CreativeAssetHistoryRecord = {
   id: string;
-  agentId: string;
+  personaId: string;
   kind: CreativeAssetHistoryKind;
   label: string;
   createdAt: string;
@@ -21,10 +21,10 @@ export type CreativeAssetHistoryRecord = {
 type LocalStorageLike = Pick<Storage, 'getItem' | 'setItem'>;
 
 const HISTORY_LIMIT = 20;
-const HISTORY_PREFIX = 'realm-agent-studio.creative-asset-history.';
+const HISTORY_PREFIX = 'realm-persona-studio.creative-asset-history.';
 
-function historyKey(agentId: string): string {
-  return `${HISTORY_PREFIX}${agentId}`;
+function historyKey(personaId: string): string {
+  return `${HISTORY_PREFIX}${personaId}`;
 }
 
 function isHistoryKind(value: string): value is CreativeAssetHistoryKind {
@@ -34,7 +34,7 @@ function isHistoryKind(value: string): value is CreativeAssetHistoryKind {
     || value === 'voice-demo-candidate';
 }
 
-function normalizeRecord(value: unknown, agentId: string): CreativeAssetHistoryRecord | null {
+function normalizeRecord(value: unknown, personaId: string): CreativeAssetHistoryRecord | null {
   if (!value || typeof value !== 'object') {
     return null;
   }
@@ -58,7 +58,7 @@ function normalizeRecord(value: unknown, agentId: string): CreativeAssetHistoryR
 
   return {
     id,
-    agentId,
+    personaId,
     kind,
     label,
     createdAt,
@@ -78,18 +78,18 @@ function resolveStorage(storage?: LocalStorageLike | null): LocalStorageLike | n
   return typeof window !== 'undefined' ? window.localStorage : null;
 }
 
-export function loadLocalCreativeAssetHistory(agentId: string, storage?: LocalStorageLike | null): CreativeAssetHistoryRecord[] {
+export function loadLocalCreativeAssetHistory(personaId: string, storage?: LocalStorageLike | null): CreativeAssetHistoryRecord[] {
   const targetStorage = resolveStorage(storage);
   if (!targetStorage) {
     return [];
   }
 
   try {
-    const raw = targetStorage.getItem(historyKey(agentId));
+    const raw = targetStorage.getItem(historyKey(personaId));
     const parsed = raw ? JSON.parse(raw) : [];
     return Array.isArray(parsed)
       ? parsed.flatMap((item) => {
-        const normalized = normalizeRecord(item, agentId);
+        const normalized = normalizeRecord(item, personaId);
         return normalized ? [normalized] : [];
       }).slice(0, HISTORY_LIMIT)
       : [];
@@ -99,8 +99,8 @@ export function loadLocalCreativeAssetHistory(agentId: string, storage?: LocalSt
 }
 
 export function appendLocalCreativeAssetHistory(
-  agentId: string,
-  record: Omit<CreativeAssetHistoryRecord, 'id' | 'agentId' | 'createdAt' | 'publicTruth'> & {
+  personaId: string,
+  record: Omit<CreativeAssetHistoryRecord, 'id' | 'personaId' | 'createdAt' | 'publicTruth'> & {
     id?: string;
     createdAt?: string;
   },
@@ -112,15 +112,15 @@ export function appendLocalCreativeAssetHistory(
   const nextRecord: CreativeAssetHistoryRecord = {
     ...record,
     id,
-    agentId,
+    personaId,
     createdAt,
     publicTruth: false,
   };
-  const current = loadLocalCreativeAssetHistory(agentId, targetStorage);
+  const current = loadLocalCreativeAssetHistory(personaId, targetStorage);
   const next = [nextRecord, ...current].slice(0, HISTORY_LIMIT);
 
   if (targetStorage) {
-    targetStorage.setItem(historyKey(agentId), JSON.stringify(next));
+    targetStorage.setItem(historyKey(personaId), JSON.stringify(next));
   }
 
   return next;

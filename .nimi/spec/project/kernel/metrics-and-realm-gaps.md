@@ -1,144 +1,18 @@
 ---
-id: SPEC-REALM-AGENT-STUDIO-METRICS-GAPS-001
+id: SPEC-REALM-PERSONA-STUDIO-METRICS-GAPS-001
 title: Metrics And Realm Gaps
 status: active
 owner: "@team"
-updated: 2026-05-21
+updated: 2026-06-18
 ---
 
 # Metrics And Realm Gaps
 
-**[R-RAS-METRIC-001]** Studio may show only source-backed owner-visible signals. **[R-RAS-METRIC-002]** Unavailable source is
-a product state, not zero.
-
-## Owner Setting Save Direction
-
-**[R-RAS-METRIC-003]** Owner-facing settings are not admitted as default raw `AgentRule` CRUD. The
-settled product direction is owner settings input, proposal, and review, with
-`AgentRule` retained as canonical Realm truth and expert/audit semantics.
-
-Current Realm source evidence shows world-scoped raw rule CRUD on
-`AgentRulesService`:
-
-- `POST /api/world/by-id/{worldId}/agents/{agentId}/rules`
-  (`sdk/src/realm/generated/operation-map.ts:97` to `:115`);
-- `PATCH /api/world/by-id/{worldId}/agents/{agentId}/rules/{ruleId}`
-  (`sdk/src/realm/generated/operation-map.ts:209` to `:220`).
-
-**[R-RAS-METRIC-004]** Those world-scoped rule operations must not be reused as the Studio default
-owner save path. **[R-RAS-METRIC-005]** The canonical owner-scoped settings/truth ingress is
-`GET/PATCH /api/me/agents/{agentId}/settings`: reads return structured owner
-settings without raw rule-review authority, and writes accept owner-reviewed
-settings input that Realm compiles or derives into profile writes and versioned
-`AgentRule` truth writes.
-
-**[R-RAS-METRIC-006]** Owner-facing canonical rule review has a separate read-side gap. Public Realm
-truth projections expose aggregates only and must not expose `AgentRule`
-content (`.nimi/spec/realm/kernel/truth-contract.md:55` to `:57`). **[R-RAS-METRIC-007]** Studio must
-not reuse world-scoped `AgentRulesService` reads as the default review path.
-**[R-RAS-METRIC-008]** Raw rule review remains deferred until Realm admits a dedicated owner-scoped
-rule-content read surface.
-
-## friendCount
-
-`friendCount` / 好友数 is the only first-version eligible metric and is now
-source backed for owner portfolio reads through Realm support. **[R-RAS-METRIC-009]** Studio may show
-`UserLiteDto.friendCount` only when it is present on Realm DTOs; an absent field
-remains source unavailable, not zero.
-
-Current Realm Social authority admits AgentFriend relationships as ordinary
-Friendship rows and keeps Social separate from runtime/model execution
-(`.nimi/spec/realm/kernel/social-contract.md:18` to `:32`; `:34` to `:52`).
-That relationship authority does not by itself admit an owner-visible aggregate
-count surface for Studio.
-
-Current DTO evidence closes the owner-visible count gap:
-
-- `UserLiteDto.friendCount` is the owner-visible count field
-  (`sdk/src/realm/generated/schema.ts:6769` to `:6786`). For RealmAgent users,
-  Realm derives it from active `HUMAN_AGENT` Friendship rows attached to the
-  user/agent;
-- owner portfolio user projections carry `agent`, `agentProfile`,
-  `profileCoverUrl`, and `friendCount`;
-- `AgentFriendLimitDto.used` is the current user's quota usage, not a public
-  owner-visible count for a specific Realm Agent
-  (`sdk/src/realm/generated/schema.ts:3801` to `:3808`).
-
-**[R-RAS-METRIC-010]** Studio must not infer `friendCount` from LocalAgent forks, adoption data,
-quota usage, or runtime-local state.
-
-## World List
-
-Product decision: all worlds returned by Realm `listWorlds` are selectable for
-Realm Agent creation. Studio admission no longer treats selectable-world
-semantics as an open product gap; it only needs to cite the existing Realm
-world-list and world detail SDK surfaces used by the app.
-
-Current source evidence:
-
-- `GET /api/world` is listed as a secondary Realm truth operation
-  (`.nimi/spec/realm/kernel/tables/truth-contract.yaml:195` to `:198`);
-- generated schema exposes `GET /api/world` / `WorldController_listWorlds` as
-  "List worlds (defaults to ACTIVE)" with optional `status` query and
-  `WorldDetailDto[]` response
-(`sdk/src/realm/generated/schema.ts:2900` to `:2908`;
-  `sdk/src/realm/generated/schema.ts:12117` to `:12135`);
-- `OASIS` is the unique system main world and `GET /api/world/oasis` is a
-  formal truth read surface (`.nimi/spec/realm/kernel/truth-contract.md:47` to
-  `:53`).
-
-Remaining citation/details work:
-
-- whether Studio defaulting to `OASIS` means resolving `GET /api/world/oasis`
-  and submitting its `id`, or whether Realm should admit server-side defaulting;
-- which fields in the existing world detail SDK response constitute "selected
-  world's basic setting";
-- which permission failures and empty-list states apply to Studio creation.
-
-**[R-RAS-METRIC-011]** Studio must not maintain an app-local world catalog as product truth.
-
-## Portfolio Read Surface
-
-Studio uses the current-user owner-owned RealmAgent list/read surface as the
-first-version my-agents / owner-created-agents portfolio read surface. **[R-RAS-METRIC-012]** Its
-backend semantics are current authenticated user scope and `MASTER_OWNED` only;
-`WORLD_OWNED` / NPC agents are not owner portfolio items. Forge-imported
-system curation is outside Realm Agent Studio and must not alter `friendCount`
-or owner-quota semantics.
-
-Current evidence:
-
-- `GET /api/me/agents` / `listMyRealmAgents` returns `UserLiteDto[]`
-  (`sdk/src/realm/generated/schema.ts:2674` to `:2686`; `:11802` to `:11819`);
-- `GET /api/me/agents/{agentId}` / `getMyRealmAgent` returns one `UserLiteDto`
-  (`sdk/src/realm/generated/schema.ts:2694` to `:2706`; `:11822` to `:11844`);
-- `UserLiteDto` carries `agent`, `agentProfile`, `profileCoverUrl`, and
-  `friendCount` projections (`sdk/src/realm/generated/schema.ts:6769` to
-  `:6786`);
-- `AgentOwnershipType` is `MASTER_OWNED | WORLD_OWNED`
-  (`sdk/src/realm/generated/schema.ts:3889`).
-
-**[R-RAS-METRIC-013]** `GET /api/creator/agents` remains creator/world-creator evidence and must not
-be cited as Studio canonical my-agents. **[R-RAS-METRIC-014]** `GET /api/agent/dev/my-agents` remains
-Agent Development evidence and must not pull limit/stats/delete/unbind or
-lifecycle-ish state management semantics into Studio.
-
-Remaining portfolio gaps are pagination/sort/filter semantics, the final
-field-level portfolio DTO, and app-local draft reconciliation. **[R-RAS-METRIC-015]** Studio must not
-map Realm-created agents into a draft/public/paused/archived lifecycle.
-
-## Deferred Metrics
-
-**[R-RAS-METRIC-016]** The following remain out of current admitted scope:
-
-- `friendCount` trend;
-- profile views and page clicks;
-- post performance;
-- reactions, shares, reposts, comments, and likes as portfolio metrics;
-- activity freshness scoring;
-- portfolio health score;
-- gift, revenue, settlement, payout, or economic views;
-- asset or setting change impact attribution.
-
-**[R-RAS-METRIC-017]** If an operation log or recent failure is shown near a metric, it must be labeled
-as operation context, not causal performance evidence.
+- **[R-RPS-METRIC-001]** friendCount is displayed only when Realm core or an admitted social source returns it for the persona.
+- **[R-RPS-METRIC-002]** Missing friendCount renders as source unavailable and must not be zero-filled.
+- **[R-RPS-METRIC-003]** Source availability is a visible state for list and detail surfaces.
+- **[R-RPS-METRIC-004]** World names and world previews must come from WorldCore reads.
+- **[R-RPS-METRIC-005]** The app must not maintain a local world catalog as product authority.
+- **[R-RPS-METRIC-006]** Adoption, quota, friendship, engagement, and revenue metrics remain unavailable until admitted source fields exist.
+- **[R-RPS-METRIC-007]** Bundle-size, build, local-audit, and screenshot results are operational evidence and cannot alter product authority.
+- **[R-RPS-METRIC-008]** Any new metric must define owner, source field, unavailable state, and failure semantics before use.

@@ -5,7 +5,7 @@ export async function startStudioWindowDrag(): Promise<void> {
     return;
   }
   try {
-    await invoke('realm_agent_studio_start_window_drag', {});
+    await invoke('realm_persona_studio_start_window_drag', {});
   } catch {
     // Dragging is best-effort and must not break interaction.
   }

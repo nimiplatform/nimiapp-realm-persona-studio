@@ -1,4 +1,4 @@
-# Realm Agent Studio Nimi Listing Request
+# Realm Persona Studio Nimi Listing Request
 
 This document is a developer-submitted listing request. It is not an approval, release descriptor, permission grant, or install truth.
 
@@ -22,7 +22,7 @@ pnpm dev:renderer    # renderer only (vite dev server on http://127.0.0.1:1450)
 - `nimi.app.yaml` declares app identity and requested Nimi API scopes.
 - `.nimi/admission/submission.yaml` records publish-readiness commands and review inputs.
 - `.nimi/admission/build-profile.yaml` records install, build, and lockfile policy.
-- `.nimi/spec/project/kernel/**` is the canonical product/app authority surface (kernel-style, with the enumerated `R-RAS-<DOMAIN>-NNN` rule catalog at `tables/rule-catalog.yaml`).
+- `.nimi/spec/project/kernel/**` is the canonical product/app authority surface (kernel-style, with the enumerated `R-RPS-<DOMAIN>-NNN` rule catalog at `tables/rule-catalog.yaml`).
 - `dist/nimi-app-submission.json` is produced by `pnpm run pack` after a successful renderer build.
 
 ## Reviewer Boundary

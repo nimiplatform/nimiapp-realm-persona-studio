@@ -34,7 +34,7 @@ export async function ensureStudioBootstrapReady(): Promise<void> {
   await runStudioBootstrap();
   const next = useAppStore.getState();
   if (!next.bootstrapReady) {
-    throw new Error(next.bootstrapError || 'Realm Agent Studio bootstrap did not complete');
+    throw new Error(next.bootstrapError || 'Realm Persona Studio bootstrap did not complete');
   }
 }
 
@@ -46,7 +46,7 @@ export async function ensureStudioRuntimeClientReady(): Promise<void> {
 
   await runStudioBootstrap({ force: true });
   if (!hasStudioNimiClient()) {
-    throw new Error('Realm Agent Studio Nimi client is unavailable after bootstrap retry');
+    throw new Error('Realm Persona Studio Nimi client is unavailable after bootstrap retry');
   }
 }
 

@@ -1,64 +1,63 @@
 import type {
-  RealmAgentControllerCheckHandleOperationResponse,
-  RealmAgentControllerCreateOperationResponse,
+  RealmWorldCoreControllerCreateRealmPersonaOperationResponse,
 } from '@nimiplatform/sdk/realm/generated';
 import { createStudioRealmClient, type StudioRealmSurface } from '@renderer/data/realm-client.js';
 import {
   normalizeOwnerPortfolio,
-  normalizeOwnerPortfolioAgentDetail,
-  type OwnerPortfolioAgent,
-  type OwnerPortfolioAgentDetail,
+  normalizeOwnerPortfolioPersonaDetail,
+  type OwnerPortfolioPersona,
+  type OwnerPortfolioPersonaDetail,
 } from './portfolio-data.js';
 import {
-  REALM_AGENT_CREATE_SOURCE,
-  buildReviewedCreateAgentDna,
-  normalizeCreateRealmAgentDraft,
-  normalizeRealmAgentHandleAvailability,
+  REALM_PERSONA_CREATE_SOURCE,
+  normalizeCreateRealmPersonaDraft,
+  normalizeRealmPersonaHandleAvailability,
   normalizeSelectableWorlds,
   normalizeSelectedWorldPreview,
-  type NormalizedRealmAgentHandleAvailability,
-  type RealmAgentCreationWorldDto,
-  type RealmCreateAgentInput,
-  type ReviewedCreateRealmAgentPayload,
+  type NormalizedRealmPersonaHandleAvailability,
+  type RealmPersonaCreationWorldDto,
+  type RealmCreatePersonaInput,
+  type ReviewedCreateRealmPersonaPayload,
   type SelectableRealmWorld,
   type SelectedWorldPreview,
-} from './create-agent-draft.js';
+} from './create-persona-draft.js';
 import {
-  getOwnerAgentSettings,
-  updateReviewedOwnerAgentSettings,
-  type RealmOwnerAgentSettings,
-  type RealmOwnerAgentSettingsUpdateResult,
+  getOwnerPersonaSettings,
+  updateReviewedOwnerPersonaSettings,
+  type RealmOwnerPersonaSettings,
+  type RealmOwnerPersonaSettingsUpdateResult,
 } from './portfolio-settings-client.js';
 import {
   OWNER_SETTINGS_SAVE_SOURCE,
-  createOwnerAgentSettingsDraft,
+  createOwnerPersonaSettingsDraft,
 } from './setting-proposal.js';
 
 type StudioRealmClient = StudioRealmSurface;
 
-type RealmCreateAgentResponse = RealmAgentControllerCreateOperationResponse;
-type RealmAgentHandleAvailabilityResponse = RealmAgentControllerCheckHandleOperationResponse;
+type RealmCreatePersonaResponse = RealmWorldCoreControllerCreateRealmPersonaOperationResponse;
 
-export type RealmAgentCreateCanonicalFields = {
+export type RealmPersonaCreateCanonicalFields = {
   id: string;
-  state?: string;
-};
+    state?: string;
+    contentHash: string;
+    homeWorldId: string;
+  };
 
-export type RealmAgentCreateResult =
+export type RealmPersonaCreateResult =
   | {
     ok: true;
-    source: typeof REALM_AGENT_CREATE_SOURCE;
-    agent: RealmCreateAgentResponse;
-    canonical: RealmAgentCreateCanonicalFields;
+    source: typeof REALM_PERSONA_CREATE_SOURCE;
+    persona: RealmCreatePersonaResponse;
+    canonical: RealmPersonaCreateCanonicalFields;
   }
   | {
     ok: false;
-    source: typeof REALM_AGENT_CREATE_SOURCE;
-    failure: 'realm-create-agent-failed' | 'realm-create-agent-missing-canonical-id';
+    source: typeof REALM_PERSONA_CREATE_SOURCE;
+    failure: 'realm-create-persona-failed' | 'realm-create-persona-missing-canonical-id';
     message: string;
   };
 
-export type RealmAgentCreateProfileSettingsCompletion =
+export type RealmPersonaCreateProfileSettingsCompletion =
   | {
     status: 'not-requested';
     truthWrite: false;
@@ -66,52 +65,51 @@ export type RealmAgentCreateProfileSettingsCompletion =
   }
   | {
     status: 'already-current';
-    source: 'Realm MeService.getMyRealmAgentSettings';
+    source: 'Realm WorldCoreController.getRealmPersonaSettings';
     truthWrite: false;
     description: string;
-    settings: RealmOwnerAgentSettings;
+    settings: RealmOwnerPersonaSettings;
   }
   | {
     status: 'updated';
     source: typeof OWNER_SETTINGS_SAVE_SOURCE;
     truthWrite: true;
     description: string;
-    submitted: Extract<RealmOwnerAgentSettingsUpdateResult, { ok: true }>['submitted'];
-    settings: RealmOwnerAgentSettings;
+    submitted: Extract<RealmOwnerPersonaSettingsUpdateResult, { ok: true }>['submitted'];
+    settings: RealmOwnerPersonaSettings;
   };
 
-export type RealmAgentCreateWithProfileSettingsResult =
+export type RealmPersonaCreateWithProfileSettingsResult =
   | {
     ok: true;
-    source: typeof REALM_AGENT_CREATE_SOURCE;
-    agent: RealmCreateAgentResponse;
-    canonical: RealmAgentCreateCanonicalFields;
-    profileSettings: RealmAgentCreateProfileSettingsCompletion;
+    source: typeof REALM_PERSONA_CREATE_SOURCE;
+    persona: RealmCreatePersonaResponse;
+    canonical: RealmPersonaCreateCanonicalFields;
+    profileSettings: RealmPersonaCreateProfileSettingsCompletion;
   }
   | {
     ok: false;
-    source: typeof REALM_AGENT_CREATE_SOURCE;
+    source: typeof REALM_PERSONA_CREATE_SOURCE;
     failure:
-      | 'realm-create-agent-failed'
-      | 'realm-create-agent-missing-canonical-id'
-      | 'realm-create-agent-profile-settings-read-failed'
-      | 'realm-create-agent-profile-settings-failed';
+      | 'realm-create-persona-failed'
+      | 'realm-create-persona-missing-canonical-id'
+      | 'realm-create-persona-profile-settings-read-failed'
+      | 'realm-create-persona-profile-settings-failed';
     message: string;
-    createdCanonical?: RealmAgentCreateCanonicalFields;
-    settingsResult?: RealmOwnerAgentSettingsUpdateResult;
+    createdCanonical?: RealmPersonaCreateCanonicalFields;
+    settingsResult?: RealmOwnerPersonaSettingsUpdateResult;
   };
 
-export type RealmAgentHandleAvailabilityResult =
+export type RealmPersonaHandleAvailabilityResult =
   | {
     ok: true;
     truthWrite: false;
-    availability: NormalizedRealmAgentHandleAvailability;
-    response: RealmAgentHandleAvailabilityResponse;
+    availability: NormalizedRealmPersonaHandleAvailability;
   }
   | {
     ok: false;
     truthWrite: false;
-    failure: 'agent-handle-invalid' | 'realm-agent-handle-check-failed' | 'realm-agent-handle-check-invalid-response';
+    failure: 'persona-handle-invalid' | 'realm-persona-handle-check-failed' | 'realm-persona-handle-check-invalid-response';
     message: string;
     availability: null;
   };
@@ -121,115 +119,84 @@ function readOptionalString(record: Record<string, unknown>, key: string): strin
   return typeof value === 'string' && value.trim() ? value : undefined;
 }
 
-export function buildRealmCreateAgentInput(payload: ReviewedCreateRealmAgentPayload): RealmCreateAgentInput {
-  const body = payload.body;
-  const reviewedDna = buildReviewedCreateAgentDna(normalizeCreateRealmAgentDraft({
-    handle: body.handle,
-    displayName: body.displayName,
-    concept: body.concept,
-    description: body.description || '',
-    ruleText: body.rules?.text || '',
-    selectedWorldId: body.worldId,
-    dnaPrimary: body.dnaPrimary,
-    dnaSecondary: body.dnaSecondary ? [...body.dnaSecondary] : [],
-    referenceImageUrl: body.referenceImageUrl || '',
-    originalDescription: '',
-  }));
+export function buildRealmCreatePersonaInput(payload: ReviewedCreateRealmPersonaPayload): RealmCreatePersonaInput {
   return {
-    handle: body.handle,
-    displayName: body.displayName,
-    worldId: body.worldId,
-    concept: body.concept,
-    ownershipType: 'MASTER_OWNED',
-    // Realm requires canonical DNA input; sending only dnaPrimary currently
-    // fails with `AGENT_DNA_REQUIRED` against the live Realm service.
-    dna: reviewedDna,
-    dnaPrimary: body.dnaPrimary,
-    ...(body.dnaSecondary && body.dnaSecondary.length > 0 ? { dnaSecondary: [...body.dnaSecondary] } : {}),
-    ...(body.description ? { description: body.description } : {}),
-    ...(body.rules
-      ? {
-        rules: {
-          format: 'rule-lines-v1',
-          lines: [...body.rules.lines],
-          text: body.rules.text,
-        },
-      }
-      : {}),
-    // Optional reference image produced by the AI-seeded create flow. Schema
-    // (`CreateAgentDto.referenceImageUrl`) accepts a single canonical URL.
-    ...(body.referenceImageUrl ? { referenceImageUrl: body.referenceImageUrl } : {}),
+    homeWorldId: payload.body.homeWorldId,
+    origin: payload.body.origin,
+    core: payload.body.core,
   };
 }
 
-export function normalizeRealmAgentCreateResult(agent: RealmCreateAgentResponse): RealmAgentCreateResult {
-  if (!agent || typeof agent !== 'object') {
+export function normalizeRealmPersonaCreateResult(persona: RealmCreatePersonaResponse): RealmPersonaCreateResult {
+  if (!persona || typeof persona !== 'object') {
     return {
       ok: false,
-      source: REALM_AGENT_CREATE_SOURCE,
-      failure: 'realm-create-agent-missing-canonical-id',
-      message: 'Realm Create Agent returned no agent object.',
+      source: REALM_PERSONA_CREATE_SOURCE,
+      failure: 'realm-create-persona-missing-canonical-id',
+      message: 'Realm create RealmPersona returned no persona object.',
     };
   }
 
-  const record = agent as unknown as Record<string, unknown>;
+  const record = persona as unknown as Record<string, unknown>;
   const id = readOptionalString(record, 'id');
+  const contentHash = readOptionalString(record, 'contentHash');
+  const homeWorldId = readOptionalString(record, 'homeWorldId');
   if (!id) {
     return {
       ok: false,
-      source: REALM_AGENT_CREATE_SOURCE,
-      failure: 'realm-create-agent-missing-canonical-id',
-      message: 'Realm Create Agent returned no canonical agent id.',
+      source: REALM_PERSONA_CREATE_SOURCE,
+      failure: 'realm-create-persona-missing-canonical-id',
+      message: 'Realm create RealmPersona returned no canonical persona id.',
     };
   }
 
   const state = readOptionalString(record, 'state');
+  const core = record.core && typeof record.core === 'object' ? record.core as Record<string, unknown> : {};
   return {
     ok: true,
-    source: REALM_AGENT_CREATE_SOURCE,
-    agent,
+    source: REALM_PERSONA_CREATE_SOURCE,
+    persona,
     canonical: {
       id,
-      ...(state ? { state } : {}),
+      contentHash: contentHash || '',
+      homeWorldId: homeWorldId || '',
+      ...(state ? { state } : readOptionalString(core, 'state') ? { state: readOptionalString(core, 'state') } : {}),
     },
   };
 }
-export async function listOwnerPortfolioAgents(realm: StudioRealmClient = createStudioRealmClient()): Promise<OwnerPortfolioAgent[]> {
-  const agents = await realm.listMyRealmAgents({ path: {} });
-  return normalizeOwnerPortfolio(agents);
+export async function listOwnerPortfolioPersonas(realm: StudioRealmClient = createStudioRealmClient()): Promise<OwnerPortfolioPersona[]> {
+  const personas = await realm.worldCoreControllerListRealmPersonas({ path: {} });
+  return normalizeOwnerPortfolio(personas);
 }
 
-export async function getOwnerPortfolioAgentDetail(
-  agentId: string,
+export async function getOwnerPortfolioPersonaDetail(
+  personaId: string,
   realm: StudioRealmClient = createStudioRealmClient(),
-): Promise<OwnerPortfolioAgentDetail> {
-  const agent = await realm.getMyRealmAgent({ path: { agentId } });
-  return normalizeOwnerPortfolioAgentDetail(agent);
+): Promise<OwnerPortfolioPersonaDetail> {
+  const persona = await realm.worldCoreControllerGetRealmPersona({ path: { personaId: personaId } });
+  return normalizeOwnerPortfolioPersonaDetail(persona);
 }
 
-export async function listCreateRealmAgentSelectableWorlds(
+export async function listCreateRealmPersonaSelectableWorlds(
   realm: StudioRealmClient = createStudioRealmClient(),
 ): Promise<SelectableRealmWorld[]> {
-  const worlds = await realm.worldControllerListWorlds({ path: {} });
-  return normalizeSelectableWorlds(worlds as RealmAgentCreationWorldDto[]);
+  const worlds = await realm.worldCoreControllerListWorldCores({ path: {}, query: { take: 100 } });
+  return normalizeSelectableWorlds(worlds as RealmPersonaCreationWorldDto[]);
 }
 
-export async function getCreateRealmAgentWorldPreview(
+export async function getCreateRealmPersonaWorldPreview(
   worldId: string,
   realm: StudioRealmClient = createStudioRealmClient(),
 ): Promise<SelectedWorldPreview> {
-  const world = await realm.worldControllerGetWorldDetailWithAgents({
-    path: { id: worldId },
-    query: { recommendedAgentLimit: 4 },
-  });
+  const world = await realm.worldCoreControllerGetWorldCore({ path: { worldId } });
   return normalizeSelectedWorldPreview(world);
 }
 
-export async function checkCreateRealmAgentHandleAvailability(
+export async function checkCreateRealmPersonaHandleAvailability(
   handle: string,
   realm: StudioRealmClient = createStudioRealmClient(),
-): Promise<RealmAgentHandleAvailabilityResult> {
-  const normalizedHandle = normalizeCreateRealmAgentDraft({
+): Promise<RealmPersonaHandleAvailabilityResult> {
+  const normalizedHandle = normalizeCreateRealmPersonaDraft({
     handle,
     displayName: '',
     concept: '',
@@ -245,73 +212,70 @@ export async function checkCreateRealmAgentHandleAvailability(
     return {
       ok: false,
       truthWrite: false,
-      failure: 'agent-handle-invalid',
-      message: 'Agent handle check requires a non-empty normalized handle.',
+      failure: 'persona-handle-invalid',
+      message: 'Persona handle check requires a non-empty normalized handle.',
       availability: null,
     };
   }
 
   try {
-    const response = await realm.agentControllerCheckHandle({
-      path: {},
-      query: { handle: normalizedHandle },
+    const personas = await realm.worldCoreControllerListRealmPersonas({ path: {} });
+    const unavailable = personas.some((persona) => {
+      const core = persona.core && typeof persona.core === 'object' ? persona.core as Record<string, unknown> : {};
+      const handle = readOptionalString(core, 'handle');
+      return handle?.toLocaleLowerCase() === normalizedHandle;
     });
-    if (!response || typeof response !== 'object' || typeof (response as unknown as Record<string, unknown>).available !== 'boolean') {
-      return {
-        ok: false,
-        truthWrite: false,
-        failure: 'realm-agent-handle-check-invalid-response',
-        message: 'Realm handle availability check did not return an availability boolean.',
-        availability: null,
-      };
-    }
+    const response = {
+      available: !unavailable,
+      normalized: normalizedHandle,
+      ...(unavailable ? { message: 'A RealmPersona with this handle already exists in the owner portfolio.' } : {}),
+    };
     return {
       ok: true,
       truthWrite: false,
-      availability: normalizeRealmAgentHandleAvailability(normalizedHandle, response),
-      response,
+      availability: normalizeRealmPersonaHandleAvailability(normalizedHandle, response),
     };
   } catch (error) {
     return {
       ok: false,
       truthWrite: false,
-      failure: 'realm-agent-handle-check-failed',
-      message: error instanceof Error ? error.message : 'Realm handle availability check failed.',
+      failure: 'realm-persona-handle-check-failed',
+      message: error instanceof Error ? error.message : 'RealmPersona handle availability check failed.',
       availability: null,
     };
   }
 }
 
-export async function createReviewedRealmAgent(
-  payload: ReviewedCreateRealmAgentPayload,
+export async function createReviewedRealmPersona(
+  payload: ReviewedCreateRealmPersonaPayload,
   realm: StudioRealmClient = createStudioRealmClient(),
-): Promise<RealmAgentCreateResult> {
+): Promise<RealmPersonaCreateResult> {
   try {
-    const agent = await realm.agentControllerCreate({
+    const persona = await realm.worldCoreControllerCreateRealmPersona({
       path: {},
-      body: buildRealmCreateAgentInput(payload),
+      body: buildRealmCreatePersonaInput(payload),
     });
-    return normalizeRealmAgentCreateResult(agent);
+    return normalizeRealmPersonaCreateResult(persona);
   } catch (error) {
     return {
       ok: false,
-      source: REALM_AGENT_CREATE_SOURCE,
-      failure: 'realm-create-agent-failed',
-      message: error instanceof Error ? error.message : 'Realm Create Agent failed.',
+      source: REALM_PERSONA_CREATE_SOURCE,
+      failure: 'realm-create-persona-failed',
+      message: error instanceof Error ? error.message : 'Realm create RealmPersona failed.',
     };
   }
 }
 
-export async function createReviewedRealmAgentWithProfileSettings(
-  payload: ReviewedCreateRealmAgentPayload,
+export async function createReviewedRealmPersonaWithProfileSettings(
+  payload: ReviewedCreateRealmPersonaPayload,
   realm: StudioRealmClient = createStudioRealmClient(),
-): Promise<RealmAgentCreateWithProfileSettingsResult> {
-  const createResult = await createReviewedRealmAgent(payload, realm);
+): Promise<RealmPersonaCreateWithProfileSettingsResult> {
+  const createResult = await createReviewedRealmPersona(payload, realm);
   if (!createResult.ok) {
     return createResult;
   }
 
-  const profileDescription = (payload.publicFields.description || payload.body.description || '').trim();
+  const profileDescription = (payload.publicFields.description || '').trim();
   if (!profileDescription) {
     return {
       ...createResult,
@@ -323,14 +287,14 @@ export async function createReviewedRealmAgentWithProfileSettings(
     };
   }
 
-  let currentSettings: RealmOwnerAgentSettings;
+  let currentSettings: RealmOwnerPersonaSettings;
   try {
-    currentSettings = await getOwnerAgentSettings(createResult.canonical.id, realm);
+    currentSettings = await getOwnerPersonaSettings(createResult.canonical.id, realm);
   } catch (error) {
     return {
       ok: false,
-      source: REALM_AGENT_CREATE_SOURCE,
-      failure: 'realm-create-agent-profile-settings-read-failed',
+      source: REALM_PERSONA_CREATE_SOURCE,
+      failure: 'realm-create-persona-profile-settings-read-failed',
       message: error instanceof Error ? error.message : 'Realm owner settings read failed after create.',
       createdCanonical: createResult.canonical,
     };
@@ -341,7 +305,7 @@ export async function createReviewedRealmAgentWithProfileSettings(
       ...createResult,
       profileSettings: {
         status: 'already-current',
-        source: 'Realm MeService.getMyRealmAgentSettings',
+        source: 'Realm WorldCoreController.getRealmPersonaSettings',
         truthWrite: false,
         description: profileDescription,
         settings: currentSettings,
@@ -350,10 +314,10 @@ export async function createReviewedRealmAgentWithProfileSettings(
   }
 
   const settingsDraft = {
-    ...createOwnerAgentSettingsDraft(currentSettings),
+    ...createOwnerPersonaSettingsDraft(currentSettings),
     description: profileDescription,
   };
-  const settingsResult = await updateReviewedOwnerAgentSettings(
+  const settingsResult = await updateReviewedOwnerPersonaSettings(
     createResult.canonical.id,
     settingsDraft,
     currentSettings,
@@ -362,8 +326,8 @@ export async function createReviewedRealmAgentWithProfileSettings(
   if (!settingsResult.ok) {
     return {
       ok: false,
-      source: REALM_AGENT_CREATE_SOURCE,
-      failure: 'realm-create-agent-profile-settings-failed',
+      source: REALM_PERSONA_CREATE_SOURCE,
+      failure: 'realm-create-persona-profile-settings-failed',
       message: settingsResult.message,
       createdCanonical: createResult.canonical,
       settingsResult,

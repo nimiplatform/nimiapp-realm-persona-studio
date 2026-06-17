@@ -1,33 +1,44 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyOwnerPortfolioView,
-  classifyAgentDetailFailure,
+  classifyPersonaDetailFailure,
   classifyPortfolioFailure,
-  normalizeOwnerPortfolioAgent,
-  normalizeOwnerPortfolioAgentDetail,
-  type MyRealmAgentDto,
+  normalizeOwnerPortfolioPersona,
+  normalizeOwnerPortfolioPersonaDetail,
+  type MyRealmPersonaDto,
 } from './portfolio-data.js';
 
-const baseAgent: MyRealmAgentDto = {
-  id: 'agent-1',
-  handle: 'mira',
-  displayName: 'Mira',
+const basePersona: MyRealmPersonaDto = {
+  id: 'persona-1',
+  schemaVersion: 'realm-persona-core/v1',
+  contentRevision: 1,
+  contentHash: 'hash-persona-1',
+  origin: { kind: 'manual', sourceId: 'test' },
+  ownerId: 'user-1',
+  homeWorldId: 'world-oasis',
+  core: {
+    handle: 'mira',
+    displayName: 'Mira',
+  },
   createdAt: '2026-05-21T00:00:00.000Z',
-  isAgent: true,
+  updatedAt: '2026-05-21T00:00:00.000Z',
 };
 
 describe('owner portfolio normalization', () => {
-  it('keeps present friendCount as the only first-version metric', () => {
-    const agent = normalizeOwnerPortfolioAgent({ ...baseAgent, friendCount: 12 });
+  it('keeps friendCount source-unavailable for RealmPersona list data', () => {
+    const persona = normalizeOwnerPortfolioPersona(basePersona);
 
-    expect(agent.friendCount).toEqual({ status: 'available', value: 12 });
-    expect(agent.source).toBe('Realm MeService.listMyRealmAgents');
+    expect(persona.friendCount).toEqual({
+      status: 'source-unavailable',
+      label: 'friendCount source unavailable',
+    });
+    expect(persona.source).toBe('Realm WorldCoreController.listRealmPersonas');
   });
 
   it('does not coerce absent friendCount to zero', () => {
-    const agent = normalizeOwnerPortfolioAgent(baseAgent);
+    const persona = normalizeOwnerPortfolioPersona(basePersona);
 
-    expect(agent.friendCount).toEqual({
+    expect(persona.friendCount).toEqual({
       status: 'source-unavailable',
       label: 'friendCount source unavailable',
     });
@@ -43,106 +54,98 @@ describe('owner portfolio normalization', () => {
 });
 
 describe('owner portfolio local view controls', () => {
-  const agents = [
-    normalizeOwnerPortfolioAgent({
-      ...baseAgent,
-      id: 'agent-1',
-      displayName: 'Mira',
-      handle: 'mira',
-      friendCount: 12,
-      agentProfile: { worldId: 'oasis', state: 'ACTIVE' },
+  const personas = [
+    normalizeOwnerPortfolioPersona({
+      ...basePersona,
+      id: 'persona-1',
+      core: { handle: 'mira', displayName: 'Mira', worldName: 'oasis', state: 'ACTIVE' },
     }),
-    normalizeOwnerPortfolioAgent({
-      ...baseAgent,
-      id: 'agent-2',
-      displayName: 'Zed',
-      handle: 'zed',
-      friendCount: 3,
-      agentProfile: { worldId: 'workshop', state: 'READY' },
+    normalizeOwnerPortfolioPersona({
+      ...basePersona,
+      id: 'persona-2',
+      contentHash: 'hash-persona-2',
+      core: { handle: 'zed', displayName: 'Zed', worldName: 'workshop', state: 'READY' },
     }),
-    normalizeOwnerPortfolioAgent({
-      ...baseAgent,
-      id: 'agent-3',
-      displayName: 'Aster',
-      handle: 'aster',
-      agentProfile: { worldId: 'oasis', state: 'ACTIVE' },
+    normalizeOwnerPortfolioPersona({
+      ...basePersona,
+      id: 'persona-3',
+      contentHash: 'hash-persona-3',
+      core: { handle: 'aster', displayName: 'Aster', worldName: 'oasis', state: 'ACTIVE' },
     }),
   ];
 
   it('searches local display, handle, world, and state fields without mutating the source list', () => {
-    const result = applyOwnerPortfolioView(agents, {
+    const result = applyOwnerPortfolioView(personas, {
       query: 'oasis',
       filter: 'all',
       sort: 'display-name-asc',
     });
 
-    expect(result.map((agent) => agent.id)).toEqual(['agent-3', 'agent-1']);
-    expect(agents.map((agent) => agent.id)).toEqual(['agent-1', 'agent-2', 'agent-3']);
+    expect(result.map((persona) => persona.id)).toEqual(['persona-3', 'persona-1']);
+    expect(personas.map((persona) => persona.id)).toEqual(['persona-1', 'persona-2', 'persona-3']);
   });
 
-  it('searches canonical agent id for manual lookup', () => {
-    const result = applyOwnerPortfolioView(agents, {
-      query: 'agent-2',
+  it('searches canonical persona id for manual lookup', () => {
+    const result = applyOwnerPortfolioView(personas, {
+      query: 'persona-2',
       filter: 'all',
       sort: 'display-name-asc',
     });
 
-    expect(result.map((agent) => agent.id)).toEqual(['agent-2']);
+    expect(result.map((persona) => persona.id)).toEqual(['persona-2']);
   });
 
   it('preserves Realm list order until an owner selects a local sort', () => {
-    const result = applyOwnerPortfolioView(agents, {
+    const result = applyOwnerPortfolioView(personas, {
       query: '',
       filter: 'all',
       sort: 'realm-order',
     });
 
-    expect(result.map((agent) => agent.id)).toEqual(['agent-1', 'agent-2', 'agent-3']);
+    expect(result.map((persona) => persona.id)).toEqual(['persona-1', 'persona-2', 'persona-3']);
   });
 
   it('filters source unavailable friendCount as unavailable rather than zero', () => {
-    const result = applyOwnerPortfolioView(agents, {
+    const result = applyOwnerPortfolioView(personas, {
       query: '',
       filter: 'friend-count-unavailable',
       sort: 'display-name-asc',
     });
 
-    expect(result.map((agent) => agent.id)).toEqual(['agent-3']);
+    expect(result.map((persona) => persona.id)).toEqual(['persona-3', 'persona-1', 'persona-2']);
     expect(result[0]?.friendCount).toEqual({
       status: 'source-unavailable',
       label: 'friendCount source unavailable',
     });
   });
 
-  it('sorts available friendCount values and keeps unavailable values after them', () => {
-    const descending = applyOwnerPortfolioView(agents, {
+  it('keeps friendCount sorting deterministic when all values are unavailable', () => {
+    const descending = applyOwnerPortfolioView(personas, {
       query: '',
       filter: 'all',
       sort: 'friend-count-desc',
     });
-    const ascending = applyOwnerPortfolioView(agents, {
+    const ascending = applyOwnerPortfolioView(personas, {
       query: '',
       filter: 'all',
       sort: 'friend-count-asc',
     });
 
-    expect(descending.map((agent) => agent.id)).toEqual(['agent-1', 'agent-2', 'agent-3']);
-    expect(ascending.map((agent) => agent.id)).toEqual(['agent-2', 'agent-1', 'agent-3']);
+    expect(descending.map((persona) => persona.id)).toEqual(['persona-3', 'persona-1', 'persona-2']);
+    expect(ascending.map((persona) => persona.id)).toEqual(['persona-3', 'persona-1', 'persona-2']);
   });
 });
 
 describe('owner portfolio detail normalization', () => {
-  it('maps settings and evidence from getMyRealmAgent as read-only fields', () => {
-    const detail = normalizeOwnerPortfolioAgentDetail({
-      ...baseAgent,
-      bio: 'Quiet strategist',
-      profileCoverUrl: 'https://cdn.example.test/cover.png',
-      friendCount: 7,
-      agentProfile: {
+  it('maps settings and evidence from RealmPersona core as read-only fields', () => {
+    const detail = normalizeOwnerPortfolioPersonaDetail({
+      ...basePersona,
+      core: {
+        ...basePersona.core,
+        bio: 'Quiet strategist',
+        profileCoverUrl: 'https://cdn.example.test/cover.png',
         greeting: 'Welcome in.',
-        ownershipType: 'MASTER_OWNED',
         state: 'ACTIVE',
-        worldId: 'world-1',
         dna: {
           voice: {
             voiceId: 'zh_narrator',
@@ -155,16 +158,16 @@ describe('owner portfolio detail normalization', () => {
           },
         },
       },
-    } as unknown as MyRealmAgentDto);
+    });
 
-    expect(detail.source).toBe('Realm MeService.getMyRealmAgent');
+    expect(detail.source).toBe('Realm WorldCoreController.getRealmPersona');
     expect(detail.displayName).toMatchObject({ value: 'Mira', readOnly: true, status: 'available' });
     expect(detail.handle.value).toBe('mira');
     expect(detail.bio.value).toBe('Quiet strategist');
     expect(detail.greeting.value).toBe('Welcome in.');
     expect(detail.profileCoverUrl.value).toBe('https://cdn.example.test/cover.png');
-    expect(detail.ownership.value).toBe('MASTER_OWNED');
-    expect(detail.world.value).toBe('world-1');
+    expect(detail.ownership.value).toBe('owner-created RealmPersona');
+    expect(detail.world.value).toBe('world-oasis');
     expect(detail.state.value).toBe('ACTIVE');
     expect(detail.voice).toEqual({
       voiceId: 'zh_narrator',
@@ -175,11 +178,14 @@ describe('owner portfolio detail normalization', () => {
       speechModelId: 'speech/qwen3tts',
       speechRoutePolicy: 'local',
     });
-    expect(detail.friendCount).toEqual({ status: 'available', value: 7 });
+    expect(detail.friendCount).toEqual({
+      status: 'source-unavailable',
+      label: 'friendCount source unavailable',
+    });
   });
 
   it('keeps missing settings and friendCount source-unavailable', () => {
-    const detail = normalizeOwnerPortfolioAgentDetail(baseAgent);
+    const detail = normalizeOwnerPortfolioPersonaDetail(basePersona);
 
     expect(detail.bio).toMatchObject({
       status: 'source-unavailable',
@@ -188,8 +194,8 @@ describe('owner portfolio detail normalization', () => {
     });
     expect(detail.greeting.status).toBe('source-unavailable');
     expect(detail.profileCoverUrl.status).toBe('source-unavailable');
-    expect(detail.ownership.status).toBe('source-unavailable');
-    expect(detail.world.status).toBe('source-unavailable');
+    expect(detail.ownership.status).toBe('available');
+    expect(detail.world.status).toBe('available');
     expect(detail.state.status).toBe('source-unavailable');
     expect(detail.voice).toEqual({
       voiceId: '',
@@ -207,15 +213,15 @@ describe('owner portfolio detail normalization', () => {
   });
 
   it('does not treat present empty setting fields as source unavailable', () => {
-    const detail = normalizeOwnerPortfolioAgentDetail({
-      ...baseAgent,
-      displayName: '',
-      handle: '',
-      bio: '',
-      profileCoverUrl: '',
-      agentProfile: {
+    const detail = normalizeOwnerPortfolioPersonaDetail({
+      ...basePersona,
+      core: {
+        displayName: '',
+        handle: '',
+        bio: '',
+        profileCoverUrl: '',
         greeting: '',
-        worldId: '',
+        state: '',
       },
     });
 
@@ -228,26 +234,26 @@ describe('owner portfolio detail normalization', () => {
     });
     expect(detail.greeting.status).toBe('available-empty');
     expect(detail.profileCoverUrl.status).toBe('available-empty');
-    expect(detail.world.status).toBe('available-empty');
-    expect(detail.ownership.status).toBe('source-unavailable');
-    expect(detail.state.status).toBe('source-unavailable');
+    expect(detail.world.status).toBe('available');
+    expect(detail.ownership.status).toBe('available');
+    expect(detail.state.status).toBe('available-empty');
     expect(detail.bio).not.toHaveProperty('unavailableLabel');
   });
 
   it('does not treat world display names as write-safe world id evidence', () => {
-    const detail = normalizeOwnerPortfolioAgentDetail({
-      ...baseAgent,
-      agentProfile: {
+    const detail = normalizeOwnerPortfolioPersonaDetail({
+      ...basePersona,
+      core: {
         worldName: 'OASIS',
-      } as unknown as NonNullable<MyRealmAgentDto['agentProfile']>,
+      },
     });
 
-    expect(detail.world.status).toBe('source-unavailable');
-    expect(detail.world.value).toBe('');
+    expect(detail.world.status).toBe('available');
+    expect(detail.world.value).toBe('world-oasis');
   });
 
   it('classifies detail setting read failures separately', () => {
-    const failure = classifyAgentDetailFailure(new Error('schema parse failed for setting fields'));
+    const failure = classifyPersonaDetailFailure(new Error('schema parse failed for setting fields'));
 
     expect(failure.kind).toBe('setting-read-unavailable');
     expect(failure.title).toBe('Setting read unavailable');

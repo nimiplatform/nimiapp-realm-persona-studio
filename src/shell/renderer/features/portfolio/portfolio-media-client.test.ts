@@ -11,47 +11,48 @@ import {
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildFinalizeDirectMediaResourceInput,
-  buildRealmCreateAgentInput,
+  buildRealmCreatePersonaInput,
   buildRealmCreatePostInput,
   buildRealmPostTextResourceInput,
   buildRealmSelectAvatarInput,
   buildRealmUpdateVisibilityInput,
   buildRuntimeProjectionInput,
-  checkCreateRealmAgentHandleAvailability,
-  createAgentVisibilityDraft,
+  checkCreateRealmPersonaHandleAvailability,
+  createPersonaVisibilityDraft,
   createReviewedPostTextResource,
-  createReviewedRealmAgent,
+  createReviewedRealmPersona,
   generateReviewedVisualImageCandidate,
-  getAgentVisibilitySettings,
-  getCreateRealmAgentWorldPreview,
-  getOwnerAgentSettings,
-  getOwnerPortfolioAgentDetail,
-  listCreateRealmAgentSelectableWorlds,
-  listOwnerPortfolioAgents,
+  getPersonaVisibilitySettings,
+  getCreateRealmPersonaWorldPreview,
+  getOwnerPersonaSettings,
+  getOwnerPortfolioPersonaDetail,
+  listCreateRealmPersonaSelectableWorlds,
+  listOwnerPortfolioPersonas,
   listReadyPostAttachmentResources,
   normalizeFinalizedDirectMediaResource,
   normalizePostAttachmentResourceOptions,
-  normalizeRealmAgentAvatarSelectResult,
-  normalizeRealmAgentCreateResult,
+  normalizeRealmPersonaAvatarSelectResult,
+  normalizeRealmPersonaCreateResult,
   normalizeRealmPostPublishResult,
   normalizeRealmTextResourceCreateResult,
   normalizeRuntimeProjectionSummary,
-  projectAgentRuntimeContextSummary,
-  proposeReviewedOwnerAgentSettings,
+  projectPersonaRuntimeContextSummary,
+  proposeReviewedOwnerPersonaSettings,
   proposeReviewedPostCopy,
   publishReviewedPostDraft,
-  selectReviewedAgentAvatarUrl,
+  selectReviewedPersonaAvatarUrl,
   synthesizeReviewedVoiceDemo,
-  updateReviewedAgentVisibility,
-  updateReviewedOwnerAgentSettings,
+  updateReviewedPersonaVisibility,
+  updateReviewedOwnerPersonaSettings,
   uploadReviewedIdentityMediaResource,
   uploadReviewedPostMediaResource,
-  type AgentVisibilityDraft,
-  type RealmAgentVisibilitySettings,
+  type PersonaVisibilityDraft,
+  type RealmPersonaVisibilitySettings,
 } from './portfolio-client.js';
-import { REALM_AGENT_CREATE_SOURCE, type ReviewedCreateRealmAgentPayload } from './create-agent-draft.js';
-import { createOwnerAgentSettingsDraft } from './setting-proposal.js';
+import { REALM_PERSONA_CREATE_SOURCE, type ReviewedCreateRealmPersonaPayload } from './create-persona-draft.js';
+import { createOwnerPersonaSettingsDraft } from './setting-proposal.js';
 import {
+  persona as personaFixture,
   candidatePayload,
   collectKeys,
   configureStudioAIConfigTargetRefsForTest,
@@ -59,8 +60,8 @@ import {
   detailField,
   mockRealm,
   mockRuntimeWithRoutes,
-  ownerAgentDetail,
-  ownerAgentDetailWithWorldId,
+  ownerPersonaDetail,
+  ownerPersonaDetailWithWorldId,
   resetStudioAIConfigForTest,
 } from './portfolio-client.test-helpers.js';
 
@@ -69,22 +70,22 @@ beforeEach(() => {
 });
 
 describe('owner portfolio media client', () => {
-     it('selects a reviewed avatar URL through AgentsService.agentControllerSelectAvatar only', async () => {
+     it('selects a reviewed avatar URL through WorldCoreController.replaceRealmPersona only', async () => {
       const realm = mockRealm();
-      const result = await selectReviewedAgentAvatarUrl('agent-1', ' https://cdn.example.test/avatar.png ', realm);
-      const selectAvatar = realm.agentControllerSelectAvatar;
+      const result = await selectReviewedPersonaAvatarUrl('persona-1', ' https://cdn.example.test/avatar.png ', realm);
+      const selectAvatar = realm.worldCoreControllerReplaceRealmPersona;
       const submittedPayload = vi.mocked(selectAvatar).mock.calls[0]?.[0]?.body;
 
       expect(selectAvatar).toHaveBeenCalledWith({
-        path: { id: 'agent-1' },
-        body: {
-          avatarUrl: 'https://cdn.example.test/avatar.png',
-        },
+        path: { personaId: 'persona-1' },
+        body: expect.objectContaining({
+          baseContentHash: 'hash-persona-1',
+          core: expect.objectContaining({
+            avatarUrl: 'https://cdn.example.test/avatar.png',
+          }),
+        }),
       });
-      expect(submittedPayload).toEqual({
-        avatarUrl: 'https://cdn.example.test/avatar.png',
-      });
-      expect(Object.keys(submittedPayload || {})).toEqual(['avatarUrl']);
+      expect(Object.keys(submittedPayload || {}).sort()).toEqual(['baseContentHash', 'core', 'homeWorldId', 'origin']);
       expect(collectKeys(submittedPayload).has('profileCoverUrl')).toBe(false);
       expect(collectKeys(submittedPayload).has('resourceId')).toBe(false);
       expect(collectKeys(submittedPayload).has('bindingId')).toBe(false);
@@ -92,7 +93,7 @@ describe('owner portfolio media client', () => {
       expect(collectKeys(submittedPayload).has('model')).toBe(false);
       expect(result).toMatchObject({
         ok: true,
-        source: 'Realm AgentsService.agentControllerSelectAvatar',
+        source: 'Realm WorldCoreController.replaceRealmPersona',
         publicTruth: true,
         realm: {
           success: true,
@@ -102,12 +103,12 @@ describe('owner portfolio media client', () => {
 
      it('rejects invalid avatar URLs before calling Realm', async () => {
       const realm = mockRealm();
-      const result = await selectReviewedAgentAvatarUrl('agent-1', 'data:text/plain,avatar', realm);
+      const result = await selectReviewedPersonaAvatarUrl('persona-1', 'data:text/plain,avatar', realm);
 
-      expect(realm.agentControllerSelectAvatar).not.toHaveBeenCalled();
+      expect(realm.worldCoreControllerReplaceRealmPersona).not.toHaveBeenCalled();
       expect(result).toMatchObject({
         ok: false,
-        source: 'Realm AgentsService.agentControllerSelectAvatar',
+        source: 'Realm WorldCoreController.replaceRealmPersona',
         publicTruth: false,
         failure: 'avatar-url-invalid',
         submitted: null,
@@ -118,11 +119,14 @@ describe('owner portfolio media client', () => {
       const submitted = {
         avatarUrl: 'https://cdn.example.test/avatar.png',
       };
-      const result = normalizeRealmAgentAvatarSelectResult({ success: false }, submitted);
+      const result = normalizeRealmPersonaAvatarSelectResult({
+        ...personaFixture,
+        core: { ...personaFixture.core, avatarUrl: 'https://cdn.example.test/other.png' },
+      }, submitted);
 
       expect(result).toMatchObject({
         ok: false,
-        source: 'Realm AgentsService.agentControllerSelectAvatar',
+        source: 'Realm WorldCoreController.replaceRealmPersona',
         publicTruth: false,
         failure: 'realm-select-avatar-rejected',
         submitted,
@@ -191,11 +195,11 @@ describe('owner portfolio media client', () => {
 
       const result = await generateReviewedVisualImageCandidate({
         resourceType: 'IMAGE',
-        bindingPoint: 'AGENT_CANDIDATE',
+        bindingPoint: 'PERSONA_CANDIDATE',
         prompt: 'Warm profile portrait.',
         notes: 'Use public bio only.',
         aspectRatio: '1:1',
-      }, ownerAgentDetail(), runtime as unknown as Parameters<typeof generateReviewedVisualImageCandidate>[2]);
+      }, ownerPersonaDetail(), runtime as unknown as Parameters<typeof generateReviewedVisualImageCandidate>[2]);
 
       const submitScenarioJob = vi.mocked(runtime.ai.submitScenarioJob);
       const submittedPayload = submitScenarioJob.mock.calls[0]?.[0] as Record<string, unknown> | undefined;
@@ -281,11 +285,11 @@ describe('owner portfolio media client', () => {
 
       const result = await generateReviewedVisualImageCandidate({
         resourceType: 'IMAGE',
-        bindingPoint: 'AGENT_CANDIDATE',
+        bindingPoint: 'PERSONA_CANDIDATE',
         prompt: 'Warm profile portrait.',
         notes: '',
         aspectRatio: '1:1',
-      }, ownerAgentDetail(), runtime as unknown as Parameters<typeof generateReviewedVisualImageCandidate>[2]);
+      }, ownerPersonaDetail(), runtime as unknown as Parameters<typeof generateReviewedVisualImageCandidate>[2]);
 
       expect(runtime.ai.executeScenario).not.toHaveBeenCalled();
       expect(runtime.ai.submitScenarioJob).toHaveBeenCalledTimes(1);
@@ -328,7 +332,7 @@ describe('owner portfolio media client', () => {
 
       const result = await synthesizeReviewedVoiceDemo({
         scriptText: '  Welcome in.  ',
-      }, ownerAgentDetail(), runtime as unknown as Parameters<typeof synthesizeReviewedVoiceDemo>[2]);
+      }, ownerPersonaDetail(), runtime as unknown as Parameters<typeof synthesizeReviewedVoiceDemo>[2]);
 
       const submittedPayload = executeScenario.mock.calls[0]?.[0] as Record<string, unknown> | undefined;
       expect(executeScenario).toHaveBeenCalledTimes(1);
@@ -367,7 +371,7 @@ describe('owner portfolio media client', () => {
       });
       const result = await synthesizeReviewedVoiceDemo({
         scriptText: 'Welcome in.',
-      }, ownerAgentDetail(), runtime as unknown as Parameters<typeof synthesizeReviewedVoiceDemo>[2]);
+      }, ownerPersonaDetail(), runtime as unknown as Parameters<typeof synthesizeReviewedVoiceDemo>[2]);
 
       expect(runtime.ai.executeScenario).not.toHaveBeenCalled();
       expect(result).toMatchObject({
@@ -405,7 +409,7 @@ describe('owner portfolio media client', () => {
       });
       const result = await synthesizeReviewedVoiceDemo({
         scriptText: 'Welcome in.',
-      }, ownerAgentDetail(), runtime as unknown as Parameters<typeof synthesizeReviewedVoiceDemo>[2]);
+      }, ownerPersonaDetail(), runtime as unknown as Parameters<typeof synthesizeReviewedVoiceDemo>[2]);
 
       expect(result).toMatchObject({
         ok: false,
@@ -430,7 +434,7 @@ describe('owner portfolio media client', () => {
       });
       const result = await synthesizeReviewedVoiceDemo({
         scriptText: 'Welcome in.',
-      }, ownerAgentDetail(), runtime as unknown as Parameters<typeof synthesizeReviewedVoiceDemo>[2]);
+      }, ownerPersonaDetail(), runtime as unknown as Parameters<typeof synthesizeReviewedVoiceDemo>[2]);
 
       expect(executeScenario).toHaveBeenCalledTimes(1);
       expect(result).toMatchObject({

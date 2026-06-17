@@ -3,46 +3,46 @@ import { FinishReason, RoutePolicy } from '@nimiplatform/sdk/runtime/generated';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildFinalizeDirectMediaResourceInput,
-  buildRealmCreateAgentInput,
+  buildRealmCreatePersonaInput,
   buildRealmCreatePostInput,
   buildRealmPostTextResourceInput,
   buildRealmSelectAvatarInput,
   buildRealmUpdateVisibilityInput,
   buildRuntimeProjectionInput,
-  checkCreateRealmAgentHandleAvailability,
-  createAgentVisibilityDraft,
+  checkCreateRealmPersonaHandleAvailability,
+  createPersonaVisibilityDraft,
   createReviewedPostTextResource,
-  createReviewedRealmAgent,
+  createReviewedRealmPersona,
   generateReviewedVisualImageCandidate,
-  getAgentVisibilitySettings,
-  getCreateRealmAgentWorldPreview,
-  getOwnerAgentSettings,
-  getOwnerPortfolioAgentDetail,
-  listCreateRealmAgentSelectableWorlds,
-  listOwnerPortfolioAgents,
+  getPersonaVisibilitySettings,
+  getCreateRealmPersonaWorldPreview,
+  getOwnerPersonaSettings,
+  getOwnerPortfolioPersonaDetail,
+  listCreateRealmPersonaSelectableWorlds,
+  listOwnerPortfolioPersonas,
   listReadyPostAttachmentResources,
   normalizeFinalizedDirectMediaResource,
   normalizePostAttachmentResourceOptions,
-  normalizeRealmAgentAvatarSelectResult,
-  normalizeRealmAgentCreateResult,
+  normalizeRealmPersonaAvatarSelectResult,
+  normalizeRealmPersonaCreateResult,
   normalizeRealmPostPublishResult,
   normalizeRealmTextResourceCreateResult,
   normalizeRuntimeProjectionSummary,
-  projectAgentRuntimeContextSummary,
-  proposeReviewedOwnerAgentSettings,
+  projectPersonaRuntimeContextSummary,
+  proposeReviewedOwnerPersonaSettings,
   proposeReviewedPostCopy,
   publishReviewedPostDraft,
-  selectReviewedAgentAvatarUrl,
+  selectReviewedPersonaAvatarUrl,
   synthesizeReviewedVoiceDemo,
-  updateReviewedAgentVisibility,
-  updateReviewedOwnerAgentSettings,
+  updateReviewedPersonaVisibility,
+  updateReviewedOwnerPersonaSettings,
   uploadReviewedIdentityMediaResource,
   uploadReviewedPostMediaResource,
-  type AgentVisibilityDraft,
-  type RealmAgentVisibilitySettings,
+  type PersonaVisibilityDraft,
+  type RealmPersonaVisibilitySettings,
 } from './portfolio-client.js';
-import { REALM_AGENT_CREATE_SOURCE, type ReviewedCreateRealmAgentPayload } from './create-agent-draft.js';
-import { createOwnerAgentSettingsDraft } from './setting-proposal.js';
+import { REALM_PERSONA_CREATE_SOURCE, type ReviewedCreateRealmPersonaPayload } from './create-persona-draft.js';
+import { createOwnerPersonaSettingsDraft } from './setting-proposal.js';
 import {
   candidatePayload,
   collectKeys,
@@ -51,8 +51,8 @@ import {
   detailField,
   mockRealm,
   mockRuntimeWithRoutes,
-  ownerAgentDetail,
-  ownerAgentDetailWithWorldId,
+  ownerPersonaDetail,
+  ownerPersonaDetailWithWorldId,
   resetStudioAIConfigForTest,
 } from './portfolio-client.test-helpers.js';
 
@@ -104,22 +104,21 @@ describe('owner portfolio posts client', () => {
       expect(submittedRequest?.path).toEqual({});
       expect(submittedPayload).toEqual({
         content: 'Published caption',
-        agentId: 'agent-1',
         deliveryAccess: 'SIGNED',
         label: 'Reviewed post text for @mira',
         mimeType: 'text/plain; charset=utf-8',
-        sourceRef: 'realm-agent-studio.reviewed-post-text-resource',
+        sourceRef: 'realmPersona:world-oasis:persona-1:hash-persona-1',
         title: 'Published caption',
         tags: ['studio'],
         metadata: {
-          source: 'realm-agent-studio.reviewed-post-text-resource',
-          agentKey: 'agent-1',
+          source: 'realm-persona-studio.reviewed-post-text-resource',
+          sourceKind: 'realmPersona',
+          sourceRef: 'realmPersona:world-oasis:persona-1:hash-persona-1',
           attachmentPurpose: 'post',
           humanReviewed: true,
         },
       });
       expect(Object.keys(submittedPayload || {}).sort()).toEqual([
-        'agentId',
         'content',
         'deliveryAccess',
         'label',
@@ -200,7 +199,7 @@ describe('owner portfolio posts client', () => {
       const result = await uploadReviewedPostMediaResource({
         resourceType: 'IMAGE',
         file: { name: 'portrait.png', type: 'image/png', size: 2048 },
-        agent: ownerAgentDetailWithWorldId(),
+        persona: ownerPersonaDetailWithWorldId(),
       }, realm, storageUpload);
       const finalizeResource = realm.finalizeResource;
       const finalizeRequest = vi.mocked(finalizeResource).mock.calls[0]?.[0];
@@ -218,16 +217,18 @@ describe('owner portfolio posts client', () => {
       expect(finalizeResource).toHaveBeenCalledWith({
         path: { resourceId: 'resource-image-upload' },
         body: {
-        agentId: 'agent-1',
         deliveryAccess: 'SIGNED',
         label: 'Reviewed post image upload for @mira',
         mimeType: 'image/png',
         sizeBytes: 2048,
-        sourceRef: 'realm-agent-studio.reviewed-post-media-resource',
+        sourceRef: 'realmPersona:world-oasis:persona-1:hash-persona-1:reviewed-post-media-resource',
         title: 'portrait.png',
         metadata: {
-          source: 'realm-agent-studio.reviewed-post-media-resource',
-          agentKey: 'agent-1',
+          source: 'realmPersona:world-oasis:persona-1:hash-persona-1:reviewed-post-media-resource',
+          sourceKind: 'realmPersona',
+          sourceId: 'persona-1',
+          sourceWorldId: 'world-oasis',
+          sourceContentHash: 'hash-persona-1',
           attachmentPurpose: 'post',
           resourceType: 'IMAGE',
           humanReviewed: true,
@@ -258,8 +259,8 @@ describe('owner portfolio posts client', () => {
       const result = await uploadReviewedIdentityMediaResource({
         resourceType: 'IMAGE',
         file: { name: 'identity.png', type: 'image/png', size: 3072 },
-        agent: ownerAgentDetailWithWorldId(),
-        tags: ['realm-agent-studio', 'identity-candidate'],
+        persona: ownerPersonaDetailWithWorldId(),
+        tags: ['realm-persona-studio', 'identity-candidate'],
       }, realm, storageUpload);
       const finalizeResource = realm.finalizeResource;
       const finalizeRequest = vi.mocked(finalizeResource).mock.calls[0]?.[0];
@@ -268,15 +269,16 @@ describe('owner portfolio posts client', () => {
       expect(finalizeResource).toHaveBeenCalledWith({
         path: { resourceId: 'resource-image-upload' },
         body: expect.objectContaining({
-          agentId: 'agent-1',
           label: 'Reviewed identity image upload for @mira',
-          sourceRef: 'realm-agent-studio.reviewed-identity-media-resource',
+          sourceRef: 'realmPersona:world-oasis:persona-1:hash-persona-1:reviewed-identity-media-resource',
           metadata: expect.objectContaining({
-            source: 'realm-agent-studio.reviewed-identity-media-resource',
+            source: 'realmPersona:world-oasis:persona-1:hash-persona-1:reviewed-identity-media-resource',
+            sourceKind: 'realmPersona',
+            sourceId: 'persona-1',
             attachmentPurpose: 'identity',
             humanReviewed: true,
           }),
-          tags: ['realm-agent-studio', 'identity-candidate'],
+          tags: ['realm-persona-studio', 'identity-candidate'],
         }),
       });
       expect(collectKeys(finalizePayload).has('WorldControlService')).toBe(false);
@@ -299,7 +301,7 @@ describe('owner portfolio posts client', () => {
       const result = await uploadReviewedPostMediaResource({
         resourceType: 'VIDEO',
         file: { name: 'not-video.png', type: 'image/png', size: 10 },
-        agent: ownerAgentDetail(),
+        persona: ownerPersonaDetail(),
       }, realm, vi.fn(async () => undefined));
 
       expect(realm.createVideoDirectUpload).not.toHaveBeenCalled();
@@ -317,7 +319,7 @@ describe('owner portfolio posts client', () => {
       const result = await uploadReviewedPostMediaResource({
         resourceType: 'IMAGE',
         file: { name: 'portrait.png', type: 'image/png', size: 2048 },
-        agent: ownerAgentDetail(),
+        persona: ownerPersonaDetail(),
       }, realm, vi.fn(async () => undefined));
 
       expect(realm.finalizeResource).not.toHaveBeenCalled();
@@ -343,7 +345,7 @@ describe('owner portfolio posts client', () => {
       const result = await uploadReviewedPostMediaResource({
         resourceType: 'IMAGE',
         file: { name: 'portrait.png', type: 'image/png', size: 2048 },
-        agent: ownerAgentDetail(),
+        persona: ownerPersonaDetail(),
       }, realm, vi.fn(async () => undefined));
 
       expect(realm.finalizeResource).not.toHaveBeenCalled();
@@ -362,7 +364,7 @@ describe('owner portfolio posts client', () => {
       const result = await uploadReviewedPostMediaResource({
         resourceType: 'IMAGE',
         file: { name: 'portrait.png', type: 'image/png', size: 2048 },
-        agent: ownerAgentDetail(),
+        persona: ownerPersonaDetail(),
       }, realm, storageUpload);
 
       expect(realm.finalizeResource).not.toHaveBeenCalled();
@@ -380,7 +382,7 @@ describe('owner portfolio posts client', () => {
       const result = await uploadReviewedPostMediaResource({
         resourceType: 'IMAGE',
         file: { name: 'portrait.png', type: 'image/png', size: 2048 },
-        agent: ownerAgentDetail(),
+        persona: ownerPersonaDetail(),
       }, realm, vi.fn(async () => undefined));
 
       expect(result).toMatchObject({
@@ -411,7 +413,7 @@ describe('owner portfolio posts client', () => {
       const result = await uploadReviewedPostMediaResource({
         resourceType: 'IMAGE',
         file: { name: 'portrait.png', type: 'image/png', size: 2048 },
-        agent: ownerAgentDetail(),
+        persona: ownerPersonaDetail(),
       }, realm, vi.fn(async () => undefined));
 
       expect(result).toMatchObject({
@@ -424,10 +426,10 @@ describe('owner portfolio posts client', () => {
       expect(buildFinalizeDirectMediaResourceInput({
         resourceType: 'VIDEO',
         file: { name: 'clip.mp4', type: 'video/mp4', size: 1024 },
-        agent: ownerAgentDetail(),
+        persona: ownerPersonaDetail(),
       })).toMatchObject({
-        agentId: 'agent-1',
         mimeType: 'video/mp4',
+        sourceRef: 'realmPersona:world-oasis:persona-1:hash-persona-1:reviewed-post-media-resource',
       });
       expect(normalizeFinalizedDirectMediaResource({
         id: 'resource-video-upload',
@@ -487,7 +489,7 @@ describe('owner portfolio posts client', () => {
       const input = buildRealmCreatePostInput(candidatePayload);
 
       expect(input).toEqual(candidatePayload.realmCreatePost);
-      expect(collectKeys(input).has('agentRef')).toBe(false);
+      expect(collectKeys(input).has('personaRef')).toBe(false);
       expect(collectKeys(input).has('review')).toBe(false);
     });
 
@@ -523,7 +525,7 @@ describe('owner portfolio posts client', () => {
         },
       });
 
-      const result = await proposeReviewedPostCopy(ownerAgentDetail(), {
+      const result = await proposeReviewedPostCopy(ownerPersonaDetail(), {
         caption: '',
         tagsText: '',
         humanReviewed: false,

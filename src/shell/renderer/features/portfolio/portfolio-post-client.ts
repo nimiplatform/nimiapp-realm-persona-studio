@@ -19,7 +19,7 @@ import {
   type StudioRuntimeAIClient,
   type StudioTextGeneratePayload,
 } from './studio-ai-runtime.js';
-import type { OwnerPortfolioAgentDetail } from './portfolio-data.js';
+import type { OwnerPortfolioPersonaDetail } from './portfolio-data.js';
 import {
   POST_COPY_ASSISTANCE_SOURCE,
   buildRuntimePostCopyPrompt,
@@ -119,7 +119,7 @@ export type DirectMediaResourceUploadFile = {
 export type DirectMediaResourceUploadInput = {
   resourceType: DirectMediaResourceType;
   file: DirectMediaResourceUploadFile;
-  agent: OwnerPortfolioAgentDetail;
+  persona: OwnerPortfolioPersonaDetail;
   purpose?: 'post' | 'identity';
   tags?: string[];
 };
@@ -286,6 +286,10 @@ function normalizeDirectMediaTitle(fileName: string): string {
   return normalizeResourceTitle(fileName.replace(/\s+/g, ' ').trim() || 'Studio media upload');
 }
 
+function realmPersonaSourceRef(persona: OwnerPortfolioPersonaDetail): string {
+  return `realmPersona:${persona.homeWorldId}:${persona.id}:${persona.contentHash}`;
+}
+
 export function buildFinalizeDirectMediaResourceInput(input: DirectMediaResourceUploadInput): RealmFinalizeResourceInput | null {
   if (!isUploadableMediaFile(input)) {
     return null;
@@ -294,12 +298,11 @@ export function buildFinalizeDirectMediaResourceInput(input: DirectMediaResource
   const tags = input.tags?.map((tag) => tag.trim()).filter(Boolean) ?? [];
   const purpose = input.purpose === 'identity' ? 'identity' : 'post';
   const sourceRef = purpose === 'identity'
-    ? 'realm-agent-studio.reviewed-identity-media-resource'
-    : 'realm-agent-studio.reviewed-post-media-resource';
+    ? `${realmPersonaSourceRef(input.persona)}:reviewed-identity-media-resource`
+    : `${realmPersonaSourceRef(input.persona)}:reviewed-post-media-resource`;
   return {
-    agentId: input.agent.id,
     deliveryAccess: 'SIGNED',
-    label: `Reviewed ${purpose} ${input.resourceType.toLowerCase()} upload for ${input.agent.handle.value ? `@${input.agent.handle.value}` : input.agent.displayName.value}`,
+    label: `Reviewed ${purpose} ${input.resourceType.toLowerCase()} upload for ${input.persona.handle.value ? `@${input.persona.handle.value}` : input.persona.displayName.value}`,
     mimeType: input.file.type,
     sizeBytes: input.file.size,
     sourceRef,
@@ -307,7 +310,10 @@ export function buildFinalizeDirectMediaResourceInput(input: DirectMediaResource
     ...(tags.length > 0 ? { tags } : {}),
     metadata: {
       source: sourceRef,
-      agentKey: input.agent.id,
+      sourceKind: 'realmPersona',
+      sourceId: input.persona.id,
+      sourceWorldId: input.persona.homeWorldId,
+      sourceContentHash: input.persona.contentHash,
       attachmentPurpose: purpose,
       resourceType: input.resourceType,
       humanReviewed: true,
@@ -368,16 +374,16 @@ export function buildRealmPostTextResourceInput(payload: CandidatePostPayload): 
 
   return {
     content,
-    agentId: payload.agentRef.agentKey,
     deliveryAccess: 'SIGNED',
-    label: `Reviewed post text for ${payload.agentRef.handle ? `@${payload.agentRef.handle}` : payload.agentRef.displayName}`,
+    label: `Reviewed post text for ${payload.personaRef.handle ? `@${payload.personaRef.handle}` : payload.personaRef.displayName}`,
     mimeType: 'text/plain; charset=utf-8',
-    sourceRef: 'realm-agent-studio.reviewed-post-text-resource',
+    sourceRef: payload.personaRef.sourceRef,
     title: normalizeResourceTitle(content),
     ...(payload.realmCreatePost.tags && payload.realmCreatePost.tags.length > 0 ? { tags: [...payload.realmCreatePost.tags] } : {}),
     metadata: {
-      source: 'realm-agent-studio.reviewed-post-text-resource',
-      agentKey: payload.agentRef.agentKey,
+      source: 'realm-persona-studio.reviewed-post-text-resource',
+      sourceRef: payload.personaRef.sourceRef,
+      sourceKind: 'realmPersona',
       attachmentPurpose: 'post',
       humanReviewed: true,
     },
@@ -482,7 +488,7 @@ export function normalizeRealmPostPublishResult(post: RealmCreatePostResponse): 
   };
 }
 export async function proposeReviewedPostCopy(
-  agent: OwnerPortfolioAgentDetail,
+  persona: OwnerPortfolioPersonaDetail,
   draft: LocalPostDraftInput,
   intent: string,
   runtime?: StudioRuntimeAIClient | null,
@@ -490,7 +496,7 @@ export async function proposeReviewedPostCopy(
   // The prompt starts with the unresolved marker; studio-ai-runtime must bind a
   // concrete text.generate route before dispatch.
   const built = buildRuntimePostCopyPrompt({
-    agent,
+    persona,
     draft,
     intent,
   });

@@ -4,15 +4,15 @@ import {
   RAW_RULE_REVIEW_DEFERRED_REASON,
   assertNoForbiddenOwnerSettingsFields,
   applyRuntimeOwnerSettingsProposal,
-  buildRealmOwnerAgentSettingsUpdateInput,
+  buildRealmOwnerPersonaSettingsUpdateInput,
   buildRuntimeOwnerSettingsProposalPrompt,
-  createOwnerAgentSettingsDraft,
-  normalizeOwnerAgentSettingsDraft,
+  createOwnerPersonaSettingsDraft,
+  normalizeOwnerPersonaSettingsDraft,
   normalizeRuntimeOwnerSettingsProposal,
-  type OwnerAgentSettingsSnapshot,
+  type OwnerPersonaSettingsSnapshot,
 } from './setting-proposal.js';
 
-const settings: OwnerAgentSettingsSnapshot = {
+const settings: OwnerPersonaSettingsSnapshot = {
   displayName: 'Mira',
   description: 'Quiet strategist',
   greeting: 'Welcome in.',
@@ -49,7 +49,7 @@ beforeEach(() => {
 
 describe('owner settings proposal normalization', () => {
   it('creates an editable draft from owner settings DTO shape', () => {
-    expect(createOwnerAgentSettingsDraft(settings)).toMatchObject({
+    expect(createOwnerPersonaSettingsDraft(settings)).toMatchObject({
       displayName: 'Mira',
       description: 'Quiet strategist',
       publicRole: 'Guide',
@@ -60,8 +60,8 @@ describe('owner settings proposal normalization', () => {
   });
 
   it('normalizes text, enums, and list fields without introducing hidden keys', () => {
-    expect(normalizeOwnerAgentSettingsDraft({
-      ...createOwnerAgentSettingsDraft(settings),
+    expect(normalizeOwnerPersonaSettingsDraft({
+      ...createOwnerPersonaSettingsDraft(settings),
       displayName: '  Mira   Prime  ',
       interestsText: 'strategy, ruins\ntea',
       allowedThemesText: ' adventure, friendship ',
@@ -74,9 +74,9 @@ describe('owner settings proposal normalization', () => {
     });
   });
 
-  it('builds an UpdateOwnerAgentSettingsDto diff and excludes raw rule text', () => {
-    const result = buildRealmOwnerAgentSettingsUpdateInput({
-      ...createOwnerAgentSettingsDraft(settings),
+  it('builds an UpdateOwnerPersonaSettingsDto diff and excludes raw rule text', () => {
+    const result = buildRealmOwnerPersonaSettingsUpdateInput({
+      ...createOwnerPersonaSettingsDraft(settings),
       displayName: 'Mira Prime',
       worldview: 'The world is layered and negotiated.',
       interestsText: 'strategy, tea, ruins',
@@ -103,12 +103,12 @@ describe('owner settings proposal normalization', () => {
     expect(JSON.stringify(result.input)).not.toContain('Visible rule candidate only.');
     expect(result.ok ? result.preview.rawRuleReview?.reason : '').toBe(RAW_RULE_REVIEW_DEFERRED_REASON);
     expect(result.ok ? result.preview.submitted : {}).not.toHaveProperty('profileCoverUrl');
-    expect(result.ok ? result.preview.submitted : {}).not.toHaveProperty('agentRules');
+    expect(result.ok ? result.preview.submitted : {}).not.toHaveProperty('personaRules');
   });
 
   it('fails closed when only raw rule review changed', () => {
-    expect(buildRealmOwnerAgentSettingsUpdateInput({
-      ...createOwnerAgentSettingsDraft(settings),
+    expect(buildRealmOwnerPersonaSettingsUpdateInput({
+      ...createOwnerPersonaSettingsDraft(settings),
       rawRuleTextCandidate: 'Only raw rule review.',
     }, settings)).toMatchObject({
       ok: false,
@@ -119,8 +119,8 @@ describe('owner settings proposal normalization', () => {
   });
 
   it('rejects invalid enum values before Realm submission', () => {
-    expect(buildRealmOwnerAgentSettingsUpdateInput({
-      ...createOwnerAgentSettingsDraft(settings),
+    expect(buildRealmOwnerPersonaSettingsUpdateInput({
+      ...createOwnerPersonaSettingsDraft(settings),
       formality: 'robotic',
     }, settings)).toMatchObject({
       ok: false,
@@ -151,11 +151,11 @@ describe('owner settings proposal normalization', () => {
 
   it('builds a Runtime text proposal request from owner intent without hardcoded provider fields', () => {
     const draft = {
-      ...createOwnerAgentSettingsDraft(settings),
+      ...createOwnerPersonaSettingsDraft(settings),
       naturalLanguageIntent: 'Make Mira warmer and clearer for builders.',
     };
     const result = buildRuntimeOwnerSettingsProposalPrompt({
-      agentId: 'agent-1',
+      personaId: 'persona-1',
       current: settings,
       draft,
     });
@@ -166,7 +166,7 @@ describe('owner settings proposal normalization', () => {
         model: { modelId: 'auto' },
         parameters: {
           metadata: {
-            domain: 'realm-agent-studio.settings-proposal',
+            domain: 'realm-persona-studio.settings-proposal',
           },
         },
       },
@@ -179,7 +179,7 @@ describe('owner settings proposal normalization', () => {
   });
 
   it('normalizes Runtime proposal JSON into admitted draft fields only', () => {
-    const baseDraft = createOwnerAgentSettingsDraft(settings);
+    const baseDraft = createOwnerPersonaSettingsDraft(settings);
     const proposal = normalizeRuntimeOwnerSettingsProposal(JSON.stringify({
       description: 'Warmer public strategist.',
       worldview: 'Layered world with practical entry points.',
@@ -207,7 +207,7 @@ describe('owner settings proposal normalization', () => {
   });
 
   it('rejects Runtime proposals with forbidden or invalid setting fields', () => {
-    const baseDraft = createOwnerAgentSettingsDraft(settings);
+    const baseDraft = createOwnerPersonaSettingsDraft(settings);
     expect(() => normalizeRuntimeOwnerSettingsProposal(JSON.stringify({
       model: 'forbidden',
       description: 'Allowed text.',
@@ -218,13 +218,13 @@ describe('owner settings proposal normalization', () => {
   });
 
   it('rejects Runtime proposals wrapped in prose or carrying unknown fields', () => {
-    const baseDraft = createOwnerAgentSettingsDraft(settings);
+    const baseDraft = createOwnerPersonaSettingsDraft(settings);
     expect(() => normalizeRuntimeOwnerSettingsProposal(`\`\`\`json\n${JSON.stringify({
       description: 'Allowed text.',
     })}\n\`\`\``, baseDraft)).toThrow('single JSON object');
     expect(() => normalizeRuntimeOwnerSettingsProposal(JSON.stringify({
       description: 'Allowed text.',
-      agentRule: 'not admitted',
-    }), baseDraft)).toThrow('unknown field agentRule');
+      personaRule: 'not admitted',
+    }), baseDraft)).toThrow('unknown field personaRule');
   });
 });

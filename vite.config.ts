@@ -39,7 +39,7 @@ export default defineConfig(() => {
     envPrefix: ['VITE_', 'NIMI_'],
     define: {
       'globalThis.__NIMI_IMPORT_META_ENV__': 'import.meta.env',
-      'import.meta.env.VITE_NIMI_SHELL_MODE': JSON.stringify('realm-agent-studio'),
+      'import.meta.env.VITE_NIMI_SHELL_MODE': JSON.stringify('realm-persona-studio'),
     },
     publicDir: false as const,
     resolve: {

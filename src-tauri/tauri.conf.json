@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Realm Agent Studio",
+  "productName": "Realm Persona Studio",
   "version": "0.1.0",
-  "identifier": "nimi.realm-agent-studio",
+  "identifier": "nimi.realm-persona-studio",
   "build": {
     "beforeDevCommand": "pnpm run dev:renderer",
     "beforeBuildCommand": "pnpm run build:renderer",
@@ -14,7 +14,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Realm Agent Studio",
+        "title": "Realm Persona Studio",
         "url": "/",
         "width": 1360,
         "height": 860,

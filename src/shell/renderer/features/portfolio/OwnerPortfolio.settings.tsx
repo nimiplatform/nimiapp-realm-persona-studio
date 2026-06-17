@@ -1,33 +1,33 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Checkbox, EmptyState, FieldShell, InlineAlert, SelectField, StatusBadge, Surface, TextareaField, TextField } from '@nimiplatform/kit/ui';
-import type { OwnerPortfolioAgentDetail } from './portfolio-data.js';
+import type { OwnerPortfolioPersonaDetail } from './portfolio-data.js';
 import {
-  AGENT_VISIBILITY_FIELDS,
-  AGENT_VISIBILITY_VALUES,
-  createAgentVisibilityDraft,
-  getAgentVisibilitySettings,
-  getPortfolioAgentSettings,
-  projectAgentChatReadinessContextSummary,
-  projectAgentRuntimeContextSummary,
-  proposeReviewedPortfolioAgentSettings,
-  updateReviewedAgentVisibility,
-  updateReviewedPortfolioAgentSettings,
-  type AgentChatReadinessSummaryResult,
-  type AgentVisibilityDraft,
-  type AgentVisibilityField,
-  type RealmAgentVisibilityUpdateResult,
-  type RealmOwnerAgentSettings,
-  type RealmOwnerAgentSettingsUpdateResult,
+  PERSONA_VISIBILITY_FIELDS,
+  PERSONA_VISIBILITY_VALUES,
+  createPersonaVisibilityDraft,
+  getPersonaVisibilitySettings,
+  getPortfolioPersonaSettings,
+  projectPersonaChatReadinessContextSummary,
+  projectPersonaRuntimeContextSummary,
+  proposeReviewedPortfolioPersonaSettings,
+  updateReviewedPersonaVisibility,
+  updateReviewedPortfolioPersonaSettings,
+  type PersonaChatReadinessSummaryResult,
+  type PersonaVisibilityDraft,
+  type PersonaVisibilityField,
+  type RealmPersonaVisibilityUpdateResult,
+  type RealmOwnerPersonaSettings,
+  type RealmOwnerPersonaSettingsUpdateResult,
   type RuntimeOwnerSettingsProposalResult,
   type RuntimeProjectionSummaryResult,
 } from './portfolio-client.js';
 import {
   RAW_RULE_REVIEW_DEFERRED_REASON,
   applyRuntimeOwnerSettingsProposal,
-  buildRealmOwnerAgentSettingsUpdateInput,
-  createOwnerAgentSettingsDraft,
-  type OwnerAgentSettingsDraft,
+  buildRealmOwnerPersonaSettingsUpdateInput,
+  createOwnerPersonaSettingsDraft,
+  type OwnerPersonaSettingsDraft,
 } from './setting-proposal.js';
 import { TechnicalReviewDetails } from './OwnerPortfolio.shared.js';
 import { useStudioI18n } from '../../i18n/use-studio-i18n.js';
@@ -47,12 +47,12 @@ const SETTINGS_FIXED_MESSAGE_KEYS: Record<string, StudioCopyKey> = {
   'Realm owner settings update failed.': 'settings.error.ownerSettingsUpdateFailed',
   'visibility payload invalid': 'settings.error.visibilityPayloadInvalid',
   'Realm visibility update failed.': 'settings.error.visibilityUpdateFailed',
-  'Runtime projection requires worldId evidence from Realm MeService.getMyRealmAgent.': 'runtimeProjection.error.worldIdRequired',
+  'Runtime projection requires worldId evidence from Realm WorldCoreController.getRealmPersona.': 'runtimeProjection.error.worldIdRequired',
   'Runtime projection response did not include RUNTIME_PAYLOAD checksum summary.': 'runtimeProjection.error.checksumMissing',
   'Realm runtime projection failed.': 'runtimeProjection.error.failed',
-  'Agent Chat readiness projection requires RealmAgent id and worldId evidence.': 'runtimeProjection.error.chatWorldRequired',
-  'Agent Chat readiness projection response did not include agent-specific RUNTIME_PAYLOAD summary.': 'runtimeProjection.error.chatChecksumMissing',
-  'Realm Agent Chat readiness projection failed.': 'runtimeProjection.error.chatFailed',
+  'localAgent Chat readiness projection requires RealmPersona id and worldId evidence.': 'runtimeProjection.error.chatWorldRequired',
+  'localAgent Chat readiness projection response did not include source-specific RUNTIME_PAYLOAD summary.': 'runtimeProjection.error.chatChecksumMissing',
+  'Realm Persona Chat readiness projection failed.': 'runtimeProjection.error.chatFailed',
 };
 
 function translateSettingsFixedMessage(message: string, t: StudioTranslator): string {
@@ -68,35 +68,35 @@ function translateSettingsFixedMessages(messages: string[], t: StudioTranslator)
   return messages.map((message) => translateSettingsFixedMessage(message, t)).join('; ');
 }
 
-export function SettingProposalWorkspace({ agent, onAgentWrite }: { agent: OwnerPortfolioAgentDetail; onAgentWrite: () => Promise<void> }) {
+export function SettingProposalWorkspace({ persona, onPersonaWrite }: { persona: OwnerPortfolioPersonaDetail; onPersonaWrite: () => Promise<void> }) {
   const { t } = useStudioI18n();
   const settingsQuery = useQuery({
-    queryKey: ['realm-agent-studio', 'agent-settings', agent.ownerScope, agent.id],
-    queryFn: () => getPortfolioAgentSettings(agent),
+    queryKey: ['realm-persona-studio', 'persona-settings', persona.ownerScope, persona.id],
+    queryFn: () => getPortfolioPersonaSettings(persona),
   });
-  const [draft, setDraft] = useState<OwnerAgentSettingsDraft | null>(null);
+  const [draft, setDraft] = useState<OwnerPersonaSettingsDraft | null>(null);
   const [ownerReviewed, setOwnerReviewed] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [result, setResult] = useState<RealmOwnerAgentSettingsUpdateResult | null>(null);
+  const [result, setResult] = useState<RealmOwnerPersonaSettingsUpdateResult | null>(null);
   const [runtimeProposal, setRuntimeProposal] = useState<RuntimeOwnerSettingsProposalResult | null>(null);
   const [isProposing, setIsProposing] = useState(false);
   const proposal = useMemo(() => (
     draft && settingsQuery.data
-      ? buildRealmOwnerAgentSettingsUpdateInput(draft, settingsQuery.data as RealmOwnerAgentSettings)
+      ? buildRealmOwnerPersonaSettingsUpdateInput(draft, settingsQuery.data as RealmOwnerPersonaSettings)
       : null
   ), [draft, settingsQuery.data]);
 
   useEffect(() => {
     if (settingsQuery.data) {
-      setDraft(createOwnerAgentSettingsDraft(settingsQuery.data));
+      setDraft(createOwnerPersonaSettingsDraft(settingsQuery.data));
       setOwnerReviewed(false);
       setResult(null);
       setRuntimeProposal(null);
       setIsProposing(false);
     }
-  }, [agent.id, settingsQuery.data]);
+  }, [persona.id, settingsQuery.data]);
 
-  function updateDraft(patch: Partial<OwnerAgentSettingsDraft>) {
+  function updateDraft(patch: Partial<OwnerPersonaSettingsDraft>) {
     setDraft((current) => current ? { ...current, ...patch } : current);
     setOwnerReviewed(false);
     setResult(null);
@@ -118,11 +118,11 @@ export function SettingProposalWorkspace({ agent, onAgentWrite }: { agent: Owner
     setIsSaving(true);
     setResult(null);
     try {
-      const updateResult = await updateReviewedPortfolioAgentSettings(agent, draft, settingsQuery.data);
+      const updateResult = await updateReviewedPortfolioPersonaSettings(persona, draft, settingsQuery.data);
       setResult(updateResult);
       if (updateResult.ok) {
         await settingsQuery.refetch();
-        await onAgentWrite();
+        await onPersonaWrite();
       }
     } finally {
       setIsSaving(false);
@@ -136,7 +136,7 @@ export function SettingProposalWorkspace({ agent, onAgentWrite }: { agent: Owner
     setIsProposing(true);
     setRuntimeProposal(null);
     try {
-      const proposalResult = await proposeReviewedPortfolioAgentSettings(agent, draft, settingsQuery.data);
+      const proposalResult = await proposeReviewedPortfolioPersonaSettings(persona, draft, settingsQuery.data);
       setRuntimeProposal(proposalResult);
     } finally {
       setIsProposing(false);
@@ -157,7 +157,7 @@ export function SettingProposalWorkspace({ agent, onAgentWrite }: { agent: Owner
       <div className="grid min-w-0 gap-5 xl:grid-cols-[1fr_360px]">
         <div className="min-w-0">
           <div className="flex min-w-0 flex-wrap items-center gap-3">
-            <h3 className="m-0 text-xl font-semibold">{t('agent.settings.title')}</h3>
+            <h3 className="m-0 text-xl font-semibold">{t('persona.settings.title')}</h3>
             <StatusBadge tone="success">{t('common.realmSave')}</StatusBadge>
             <StatusBadge tone="neutral">{t('common.ownerReviewed')}</StatusBadge>
           </div>
@@ -387,7 +387,7 @@ export function SettingProposalWorkspace({ agent, onAgentWrite }: { agent: Owner
                 />
               </FieldShell>
               <FieldShell label={t('settingField.profileCoverUrl')} message={t('settings.profileCoverMessage')}>
-                <TextField readOnly value={agent.profileCoverUrl.value} placeholder={t('settings.profileCoverUnavailable')} />
+                <TextField readOnly value={persona.profileCoverUrl.value} placeholder={t('settings.profileCoverUnavailable')} />
               </FieldShell>
               {proposal?.ok ? (
                 <InlineAlert tone="info">
@@ -427,7 +427,7 @@ export function SettingProposalWorkspace({ agent, onAgentWrite }: { agent: Owner
                   tone="secondary"
                   disabled={isSaving}
                   onClick={() => {
-                    setDraft(createOwnerAgentSettingsDraft(settingsQuery.data as RealmOwnerAgentSettings));
+                    setDraft(createOwnerPersonaSettingsDraft(settingsQuery.data as RealmOwnerPersonaSettings));
                     setOwnerReviewed(false);
                     setResult(null);
                   }}
@@ -461,41 +461,41 @@ export function SettingProposalWorkspace({ agent, onAgentWrite }: { agent: Owner
   );
 }
 
-export const VISIBILITY_FIELD_LABEL_KEYS: Record<AgentVisibilityField, StudioCopyKey> = {
+export const VISIBILITY_FIELD_LABEL_KEYS: Record<PersonaVisibilityField, StudioCopyKey> = {
   accountVisibility: 'visibility.field.accountVisibility',
   defaultPostVisibility: 'visibility.field.defaultPostVisibility',
   dmVisibility: 'visibility.field.dmVisibility',
   profileVisibility: 'visibility.field.profileVisibility',
 };
 
-export function VisibilitySettingsWorkspace({ agent, onAgentWrite }: { agent: OwnerPortfolioAgentDetail; onAgentWrite: () => Promise<void> }) {
+export function VisibilitySettingsWorkspace({ persona, onPersonaWrite }: { persona: OwnerPortfolioPersonaDetail; onPersonaWrite: () => Promise<void> }) {
   const { t } = useStudioI18n();
   const visibilityQuery = useQuery({
-    queryKey: ['realm-agent-studio', 'owner-agent-visibility', agent.id],
-    queryFn: () => getAgentVisibilitySettings(agent.id),
+    queryKey: ['realm-persona-studio', 'owner-persona-visibility', persona.id],
+    queryFn: () => getPersonaVisibilitySettings(persona.id),
   });
-  const [draft, setDraft] = useState<AgentVisibilityDraft | null>(null);
+  const [draft, setDraft] = useState<PersonaVisibilityDraft | null>(null);
   const [humanReviewed, setHumanReviewed] = useState(false);
-  const [result, setResult] = useState<RealmAgentVisibilityUpdateResult | null>(null);
+  const [result, setResult] = useState<RealmPersonaVisibilityUpdateResult | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (visibilityQuery.data) {
-      setDraft(createAgentVisibilityDraft(visibilityQuery.data));
+      setDraft(createPersonaVisibilityDraft(visibilityQuery.data));
       setHumanReviewed(false);
       setResult(null);
       setIsSaving(false);
     }
-  }, [agent.id, visibilityQuery.data]);
+  }, [persona.id, visibilityQuery.data]);
 
   const hasChanges = useMemo(() => {
     if (!draft || !visibilityQuery.data) {
       return false;
     }
-    return AGENT_VISIBILITY_FIELDS.some((field) => draft[field] !== visibilityQuery.data?.[field]);
+    return PERSONA_VISIBILITY_FIELDS.some((field) => draft[field] !== visibilityQuery.data?.[field]);
   }, [draft, visibilityQuery.data]);
 
-  function updateDraft(field: AgentVisibilityField, value: string) {
+  function updateDraft(field: PersonaVisibilityField, value: string) {
     setDraft((current) => current ? { ...current, [field]: value } : current);
     setHumanReviewed(false);
     setResult(null);
@@ -509,11 +509,11 @@ export function VisibilitySettingsWorkspace({ agent, onAgentWrite }: { agent: Ow
     setIsSaving(true);
     setResult(null);
     try {
-      const updateResult = await updateReviewedAgentVisibility(agent.id, draft, visibilityQuery.data);
+      const updateResult = await updateReviewedPersonaVisibility(persona.id, draft, visibilityQuery.data);
       setResult(updateResult);
       if (updateResult.ok) {
         await visibilityQuery.refetch();
-        await onAgentWrite();
+        await onPersonaWrite();
       }
     } finally {
       setIsSaving(false);
@@ -544,11 +544,11 @@ export function VisibilitySettingsWorkspace({ agent, onAgentWrite }: { agent: Ow
       {draft && visibilityQuery.data ? (
         <div className="mt-4 grid gap-4">
           <div className="grid gap-3 md:grid-cols-2">
-            {AGENT_VISIBILITY_FIELDS.map((field) => (
+            {PERSONA_VISIBILITY_FIELDS.map((field) => (
               <FieldShell key={field} label={t(VISIBILITY_FIELD_LABEL_KEYS[field])} message={t('visibility.allowedValues')}>
                 <SelectField
                   value={draft[field]}
-                  options={AGENT_VISIBILITY_VALUES.map((value) => ({ value, label: value }))}
+                  options={PERSONA_VISIBILITY_VALUES.map((value) => ({ value, label: value }))}
                   onValueChange={(value) => updateDraft(field, value)}
                 />
               </FieldShell>
@@ -583,7 +583,7 @@ export function VisibilitySettingsWorkspace({ agent, onAgentWrite }: { agent: Ow
               disabled={!visibilityQuery.data || isSaving}
               onClick={() => {
                 if (visibilityQuery.data) {
-                  setDraft(createAgentVisibilityDraft(visibilityQuery.data));
+                  setDraft(createPersonaVisibilityDraft(visibilityQuery.data));
                   setHumanReviewed(false);
                   setResult(null);
                 }
@@ -603,34 +603,34 @@ export function VisibilitySettingsWorkspace({ agent, onAgentWrite }: { agent: Ow
   );
 }
 
-export function RuntimeProjectionWorkspace({ agent }: { agent: OwnerPortfolioAgentDetail }) {
+export function RuntimeProjectionWorkspace({ persona }: { persona: OwnerPortfolioPersonaDetail }) {
   const { t } = useStudioI18n();
   const [projectionResult, setProjectionResult] = useState<
-    RuntimeProjectionSummaryResult | AgentChatReadinessSummaryResult | null
+    RuntimeProjectionSummaryResult | PersonaChatReadinessSummaryResult | null
   >(null);
   const [isProjecting, setIsProjecting] = useState(false);
 
   useEffect(() => {
     setProjectionResult(null);
     setIsProjecting(false);
-  }, [agent.id]);
+  }, [persona.id]);
 
   async function projectRuntimeContext() {
     setIsProjecting(true);
     setProjectionResult(null);
     try {
-      const result = await projectAgentRuntimeContextSummary(agent);
+      const result = await projectPersonaRuntimeContextSummary(persona);
       setProjectionResult(result);
     } finally {
       setIsProjecting(false);
     }
   }
 
-  async function projectAgentChatReadinessContext() {
+  async function projectPersonaChatReadinessContext() {
     setIsProjecting(true);
     setProjectionResult(null);
     try {
-      const result = await projectAgentChatReadinessContextSummary(agent);
+      const result = await projectPersonaChatReadinessContextSummary(persona);
       setProjectionResult(result);
     } finally {
       setIsProjecting(false);
@@ -649,14 +649,14 @@ export function RuntimeProjectionWorkspace({ agent }: { agent: OwnerPortfolioAge
         {t('runtimeProjection.description')}
       </p>
       <div className="mt-4 flex flex-wrap gap-3">
-        <Button disabled={isProjecting || agent.world.status !== 'available'} loading={isProjecting} onClick={() => void projectRuntimeContext()}>
+        <Button disabled={isProjecting || persona.world.status !== 'available'} loading={isProjecting} onClick={() => void projectRuntimeContext()}>
           {t('runtimeProjection.generateContext')}
         </Button>
-        <Button disabled={isProjecting || agent.world.status !== 'available'} loading={isProjecting} onClick={() => void projectAgentChatReadinessContext()}>
+        <Button disabled={isProjecting || persona.world.status !== 'available'} loading={isProjecting} onClick={() => void projectPersonaChatReadinessContext()}>
           {t('runtimeProjection.generateChatReadiness')}
         </Button>
       </div>
-      {agent.world.status !== 'available' ? (
+      {persona.world.status !== 'available' ? (
         <InlineAlert tone="warning">
           {t('runtimeProjection.worldUnavailable')}
         </InlineAlert>

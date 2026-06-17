@@ -1,6 +1,6 @@
 {
   "identifier": "default",
-  "description": "Default capability for the Realm Agent Studio main window",
+  "description": "Default capability for the Realm Persona Studio main window",
   "windows": ["main"],
   "permissions": [
     "core:default",

@@ -1,4 +1,4 @@
-import type { OwnerPortfolioAgentDetail, PortfolioAgentDetailSource } from './portfolio-data.js';
+import type { OwnerPortfolioPersonaDetail, PortfolioPersonaDetailSource } from './portfolio-data.js';
 import {
   createStudioImageGeneratePayload,
   createStudioSpeechSynthesizePayload,
@@ -11,10 +11,10 @@ import {
 
 export const MEDIA_CANDIDATE_RESOURCE_TYPES = ['IMAGE', 'VIDEO', 'AUDIO'] as const;
 export const MEDIA_CANDIDATE_BINDING_POINTS = [
-  'AGENT_AVATAR',
-  'AGENT_PORTRAIT',
-  'AGENT_CANDIDATE',
-  'AGENT_VOICE_SAMPLE',
+  'PERSONA_AVATAR',
+  'PERSONA_PORTRAIT',
+  'PERSONA_CANDIDATE',
+  'PERSONA_VOICE_SAMPLE',
 ] as const;
 export const AVATAR_PACKAGE_TARGETS = ['SPRITE2D', 'LIVE2D', 'VRM'] as const;
 
@@ -53,20 +53,20 @@ export type VoiceDemoCandidateInput = {
 
 export type NormalizedVisualMediaCandidateInput = {
   resourceType: VisualCandidateResourceType;
-  bindingPoint: Exclude<MediaCandidateBindingPoint, 'AGENT_VOICE_SAMPLE'>;
+  bindingPoint: Exclude<MediaCandidateBindingPoint, 'PERSONA_VOICE_SAMPLE'>;
   prompt: string;
   notes: string;
 };
 
 export type NormalizedVoiceDemoCandidateInput = {
   resourceType: VoiceCandidateResourceType;
-  bindingPoint: Extract<MediaCandidateBindingPoint, 'AGENT_VOICE_SAMPLE'>;
+  bindingPoint: Extract<MediaCandidateBindingPoint, 'PERSONA_VOICE_SAMPLE'>;
   scriptText: string;
 };
 
-export type CandidateAgentContext = {
-  source: PortfolioAgentDetailSource;
-  agentKey: string;
+export type CandidatePersonaContext = {
+  source: PortfolioPersonaDetailSource;
+  personaKey: string;
   handle: string;
   displayName: string;
   bio?: string;
@@ -77,8 +77,8 @@ export type CandidateAgentContext = {
 export type ReviewedVoiceDemoCandidatePayload = {
   candidate: true;
   publicTruth: false;
-  source: 'realm-agent-studio.reviewed-voice-demo-candidate';
-  agentContext: CandidateAgentContext;
+  source: 'realm-persona-studio.reviewed-voice-demo-candidate';
+  personaContext: CandidatePersonaContext;
   runtime: {
     capabilityToken: 'audio.synthesize';
     runtimeScenario: 'speechSynthesize';
@@ -94,9 +94,9 @@ export type ReviewedVoiceDemoCandidatePayload = {
     };
     binding: {
       family: 'Binding';
-      hostType: 'AGENT';
+      hostType: 'PERSONA';
       objectType: 'RESOURCE';
-      bindingPoint: Extract<MediaCandidateBindingPoint, 'AGENT_VOICE_SAMPLE'>;
+      bindingPoint: Extract<MediaCandidateBindingPoint, 'PERSONA_VOICE_SAMPLE'>;
       status: 'candidate-only';
     };
   };
@@ -105,8 +105,8 @@ export type ReviewedVoiceDemoCandidatePayload = {
 export type ReviewedVisualImageCandidatePayload = {
   candidate: true;
   publicTruth: false;
-  source: 'realm-agent-studio.reviewed-visual-image-candidate';
-  agentContext: CandidateAgentContext;
+  source: 'realm-persona-studio.reviewed-visual-image-candidate';
+  personaContext: CandidatePersonaContext;
   runtime: {
     capabilityToken: 'image.generate';
     runtimeScenario: 'imageGenerate';
@@ -122,9 +122,9 @@ export type ReviewedVisualImageCandidatePayload = {
     };
     binding: {
       family: 'Binding';
-      hostType: 'AGENT';
+      hostType: 'PERSONA';
       objectType: 'RESOURCE';
-      bindingPoint: Exclude<MediaCandidateBindingPoint, 'AGENT_VOICE_SAMPLE'>;
+      bindingPoint: Exclude<MediaCandidateBindingPoint, 'PERSONA_VOICE_SAMPLE'>;
       status: 'candidate-only';
     };
   };
@@ -133,8 +133,8 @@ export type ReviewedVisualImageCandidatePayload = {
 export type ReviewedAvatarPackageCandidatePayload = {
   candidate: true;
   publicTruth: false;
-  source: 'realm-agent-studio.reviewed-avatar-package-candidate';
-  agentContext: CandidateAgentContext;
+  source: 'realm-persona-studio.reviewed-avatar-package-candidate';
+  personaContext: CandidatePersonaContext;
   avatarPackage: {
     target: AvatarPackageTarget;
     status: 'candidate-only';
@@ -158,9 +158,9 @@ export type ReviewedAvatarPackageCandidatePayload = {
     };
     binding: {
       family: 'Binding';
-      hostType: 'AGENT';
+      hostType: 'PERSONA';
       objectType: 'RESOURCE';
-      bindingPoint: 'AGENT_AVATAR';
+      bindingPoint: 'PERSONA_AVATAR';
       status: 'candidate-only';
     };
     runtimePresentation: {
@@ -185,10 +185,10 @@ export type VoiceDemoCandidateBuildResult<TPayload> =
   };
 
 const VISUAL_RESOURCE_TYPES = new Set<VisualCandidateResourceType>(['IMAGE']);
-const VISUAL_BINDING_POINTS = new Set<Exclude<MediaCandidateBindingPoint, 'AGENT_VOICE_SAMPLE'>>([
-  'AGENT_AVATAR',
-  'AGENT_PORTRAIT',
-  'AGENT_CANDIDATE',
+const VISUAL_BINDING_POINTS = new Set<Exclude<MediaCandidateBindingPoint, 'PERSONA_VOICE_SAMPLE'>>([
+  'PERSONA_AVATAR',
+  'PERSONA_PORTRAIT',
+  'PERSONA_CANDIDATE',
 ]);
 const AVATAR_PACKAGE_TARGET_SET = new Set<AvatarPackageTarget>(AVATAR_PACKAGE_TARGETS);
 const AVATAR_PACKAGE_REQUIRED_ARTIFACTS: Record<AvatarPackageTarget, string[]> = {
@@ -222,8 +222,8 @@ function isVisualResourceType(value: string): value is VisualCandidateResourceTy
   return VISUAL_RESOURCE_TYPES.has(value as VisualCandidateResourceType);
 }
 
-function isVisualBindingPoint(value: string): value is Exclude<MediaCandidateBindingPoint, 'AGENT_VOICE_SAMPLE'> {
-  return VISUAL_BINDING_POINTS.has(value as Exclude<MediaCandidateBindingPoint, 'AGENT_VOICE_SAMPLE'>);
+function isVisualBindingPoint(value: string): value is Exclude<MediaCandidateBindingPoint, 'PERSONA_VOICE_SAMPLE'> {
+  return VISUAL_BINDING_POINTS.has(value as Exclude<MediaCandidateBindingPoint, 'PERSONA_VOICE_SAMPLE'>);
 }
 
 function isAvatarPackageTarget(value: string): value is AvatarPackageTarget {
@@ -263,22 +263,22 @@ export function assertNoForbiddenMediaCandidateFields(value: unknown, path: stri
   return null;
 }
 
-function createAgentContext(agent: OwnerPortfolioAgentDetail): CandidateAgentContext {
+function createPersonaContext(persona: OwnerPortfolioPersonaDetail): CandidatePersonaContext {
   return {
-    source: agent.source,
-    agentKey: agent.id,
-    handle: agent.handle.value,
-    displayName: agent.displayName.value,
-    ...(agent.bio.value ? { bio: agent.bio.value } : {}),
-    ...(agent.greeting.value ? { greeting: agent.greeting.value } : {}),
-    ...(agent.profileCoverUrl.value ? { profileCoverUrl: agent.profileCoverUrl.value } : {}),
+    source: persona.source,
+    personaKey: persona.id,
+    handle: persona.handle.value,
+    displayName: persona.displayName.value,
+    ...(persona.bio.value ? { bio: persona.bio.value } : {}),
+    ...(persona.greeting.value ? { greeting: persona.greeting.value } : {}),
+    ...(persona.profileCoverUrl.value ? { profileCoverUrl: persona.profileCoverUrl.value } : {}),
   };
 }
 
 export function normalizeVisualMediaCandidateInput(input: VisualMediaCandidateInput): NormalizedVisualMediaCandidateInput {
   return {
     resourceType: isVisualResourceType(input.resourceType) ? input.resourceType : 'IMAGE',
-    bindingPoint: isVisualBindingPoint(input.bindingPoint) ? input.bindingPoint : 'AGENT_CANDIDATE',
+    bindingPoint: isVisualBindingPoint(input.bindingPoint) ? input.bindingPoint : 'PERSONA_CANDIDATE',
     prompt: normalizeLineText(input.prompt),
     notes: normalizeLineText(input.notes),
   };
@@ -287,7 +287,7 @@ export function normalizeVisualMediaCandidateInput(input: VisualMediaCandidateIn
 export function normalizeVoiceDemoCandidateInput(input: VoiceDemoCandidateInput): NormalizedVoiceDemoCandidateInput {
   return {
     resourceType: 'AUDIO',
-    bindingPoint: 'AGENT_VOICE_SAMPLE',
+    bindingPoint: 'PERSONA_VOICE_SAMPLE',
     scriptText: normalizeLineText(input.scriptText),
   };
 }
@@ -298,11 +298,11 @@ export function normalizeAvatarPackageTarget(value: string): AvatarPackageTarget
 
 export function buildReviewedVisualImageGenerationPayload(
   input: VisualImageGenerationInput,
-  agent: OwnerPortfolioAgentDetail,
+  persona: OwnerPortfolioPersonaDetail,
 ): VisualImageCandidateBuildResult<StudioImageGeneratePayload> {
   const normalized = normalizeVisualMediaCandidateInput(input);
   const aspectRatio = normalizeSingleLine(input.aspectRatio) || '1:1';
-  const callParams = resolveStudioImageCallParams('realm-agent-studio.visual-image-candidate', {
+  const callParams = resolveStudioImageCallParams('realm-persona-studio.visual-image-candidate', {
     aspectRatio,
   });
   const errors: string[] = [];
@@ -318,15 +318,15 @@ export function buildReviewedVisualImageGenerationPayload(
   const promptParts = [
     normalized.prompt,
     normalized.notes ? `Owner notes: ${normalized.notes}` : '',
-    agent.displayName.value ? `Realm Agent display name: ${agent.displayName.value}` : '',
-    agent.bio.value ? `Profile description context: ${agent.bio.value}` : '',
+    persona.displayName.value ? `Realm Persona display name: ${persona.displayName.value}` : '',
+    persona.bio.value ? `Profile description context: ${persona.bio.value}` : '',
   ].filter(Boolean);
 
   return {
     changed: true,
     errors: [],
     payload: createStudioImageGeneratePayload({
-      surfaceId: 'realm-agent-studio.visual-image-candidate',
+      surfaceId: 'realm-persona-studio.visual-image-candidate',
       params: {
         ...callParams,
       },
@@ -349,17 +349,17 @@ export function buildReviewedVisualImageGenerationPayload(
 
 export function buildReviewedAvatarPackageImageGenerationPayload(
   input: AvatarPackageCandidateInput,
-  agent: OwnerPortfolioAgentDetail,
+  persona: OwnerPortfolioPersonaDetail,
 ): VisualImageCandidateBuildResult<StudioImageGeneratePayload> {
   const visual = normalizeVisualMediaCandidateInput({
     ...input,
-    bindingPoint: 'AGENT_AVATAR',
+    bindingPoint: 'PERSONA_AVATAR',
   });
   const target = normalizeAvatarPackageTarget(input.packageTarget);
   const aspectRatio = normalizeSingleLine(input.aspectRatio) || '1:1';
   const motionNotes = normalizeLineText(input.motionNotes);
   const interactionNotes = normalizeLineText(input.interactionNotes);
-  const callParams = resolveStudioImageCallParams('realm-agent-studio.avatar-package-candidate', {
+  const callParams = resolveStudioImageCallParams('realm-persona-studio.avatar-package-candidate', {
     aspectRatio,
   });
   const errors: string[] = [];
@@ -379,16 +379,16 @@ export function buildReviewedAvatarPackageImageGenerationPayload(
     visual.notes ? `Owner notes: ${visual.notes}` : '',
     motionNotes ? `Motion notes: ${motionNotes}` : '',
     interactionNotes ? `Interaction notes: ${interactionNotes}` : '',
-    agent.displayName.value ? `Realm Agent display name: ${agent.displayName.value}` : '',
-    agent.bio.value ? `Profile description context: ${agent.bio.value}` : '',
-    agent.greeting.value ? `Greeting context: ${agent.greeting.value}` : '',
+    persona.displayName.value ? `Realm Persona display name: ${persona.displayName.value}` : '',
+    persona.bio.value ? `Profile description context: ${persona.bio.value}` : '',
+    persona.greeting.value ? `Greeting context: ${persona.greeting.value}` : '',
   ].filter(Boolean);
 
   return {
     changed: true,
     errors: [],
     payload: createStudioImageGeneratePayload({
-      surfaceId: 'realm-agent-studio.avatar-package-candidate',
+      surfaceId: 'realm-persona-studio.avatar-package-candidate',
       params: {
         ...callParams,
       },
@@ -411,9 +411,9 @@ export function buildReviewedAvatarPackageImageGenerationPayload(
 
 export function buildReviewedVisualImageCandidatePayload(
   input: VisualImageGenerationInput,
-  agent: OwnerPortfolioAgentDetail,
+  persona: OwnerPortfolioPersonaDetail,
 ): VisualImageCandidateBuildResult<ReviewedVisualImageCandidatePayload> {
-  const imagePayload = buildReviewedVisualImageGenerationPayload(input, agent);
+  const imagePayload = buildReviewedVisualImageGenerationPayload(input, persona);
   const normalized = normalizeVisualMediaCandidateInput(input);
 
   if (!imagePayload.payload) {
@@ -426,8 +426,8 @@ export function buildReviewedVisualImageCandidatePayload(
     payload: {
       candidate: true,
       publicTruth: false,
-      source: 'realm-agent-studio.reviewed-visual-image-candidate',
-      agentContext: createAgentContext(agent),
+      source: 'realm-persona-studio.reviewed-visual-image-candidate',
+      personaContext: createPersonaContext(persona),
       runtime: {
         capabilityToken: 'image.generate',
         runtimeScenario: 'imageGenerate',
@@ -443,7 +443,7 @@ export function buildReviewedVisualImageCandidatePayload(
         },
         binding: {
           family: 'Binding',
-          hostType: 'AGENT',
+          hostType: 'PERSONA',
           objectType: 'RESOURCE',
           bindingPoint: normalized.bindingPoint,
           status: 'candidate-only',
@@ -455,9 +455,9 @@ export function buildReviewedVisualImageCandidatePayload(
 
 export function buildReviewedAvatarPackageCandidatePayload(
   input: AvatarPackageCandidateInput,
-  agent: OwnerPortfolioAgentDetail,
+  persona: OwnerPortfolioPersonaDetail,
 ): VisualImageCandidateBuildResult<ReviewedAvatarPackageCandidatePayload> {
-  const imagePayload = buildReviewedAvatarPackageImageGenerationPayload(input, agent);
+  const imagePayload = buildReviewedAvatarPackageImageGenerationPayload(input, persona);
   const target = normalizeAvatarPackageTarget(input.packageTarget);
 
   if (!imagePayload.payload) {
@@ -470,8 +470,8 @@ export function buildReviewedAvatarPackageCandidatePayload(
     payload: {
       candidate: true,
       publicTruth: false,
-      source: 'realm-agent-studio.reviewed-avatar-package-candidate',
-      agentContext: createAgentContext(agent),
+      source: 'realm-persona-studio.reviewed-avatar-package-candidate',
+      personaContext: createPersonaContext(persona),
       avatarPackage: {
         target,
         status: 'candidate-only',
@@ -495,9 +495,9 @@ export function buildReviewedAvatarPackageCandidatePayload(
         },
         binding: {
           family: 'Binding',
-          hostType: 'AGENT',
+          hostType: 'PERSONA',
           objectType: 'RESOURCE',
-          bindingPoint: 'AGENT_AVATAR',
+          bindingPoint: 'PERSONA_AVATAR',
           status: 'candidate-only',
         },
         runtimePresentation: {
@@ -513,7 +513,7 @@ export function buildReviewedVoiceSynthesisPayload(
   input: VoiceDemoCandidateInput,
 ): VoiceDemoCandidateBuildResult<StudioSpeechSynthesizePayload> {
   const normalized = normalizeVoiceDemoCandidateInput(input);
-  const callParams = resolveStudioSpeechCallParams('realm-agent-studio.voice-demo-candidate');
+  const callParams = resolveStudioSpeechCallParams('realm-persona-studio.voice-demo-candidate');
   const errors: string[] = [];
 
   if (!normalized.scriptText) {
@@ -525,7 +525,7 @@ export function buildReviewedVoiceSynthesisPayload(
   }
 
   const payload = createStudioSpeechSynthesizePayload({
-    surfaceId: 'realm-agent-studio.voice-demo-candidate',
+    surfaceId: 'realm-persona-studio.voice-demo-candidate',
     params: {
       ...callParams,
     },
@@ -547,7 +547,7 @@ export function buildReviewedVoiceSynthesisPayload(
 
 export function buildReviewedVoiceDemoCandidatePayload(
   input: VoiceDemoCandidateInput,
-  agent: OwnerPortfolioAgentDetail,
+  persona: OwnerPortfolioPersonaDetail,
 ): VoiceDemoCandidateBuildResult<ReviewedVoiceDemoCandidatePayload> {
   const synthesisPayload = buildReviewedVoiceSynthesisPayload(input);
   const normalized = normalizeVoiceDemoCandidateInput(input);
@@ -562,8 +562,8 @@ export function buildReviewedVoiceDemoCandidatePayload(
     payload: {
       candidate: true,
       publicTruth: false,
-      source: 'realm-agent-studio.reviewed-voice-demo-candidate',
-      agentContext: createAgentContext(agent),
+      source: 'realm-persona-studio.reviewed-voice-demo-candidate',
+      personaContext: createPersonaContext(persona),
       runtime: {
         capabilityToken: 'audio.synthesize',
         runtimeScenario: 'speechSynthesize',
@@ -579,7 +579,7 @@ export function buildReviewedVoiceDemoCandidatePayload(
         },
         binding: {
           family: 'Binding',
-          hostType: 'AGENT',
+          hostType: 'PERSONA',
           objectType: 'RESOURCE',
           bindingPoint: normalized.bindingPoint,
           status: 'candidate-only',
