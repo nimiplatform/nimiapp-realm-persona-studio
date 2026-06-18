@@ -64,8 +64,8 @@ const baseInput: CreateRealmPersonaDraftInput = {
   description: ' Owner-created public identity ',
   ruleText: 'Stay visible and owner-reviewed.',
   selectedWorldId: ' world-oasis ',
-  dnaPrimary: 'CARING',
-  dnaSecondary: ['GENTLE', 'WISE'],
+  personaArchetype: 'CARING',
+  personaTraits: ['GENTLE', 'WISE'],
   referenceImageUrl: '',
   originalDescription: '',
 };
@@ -79,8 +79,8 @@ describe('create Realm Persona draft normalization', () => {
       description: 'Owner-created public identity',
       ruleText: 'Stay visible and owner-reviewed.',
       selectedWorldId: 'world-oasis',
-      dnaPrimary: 'CARING',
-      dnaSecondary: ['GENTLE', 'WISE'],
+      personaArchetype: 'CARING',
+      personaTraits: ['GENTLE', 'WISE'],
       referenceImageUrl: '',
       originalDescription: '',
     });

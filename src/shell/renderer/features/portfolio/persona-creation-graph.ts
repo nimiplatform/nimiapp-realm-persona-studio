@@ -11,7 +11,7 @@ export type PersonaCreationGraphFieldStatus = 'mapped' | 'candidateOnly' | 'unma
 
 export type PersonaCreationGraphSectionKey =
   | 'identity'
-  | 'dna'
+  | 'personaStyle'
   | 'behavior'
   | 'worldview'
   | 'greeting'
@@ -114,7 +114,7 @@ const GRAPH_RULE_IDS = [
 
 const REQUIRED_CREATE_SECTIONS: PersonaCreationGraphSectionKey[] = [
   'identity',
-  'dna',
+  'personaStyle',
   'worldview',
   'sourceProvenance',
   'writePlan',
@@ -183,8 +183,8 @@ export function buildPersonaCreationGraphFromDraft(
     description: draft.description,
     ruleText: draft.ruleText,
     selectedWorldId: draft.selectedWorldId,
-    dnaPrimary: draft.dnaPrimary,
-    dnaSecondary: draft.dnaSecondary,
+    personaArchetype: draft.personaArchetype,
+    personaTraits: draft.personaTraits,
     referenceImageUrl: draft.referenceImageUrl,
     originalDescription: draft.originalDescription,
   });
@@ -197,6 +197,8 @@ export function buildPersonaCreationGraphFromDraft(
     sourceField('handle', 'Handle', present(draft.handle), 'mapped', 'identity'),
     sourceField('concept', 'Concept', present(draft.concept), 'mapped', 'worldview'),
     sourceField('description', 'Profile description', present(draft.description), 'mapped', 'identity'),
+    sourceField('personaArchetype', 'Persona archetype', present(draft.personaArchetype), 'mapped', 'personaStyle'),
+    sourceField('personaTraits', 'Persona traits', draft.personaTraits.length > 0 ? draft.personaTraits.join(', ') : null, 'mapped', 'personaStyle'),
     sourceField('ruleText', 'Visible behavior rules', present(draft.ruleText), 'candidateOnly', 'behavior'),
     sourceField('referenceImageUrl', 'Reference image URL', present(draft.referenceImageUrl), 'candidateOnly', 'visualBrief'),
     sourceField('runtimeRationale', 'Runtime draft rationale', present(options.runtimeRationale || ''), 'candidateOnly', 'riskNotes'),
@@ -221,14 +223,14 @@ export function buildPersonaCreationGraphFromDraft(
       ruleIds: ['R-RPS-GRAPH-016', 'R-RPS-GRAPH-019'],
     }),
     buildSection({
-      key: 'dna',
-      title: 'DNA',
-      summary: draft.dnaPrimary ? 'Realm archetype input is selected.' : 'Realm archetype input is missing.',
+      key: 'personaStyle',
+      title: 'Persona Style',
+      summary: draft.personaArchetype ? 'Persona style archetype is selected.' : 'Persona style archetype is missing.',
       fields: [
-        ...field('Primary archetype', present(draft.dnaPrimary)),
-        ...field('Secondary traits', draft.dnaSecondary.length > 0 ? draft.dnaSecondary.join(', ') : null),
+        ...field('Archetype', present(draft.personaArchetype)),
+        ...field('Traits', draft.personaTraits.length > 0 ? draft.personaTraits.join(', ') : null),
       ],
-      missing: draft.dnaPrimary ? [] : ['Persona archetype'],
+      missing: draft.personaArchetype ? [] : ['Persona archetype'],
       risks: [],
       ruleIds: ['R-RPS-GRAPH-016', 'R-RPS-GRAPH-018'],
     }),
@@ -352,7 +354,7 @@ export function buildPersonaCreationGraphFromDraft(
     {
       target: 'realm-create',
       label: 'Create Realm Persona',
-      status: draft.handle && draft.displayName && draft.concept && draft.selectedWorldId && draft.dnaPrimary ? 'ready' : 'blocked',
+      status: draft.handle && draft.displayName && draft.concept && draft.selectedWorldId && draft.personaArchetype ? 'ready' : 'blocked',
       reason: 'Uses the owner-scoped Realm create path after handle and world gates pass.',
       ruleIds: ['R-RPS-GRAPH-017', 'R-RPS-GRAPH-021'],
     },
@@ -457,7 +459,7 @@ export function validatePersonaCreationGraphForRealmCreate(
     shapeErrors.push('Persona Creation Graph write plan is blocked for Realm create (R-RPS-GRAPH-017).');
   }
 
-  for (const sectionKey of ['identity', 'dna', 'worldview'] as const) {
+  for (const sectionKey of ['identity', 'personaStyle', 'worldview'] as const) {
     const section = sections.get(sectionKey);
     if (section?.status === 'blocked') {
       shapeErrors.push(`Persona Creation Graph ${section.title} section is blocked (R-RPS-GRAPH-027).`);

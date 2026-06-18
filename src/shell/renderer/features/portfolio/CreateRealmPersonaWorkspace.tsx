@@ -2,15 +2,15 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, EmptyState, FieldShell, InlineAlert, SelectField, StatusBadge, Surface, TextareaField, TextField } from '@nimiplatform/kit/ui';
 import {
-  DNA_PRIMARY_ARCHETYPES,
-  DNA_SECONDARY_MAX_RECOMMENDED,
-  DNA_SECONDARY_TRAITS,
+  PERSONA_ARCHETYPES,
+  PERSONA_TRAIT_MAX_RECOMMENDED,
+  PERSONA_TRAITS,
   normalizeCreateRealmPersonaDraft,
   selectOasisDefaultWorld,
   validateCreateRealmPersonaReadiness,
   type CreateRealmPersonaDraftInput,
-  type DnaPrimaryArchetype,
-  type DnaSecondaryTrait,
+  type PersonaArchetype,
+  type PersonaTrait,
   type NormalizedRealmPersonaHandleAvailability,
   type ReviewedCreateRealmPersonaPayload,
   type SelectableRealmWorld,
@@ -86,7 +86,7 @@ const GRAPH_SOURCE_FIELD_KEYS: Record<string, StudioCopyKey> = {
 
 const GRAPH_SECTION_TITLE_KEYS: Record<PersonaCreationGraphSectionKey, StudioCopyKey> = {
   identity: 'create.graph.section.identity.title',
-  dna: 'create.graph.section.dna.title',
+  personaStyle: 'create.graph.section.personaStyle.title',
   behavior: 'create.graph.section.behavior.title',
   worldview: 'create.graph.section.worldview.title',
   greeting: 'create.graph.section.greeting.title',
@@ -104,8 +104,8 @@ const GRAPH_SECTION_TITLE_KEYS: Record<PersonaCreationGraphSectionKey, StudioCop
 const GRAPH_SECTION_SUMMARY_KEYS: Record<string, StudioCopyKey> = {
   'Public identity fields are ready for owner review.': 'create.graph.section.identity.ready',
   'Public identity fields are not ready.': 'create.graph.section.identity.missing',
-  'Realm archetype input is selected.': 'create.graph.section.dna.ready',
-  'Realm archetype input is missing.': 'create.graph.section.dna.missing',
+  'Persona style archetype is selected.': 'create.graph.section.personaStyle.ready',
+  'Persona style archetype is missing.': 'create.graph.section.personaStyle.missing',
   'Visible behavior notes will stay owner-reviewed.': 'create.graph.section.behavior.ready',
   'No behavior notes were supplied.': 'create.graph.section.behavior.missing',
   'Concept can anchor the public persona worldview.': 'create.graph.section.worldview.ready',
@@ -126,7 +126,7 @@ const GRAPH_SECTION_SUMMARY_KEYS: Record<string, StudioCopyKey> = {
 const GRAPH_MISSING_KEYS: Record<string, StudioCopyKey> = {
   'display name': 'create.graph.missing.displayName',
   handle: 'create.graph.missing.handle',
-  'Persona archetype': 'create.graph.missing.dnaPrimaryArchetype',
+  'Persona archetype': 'create.graph.missing.personaArchetype',
   'behavior boundaries': 'create.graph.missing.behaviorBoundaries',
   concept: 'create.graph.missing.concept',
   'greeting candidate': 'create.graph.missing.greetingCandidate',
@@ -146,8 +146,8 @@ const CREATE_FIXED_MESSAGE_KEYS: Record<string, StudioCopyKey> = {
   'display name missing': 'create.error.displayNameMissing',
   'concept missing': 'create.error.conceptMissing',
   'selected world missing': 'create.error.selectedWorldMissing',
-  'Persona archetype missing (RealmPersonaCoreV1 requires personaStyle.archetype; we map the reviewed archetype into canonical core)': 'create.error.dnaPrimaryMissing',
-  'selected world not source-backed by WorldsService.worldControllerListWorlds': 'create.error.selectedWorldNotSourceBacked',
+  'persona archetype missing': 'create.error.personaArchetypeMissing',
+  'selected world not source-backed by WorldCoreController.listWorldCores': 'create.error.selectedWorldNotSourceBacked',
   'handle availability not checked by WorldCoreController.listRealmPersonas': 'create.error.handleAvailabilityMissing',
   'handle availability not checked for the current normalized handle': 'create.error.handleAvailabilityStale',
   'Persona handle check requires a non-empty normalized handle.': 'create.error.handleAvailabilityEmpty',
@@ -252,35 +252,35 @@ function createEmptyDraft(): CreateRealmPersonaDraftInput {
     description: '',
     ruleText: '',
     selectedWorldId: '',
-    dnaPrimary: '',
-    dnaSecondary: [],
+    personaArchetype: '',
+    personaTraits: [],
     referenceImageUrl: '',
     originalDescription: '',
   };
 }
 
-const DNA_PRIMARY_DESCRIPTION_KEYS: Record<DnaPrimaryArchetype, StudioCopyKey> = {
-  CARING: 'create.dna.primary.CARING',
-  PLAYFUL: 'create.dna.primary.PLAYFUL',
-  INTELLECTUAL: 'create.dna.primary.INTELLECTUAL',
-  CONFIDENT: 'create.dna.primary.CONFIDENT',
-  MYSTERIOUS: 'create.dna.primary.MYSTERIOUS',
-  ROMANTIC: 'create.dna.primary.ROMANTIC',
+const PERSONA_ARCHETYPE_DESCRIPTION_KEYS: Record<PersonaArchetype, StudioCopyKey> = {
+  CARING: 'create.personaStyle.archetype.CARING',
+  PLAYFUL: 'create.personaStyle.archetype.PLAYFUL',
+  INTELLECTUAL: 'create.personaStyle.archetype.INTELLECTUAL',
+  CONFIDENT: 'create.personaStyle.archetype.CONFIDENT',
+  MYSTERIOUS: 'create.personaStyle.archetype.MYSTERIOUS',
+  ROMANTIC: 'create.personaStyle.archetype.ROMANTIC',
 };
 
-const DNA_SECONDARY_DESCRIPTION_KEYS: Record<DnaSecondaryTrait, StudioCopyKey> = {
-  HUMOROUS: 'create.dna.secondary.HUMOROUS',
-  SARCASTIC: 'create.dna.secondary.SARCASTIC',
-  GENTLE: 'create.dna.secondary.GENTLE',
-  DIRECT: 'create.dna.secondary.DIRECT',
-  OPTIMISTIC: 'create.dna.secondary.OPTIMISTIC',
-  REALISTIC: 'create.dna.secondary.REALISTIC',
-  DRAMATIC: 'create.dna.secondary.DRAMATIC',
-  PASSIONATE: 'create.dna.secondary.PASSIONATE',
-  REBELLIOUS: 'create.dna.secondary.REBELLIOUS',
-  INNOCENT: 'create.dna.secondary.INNOCENT',
-  WISE: 'create.dna.secondary.WISE',
-  ECCENTRIC: 'create.dna.secondary.ECCENTRIC',
+const PERSONA_TRAIT_DESCRIPTION_KEYS: Record<PersonaTrait, StudioCopyKey> = {
+  HUMOROUS: 'create.personaStyle.trait.HUMOROUS',
+  SARCASTIC: 'create.personaStyle.trait.SARCASTIC',
+  GENTLE: 'create.personaStyle.trait.GENTLE',
+  DIRECT: 'create.personaStyle.trait.DIRECT',
+  OPTIMISTIC: 'create.personaStyle.trait.OPTIMISTIC',
+  REALISTIC: 'create.personaStyle.trait.REALISTIC',
+  DRAMATIC: 'create.personaStyle.trait.DRAMATIC',
+  PASSIONATE: 'create.personaStyle.trait.PASSIONATE',
+  REBELLIOUS: 'create.personaStyle.trait.REBELLIOUS',
+  INNOCENT: 'create.personaStyle.trait.INNOCENT',
+  WISE: 'create.personaStyle.trait.WISE',
+  ECCENTRIC: 'create.personaStyle.trait.ECCENTRIC',
 };
 
 function worldOptionLabel(world: SelectableRealmWorld): string {
@@ -666,8 +666,8 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
           concept: result.seed.concept || current.concept,
           description: result.seed.description || current.description,
           ruleText: result.seed.ruleText || current.ruleText,
-          dnaPrimary: result.seed.dnaPrimary || current.dnaPrimary,
-          dnaSecondary: result.seed.dnaSecondary.length > 0 ? result.seed.dnaSecondary : current.dnaSecondary,
+          personaArchetype: result.seed.personaArchetype || current.personaArchetype,
+          personaTraits: result.seed.personaTraits.length > 0 ? result.seed.personaTraits : current.personaTraits,
           originalDescription: seedDescription.trim(),
         }));
         // Seed the reference image prompt as well.
@@ -675,7 +675,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
           description: seedDescription,
           displayName: result.seed.displayName,
           concept: result.seed.concept,
-          dnaPrimary: result.seed.dnaPrimary || '',
+          personaArchetype: result.seed.personaArchetype || '',
         }));
         setStage('edit');
       }
@@ -697,7 +697,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
       description: seedDescription,
       displayName: draft.displayName,
       concept: draft.concept,
-      dnaPrimary: draft.dnaPrimary,
+      personaArchetype: draft.personaArchetype,
     }));
     setStage('edit');
   }
@@ -717,7 +717,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
           description: draft.originalDescription,
           displayName: draft.displayName,
           concept: draft.concept,
-          dnaPrimary: draft.dnaPrimary,
+          personaArchetype: draft.personaArchetype,
         });
       const result = await generatePersonaReferenceImage({ prompt });
       setReferenceImageResult(result);
@@ -887,44 +887,44 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
               />
             </FieldShell>
             <FieldShell
-              label={t('create.dnaPrimaryLabel')}
-              message={t('create.dnaPrimaryMessage')}
-              messageTone={draft.dnaPrimary ? 'neutral' : 'danger'}
+              label={t('create.personaArchetypeLabel')}
+              message={t('create.personaArchetypeMessage')}
+              messageTone={draft.personaArchetype ? 'neutral' : 'danger'}
             >
               <SelectField
-                value={draft.dnaPrimary}
+                value={draft.personaArchetype}
                 options={[
-                  { value: '', label: t('create.dnaPrimaryPlaceholder') },
-                  ...DNA_PRIMARY_ARCHETYPES.map((archetype) => ({
+                  { value: '', label: t('create.personaArchetypePlaceholder') },
+                  ...PERSONA_ARCHETYPES.map((archetype) => ({
                     value: archetype,
-                    label: `${archetype} - ${t(DNA_PRIMARY_DESCRIPTION_KEYS[archetype])}`,
+                    label: `${archetype} - ${t(PERSONA_ARCHETYPE_DESCRIPTION_KEYS[archetype])}`,
                   })),
                 ]}
-                onValueChange={(value) => updateDraft({ dnaPrimary: value as DnaPrimaryArchetype | '' })}
+                onValueChange={(value) => updateDraft({ personaArchetype: value as PersonaArchetype | '' })}
               />
             </FieldShell>
             <FieldShell
-              label={t('create.dnaSecondaryLabel', { max: DNA_SECONDARY_MAX_RECOMMENDED })}
+              label={t('create.personaTraitsLabel', { max: PERSONA_TRAIT_MAX_RECOMMENDED })}
               message={
-                draft.dnaSecondary.length > DNA_SECONDARY_MAX_RECOMMENDED
-                  ? t('create.dnaSecondaryTooMany', { count: draft.dnaSecondary.length, max: DNA_SECONDARY_MAX_RECOMMENDED })
-                  : t('create.dnaSecondaryToggle')
+                draft.personaTraits.length > PERSONA_TRAIT_MAX_RECOMMENDED
+                  ? t('create.personaTraitsTooMany', { count: draft.personaTraits.length, max: PERSONA_TRAIT_MAX_RECOMMENDED })
+                  : t('create.personaTraitsToggle')
               }
-              messageTone={draft.dnaSecondary.length > DNA_SECONDARY_MAX_RECOMMENDED ? 'warning' : 'neutral'}
+              messageTone={draft.personaTraits.length > PERSONA_TRAIT_MAX_RECOMMENDED ? 'warning' : 'neutral'}
             >
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {DNA_SECONDARY_TRAITS.map((trait) => {
-                  const active = draft.dnaSecondary.includes(trait);
+                {PERSONA_TRAITS.map((trait) => {
+                  const active = draft.personaTraits.includes(trait);
                   return (
                     <button
                       key={trait}
                       type="button"
-                      title={t(DNA_SECONDARY_DESCRIPTION_KEYS[trait])}
+                      title={t(PERSONA_TRAIT_DESCRIPTION_KEYS[trait])}
                       onClick={() => {
                         const next = active
-                          ? draft.dnaSecondary.filter((value) => value !== trait)
-                          : [...draft.dnaSecondary, trait];
-                        updateDraft({ dnaSecondary: next });
+                          ? draft.personaTraits.filter((value) => value !== trait)
+                          : [...draft.personaTraits, trait];
+                        updateDraft({ personaTraits: next });
                       }}
                       style={{
                         padding: '6px 12px',
@@ -1043,7 +1043,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
                     description: draft.originalDescription,
                     displayName: draft.displayName,
                     concept: draft.concept,
-                    dnaPrimary: draft.dnaPrimary,
+                    personaArchetype: draft.personaArchetype,
                   })}
                   onChange={(event) => setReferenceImagePrompt(event.currentTarget.value)}
                 />

@@ -7,8 +7,8 @@ const validSeed = {
   concept: 'Operational guide for artifact reviews.',
   description: 'Mira helps owners shape and review public persona behavior.',
   ruleText: 'Keep output practical.',
-  dnaPrimary: 'INTELLECTUAL',
-  dnaSecondary: ['WISE', 'DIRECT'],
+  personaArchetype: 'INTELLECTUAL',
+  personaTraits: ['WISE', 'DIRECT'],
   rationale: 'Matches the owner brief.',
 };
 
@@ -18,8 +18,8 @@ describe('persona seed Runtime output parser', () => {
       seed: {
         handle: 'mira-prime',
         displayName: 'Mira Prime',
-        dnaPrimary: 'INTELLECTUAL',
-        dnaSecondary: ['WISE', 'DIRECT'],
+        personaArchetype: 'INTELLECTUAL',
+        personaTraits: ['WISE', 'DIRECT'],
       },
       rationale: 'Matches the owner brief.',
     });

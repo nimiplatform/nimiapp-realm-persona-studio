@@ -18,7 +18,7 @@ export const REALM_PERSONA_CREATE_PATH = 'POST /api/realm/core/personas';
 export const REALM_PERSONA_HANDLE_CHECK_SOURCE = 'Realm WorldCoreController.listRealmPersonas';
 export const REALM_PERSONA_HANDLE_CHECK_PATH = 'GET /api/realm/core/personas';
 
-export type DnaPrimaryArchetype =
+export type PersonaArchetype =
   | 'CARING'
   | 'PLAYFUL'
   | 'INTELLECTUAL'
@@ -26,7 +26,7 @@ export type DnaPrimaryArchetype =
   | 'MYSTERIOUS'
   | 'ROMANTIC';
 
-export const DNA_PRIMARY_ARCHETYPES: readonly DnaPrimaryArchetype[] = [
+export const PERSONA_ARCHETYPES: readonly PersonaArchetype[] = [
   'CARING',
   'PLAYFUL',
   'INTELLECTUAL',
@@ -35,7 +35,7 @@ export const DNA_PRIMARY_ARCHETYPES: readonly DnaPrimaryArchetype[] = [
   'ROMANTIC',
 ];
 
-export type DnaSecondaryTrait =
+export type PersonaTrait =
   | 'HUMOROUS'
   | 'SARCASTIC'
   | 'GENTLE'
@@ -49,7 +49,7 @@ export type DnaSecondaryTrait =
   | 'WISE'
   | 'ECCENTRIC';
 
-export const DNA_SECONDARY_TRAITS: readonly DnaSecondaryTrait[] = [
+export const PERSONA_TRAITS: readonly PersonaTrait[] = [
   'HUMOROUS',
   'SARCASTIC',
   'GENTLE',
@@ -64,7 +64,7 @@ export const DNA_SECONDARY_TRAITS: readonly DnaSecondaryTrait[] = [
   'ECCENTRIC',
 ];
 
-export const DNA_SECONDARY_MAX_RECOMMENDED = 3;
+export const PERSONA_TRAIT_MAX_RECOMMENDED = 3;
 
 export type CreateRealmPersonaDraftInput = {
   handle: string;
@@ -73,8 +73,8 @@ export type CreateRealmPersonaDraftInput = {
   description: string;
   ruleText: string;
   selectedWorldId: string;
-  dnaPrimary: DnaPrimaryArchetype | '';
-  dnaSecondary: DnaSecondaryTrait[];
+  personaArchetype: PersonaArchetype | '';
+  personaTraits: PersonaTrait[];
   /** Optional reference image URL produced by Runtime image generation in the AI-seeded create flow. */
   referenceImageUrl: string;
   /** Client-only: the one-liner the owner typed in the seed phase. Re-used as
@@ -89,8 +89,8 @@ export type NormalizedCreateRealmPersonaDraft = {
   description: string;
   ruleText: string;
   selectedWorldId: string;
-  dnaPrimary: DnaPrimaryArchetype | '';
-  dnaSecondary: DnaSecondaryTrait[];
+  personaArchetype: PersonaArchetype | '';
+  personaTraits: PersonaTrait[];
   referenceImageUrl: string;
   originalDescription: string;
 };
@@ -195,12 +195,12 @@ function normalizeRuleLines(value: string): string[] {
     .filter(Boolean);
 }
 
-function normalizeDnaSecondary(values: readonly DnaSecondaryTrait[] | readonly string[]): DnaSecondaryTrait[] {
-  const known = new Set<DnaSecondaryTrait>(DNA_SECONDARY_TRAITS);
-  const seen = new Set<DnaSecondaryTrait>();
-  const out: DnaSecondaryTrait[] = [];
+function normalizePersonaTraits(values: readonly PersonaTrait[] | readonly string[]): PersonaTrait[] {
+  const known = new Set<PersonaTrait>(PERSONA_TRAITS);
+  const seen = new Set<PersonaTrait>();
+  const out: PersonaTrait[] = [];
   for (const value of values) {
-    const trimmed = String(value || '').trim().toUpperCase() as DnaSecondaryTrait;
+    const trimmed = String(value || '').trim().toUpperCase() as PersonaTrait;
     if (!known.has(trimmed) || seen.has(trimmed)) continue;
     seen.add(trimmed);
     out.push(trimmed);
@@ -220,9 +220,9 @@ function normalizeReferenceImageUrl(value: string): string {
 }
 
 export function normalizeCreateRealmPersonaDraft(input: CreateRealmPersonaDraftInput): NormalizedCreateRealmPersonaDraft {
-  const rawPrimary = String(input.dnaPrimary || '').trim().toUpperCase();
-  const dnaPrimary = (DNA_PRIMARY_ARCHETYPES as readonly string[]).includes(rawPrimary)
-    ? (rawPrimary as DnaPrimaryArchetype)
+  const rawPrimary = String(input.personaArchetype || '').trim().toUpperCase();
+  const personaArchetype = (PERSONA_ARCHETYPES as readonly string[]).includes(rawPrimary)
+    ? (rawPrimary as PersonaArchetype)
     : '';
   return {
     handle: normalizeHandle(input.handle),
@@ -231,8 +231,8 @@ export function normalizeCreateRealmPersonaDraft(input: CreateRealmPersonaDraftI
     description: input.description.trim(),
     ruleText: input.ruleText.trim(),
     selectedWorldId: input.selectedWorldId.trim(),
-    dnaPrimary,
-    dnaSecondary: normalizeDnaSecondary(input.dnaSecondary || []),
+    personaArchetype,
+    personaTraits: normalizePersonaTraits(input.personaTraits || []),
     referenceImageUrl: normalizeReferenceImageUrl(input.referenceImageUrl || ''),
     originalDescription: String(input.originalDescription || '').trim(),
   };
@@ -330,8 +330,8 @@ function buildRealmPersonaCoreV1(draft: NormalizedCreateRealmPersonaDraft): Reco
       profileLine: draft.description || draft.concept,
     },
     personaStyle: {
-      archetype: draft.dnaPrimary,
-      traits: draft.dnaSecondary,
+      archetype: draft.personaArchetype,
+      traits: draft.personaTraits,
       voice: 'owner-reviewed',
       pacing: 'responsive',
     },
@@ -395,7 +395,7 @@ export function validateCreateRealmPersonaReadiness(
   if (!draft.selectedWorldId) {
     errors.push('selected world missing');
   }
-  if (!draft.dnaPrimary) {
+  if (!draft.personaArchetype) {
     errors.push('persona archetype missing');
   }
   if (draft.selectedWorldId && selectableWorldIds && !selectableWorldIds.has(draft.selectedWorldId)) {

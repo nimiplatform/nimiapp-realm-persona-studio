@@ -1,10 +1,10 @@
 import { createStudioRuntimeClient } from '@renderer/data/runtime-client.js';
 import {
-  DNA_PRIMARY_ARCHETYPES,
-  DNA_SECONDARY_TRAITS,
+  PERSONA_ARCHETYPES,
+  PERSONA_TRAITS,
   type CreateRealmPersonaDraftInput,
-  type DnaPrimaryArchetype,
-  type DnaSecondaryTrait,
+  type PersonaArchetype,
+  type PersonaTrait,
 } from './create-persona-draft.js';
 import {
   buildStudioTextRequestParameters,
@@ -28,7 +28,7 @@ export const PERSONA_SEED_SOURCE = 'Runtime runtime.ai.text.generate' as const;
  */
 export type GeneratedPersonaSeed = Pick<
   CreateRealmPersonaDraftInput,
-  'handle' | 'displayName' | 'concept' | 'description' | 'ruleText' | 'dnaPrimary' | 'dnaSecondary'
+  'handle' | 'displayName' | 'concept' | 'description' | 'ruleText' | 'personaArchetype' | 'personaTraits'
 >;
 
 export type PersonaSeedGenerationResult =
@@ -62,8 +62,8 @@ const PERSONA_SEED_OUTPUT_KEYS = [
   'concept',
   'description',
   'ruleText',
-  'dnaPrimary',
-  'dnaSecondary',
+  'personaArchetype',
+  'personaTraits',
   'rationale',
 ] as const;
 
@@ -94,7 +94,7 @@ function buildPersonaSeedPayload(description: string): {
           studioTextMessage('system', [
             'You generate an owner-reviewed Realm Persona draft from a one-line user description.',
             'Return ONE JSON object. No prose before or after. No code fences.',
-            'Required keys: handle, displayName, concept, description, ruleText, dnaPrimary, dnaSecondary, rationale.',
+            'Required keys: handle, displayName, concept, description, ruleText, personaArchetype, personaTraits, rationale.',
             '',
             '— Field rules —',
             'handle: short kebab-case latin suggestion (3-20 chars), no leading @, lowercase letters/digits/hyphens only.',
@@ -102,8 +102,8 @@ function buildPersonaSeedPayload(description: string): {
             'concept: 1-2 sentences naming the core creative concept.',
             'description: 1 short public profile description (≤500 chars).',
             'ruleText: optional behavior/boundary lines, one per line; empty string if nothing meaningful.',
-            `dnaPrimary: EXACTLY ONE of ${DNA_PRIMARY_ARCHETYPES.join(' | ')}`,
-            `dnaSecondary: array of 1-3 traits from ${DNA_SECONDARY_TRAITS.join(' | ')}`,
+            `personaArchetype: EXACTLY ONE of ${PERSONA_ARCHETYPES.join(' | ')}`,
+            `personaTraits: array of 1-3 traits from ${PERSONA_TRAITS.join(' | ')}`,
             'rationale: 1-2 sentences explaining the design choice (English).',
             '',
             '— Hard prohibitions —',
@@ -112,8 +112,8 @@ function buildPersonaSeedPayload(description: string): {
           ].join('\n')),
           studioTextMessage('user', JSON.stringify({
             userDescription: trimmed,
-            dnaPrimaryAllowed: DNA_PRIMARY_ARCHETYPES,
-            dnaSecondaryAllowed: DNA_SECONDARY_TRAITS,
+            personaArchetypeAllowed: PERSONA_ARCHETYPES,
+            personaTraitsAllowed: PERSONA_TRAITS,
           })),
         ],
         parameters: buildStudioTextRequestParameters(
@@ -130,20 +130,20 @@ function readString(value: unknown, fallback = ''): string {
   return value.trim();
 }
 
-function readDnaPrimary(value: unknown): DnaPrimaryArchetype | '' {
+function readPersonaArchetype(value: unknown): PersonaArchetype | '' {
   const upper = readString(value).toUpperCase();
-  return (DNA_PRIMARY_ARCHETYPES as readonly string[]).includes(upper)
-    ? (upper as DnaPrimaryArchetype)
+  return (PERSONA_ARCHETYPES as readonly string[]).includes(upper)
+    ? (upper as PersonaArchetype)
     : '';
 }
 
-function readDnaSecondary(value: unknown): DnaSecondaryTrait[] {
+function readPersonaTraits(value: unknown): PersonaTrait[] {
   if (!Array.isArray(value)) return [];
-  const known = new Set<DnaSecondaryTrait>(DNA_SECONDARY_TRAITS);
-  const seen = new Set<DnaSecondaryTrait>();
-  const out: DnaSecondaryTrait[] = [];
+  const known = new Set<PersonaTrait>(PERSONA_TRAITS);
+  const seen = new Set<PersonaTrait>();
+  const out: PersonaTrait[] = [];
   for (const item of value) {
-    const upper = readString(item).toUpperCase() as DnaSecondaryTrait;
+    const upper = readString(item).toUpperCase() as PersonaTrait;
     if (!known.has(upper) || seen.has(upper)) continue;
     seen.add(upper);
     out.push(upper);
@@ -173,14 +173,14 @@ export function parsePersonaSeedOutput(raw: string): { seed: GeneratedPersonaSee
     concept: readString(obj.concept),
     description: readString(obj.description),
     ruleText: readString(obj.ruleText),
-    dnaPrimary: readDnaPrimary(obj.dnaPrimary),
-    dnaSecondary: readDnaSecondary(obj.dnaSecondary),
+    personaArchetype: readPersonaArchetype(obj.personaArchetype),
+    personaTraits: readPersonaTraits(obj.personaTraits),
   };
   if (!seed.displayName || !seed.concept) {
     throw new Error('LLM output missing required `displayName` or `concept`.');
   }
-  if (!seed.dnaPrimary) {
-    throw new Error('LLM output dnaPrimary missing or not one of the 6 admitted archetypes.');
+  if (!seed.personaArchetype) {
+    throw new Error('LLM output personaArchetype missing or not one of the 6 admitted archetypes.');
   }
   const rationale = readString(obj.rationale);
   return { seed, rationale };

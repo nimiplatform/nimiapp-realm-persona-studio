@@ -189,10 +189,10 @@ export function defaultReferenceImagePromptFromDraft(input: {
   description: string;
   displayName: string;
   concept: string;
-  dnaPrimary: string;
+  personaArchetype: string;
 }): string {
   const lead = input.description.trim() || input.concept.trim();
-  const traits = [input.dnaPrimary, input.displayName].filter(Boolean).join(', ');
+  const traits = [input.personaArchetype, input.displayName].filter(Boolean).join(', ');
   const tail = 'character portrait, cinematic lighting, full body, high detail, neutral background';
   return [lead, traits, tail].filter(Boolean).join(' — ');
 }

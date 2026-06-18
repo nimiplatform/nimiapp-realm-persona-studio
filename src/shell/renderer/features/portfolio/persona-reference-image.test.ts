@@ -164,7 +164,7 @@ describe('persona reference image generation', () => {
       description: 'A precise visual identity',
       displayName: 'Mira',
       concept: 'Public guide',
-      dnaPrimary: 'CARING',
+      personaArchetype: 'CARING',
     })).toBe('A precise visual identity — CARING, Mira — character portrait, cinematic lighting, full body, high detail, neutral background');
   });
 });

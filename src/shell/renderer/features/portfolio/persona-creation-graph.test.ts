@@ -14,8 +14,8 @@ const readyDraft: CreateRealmPersonaDraftInput = {
   description: 'Mira helps owners review persona behavior before public writes.',
   ruleText: 'Keep output practical.',
   selectedWorldId: 'world-oasis',
-  dnaPrimary: 'INTELLECTUAL',
-  dnaSecondary: ['WISE', 'DIRECT'],
+  personaArchetype: 'INTELLECTUAL',
+  personaTraits: ['WISE', 'DIRECT'],
   referenceImageUrl: 'https://cdn.example.test/mira.png',
   originalDescription: 'An artifact review persona with calm operational judgment.',
 };
@@ -32,7 +32,7 @@ describe('Persona Creation Graph', () => {
     expect(graph.sourcePackage.fields.map((field) => field.status)).toContain('mapped');
     expect(graph.normalizedGraph.sections.map((section) => section.key)).toEqual([
       'identity',
-      'dna',
+      'personaStyle',
       'behavior',
       'worldview',
       'greeting',
@@ -72,7 +72,7 @@ describe('Persona Creation Graph', () => {
   it('blocks invalid graph shapes before Realm create per R-RPS-GRAPH-017', () => {
     const graph = buildPersonaCreationGraphFromDraft({
       ...readyDraft,
-      dnaPrimary: '',
+      personaArchetype: '',
     }, {
       sourceMode: 'manual',
       sourceLabel: 'Manual advanced entry',

@@ -167,8 +167,8 @@ describe('owner portfolio core client', () => {
       expect(collectKeys(submittedPayload).has('model')).toBe(false);
       expect(collectKeys(submittedPayload).has('LocalAgent')).toBe(false);
       expect(collectKeys(submittedPayload).has('dna')).toBe(false);
-      expect(collectKeys(submittedPayload).has('dnaPrimary')).toBe(false);
-      expect(collectKeys(submittedPayload).has('dnaSecondary')).toBe(false);
+      expect(collectKeys(submittedPayload).has('personaArchetype')).toBe(false);
+      expect(collectKeys(submittedPayload).has('personaTraits')).toBe(false);
       expect(submittedPayload?.core).toMatchObject({
         identity: { handle: 'mira.persona' },
         presentation: { displayName: 'Mira Persona' },
@@ -327,8 +327,8 @@ describe('owner portfolio core client', () => {
       expect(collectKeys(input).has('provider')).toBe(false);
       expect(collectKeys(input).has('model')).toBe(false);
       expect(collectKeys(input).has('ownerId')).toBe(false);
-      expect(collectKeys(input.core).has('dnaPrimary')).toBe(false);
-      expect(collectKeys(input.core).has('dnaSecondary')).toBe(false);
+      expect(collectKeys(input.core).has('personaArchetype')).toBe(false);
+      expect(collectKeys(input.core).has('personaTraits')).toBe(false);
       expect(input.core).toMatchObject({
         identity: { handle: 'mira.persona' },
         personaStyle: { archetype: 'CARING', traits: ['GENTLE', 'WISE'] },

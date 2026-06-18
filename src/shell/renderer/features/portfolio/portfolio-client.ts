@@ -211,8 +211,8 @@ export async function checkCreateRealmPersonaHandleAvailability(
     description: '',
     ruleText: '',
     selectedWorldId: '',
-    dnaPrimary: '',
-    dnaSecondary: [],
+    personaArchetype: '',
+    personaTraits: [],
     referenceImageUrl: '',
     originalDescription: '',
   }).handle;
