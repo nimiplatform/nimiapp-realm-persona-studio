@@ -42,8 +42,8 @@ const STUDIO_RUNTIME_PROTECTED_TOKEN_REFRESH_SKEW_MS = 60_000;
 const STUDIO_RUNTIME_PROTECTED_CONSENT_ID = 'realm-persona-studio-runtime-account';
 const STUDIO_RUNTIME_DEVELOPER_REGISTRATION = false;
 export const STUDIO_REALM_API_SCOPES = [
-  'realm.me.agents.read',
-  'realm.me.agents.write',
+  'realm.me.personas.read',
+  'realm.me.personas.write',
   'realm.worlds.read',
   'realm.posts.write',
 ] as const;
