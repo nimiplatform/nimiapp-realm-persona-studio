@@ -2,36 +2,36 @@ import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Mic2, PlayCircle } from 'lucide-react';
 import { Button, FieldShell, InlineAlert, StatusBadge, Surface, TextareaField } from '@nimiplatform/kit/ui';
-import { AgentShell, WorkspaceIntro } from '@renderer/features/agent-detail/agent-shell.js';
+import { PersonaShell, WorkspaceIntro } from '@renderer/features/persona-detail/persona-shell.js';
 import { synthesizeReviewedVoiceDemo, type RuntimeVoiceDemoSynthesisResult } from '@renderer/features/portfolio/portfolio-client.js';
 import { appendLocalCreativeAssetHistory } from '@renderer/features/portfolio/creative-asset-history.js';
 import { buildReviewedVoiceDemoCandidatePayload, type VoiceDemoCandidateInput } from '@renderer/features/portfolio/media-voice-candidate.js';
-import type { OwnerPortfolioAgentDetail } from '@renderer/features/portfolio/portfolio-data.js';
+import type { OwnerPortfolioPersonaDetail } from '@renderer/features/portfolio/portfolio-data.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
 
-function createVoiceDraft(agent: OwnerPortfolioAgentDetail): VoiceDemoCandidateInput {
+function createVoiceDraft(persona: OwnerPortfolioPersonaDetail): VoiceDemoCandidateInput {
   return {
-    scriptText: agent.greeting.value || agent.bio.value || '',
+    scriptText: persona.greeting.value || persona.bio.value || '',
   };
 }
 
-function VoiceConfigBody({ agent }: { agent: OwnerPortfolioAgentDetail }) {
+function VoiceConfigBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) {
   const { t } = useStudioI18n();
   const navigate = useNavigate();
-  const [draft, setDraft] = useState<VoiceDemoCandidateInput>(() => createVoiceDraft(agent));
+  const [draft, setDraft] = useState<VoiceDemoCandidateInput>(() => createVoiceDraft(persona));
   const [result, setResult] = useState<RuntimeVoiceDemoSynthesisResult | null>(null);
   const [isSynthesizing, setIsSynthesizing] = useState(false);
-  const payload = useMemo(() => buildReviewedVoiceDemoCandidatePayload(draft, agent), [agent, draft]);
+  const payload = useMemo(() => buildReviewedVoiceDemoCandidatePayload(draft, persona), [persona, draft]);
   const previewUrl = result?.ok ? result.runtime.previewUrls[0] || '' : '';
 
   async function synthesizeVoiceDemo() {
     setIsSynthesizing(true);
     setResult(null);
     try {
-      const next = await synthesizeReviewedVoiceDemo(draft, agent);
+      const next = await synthesizeReviewedVoiceDemo(draft, persona);
       setResult(next);
       if (next.ok) {
-        appendLocalCreativeAssetHistory(agent.id, {
+        appendLocalCreativeAssetHistory(persona.id, {
           kind: 'voice-demo-candidate',
           label: 'Voice demo candidate',
           source: next.source,
@@ -58,10 +58,10 @@ function VoiceConfigBody({ agent }: { agent: OwnerPortfolioAgentDetail }) {
         description={t('voiceConfig.description')}
         actions={
           <>
-            <Button tone="secondary" onClick={() => navigate(`/portfolio/${agent.id}/preview`)}>
+            <Button tone="secondary" onClick={() => navigate(`/portfolio/${persona.id}/preview`)}>
               {t('voiceConfig.openPreview')}
             </Button>
-            <Button tone="ghost" onClick={() => navigate(`/portfolio/${agent.id}/assets`)}>
+            <Button tone="ghost" onClick={() => navigate(`/portfolio/${persona.id}/assets`)}>
               {t('voiceConfig.backToIdentity')}
             </Button>
           </>
@@ -100,7 +100,7 @@ function VoiceConfigBody({ agent }: { agent: OwnerPortfolioAgentDetail }) {
             >
               {t('voiceConfig.generate')}
             </Button>
-            <Button tone="secondary" onClick={() => navigate(`/portfolio/${agent.id}/posts/manage`)}>
+            <Button tone="secondary" onClick={() => navigate(`/portfolio/${persona.id}/posts/manage`)}>
               {t('voiceConfig.openDraftBox')}
             </Button>
           </div>
@@ -134,21 +134,21 @@ function VoiceConfigBody({ agent }: { agent: OwnerPortfolioAgentDetail }) {
   );
 }
 
-export function AgentVoiceConfigPage() {
+export function PersonaVoiceConfigPage() {
   const { t } = useStudioI18n();
-  const { agentId } = useParams<{ agentId: string }>();
+  const { personaId } = useParams<{ personaId: string }>();
 
-  if (!agentId) {
+  if (!personaId) {
     return (
       <Surface tone="panel" material="glass-regular" padding="lg">
-        <InlineAlert tone="danger">{t('common.agentIdMissing')}</InlineAlert>
+        <InlineAlert tone="danger">{t('common.personaIdMissing')}</InlineAlert>
       </Surface>
     );
   }
 
   return (
-    <AgentShell agentId={agentId} current="assets">
-      {(agent) => <VoiceConfigBody agent={agent} />}
-    </AgentShell>
+    <PersonaShell personaId={personaId} current="assets">
+      {(persona) => <VoiceConfigBody persona={persona} />}
+    </PersonaShell>
   );
 }

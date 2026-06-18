@@ -31,6 +31,24 @@ const PersonaPostsSchedulePage = lazy(() =>
     default: m.PersonaPostsSchedulePage,
   })),
 );
+const PersonaContentManagementPage = lazy(() =>
+  import('../features/persona-content-management/persona-content-management-page.js').then((m) => ({
+    default: m.PersonaContentManagementPage,
+  })),
+);
+const PersonaVoiceConfigPage = lazy(() =>
+  import('../features/persona-voice/persona-voice-config-page.js').then((m) => ({
+    default: m.PersonaVoiceConfigPage,
+  })),
+);
+const PersonaPublicPreviewPage = lazy(() =>
+  import('../features/persona-preview/persona-public-preview-page.js').then((m) => ({
+    default: m.PersonaPublicPreviewPage,
+  })),
+);
+const PersonaLaunchPage = lazy(() =>
+  import('../features/persona-launch/persona-launch-page.js').then((m) => ({ default: m.PersonaLaunchPage })),
+);
 const PersonaInsightsPage = lazy(() =>
   import('../features/persona-insights/persona-insights-page.js').then((m) => ({ default: m.PersonaInsightsPage })),
 );
@@ -57,8 +75,12 @@ export function AppRoutes() {
         <Route path="/portfolio/:personaId/settings" element={<PersonaSettingsPage />} />
         <Route path="/portfolio/:personaId/settings/review" element={<PersonaSettingsReviewPage />} />
         <Route path="/portfolio/:personaId/assets" element={<PersonaAssetsPage />} />
+        <Route path="/portfolio/:personaId/assets/voice" element={<PersonaVoiceConfigPage />} />
         <Route path="/portfolio/:personaId/posts" element={<PersonaPostsPage />} />
         <Route path="/portfolio/:personaId/posts/schedule" element={<PersonaPostsSchedulePage />} />
+        <Route path="/portfolio/:personaId/posts/manage" element={<PersonaContentManagementPage />} />
+        <Route path="/portfolio/:personaId/preview" element={<PersonaPublicPreviewPage />} />
+        <Route path="/portfolio/:personaId/launch" element={<PersonaLaunchPage />} />
         <Route path="/portfolio/:personaId/insights" element={<PersonaInsightsPage />} />
         <Route path="/ai-config" element={<StudioAIConfigPage />} />
         <Route path="*" element={<Navigate to="/portfolio" replace />} />

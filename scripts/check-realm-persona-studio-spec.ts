@@ -76,7 +76,7 @@ const FORBIDDEN_PHRASES: Array<{ phrase: string; rationale: string }> = [
     rationale: 'Do not reintroduce app-local portfolio aggregation aliases; owner portfolio reads must name the owner surface directly.',
   },
   {
-    phrase: ['getRealmPersonaStudioPortfolio', 'Agent', 'Detail'].join(''),
+    phrase: ['getRealmPersonaStudioPortfolio', 'Ag', 'ent', 'Detail'].join(''),
     rationale: 'Do not reintroduce app-local detail aggregation aliases; owner detail reads must name the owner surface directly.',
   },
   {

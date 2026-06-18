@@ -1,6 +1,13 @@
 import type { Runtime } from '@nimiplatform/sdk/runtime';
 import type { NimiAIConfigTargetRef } from '@nimiplatform/sdk/ai';
 import type { NimiJsonValue } from '@nimiplatform/sdk/contracts';
+import {
+  ExecutionMode,
+  ReasonCode,
+  RoutePolicy,
+  ScenarioJobStatus,
+  ScenarioType,
+} from '@nimiplatform/sdk/runtime/generated';
 import type { StudioRealmSurface } from '@renderer/data/realm-client.js';
 import {
   createStudioAIScopeRef,
@@ -343,13 +350,61 @@ function localKindForCapability(capability: MockRuntimeRoute['capability']): str
 
 export function mockRuntimeWithRoutes(input: {
   readonly executeScenario: ReturnType<typeof vi.fn>;
+  readonly submitScenarioJob?: ReturnType<typeof vi.fn>;
+  readonly subscribeScenarioJobEvents?: ReturnType<typeof vi.fn>;
+  readonly getScenarioArtifacts?: ReturnType<typeof vi.fn>;
+  readonly resolveLocalEnvironmentPlan?: ReturnType<typeof vi.fn>;
+  readonly listLocalEnvironmentDependencyJobs?: ReturnType<typeof vi.fn>;
+  readonly startLocalEnvironmentDependencyJob?: ReturnType<typeof vi.fn>;
   readonly routes: readonly MockRuntimeRoute[];
 }): Runtime {
   const cloudRoutes = input.routes.filter((route) => route.connectorId);
   const localRoutes = input.routes.filter((route) => !route.connectorId);
+  const defaultSubmitScenarioJob = vi.fn(async (request: {
+    readonly scenarioType?: ScenarioType;
+    readonly executionMode?: ExecutionMode;
+    readonly head?: { readonly modelId?: string };
+  }) => ({
+    job: {
+      jobId: 'job-test-1',
+      scenarioType: request.scenarioType ?? ScenarioType.UNSPECIFIED,
+      executionMode: request.executionMode ?? ExecutionMode.ASYNC_JOB,
+      routeDecision: RoutePolicy.UNSPECIFIED,
+      modelResolved: request.head?.modelId || '',
+      status: ScenarioJobStatus.COMPLETED,
+      providerJobId: '',
+      reasonCode: ReasonCode.REASON_CODE_UNSPECIFIED,
+      reasonDetail: '',
+      retryCount: 0,
+      artifacts: [],
+      traceId: 'trace-test-1',
+      ignoredExtensions: [],
+      progressPercent: 100,
+      progressCurrentStep: 0,
+      progressTotalSteps: 0,
+    },
+  }));
+  const defaultResolveLocalEnvironmentPlan = vi.fn(async () => ({
+    plan: {
+      planId: 'local-image-native-plan-ready',
+      packId: 'local-image-native',
+      productLabel: 'Local image native',
+      hostProfileId: 'test-host',
+      platformTuple: 'test-platform',
+      runtimeDataRoot: '',
+      consumerScope: 'local-image-native',
+      cloudOnlyImpact: '',
+      state: 'ready',
+      reasonCode: '',
+      dependencies: [],
+    },
+  }));
   return {
     ai: {
       executeScenario: input.executeScenario,
+      submitScenarioJob: input.submitScenarioJob ?? defaultSubmitScenarioJob,
+      subscribeScenarioJobEvents: input.subscribeScenarioJobEvents ?? vi.fn(async function* () {}),
+      getScenarioArtifacts: input.getScenarioArtifacts ?? vi.fn(async () => ({ artifacts: [], traceId: '' })),
       streamScenario: async function* () {},
     },
     connectors: {
@@ -377,6 +432,9 @@ export function mockRuntimeWithRoutes(input: {
       })),
     },
     local: {
+      resolveLocalEnvironmentPlan: input.resolveLocalEnvironmentPlan ?? defaultResolveLocalEnvironmentPlan,
+      listLocalEnvironmentDependencyJobs: input.listLocalEnvironmentDependencyJobs ?? vi.fn(async () => ({ jobs: [] })),
+      startLocalEnvironmentDependencyJob: input.startLocalEnvironmentDependencyJob ?? vi.fn(),
       listLocalAssets: vi.fn(async () => ({
         assets: localRoutes.map((route) => ({
           localAssetId: `${localKindForCapability(route.capability)}:${route.model}`,

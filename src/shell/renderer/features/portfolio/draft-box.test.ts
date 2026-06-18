@@ -5,10 +5,10 @@ import { buildDraftBoxEntries } from './draft-box.js';
 describe('Draft Box model', () => {
   it('maps local creative history into candidate-only draft entries', () => {
     const entries = buildDraftBoxEntries({
-      agentId: 'agent-1',
+      personaId: 'persona-1',
       creativeHistory: [{
         id: 'voice-1',
-        agentId: 'agent-1',
+        personaId: 'persona-1',
         kind: 'voice-demo-candidate',
         label: 'Voice demo candidate',
         createdAt: '2026-06-18T01:00:00.000Z',
@@ -18,7 +18,7 @@ describe('Draft Box model', () => {
         artifactIds: ['artifact-voice-1'],
       }, {
         id: 'image-1',
-        agentId: 'agent-1',
+        personaId: 'persona-1',
         kind: 'runtime-image-candidate',
         label: 'Runtime image candidate',
         createdAt: '2026-06-18T00:00:00.000Z',
@@ -40,7 +40,7 @@ describe('Draft Box model', () => {
       detail: 'artifact-voice-1',
       source: 'Runtime audio.synthesize',
       createdAt: '2026-06-18T01:00:00.000Z',
-      actionPath: '/portfolio/agent-1/assets/voice',
+      actionPath: '/portfolio/persona-1/assets/voice',
     }, {
       id: 'creative:image-1',
       kind: 'identity-image',
@@ -51,17 +51,17 @@ describe('Draft Box model', () => {
       detail: 'artifact-image-1',
       source: 'Runtime image.generate',
       createdAt: '2026-06-18T00:00:00.000Z',
-      actionPath: '/portfolio/agent-1/assets',
+      actionPath: '/portfolio/persona-1/assets',
     }]);
   });
 
   it('maps the single local schedule as local-only and due-aware', () => {
     const schedule: LocalPostScheduleRecord = {
-      localKey: 'agent-1:2026-06-18T00:00:00.000Z',
-      agentId: 'agent-1',
+      localKey: 'persona-1:2026-06-18T00:00:00.000Z',
+      personaId: 'persona-1',
       savedAt: '2026-06-18T00:00:00.000Z',
       localRunAt: '2026-06-18T00:00:00.000Z',
-      source: 'realm-agent-studio.local-single-post-schedule-store',
+      source: 'realm-persona-studio.local-single-post-schedule-store',
       appLocalOnly: true,
       execution: {
         mode: 'foreground-when-due',
@@ -70,7 +70,7 @@ describe('Draft Box model', () => {
       candidate: {
         candidate: true,
         localRunAt: '2026-06-18T00:00:00.000Z',
-        source: 'realm-agent-studio.local-single-post-schedule',
+        source: 'realm-persona-studio.local-single-post-schedule',
         appLocalOnly: true,
         boundary: {
           scope: 'app-local-only',
@@ -80,12 +80,16 @@ describe('Draft Box model', () => {
         },
         postCandidate: {
           candidate: true,
-          source: 'realm-agent-studio.local-post-draft',
-          agentRef: {
-            source: 'Realm MeService.getMyRealmAgent',
-            agentKey: 'agent-1',
-            handle: 'agent_1',
-            displayName: 'Agent One',
+          source: 'realm-persona-studio.local-post-draft',
+          personaRef: {
+            source: 'Realm WorldCoreController.getRealmPersona',
+            sourceKind: 'realmPersona',
+            sourceId: 'persona-1',
+            sourceWorldId: 'world-oasis',
+            sourceContentHash: 'hash-persona-1',
+            sourceRef: 'realmPersona:world-oasis:persona-1:hash-persona-1',
+            handle: 'persona_1',
+            displayName: 'Persona One',
           },
           realmCreatePost: {
             caption: 'Reviewed launch note',
@@ -100,19 +104,19 @@ describe('Draft Box model', () => {
     };
 
     expect(buildDraftBoxEntries({
-      agentId: 'agent-1',
+      personaId: 'persona-1',
       creativeHistory: [],
       localSchedule: schedule,
       now: new Date('2026-06-18T00:01:00.000Z'),
     })[0]).toMatchObject({
-      id: 'schedule:agent-1:2026-06-18T00:00:00.000Z',
+      id: 'schedule:persona-1:2026-06-18T00:00:00.000Z',
       kind: 'scheduled-post',
       destination: 'schedule',
       status: 'ready-when-due',
       truthBoundary: 'local-only',
       title: 'Scheduled post draft',
       detail: 'Reviewed launch note',
-      actionPath: '/portfolio/agent-1/posts/schedule',
+      actionPath: '/portfolio/persona-1/posts/schedule',
     });
   });
 });

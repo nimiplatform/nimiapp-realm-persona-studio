@@ -8,10 +8,10 @@ import {
 } from '@nimiplatform/sdk/runtime/generated';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  buildAgentReferenceImagePayload,
+  buildPersonaReferenceImagePayload,
   defaultReferenceImagePromptFromDraft,
-  generateAgentReferenceImage,
-} from './agent-reference-image.js';
+  generatePersonaReferenceImage,
+} from './persona-reference-image.js';
 import {
   configureStudioAIConfigTargetRefsForTest,
   mockRuntimeWithRoutes,
@@ -22,30 +22,30 @@ beforeEach(() => {
   resetStudioAIConfigForTest();
 });
 
-describe('agent reference image generation', () => {
+describe('persona reference image generation', () => {
   it('builds an image.generate payload from a reviewed prompt', () => {
-    const result = buildAgentReferenceImagePayload({
-      prompt: 'A calm public Realm Agent portrait',
+    const result = buildPersonaReferenceImagePayload({
+      prompt: 'A calm public Realm Persona portrait',
       aspectRatio: '1:1',
     });
 
     expect(result.ok).toBe(true);
-    expect(result.payload?.surfaceId).toBe('realm-agent-studio.agent-reference-image');
+    expect(result.payload?.surfaceId).toBe('realm-persona-studio.persona-reference-image');
     const spec = result.payload?.request.spec?.spec;
     expect(spec?.oneofKind).toBe('imageGenerate');
-    expect(spec?.oneofKind === 'imageGenerate' ? spec.imageGenerate.prompt : '').toBe('A calm public Realm Agent portrait');
+    expect(spec?.oneofKind === 'imageGenerate' ? spec.imageGenerate.prompt : '').toBe('A calm public Realm Persona portrait');
     expect(spec?.oneofKind === 'imageGenerate' ? spec.imageGenerate.aspectRatio : '').toBe('1:1');
   });
 
   it('fails closed when the prompt is empty or Runtime transport is unavailable', async () => {
-    const invalid = buildAgentReferenceImagePayload({ prompt: ' ' });
+    const invalid = buildPersonaReferenceImagePayload({ prompt: ' ' });
     expect(invalid.ok).toBe(false);
     expect(invalid.errors).toEqual(['reference image prompt empty']);
 
-    const result = await generateAgentReferenceImage({ prompt: 'A reviewed image prompt' }, null);
+    const result = await generatePersonaReferenceImage({ prompt: 'A reviewed image prompt' }, null);
     expect(result).toMatchObject({
       ok: false,
-      failure: 'agent-reference-image-transport-unavailable',
+      failure: 'persona-reference-image-transport-unavailable',
       source: 'Runtime ScenarioService.submitScenarioJob image.generate',
     });
   });
@@ -102,8 +102,8 @@ describe('agent reference image generation', () => {
       },
     });
 
-    const result = await generateAgentReferenceImage({
-      prompt: 'A reviewed public Realm Agent portrait',
+    const result = await generatePersonaReferenceImage({
+      prompt: 'A reviewed public Realm Persona portrait',
       aspectRatio: '1:1',
     }, runtime);
 
@@ -143,14 +143,14 @@ describe('agent reference image generation', () => {
       },
     });
 
-    const result = await generateAgentReferenceImage({
-      prompt: 'A reviewed public Realm Agent portrait',
+    const result = await generatePersonaReferenceImage({
+      prompt: 'A reviewed public Realm Persona portrait',
       aspectRatio: '1:1',
     }, runtime);
 
     expect(result).toMatchObject({
       ok: false,
-      failure: 'agent-reference-image-generate-failed',
+      failure: 'persona-reference-image-generate-failed',
       message: 'Runtime imageGenerate scenario failed: Runtime local image environment is not ready. Studio requested local dependency activation; retry after Runtime finishes preparing the image environment.',
     });
     if (result.ok) {
@@ -165,6 +165,6 @@ describe('agent reference image generation', () => {
       displayName: 'Mira',
       concept: 'Public guide',
       dnaPrimary: 'CARING',
-    })).toBe('A precise visual identity - CARING, Mira - character portrait, cinematic lighting, full body, high detail, neutral background');
+    })).toBe('A precise visual identity — CARING, Mira — character portrait, cinematic lighting, full body, high detail, neutral background');
   });
 });

@@ -5,6 +5,7 @@ import {
   bindStudioImageGeneratePayload,
   createStudioImageGeneratePayload,
   executeStudioImageGenerate,
+  normalizeStudioImageGenerateFailureMessage,
   resolveStudioImageCallParams,
   type StudioImageGeneratePayload,
 } from './studio-ai-runtime.js';
@@ -13,7 +14,7 @@ import {
   type StudioRuntimeArtifactProjection,
 } from './runtime-artifact-projection.js';
 
-export const PERSONA_REFERENCE_IMAGE_SOURCE = 'Runtime ScenarioService.executeScenario image.generate' as const;
+export const PERSONA_REFERENCE_IMAGE_SOURCE = 'Runtime ScenarioService.submitScenarioJob image.generate' as const;
 
 type RuntimeImageClient = Runtime;
 
@@ -169,11 +170,12 @@ export async function generatePersonaReferenceImage(
       },
     };
   } catch (error) {
+    const message = normalizeStudioImageGenerateFailureMessage(error);
     return {
       ok: false,
       source: PERSONA_REFERENCE_IMAGE_SOURCE,
       failure: 'persona-reference-image-generate-failed',
-      message: `Runtime imageGenerate scenario failed: ${error instanceof Error ? error.message : 'runtime transport call failed.'}`,
+      message: `Runtime imageGenerate scenario failed: ${message}`,
       submitted,
     };
   }

@@ -16,7 +16,7 @@ describe('persona seed Runtime output parser', () => {
   it('parses a strict single JSON object into owner-reviewed draft fields', () => {
     expect(parsePersonaSeedOutput(JSON.stringify(validSeed))).toMatchObject({
       seed: {
-        handle: 'mira_prime',
+        handle: 'mira-prime',
         displayName: 'Mira Prime',
         dnaPrimary: 'INTELLECTUAL',
         dnaSecondary: ['WISE', 'DIRECT'],

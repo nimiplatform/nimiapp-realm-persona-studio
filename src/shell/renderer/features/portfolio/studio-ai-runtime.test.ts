@@ -85,7 +85,7 @@ describe('studio ai runtime route hard boundary', () => {
 
   it('rejects non-integer image seed before Runtime execution', () => {
     expect(() => createStudioImageGeneratePayload({
-      surfaceId: 'realm-agent-studio.visual-image-candidate',
+      surfaceId: 'realm-persona-studio.visual-image-candidate',
       params: { model: 'auto' },
       spec: {
         prompt: 'Warm profile portrait.',

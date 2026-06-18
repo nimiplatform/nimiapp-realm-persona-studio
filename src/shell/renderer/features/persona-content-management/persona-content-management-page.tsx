@@ -2,11 +2,11 @@ import { useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Archive, CalendarClock, FileText, Image, Mic2 } from 'lucide-react';
 import { Button, EmptyState, InlineAlert, StatusBadge, Surface } from '@nimiplatform/kit/ui';
-import { AgentShell, WorkspaceIntro } from '@renderer/features/agent-detail/agent-shell.js';
+import { PersonaShell, WorkspaceIntro } from '@renderer/features/persona-detail/persona-shell.js';
 import { buildDraftBoxEntries, type DraftBoxEntry } from '@renderer/features/portfolio/draft-box.js';
 import { loadLocalCreativeAssetHistory } from '@renderer/features/portfolio/creative-asset-history.js';
 import { loadLocalPostSchedule } from '@renderer/features/portfolio/local-post-schedule-store.js';
-import type { OwnerPortfolioAgentDetail } from '@renderer/features/portfolio/portfolio-data.js';
+import type { OwnerPortfolioPersonaDetail } from '@renderer/features/portfolio/portfolio-data.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
 import type { StudioCopyKey } from '@renderer/i18n/studio-copy.js';
 
@@ -74,14 +74,14 @@ function DraftBoxEntryCard({ entry }: { entry: DraftBoxEntry }) {
   );
 }
 
-function ContentManagementBody({ agent }: { agent: OwnerPortfolioAgentDetail }) {
+function ContentManagementBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) {
   const { t } = useStudioI18n();
   const navigate = useNavigate();
   const draftBoxEntries = useMemo(() => buildDraftBoxEntries({
-    agentId: agent.id,
-    creativeHistory: loadLocalCreativeAssetHistory(agent.id),
-    localSchedule: loadLocalPostSchedule(agent.id),
-  }), [agent.id]);
+    personaId: persona.id,
+    creativeHistory: loadLocalCreativeAssetHistory(persona.id),
+    localSchedule: loadLocalPostSchedule(persona.id),
+  }), [persona.id]);
   const localOnlyCount = draftBoxEntries.filter((entry) => entry.truthBoundary === 'local-only').length;
   const candidateCount = draftBoxEntries.filter((entry) => entry.truthBoundary === 'candidate-only').length;
   const dueCount = draftBoxEntries.filter((entry) => entry.status === 'ready-when-due').length;
@@ -99,10 +99,10 @@ function ContentManagementBody({ agent }: { agent: OwnerPortfolioAgentDetail }) 
         description={t('contentManagement.description')}
         actions={
           <>
-            <Button tone="secondary" onClick={() => navigate(`/portfolio/${agent.id}/posts`)}>
+            <Button tone="secondary" onClick={() => navigate(`/portfolio/${persona.id}/posts`)}>
               {t('contentManagement.compose')}
             </Button>
-            <Button tone="ghost" onClick={() => navigate(`/portfolio/${agent.id}/posts/schedule`)}>
+            <Button tone="ghost" onClick={() => navigate(`/portfolio/${persona.id}/posts/schedule`)}>
               {t('contentManagement.schedule')}
             </Button>
           </>
@@ -176,21 +176,21 @@ function ContentManagementBody({ agent }: { agent: OwnerPortfolioAgentDetail }) 
   );
 }
 
-export function AgentContentManagementPage() {
+export function PersonaContentManagementPage() {
   const { t } = useStudioI18n();
-  const { agentId } = useParams<{ agentId: string }>();
+  const { personaId } = useParams<{ personaId: string }>();
 
-  if (!agentId) {
+  if (!personaId) {
     return (
       <Surface tone="panel" material="glass-regular" padding="lg">
-        <InlineAlert tone="danger">{t('common.agentIdMissing')}</InlineAlert>
+        <InlineAlert tone="danger">{t('common.personaIdMissing')}</InlineAlert>
       </Surface>
     );
   }
 
   return (
-    <AgentShell agentId={agentId} current="posts">
-      {(agent) => <ContentManagementBody agent={agent} />}
-    </AgentShell>
+    <PersonaShell personaId={personaId} current="posts">
+      {(persona) => <ContentManagementBody persona={persona} />}
+    </PersonaShell>
   );
 }

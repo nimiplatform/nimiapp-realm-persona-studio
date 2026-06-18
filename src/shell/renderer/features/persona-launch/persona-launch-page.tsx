@@ -1,8 +1,8 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { CheckCircle2, CircleDashed, Image, MessageSquareText, Settings2, Sparkles, UserRound } from 'lucide-react';
 import { Button, InlineAlert, StatusBadge, Surface } from '@nimiplatform/kit/ui';
-import { AgentShell, WorkspaceIntro } from '@renderer/features/agent-detail/agent-shell.js';
-import type { OwnerPortfolioAgentDetail, SettingField } from '@renderer/features/portfolio/portfolio-data.js';
+import { PersonaShell, WorkspaceIntro } from '@renderer/features/persona-detail/persona-shell.js';
+import type { OwnerPortfolioPersonaDetail, SettingField } from '@renderer/features/portfolio/portfolio-data.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
 import type { StudioCopyKey } from '@renderer/i18n/studio-copy.js';
 
@@ -20,16 +20,16 @@ function hasValue(field: SettingField): boolean {
   return field.status === 'available' && field.value.trim().length > 0;
 }
 
-function hasProfileBasics(agent: OwnerPortfolioAgentDetail): boolean {
-  return hasValue(agent.displayName) && hasValue(agent.handle) && hasValue(agent.bio) && hasValue(agent.greeting);
+function hasProfileBasics(persona: OwnerPortfolioPersonaDetail): boolean {
+  return hasValue(persona.displayName) && hasValue(persona.handle) && hasValue(persona.bio) && hasValue(persona.greeting);
 }
 
-function hasIdentityStart(agent: OwnerPortfolioAgentDetail): boolean {
-  return Boolean(agent.avatarUrl) || hasValue(agent.profileCoverUrl);
+function hasIdentityStart(persona: OwnerPortfolioPersonaDetail): boolean {
+  return Boolean(persona.avatarUrl) || hasValue(persona.profileCoverUrl);
 }
 
-function hasVoiceStart(agent: OwnerPortfolioAgentDetail): boolean {
-  return Boolean(agent.voice?.voiceId || agent.voice?.description || agent.voice?.speechModelId);
+function hasVoiceStart(persona: OwnerPortfolioPersonaDetail): boolean {
+  return Boolean(persona.voice?.voiceId || persona.voice?.description || persona.voice?.speechModelId);
 }
 
 function statusTone(status: LaunchStep['status']): 'success' | 'warning' | 'info' {
@@ -44,17 +44,17 @@ function statusKey(status: LaunchStep['status']): StudioCopyKey {
   return 'launch.status.needsWork';
 }
 
-function buildLaunchSteps(agent: OwnerPortfolioAgentDetail): LaunchStep[] {
-  const profileReady = hasProfileBasics(agent);
-  const identityReady = hasIdentityStart(agent);
-  const voiceReady = hasVoiceStart(agent);
+function buildLaunchSteps(persona: OwnerPortfolioPersonaDetail): LaunchStep[] {
+  const profileReady = hasProfileBasics(persona);
+  const identityReady = hasIdentityStart(persona);
+  const voiceReady = hasVoiceStart(persona);
   return [{
     key: 'profile',
     titleKey: 'launch.step.profile.title',
     descriptionKey: 'launch.step.profile.description',
     status: profileReady ? 'ready' : 'next',
     actionKey: 'launch.step.profile.action',
-    path: `/portfolio/${agent.id}/settings`,
+    path: `/portfolio/${persona.id}/settings`,
     Icon: Settings2,
   }, {
     key: 'identity',
@@ -62,7 +62,7 @@ function buildLaunchSteps(agent: OwnerPortfolioAgentDetail): LaunchStep[] {
     descriptionKey: 'launch.step.identity.description',
     status: identityReady ? 'ready' : profileReady ? 'next' : 'needs-work',
     actionKey: 'launch.step.identity.action',
-    path: `/portfolio/${agent.id}/assets`,
+    path: `/portfolio/${persona.id}/assets`,
     Icon: Image,
   }, {
     key: 'voice',
@@ -70,7 +70,7 @@ function buildLaunchSteps(agent: OwnerPortfolioAgentDetail): LaunchStep[] {
     descriptionKey: 'launch.step.voice.description',
     status: voiceReady ? 'ready' : identityReady ? 'next' : 'needs-work',
     actionKey: 'launch.step.voice.action',
-    path: `/portfolio/${agent.id}/assets/voice`,
+    path: `/portfolio/${persona.id}/assets/voice`,
     Icon: Sparkles,
   }, {
     key: 'first-post',
@@ -78,7 +78,7 @@ function buildLaunchSteps(agent: OwnerPortfolioAgentDetail): LaunchStep[] {
     descriptionKey: 'launch.step.firstPost.description',
     status: profileReady ? 'next' : 'needs-work',
     actionKey: 'launch.step.firstPost.action',
-    path: `/portfolio/${agent.id}/posts`,
+    path: `/portfolio/${persona.id}/posts`,
     Icon: MessageSquareText,
   }, {
     key: 'preview',
@@ -86,7 +86,7 @@ function buildLaunchSteps(agent: OwnerPortfolioAgentDetail): LaunchStep[] {
     descriptionKey: 'launch.step.preview.description',
     status: profileReady ? 'next' : 'needs-work',
     actionKey: 'launch.step.preview.action',
-    path: `/portfolio/${agent.id}/preview`,
+    path: `/portfolio/${persona.id}/preview`,
     Icon: UserRound,
   }, {
     key: 'draft-box',
@@ -94,15 +94,15 @@ function buildLaunchSteps(agent: OwnerPortfolioAgentDetail): LaunchStep[] {
     descriptionKey: 'launch.step.draftBox.description',
     status: 'next',
     actionKey: 'launch.step.draftBox.action',
-    path: `/portfolio/${agent.id}/posts/manage`,
+    path: `/portfolio/${persona.id}/posts/manage`,
     Icon: CircleDashed,
   }];
 }
 
-function LaunchBody({ agent }: { agent: OwnerPortfolioAgentDetail }) {
+function LaunchBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) {
   const { t } = useStudioI18n();
   const navigate = useNavigate();
-  const steps = buildLaunchSteps(agent);
+  const steps = buildLaunchSteps(persona);
   const readyCount = steps.filter((step) => step.status === 'ready').length;
   const nextStep = steps.find((step) => step.status === 'next') ?? steps[0];
 
@@ -128,7 +128,7 @@ function LaunchBody({ agent }: { agent: OwnerPortfolioAgentDetail }) {
             <Button tone="primary" onClick={() => navigate(nextStep.path)}>
               {t(nextStep.actionKey)}
             </Button>
-            <Button tone="ghost" onClick={() => navigate(`/portfolio/${agent.id}`)}>
+            <Button tone="ghost" onClick={() => navigate(`/portfolio/${persona.id}`)}>
               {t('launch.openCockpit')}
             </Button>
           </>
@@ -177,21 +177,21 @@ function LaunchBody({ agent }: { agent: OwnerPortfolioAgentDetail }) {
   );
 }
 
-export function AgentLaunchPage() {
+export function PersonaLaunchPage() {
   const { t } = useStudioI18n();
-  const { agentId } = useParams<{ agentId: string }>();
+  const { personaId } = useParams<{ personaId: string }>();
 
-  if (!agentId) {
+  if (!personaId) {
     return (
       <Surface tone="panel" material="glass-regular" padding="lg">
-        <InlineAlert tone="danger">{t('common.agentIdMissing')}</InlineAlert>
+        <InlineAlert tone="danger">{t('common.personaIdMissing')}</InlineAlert>
       </Surface>
     );
   }
 
   return (
-    <AgentShell agentId={agentId} current="detail">
-      {(agent) => <LaunchBody agent={agent} />}
-    </AgentShell>
+    <PersonaShell personaId={personaId} current="detail">
+      {(persona) => <LaunchBody persona={persona} />}
+    </PersonaShell>
   );
 }

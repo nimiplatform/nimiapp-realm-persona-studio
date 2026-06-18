@@ -1160,6 +1160,29 @@ export async function executeStudioImageGenerate(
   };
 }
 
+export function normalizeStudioImageGenerateFailureMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : 'runtime transport call failed.';
+  try {
+    const parsed = JSON.parse(message) as unknown;
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      const record = parsed as Record<string, unknown>;
+      const reasonCode = String(record.reasonCode || '');
+      const actionHint = String(record.actionHint || '');
+      const nestedMessage = String(record.message || '');
+      if (
+        reasonCode === 'AI_LOCAL_MODEL_UNAVAILABLE'
+        || actionHint === 'inspect_local_runtime_model_health'
+        || nestedMessage.includes('local environment activation blocked')
+      ) {
+        return 'Runtime local image environment is not ready. Studio requested local dependency activation; retry after Runtime finishes preparing the image environment.';
+      }
+    }
+  } catch {
+    // Non-JSON Runtime errors keep their original message.
+  }
+  return message;
+}
+
 export async function executeStudioImageRouteDescribe(
   payload: StudioBoundImageGeneratePayload,
   runtime: Runtime,

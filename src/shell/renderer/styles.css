@@ -545,7 +545,7 @@ a {
   gap: 6px;
 }
 
-/* Create Realm Agent workspace */
+/* Create Realm Persona workspace */
 
 .ras-create-workspace {
   display: grid;
@@ -813,81 +813,6 @@ a {
 
 @keyframes ras-spin {
   to { transform: rotate(360deg); }
-}
-
-.ras-create-character-card-field {
-  display: grid;
-  gap: 10px;
-  min-width: 0;
-}
-
-.ras-create-character-card-field__message {
-  margin: 0;
-  color: #7d8aa6;
-  font-size: 14px;
-  font-weight: 650;
-  line-height: 1.45;
-}
-
-.ras-create-character-card-dropzone {
-  display: grid;
-  place-items: center;
-  min-height: 236px;
-  width: 100%;
-  padding: 34px 24px;
-  border: 2px dashed #cfd6e1;
-  border-radius: 18px;
-  background: rgba(248, 250, 252, 0.82);
-  color: #334155;
-  text-align: center;
-  cursor: pointer;
-  transition: border-color 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease, color 0.16s ease;
-}
-
-.ras-create-character-card-dropzone:hover,
-.ras-create-character-card-dropzone:focus-within,
-.ras-create-character-card-dropzone[data-drag-active] {
-  border-color: #22c55e;
-  background: rgba(240, 253, 244, 0.86);
-  box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.14), 0 18px 42px rgba(34, 197, 94, 0.12);
-}
-
-.ras-create-character-card-dropzone[data-disabled] {
-  cursor: not-allowed;
-  opacity: 0.62;
-}
-
-.ras-create-character-card-dropzone__input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-.ras-create-character-card-dropzone__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #98a2b3;
-  transition: color 0.16s ease, transform 0.16s ease;
-}
-
-.ras-create-character-card-dropzone:hover .ras-create-character-card-dropzone__icon,
-.ras-create-character-card-dropzone:focus-within .ras-create-character-card-dropzone__icon,
-.ras-create-character-card-dropzone[data-drag-active] .ras-create-character-card-dropzone__icon {
-  color: #16a34a;
-  transform: translateY(-1px);
-}
-
-.ras-create-character-card-dropzone__title {
-  margin-top: 22px;
-  color: #344054;
-  font-size: 22px;
-  font-weight: 760;
-  line-height: 1.2;
 }
 
 .ras-create-source-footer {
@@ -1243,7 +1168,7 @@ a {
 }
 
 .ras-create-reference-preview img,
-.ras-create-agent-preview__avatar img {
+.ras-create-persona-preview__avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -1301,13 +1226,13 @@ a {
   font-weight: 650;
 }
 
-.ras-create-agent-preview {
+.ras-create-persona-preview {
   display: grid;
   gap: 18px;
   min-width: 0;
 }
 
-.ras-create-agent-preview__hero {
+.ras-create-persona-preview__hero {
   display: flex;
   align-items: center;
   gap: 16px;
@@ -1318,7 +1243,7 @@ a {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(236, 250, 244, 0.72));
 }
 
-.ras-create-agent-preview__avatar {
+.ras-create-persona-preview__avatar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1333,7 +1258,7 @@ a {
   overflow: hidden;
 }
 
-.ras-create-agent-preview__hero h4 {
+.ras-create-persona-preview__hero h4 {
   margin: 0;
   color: var(--nimi-text-primary);
   font-size: 26px;
@@ -1342,7 +1267,7 @@ a {
   overflow-wrap: anywhere;
 }
 
-.ras-create-agent-preview__hero p {
+.ras-create-persona-preview__hero p {
   margin: 6px 0 0;
   color: var(--nimi-text-muted);
   font-size: 15px;

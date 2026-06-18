@@ -11,6 +11,7 @@ import {
   executeStudioImageGenerate,
   executeStudioSpeechSynthesize,
   isStudioAIRouteBindingFailure,
+  normalizeStudioImageGenerateFailureMessage,
 } from './studio-ai-runtime.js';
 import type { OwnerPortfolioPersonaDetail } from './portfolio-data.js';
 import {
@@ -407,7 +408,7 @@ export async function generateReviewedVisualImageCandidate(
     const output = await executeStudioImageGenerate(boundPayload, runtimeClient);
     return await normalizeRuntimeVisualImageGenerationOutput(runtimeClient, output, boundDraft);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'runtime transport call failed.';
+    const message = normalizeStudioImageGenerateFailureMessage(error);
     const routeUnbound = isStudioAIRouteBindingFailure(error);
     return {
       ok: false,
@@ -461,7 +462,7 @@ export async function generateReviewedAvatarPackageCandidate(
     const output = await executeStudioImageGenerate(boundPayload, runtimeClient);
     return await normalizeRuntimeVisualImageGenerationOutput(runtimeClient, output, boundDraft);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'runtime transport call failed.';
+    const message = normalizeStudioImageGenerateFailureMessage(error);
     const routeUnbound = isStudioAIRouteBindingFailure(error);
     return {
       ok: false,

@@ -39,7 +39,7 @@ function destinationForHistory(record: CreativeAssetHistoryRecord): DraftBoxEntr
 }
 
 export function buildDraftBoxEntries(input: {
-  agentId: string;
+  personaId: string;
   creativeHistory: readonly CreativeAssetHistoryRecord[];
   localSchedule: LocalPostScheduleRecord | null;
   now?: Date;
@@ -55,8 +55,8 @@ export function buildDraftBoxEntries(input: {
     source: record.source,
     createdAt: record.createdAt,
     actionPath: destinationForHistory(record) === 'voice'
-      ? `/portfolio/${input.agentId}/assets/voice`
-      : `/portfolio/${input.agentId}/assets`,
+      ? `/portfolio/${input.personaId}/assets/voice`
+      : `/portfolio/${input.personaId}/assets`,
   }));
 
   const scheduleEntry = input.localSchedule
@@ -70,7 +70,7 @@ export function buildDraftBoxEntries(input: {
       detail: input.localSchedule.candidate.postCandidate.realmCreatePost.caption || 'Reviewed scheduled post',
       source: input.localSchedule.source,
       createdAt: input.localSchedule.savedAt,
-      actionPath: `/portfolio/${input.agentId}/posts/schedule`,
+      actionPath: `/portfolio/${input.personaId}/posts/schedule`,
     }]
     : [];
 
