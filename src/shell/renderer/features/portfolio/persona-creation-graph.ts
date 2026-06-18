@@ -228,7 +228,7 @@ export function buildPersonaCreationGraphFromDraft(
         ...field('Primary archetype', present(draft.dnaPrimary)),
         ...field('Secondary traits', draft.dnaSecondary.length > 0 ? draft.dnaSecondary.join(', ') : null),
       ],
-      missing: draft.dnaPrimary ? [] : ['DNA primary archetype'],
+      missing: draft.dnaPrimary ? [] : ['Persona archetype'],
       risks: [],
       ruleIds: ['R-RPS-GRAPH-016', 'R-RPS-GRAPH-018'],
     }),

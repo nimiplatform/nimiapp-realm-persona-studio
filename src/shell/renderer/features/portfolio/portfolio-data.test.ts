@@ -17,8 +17,39 @@ const basePersona: MyRealmPersonaDto = {
   ownerId: 'user-1',
   homeWorldId: 'world-oasis',
   core: {
-    handle: 'mira',
-    displayName: 'Mira',
+    identity: {
+      handle: 'mira',
+      name: 'Mira',
+      summary: 'Quiet strategist',
+      concept: 'Quiet strategist',
+    },
+    presentation: {
+      displayName: 'Mira',
+      profileLine: 'Quiet strategist',
+    },
+    personaStyle: {
+      archetype: 'CARING',
+      traits: ['GENTLE'],
+      voice: 'clear',
+      pacing: 'responsive',
+    },
+    contentProfile: {
+      topics: ['strategy'],
+      boundaries: [],
+      guidelines: [],
+    },
+    interactionProfile: {
+      homeWorldId: 'world-oasis',
+      interactionModes: ['conversation'],
+    },
+    assets: {
+      resourceRefs: [],
+      intents: [],
+    },
+    authoring: {
+      source: 'test',
+      notes: [],
+    },
   },
   createdAt: '2026-05-21T00:00:00.000Z',
   updatedAt: '2026-05-21T00:00:00.000Z',
@@ -58,19 +89,43 @@ describe('owner portfolio local view controls', () => {
     normalizeOwnerPortfolioPersona({
       ...basePersona,
       id: 'persona-1',
-      core: { handle: 'mira', displayName: 'Mira', worldName: 'oasis', state: 'ACTIVE' },
     }),
     normalizeOwnerPortfolioPersona({
       ...basePersona,
       id: 'persona-2',
+      homeWorldId: 'workshop',
       contentHash: 'hash-persona-2',
-      core: { handle: 'zed', displayName: 'Zed', worldName: 'workshop', state: 'READY' },
+      core: {
+        ...basePersona.core,
+        identity: {
+          handle: 'zed',
+          name: 'Zed',
+          summary: 'Workshop persona',
+          concept: 'Workshop persona',
+        },
+        presentation: {
+          displayName: 'Zed',
+          profileLine: 'Workshop persona',
+        },
+      },
     }),
     normalizeOwnerPortfolioPersona({
       ...basePersona,
       id: 'persona-3',
       contentHash: 'hash-persona-3',
-      core: { handle: 'aster', displayName: 'Aster', worldName: 'oasis', state: 'ACTIVE' },
+      core: {
+        ...basePersona.core,
+        identity: {
+          handle: 'aster',
+          name: 'Aster',
+          summary: 'OASIS persona',
+          concept: 'OASIS persona',
+        },
+        presentation: {
+          displayName: 'Aster',
+          profileLine: 'OASIS persona',
+        },
+      },
     }),
   ];
 
@@ -142,20 +197,25 @@ describe('owner portfolio detail normalization', () => {
       ...basePersona,
       core: {
         ...basePersona.core,
-        bio: 'Quiet strategist',
-        profileCoverUrl: 'https://cdn.example.test/cover.png',
-        greeting: 'Welcome in.',
-        state: 'ACTIVE',
-        dna: {
-          voice: {
-            voiceId: 'zh_narrator',
-            description: 'Reviewed narrator voice.',
-            emotionEnabled: true,
-            speed: -8,
-            pitch: -1,
-            speechModelId: 'speech/qwen3tts',
-            speechRoutePolicy: 'local',
-          },
+        interactionProfile: {
+          homeWorldId: 'world-oasis',
+          interactionModes: ['conversation'],
+          greeting: 'Welcome in.',
+        },
+        personaStyle: {
+          archetype: 'CARING',
+          traits: ['GENTLE'],
+          voice: 'zh_narrator',
+          pacing: 'responsive',
+        },
+        assets: {
+          resourceRefs: [],
+          externalRefs: [{
+            refId: 'cover-1',
+            kind: 'profileCover',
+            uri: 'https://cdn.example.test/cover.png',
+          }],
+          intents: [],
         },
       },
     });
@@ -168,15 +228,15 @@ describe('owner portfolio detail normalization', () => {
     expect(detail.profileCoverUrl.value).toBe('https://cdn.example.test/cover.png');
     expect(detail.ownership.value).toBe('owner-created RealmPersona');
     expect(detail.world.value).toBe('world-oasis');
-    expect(detail.state.value).toBe('ACTIVE');
+    expect(detail.state.status).toBe('source-unavailable');
     expect(detail.voice).toEqual({
       voiceId: 'zh_narrator',
-      description: 'Reviewed narrator voice.',
-      emotionEnabled: true,
-      speed: -8,
-      pitch: -1,
-      speechModelId: 'speech/qwen3tts',
-      speechRoutePolicy: 'local',
+      description: 'CARING',
+      emotionEnabled: null,
+      speed: null,
+      pitch: null,
+      speechModelId: '',
+      speechRoutePolicy: null,
     });
     expect(detail.friendCount).toEqual({
       status: 'source-unavailable',
@@ -184,13 +244,12 @@ describe('owner portfolio detail normalization', () => {
     });
   });
 
-  it('keeps missing settings and friendCount source-unavailable', () => {
+  it('keeps optional settings missing while using canonical summary as bio', () => {
     const detail = normalizeOwnerPortfolioPersonaDetail(basePersona);
 
     expect(detail.bio).toMatchObject({
-      status: 'source-unavailable',
-      value: '',
-      unavailableLabel: 'setting source unavailable',
+      status: 'available',
+      value: 'Quiet strategist',
     });
     expect(detail.greeting.status).toBe('source-unavailable');
     expect(detail.profileCoverUrl.status).toBe('source-unavailable');
@@ -198,8 +257,8 @@ describe('owner portfolio detail normalization', () => {
     expect(detail.world.status).toBe('available');
     expect(detail.state.status).toBe('source-unavailable');
     expect(detail.voice).toEqual({
-      voiceId: '',
-      description: '',
+      voiceId: 'clear',
+      description: 'CARING',
       emotionEnabled: null,
       speed: null,
       pitch: null,
@@ -216,12 +275,22 @@ describe('owner portfolio detail normalization', () => {
     const detail = normalizeOwnerPortfolioPersonaDetail({
       ...basePersona,
       core: {
-        displayName: '',
-        handle: '',
-        bio: '',
-        profileCoverUrl: '',
-        greeting: '',
-        state: '',
+        ...basePersona.core,
+        identity: {
+          handle: '',
+          name: '',
+          summary: '',
+          concept: '',
+        },
+        presentation: {
+          displayName: '',
+          profileLine: '',
+        },
+        interactionProfile: {
+          homeWorldId: 'world-oasis',
+          interactionModes: ['conversation'],
+          greeting: '',
+        },
       },
     });
 
@@ -233,19 +302,17 @@ describe('owner portfolio detail normalization', () => {
       emptyLabel: 'not set',
     });
     expect(detail.greeting.status).toBe('available-empty');
-    expect(detail.profileCoverUrl.status).toBe('available-empty');
+    expect(detail.profileCoverUrl.status).toBe('source-unavailable');
     expect(detail.world.status).toBe('available');
     expect(detail.ownership.status).toBe('available');
-    expect(detail.state.status).toBe('available-empty');
+    expect(detail.state.status).toBe('source-unavailable');
     expect(detail.bio).not.toHaveProperty('unavailableLabel');
   });
 
   it('does not treat world display names as write-safe world id evidence', () => {
     const detail = normalizeOwnerPortfolioPersonaDetail({
       ...basePersona,
-      core: {
-        worldName: 'OASIS',
-      },
+      core: basePersona.core,
     });
 
     expect(detail.world.status).toBe('available');

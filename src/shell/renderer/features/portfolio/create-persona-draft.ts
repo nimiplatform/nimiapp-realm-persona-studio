@@ -184,10 +184,6 @@ function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
 }
 
-function readNumber(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) ? value : null;
-}
-
 function normalizeHandle(value: string): string {
   return value.trim().replace(/^@+/, '').toLocaleLowerCase();
 }
@@ -270,13 +266,15 @@ export function normalizeRealmPersonaHandleAvailability(
 
 export function normalizeSelectableWorld(world: RealmPersonaCreationWorldDto): SelectableRealmWorld {
   const core = readRecord(world.core);
+  const identity = readRecord(core?.identity);
+  const presentation = readRecord(core?.presentation);
   return {
     id: world.id,
-    name: readString(core?.name) || readString(core?.displayName) || world.id,
-    type: readString(core?.type) || world.visibility,
+    name: readString(identity?.name) || readString(presentation?.displayName) || readString(presentation?.title) || world.id,
+    type: readString(identity?.worldType) || world.visibility,
     status: world.visibility,
-    description: readString(core?.description) || '',
-    tagline: readString(core?.tagline) || readString(core?.motto) || '',
+    description: readString(identity?.summary) || '',
+    tagline: readString(presentation?.tagline) || readString(identity?.tagline) || '',
     source: 'Realm WorldCoreController.listWorldCores',
   };
 }
@@ -295,23 +293,82 @@ export function selectOasisDefaultWorld(worlds: SelectableRealmWorld[]): Selecta
 
 export function normalizeSelectedWorldPreview(world: RealmPersonaCreationWorldDetailDto): SelectedWorldPreview {
   const core = readRecord(world.core);
-  const themes = Array.isArray(core?.themes)
-    ? core.themes.filter((theme): theme is string => typeof theme === 'string' && theme.length > 0)
+  const identity = readRecord(core?.identity);
+  const presentation = readRecord(core?.presentation);
+  const themes = Array.isArray(identity?.themes)
+    ? identity.themes.filter((theme): theme is string => typeof theme === 'string' && theme.length > 0)
     : [];
+  const entities = Array.isArray(core?.entities) ? core.entities : [];
 
   return {
     id: world.id,
-    name: readString(core?.name) || readString(core?.displayName) || world.id,
-    type: readString(core?.type) || world.visibility,
+    name: readString(identity?.name) || readString(presentation?.displayName) || readString(presentation?.title) || world.id,
+    type: readString(identity?.worldType) || world.visibility,
     status: world.visibility,
-    contentRating: readString(core?.contentRating) || null,
-    tagline: readString(core?.tagline) || readString(core?.motto) || '',
-    description: readString(core?.description) || '',
-    overview: readString(core?.overview) || '',
+    contentRating: null,
+    tagline: readString(presentation?.tagline) || readString(identity?.tagline) || '',
+    description: readString(identity?.summary) || '',
+    overview: readString(identity?.summary) || '',
     themes,
-    personaCount: readNumber(core?.characterCount),
-    nativeCreationState: readString(core?.nativeCreationState) || null,
+    personaCount: entities.length,
+    nativeCreationState: null,
     source: 'Realm WorldCoreController.getWorldCore',
+  };
+}
+
+function buildRealmPersonaCoreV1(draft: NormalizedCreateRealmPersonaDraft): Record<string, unknown> {
+  const ruleLines = normalizeRuleLines(draft.ruleText);
+  return {
+    identity: {
+      handle: draft.handle,
+      name: draft.displayName,
+      summary: draft.description || draft.concept,
+      concept: draft.concept,
+    },
+    presentation: {
+      displayName: draft.displayName,
+      profileLine: draft.description || draft.concept,
+    },
+    personaStyle: {
+      archetype: draft.dnaPrimary,
+      traits: draft.dnaSecondary,
+      voice: 'owner-reviewed',
+      pacing: 'responsive',
+    },
+    contentProfile: {
+      topics: [],
+      boundaries: [],
+      guidelines: ruleLines.map((line, index) => ({
+        guidelineId: `owner-reviewed-${index + 1}`,
+        statement: line,
+        source: 'realm-persona-studio',
+      })),
+    },
+    interactionProfile: {
+      homeWorldId: draft.selectedWorldId,
+      interactionModes: ['conversation'],
+    },
+    assets: {
+      resourceRefs: [],
+      ...(draft.referenceImageUrl
+        ? {
+            externalRefs: [{
+              refId: 'reference-image-1',
+              kind: 'referenceImage',
+              uri: draft.referenceImageUrl,
+              purpose: 'visual-reference',
+            }],
+          }
+        : {}),
+      intents: [],
+    },
+    authoring: {
+      source: 'realm-persona-studio',
+      notes: [],
+      review: {
+        status: 'owner-reviewed',
+      },
+    },
   };
 }
 
@@ -363,8 +420,6 @@ export function validateCreateRealmPersonaReadiness(
     };
   }
 
-  const ruleLines = normalizeRuleLines(draft.ruleText);
-  const dnaPrimary = draft.dnaPrimary as DnaPrimaryArchetype;
   const body: ReviewedRealmCreatePersonaInput = {
     homeWorldId: draft.selectedWorldId,
     origin: {
@@ -372,19 +427,7 @@ export function validateCreateRealmPersonaReadiness(
       sourceId: `realm-persona-studio:${draft.handle}`,
       sourceVersion: 'owner-reviewed-v1',
     },
-    core: {
-      handle: draft.handle,
-      displayName: draft.displayName,
-      concept: draft.concept,
-      homeWorldId: draft.selectedWorldId,
-      dnaPrimary,
-      dnaSecondary: draft.dnaSecondary,
-      ...(draft.description ? { description: draft.description } : {}),
-      ...(ruleLines.length > 0
-        ? { ownerReviewedGuidelines: { format: 'line-list-v1', lines: ruleLines, text: draft.ruleText } }
-        : {}),
-      ...(draft.referenceImageUrl ? { referenceImageUrl: draft.referenceImageUrl, avatarUrl: draft.referenceImageUrl } : {}),
-    },
+    core: buildRealmPersonaCoreV1(draft),
   };
 
   return {

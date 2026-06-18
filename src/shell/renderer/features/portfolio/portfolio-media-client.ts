@@ -247,13 +247,13 @@ export function normalizeRealmPersonaAvatarSelectResult(
   const core = response && typeof response === 'object' && response.core && typeof response.core === 'object'
     ? response.core as Record<string, unknown>
     : {};
-  if (core.avatarUrl !== submitted.avatarUrl) {
+  if (!coreHasExternalRef(core, 'avatar', submitted.avatarUrl)) {
     return {
       ok: false,
       source: REALM_PERSONA_AVATAR_SELECT_SOURCE,
       publicTruth: false,
       failure: 'realm-select-avatar-rejected',
-      message: 'RealmPersona replacement did not persist the reviewed avatarUrl.',
+      message: 'RealmPersona replacement did not persist the reviewed avatar external ref.',
       submitted,
     };
   }
@@ -269,6 +269,42 @@ export function normalizeRealmPersonaAvatarSelectResult(
   };
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function coreHasExternalRef(core: Record<string, unknown>, kind: string, uri: string): boolean {
+  const assets = asRecord(core.assets);
+  const refs = Array.isArray(assets.externalRefs) ? assets.externalRefs : [];
+  return refs.some((entry) => {
+    const record = asRecord(entry);
+    return record.kind === kind && record.uri === uri;
+  });
+}
+
+function withSelectedAvatarExternalRef(core: unknown, avatarUrl: string): Record<string, unknown> {
+  const coreRecord = asRecord(core);
+  const assets = asRecord(coreRecord.assets);
+  const existingRefs = Array.isArray(assets.externalRefs) ? assets.externalRefs : [];
+  const retainedRefs = existingRefs.filter((entry) => asRecord(entry).kind !== 'avatar');
+  return {
+    ...coreRecord,
+    assets: {
+      ...assets,
+      resourceRefs: Array.isArray(assets.resourceRefs) ? assets.resourceRefs : [],
+      externalRefs: [
+        ...retainedRefs,
+        {
+          refId: 'selected-avatar',
+          kind: 'avatar',
+          uri: avatarUrl,
+          purpose: 'profile-avatar',
+        },
+      ],
+      intents: Array.isArray(assets.intents) ? assets.intents : [],
+    },
+  };
+}
 
 export async function selectReviewedPersonaAvatarUrl(
   personaId: string,
@@ -295,10 +331,7 @@ export async function selectReviewedPersonaAvatarUrl(
         baseContentHash: current.contentHash,
         homeWorldId: current.homeWorldId,
         origin: current.origin,
-        core: {
-          ...current.core,
-          avatarUrl: submitted.avatarUrl,
-        },
+        core: withSelectedAvatarExternalRef(current.core, submitted.avatarUrl),
       },
     });
     return normalizeRealmPersonaAvatarSelectResult(response, submitted);

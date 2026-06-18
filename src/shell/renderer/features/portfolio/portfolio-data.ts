@@ -118,14 +118,6 @@ function readString(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null;
 }
 
-function readBoolean(value: unknown): boolean | null {
-  return typeof value === 'boolean' ? value : null;
-}
-
-function readOptionalNumber(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) ? value : null;
-}
-
 type StringFieldRead = { present: true; value: string } | { present: false };
 
 function readStringField(record: Record<string, unknown> | null, key: string): StringFieldRead {
@@ -151,13 +143,28 @@ function readFirstStringField(
   return { present: false };
 }
 
+function stringFieldFromValue(value: string | null): StringFieldRead {
+  return value === null ? { present: false } : { present: true, value };
+}
+
 function readPersonaCore(persona: MyRealmPersonaDto | MyRealmPersonaDetailDto): Record<string, unknown> {
   return readOptionalRecord(persona.core) ?? {};
 }
 
-function readWorldName(core: Record<string, unknown>, homeWorldId: string): string | null {
-  const world = readOptionalRecord(core.world);
-  return readString(world?.name) || readString(core.worldName) || readString(core.worldId) || homeWorldId;
+function readCoreSection(core: Record<string, unknown>, key: string): Record<string, unknown> | null {
+  return readOptionalRecord(core[key]);
+}
+
+function readExternalAssetUri(core: Record<string, unknown>, kind: string): string | null {
+  const assets = readCoreSection(core, 'assets');
+  const refs = Array.isArray(assets?.externalRefs) ? assets.externalRefs : [];
+  for (const ref of refs) {
+    const record = readOptionalRecord(ref);
+    if (readString(record?.kind) === kind) {
+      return readString(record?.uri);
+    }
+  }
+  return null;
 }
 
 export function normalizeFriendCount(_persona: MyRealmPersonaDto | MyRealmPersonaDetailDto): FriendCountMetric {
@@ -168,19 +175,23 @@ export function normalizeOwnerPortfolioPersona(
   persona: MyRealmPersonaDto,
 ): OwnerPortfolioPersona {
   const core = readPersonaCore(persona);
-  const displayName = readString(core.displayName) || readString(core.name) || persona.id;
-  const handle = readString(core.handle) || persona.id;
+  const identity = readCoreSection(core, 'identity');
+  const presentation = readCoreSection(core, 'presentation');
+  const displayName = readString(presentation?.displayName) || readString(identity?.name) || persona.id;
+  const handle = readString(identity?.handle) || persona.id;
 
   return {
     id: persona.id,
     displayName,
     handle,
-    coverUrl: readString(core.profileCoverUrl),
-    avatarUrl: readString(core.avatarUrl) || readString(core.referenceImageUrl),
+    coverUrl: readString(presentation?.profileCoverResourceRef) || readExternalAssetUri(core, 'profileCover'),
+    avatarUrl: readString(presentation?.avatarResourceRef)
+      || readExternalAssetUri(core, 'avatar')
+      || readExternalAssetUri(core, 'referenceImage'),
     ownerScope: 'owner-created',
     source: 'Realm WorldCoreController.listRealmPersonas',
-    realmState: readString(core.state),
-    worldName: readWorldName(core, persona.homeWorldId),
+    realmState: null,
+    worldName: persona.homeWorldId,
     updatedAt: persona.updatedAt,
     friendCount: normalizeFriendCount(persona),
   };
@@ -319,19 +330,15 @@ function settingField(
 }
 
 function readPersonaVoiceConfig(core: Record<string, unknown>): PortfolioPersonaVoiceConfig {
-  const dna = readOptionalRecord(core.dna);
-  const voice = readOptionalRecord(core.voice) ?? readOptionalRecord(dna?.voice);
-  const speechRoutePolicy = readString(voice?.speechRoutePolicy);
+  const personaStyle = readCoreSection(core, 'personaStyle');
   return {
-    voiceId: readString(voice?.voiceId) || '',
-    description: readString(voice?.description) || '',
-    emotionEnabled: readBoolean(voice?.emotionEnabled),
-    speed: readOptionalNumber(voice?.speed),
-    pitch: readOptionalNumber(voice?.pitch),
-    speechModelId: readString(voice?.speechModelId) || '',
-    speechRoutePolicy: speechRoutePolicy === 'local' || speechRoutePolicy === 'cloud'
-      ? speechRoutePolicy
-      : null,
+    voiceId: readString(personaStyle?.voice) || '',
+    description: readString(personaStyle?.archetype) || '',
+    emotionEnabled: null,
+    speed: null,
+    pitch: null,
+    speechModelId: '',
+    speechRoutePolicy: null,
   };
 }
 
@@ -339,19 +346,29 @@ export function normalizeOwnerPortfolioPersonaDetail(
   persona: MyRealmPersonaDetailDto,
 ): OwnerPortfolioPersonaDetail {
   const core = readPersonaCore(persona);
-  const bio = readFirstStringField(core, ['bio', 'description', 'concept']);
+  const identity = readCoreSection(core, 'identity');
+  const presentation = readCoreSection(core, 'presentation');
+  const interactionProfile = readCoreSection(core, 'interactionProfile');
+  const bio = readFirstStringField(identity, ['summary', 'concept']);
   const source: PortfolioPersonaDetailSource = 'Realm WorldCoreController.getRealmPersona';
   return {
     id: persona.id,
-    displayName: settingField('displayName', 'Display name', readFirstStringField(core, ['displayName', 'name']), source),
-    handle: settingField('handle', 'Handle', readStringField(core, 'handle'), source),
+    displayName: settingField('displayName', 'Display name', readStringField(presentation, 'displayName'), source),
+    handle: settingField('handle', 'Handle', readStringField(identity, 'handle'), source),
     bio: settingField('bio', 'Profile description', bio, source),
-    greeting: settingField('greeting', 'Greeting', readStringField(core, 'greeting'), source),
-    profileCoverUrl: settingField('profileCoverUrl', 'Profile cover URL', readStringField(core, 'profileCoverUrl'), source),
+    greeting: settingField('greeting', 'Greeting', readStringField(interactionProfile, 'greeting'), source),
+    profileCoverUrl: settingField(
+      'profileCoverUrl',
+      'Profile cover URL',
+      stringFieldFromValue(readString(presentation?.profileCoverResourceRef) || readExternalAssetUri(core, 'profileCover')),
+      source,
+    ),
     ownership: settingField('ownership', 'Ownership evidence', { present: true, value: 'owner-created RealmPersona' }, source),
     world: settingField('world', 'World evidence', { present: true, value: persona.homeWorldId }, source),
-    state: settingField('state', 'State evidence', readStringField(core, 'state'), source),
-    avatarUrl: readString(core.avatarUrl) || readString(core.referenceImageUrl),
+    state: settingField('state', 'State evidence', { present: false }, source),
+    avatarUrl: readString(presentation?.avatarResourceRef)
+      || readExternalAssetUri(core, 'avatar')
+      || readExternalAssetUri(core, 'referenceImage'),
     contentHash: persona.contentHash,
     contentRevision: persona.contentRevision,
     homeWorldId: persona.homeWorldId,

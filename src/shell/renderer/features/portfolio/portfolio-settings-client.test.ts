@@ -104,12 +104,23 @@ describe('owner portfolio settings client', () => {
         body: expect.objectContaining({
           baseContentHash: 'hash-persona-1',
           core: expect.objectContaining({
-            displayName: 'Mira Prime',
             identity: expect.objectContaining({
-              worldview: 'Layered world with owner-reviewed framing.',
+              name: 'Mira Prime',
             }),
-            personality: expect.objectContaining({
-              interests: ['strategy', 'tea'],
+            presentation: expect.objectContaining({
+              displayName: 'Mira Prime',
+            }),
+            authoring: expect.objectContaining({
+              extensions: expect.objectContaining({
+                ownerSettings: expect.objectContaining({
+                  identity: expect.objectContaining({
+                    worldview: 'Layered world with owner-reviewed framing.',
+                  }),
+                  personality: expect.objectContaining({
+                    interests: ['strategy', 'tea'],
+                  }),
+                }),
+              }),
             }),
           }),
         }),
@@ -293,15 +304,20 @@ describe('owner portfolio settings client', () => {
         body: expect.objectContaining({
           baseContentHash: 'hash-persona-1',
           core: expect.objectContaining({
-            socialVisibility: expect.objectContaining({
-              accountVisibility: 'FRIENDS',
-              dmVisibility: 'PRIVATE',
+            authoring: expect.objectContaining({
+              extensions: expect.objectContaining({
+                socialVisibility: expect.objectContaining({
+                  accountVisibility: 'FRIENDS',
+                  dmVisibility: 'PRIVATE',
+                }),
+              }),
             }),
           }),
         }),
       });
       expect(collectKeys(submittedPayload).has('accountVisibility')).toBe(true);
       expect(collectKeys(submittedPayload).has('dmVisibility')).toBe(true);
+      expect(Object.keys((submittedPayload?.core as { socialVisibility?: unknown } | undefined) || {}).includes('socialVisibility')).toBe(false);
       expect(collectKeys(submittedPayload).has('lifecycle')).toBe(false);
       expect(collectKeys(submittedPayload).has('moderationStatus')).toBe(false);
       expect(collectKeys(submittedPayload).has('worldId')).toBe(false);

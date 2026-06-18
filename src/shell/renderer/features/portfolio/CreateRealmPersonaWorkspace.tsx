@@ -126,7 +126,7 @@ const GRAPH_SECTION_SUMMARY_KEYS: Record<string, StudioCopyKey> = {
 const GRAPH_MISSING_KEYS: Record<string, StudioCopyKey> = {
   'display name': 'create.graph.missing.displayName',
   handle: 'create.graph.missing.handle',
-  'DNA primary archetype': 'create.graph.missing.dnaPrimaryArchetype',
+  'Persona archetype': 'create.graph.missing.dnaPrimaryArchetype',
   'behavior boundaries': 'create.graph.missing.behaviorBoundaries',
   concept: 'create.graph.missing.concept',
   'greeting candidate': 'create.graph.missing.greetingCandidate',
@@ -146,7 +146,7 @@ const CREATE_FIXED_MESSAGE_KEYS: Record<string, StudioCopyKey> = {
   'display name missing': 'create.error.displayNameMissing',
   'concept missing': 'create.error.conceptMissing',
   'selected world missing': 'create.error.selectedWorldMissing',
-  'DNA primary archetype missing (Realm requires `dnaPrimary` or full `dna` JSON; we send the archetype-based form)': 'create.error.dnaPrimaryMissing',
+  'Persona archetype missing (RealmPersonaCoreV1 requires personaStyle.archetype; we map the reviewed archetype into canonical core)': 'create.error.dnaPrimaryMissing',
   'selected world not source-backed by WorldsService.worldControllerListWorlds': 'create.error.selectedWorldNotSourceBacked',
   'handle availability not checked by WorldCoreController.listRealmPersonas': 'create.error.handleAvailabilityMissing',
   'handle availability not checked for the current normalized handle': 'create.error.handleAvailabilityStale',

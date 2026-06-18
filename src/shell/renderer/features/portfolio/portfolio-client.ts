@@ -222,7 +222,10 @@ export async function checkCreateRealmPersonaHandleAvailability(
     const personas = await realm.worldCoreControllerListRealmPersonas({ path: {} });
     const unavailable = personas.some((persona) => {
       const core = persona.core && typeof persona.core === 'object' ? persona.core as Record<string, unknown> : {};
-      const handle = readOptionalString(core, 'handle');
+      const identity = core.identity && typeof core.identity === 'object'
+        ? core.identity as Record<string, unknown>
+        : {};
+      const handle = readOptionalString(identity, 'handle');
       return handle?.toLocaleLowerCase() === normalizedHandle;
     });
     const response = {

@@ -22,13 +22,17 @@ const oasisWorld: RealmPersonaCreationWorldDto = {
   creatorId: null,
   visibility: 'system',
   core: {
-    name: 'OASIS',
-    type: 'OASIS',
-    status: 'ACTIVE',
-    contentRating: 'PG13',
-    nativeCreationState: 'OPEN',
-    characterCount: 2,
-    themes: [],
+    identity: {
+      name: 'OASIS',
+      summary: 'Shared source world.',
+      worldType: 'OASIS',
+      themes: ['social', 'realm-persona'],
+    },
+    presentation: {
+      title: 'OASIS',
+      tagline: 'The main world',
+    },
+    entities: [{ entityId: 'character-1' }, { entityId: 'character-2' }],
   },
   createdAt: '2026-05-21T00:00:00.000Z',
   updatedAt: '2026-05-21T00:00:00.000Z',
@@ -40,8 +44,16 @@ const creatorWorld: RealmPersonaCreationWorldDto = {
   contentHash: 'hash-world-creator',
   core: {
     ...oasisWorld.core,
-    name: 'Creator Workshop',
-    type: 'CREATOR',
+    identity: {
+      name: 'Creator Workshop',
+      summary: 'Creator workshop.',
+      worldType: 'CREATOR',
+      themes: [],
+    },
+    presentation: {
+      title: 'Creator Workshop',
+      tagline: 'Creator workshop.',
+    },
   },
 };
 
@@ -85,7 +97,14 @@ describe('create Realm Persona draft normalization', () => {
     const worlds = normalizeSelectableWorlds([{
       ...creatorWorld,
       id: 'oasis',
-      core: { ...creatorWorld.core, name: 'Main World', type: 'CREATOR' },
+      core: {
+        ...creatorWorld.core,
+        identity: {
+          name: 'Main World',
+          summary: 'Main world.',
+          worldType: 'CREATOR',
+        },
+      },
     }]);
 
     expect(selectOasisDefaultWorld(worlds)?.id).toBe('oasis');
@@ -98,10 +117,17 @@ describe('selected world preview normalization', () => {
       ...oasisWorld,
       core: {
         ...oasisWorld.core,
-        tagline: 'The main world',
-        overview: 'Shared source world.',
-        themes: ['social', 'realm-persona'],
-        characterCount: 2,
+        identity: {
+          name: 'OASIS',
+          summary: 'Shared source world.',
+          worldType: 'OASIS',
+          themes: ['social', 'realm-persona'],
+        },
+        presentation: {
+          title: 'OASIS',
+          tagline: 'The main world',
+        },
+        entities: [{ entityId: 'character-1' }, { entityId: 'character-2' }],
       },
     } satisfies RealmPersonaCreationWorldDetailDto);
 
@@ -110,12 +136,13 @@ describe('selected world preview normalization', () => {
       name: 'OASIS',
       type: 'OASIS',
       status: 'system',
-      contentRating: 'PG13',
+      contentRating: null,
       tagline: 'The main world',
+      description: 'Shared source world.',
       overview: 'Shared source world.',
       themes: ['social', 'realm-persona'],
       personaCount: 2,
-      nativeCreationState: 'OPEN',
+      nativeCreationState: null,
       source: 'Realm WorldCoreController.getWorldCore',
     });
   });
@@ -150,17 +177,45 @@ describe('create Realm Persona readiness', () => {
           sourceVersion: 'owner-reviewed-v1',
         },
         core: {
-          handle: 'mira.persona',
-          displayName: 'Mira Persona',
-          concept: 'Durable public Realm Persona',
-          homeWorldId: 'world-oasis',
-          description: 'Owner-created public identity',
-          dnaPrimary: 'CARING',
-          dnaSecondary: ['GENTLE', 'WISE'],
-          ownerReviewedGuidelines: {
-            format: 'line-list-v1',
-            lines: ['Stay visible and owner-reviewed.'],
-            text: 'Stay visible and owner-reviewed.',
+          identity: {
+            handle: 'mira.persona',
+            name: 'Mira Persona',
+            summary: 'Owner-created public identity',
+            concept: 'Durable public Realm Persona',
+          },
+          presentation: {
+            displayName: 'Mira Persona',
+            profileLine: 'Owner-created public identity',
+          },
+          personaStyle: {
+            archetype: 'CARING',
+            traits: ['GENTLE', 'WISE'],
+            voice: 'owner-reviewed',
+            pacing: 'responsive',
+          },
+          contentProfile: {
+            topics: [],
+            boundaries: [],
+            guidelines: [{
+              guidelineId: 'owner-reviewed-1',
+              statement: 'Stay visible and owner-reviewed.',
+              source: 'realm-persona-studio',
+            }],
+          },
+          interactionProfile: {
+            homeWorldId: 'world-oasis',
+            interactionModes: ['conversation'],
+          },
+          assets: {
+            resourceRefs: [],
+            intents: [],
+          },
+          authoring: {
+            source: 'realm-persona-studio',
+            notes: [],
+            review: {
+              status: 'owner-reviewed',
+            },
           },
         },
       },
@@ -179,7 +234,16 @@ describe('create Realm Persona readiness', () => {
     });
 
     expect(result.ready).toBe(true);
-    expect(result.payload?.body.core.referenceImageUrl).toBe('https://cdn.example.test/reference.png');
+    expect(result.payload?.body.core).toMatchObject({
+      assets: {
+        externalRefs: [{
+          refId: 'reference-image-1',
+          kind: 'referenceImage',
+          uri: 'https://cdn.example.test/reference.png',
+          purpose: 'visual-reference',
+        }],
+      },
+    });
 
     const rejected = validateCreateRealmPersonaReadiness({
       ...baseInput,
@@ -190,7 +254,7 @@ describe('create Realm Persona readiness', () => {
         normalized: 'mira.persona',
       }),
     });
-    expect(rejected.payload?.body.core.referenceImageUrl).toBeUndefined();
+    expect((rejected.payload?.body.core.assets as { externalRefs?: unknown[] }).externalRefs).toBeUndefined();
   });
 
   it('fails readiness when required local draft fields are missing', () => {

@@ -82,40 +82,52 @@ export const persona: MyRealmPersonaDto = {
   ownerId: 'user-1',
   homeWorldId: 'world-oasis',
   core: {
-    handle: 'mira',
-    displayName: 'Mira',
-    description: 'Quiet strategist',
-    greeting: 'Welcome in.',
-    state: 'ACTIVE',
-    socialVisibility: {
-      accountVisibility: 'PUBLIC',
-      defaultPostVisibility: 'PUBLIC',
-      dmVisibility: 'FRIENDS',
-      profileVisibility: 'PUBLIC',
-    },
     identity: {
-      publicRole: 'Guide',
-      worldview: 'Layered world.',
+      handle: 'mira',
+      name: 'Mira',
+      summary: 'Quiet strategist',
+      concept: 'Quiet strategist',
     },
-    personality: {
-      summary: 'Patient strategist.',
-      relationshipMode: 'mentor',
-      interests: ['strategy'],
-      goals: ['keep lore coherent'],
+    presentation: {
+      displayName: 'Mira',
+      profileLine: 'Quiet strategist',
     },
-    communication: {
-      contentStyle: 'Concise.',
-      formality: 'casual',
-      responseLength: 'medium',
-      sentiment: 'neutral',
+    personaStyle: {
+      archetype: 'CARING',
+      traits: ['GENTLE'],
+      voice: 'clear',
+      pacing: 'responsive',
     },
-    boundaries: {
-      allowedThemes: ['adventure'],
-      disallowedThemes: ['gore'],
+    contentProfile: {
+      topics: ['strategy'],
+      boundaries: [],
+      guidelines: [],
     },
-    positioning: {
-      targetAudience: 'builders',
-      positioning: 'guide',
+    interactionProfile: {
+      homeWorldId: 'world-oasis',
+      interactionModes: ['conversation'],
+      greeting: 'Welcome in.',
+    },
+    assets: {
+      resourceRefs: [],
+      intents: [],
+    },
+    authoring: {
+      source: 'test',
+      notes: [],
+      extensions: {
+        ownerSettings: {
+          identity: {
+            publicRole: 'Guide',
+          },
+        },
+        socialVisibility: {
+          accountVisibility: 'PUBLIC',
+          defaultPostVisibility: 'PUBLIC',
+          dmVisibility: 'FRIENDS',
+          profileVisibility: 'PUBLIC',
+        },
+      },
     },
   },
   createdAt: '2026-05-21T00:00:00.000Z',
@@ -131,13 +143,39 @@ export const world: RealmPersonaCreationWorldDto = {
   creatorId: null,
   visibility: 'system',
   core: {
-    name: 'OASIS',
-    type: 'OASIS',
-    status: 'ACTIVE',
-    contentRating: 'PG13',
-    nativeCreationState: 'OPEN',
-    characterCount: 0,
-    themes: [],
+    identity: {
+      name: 'OASIS',
+      summary: 'Default system world.',
+      worldType: 'system-default',
+    },
+    presentation: {
+      title: 'OASIS',
+      displayName: 'OASIS',
+      tagline: 'Default entry world.',
+    },
+    ontology: {
+      entityKinds: [],
+      relationshipTypes: [],
+    },
+    timeModel: {
+      mode: 'continuous',
+      flowRatio: 1,
+      isPaused: false,
+    },
+    timeline: {
+      events: [],
+    },
+    entities: [],
+    relationships: [],
+    systems: [],
+    scenes: [],
+    assets: {
+      resourceRefs: [],
+      intents: [],
+    },
+    authoring: {
+      source: 'test',
+    },
   },
   createdAt: '2026-05-21T00:00:00.000Z',
   updatedAt: '2026-05-21T00:00:00.000Z',
@@ -151,7 +189,19 @@ export function mockRealm(): StudioRealmSurface {
           ...persona,
           id: 'persona-taken',
           contentHash: 'hash-persona-taken',
-          core: { ...persona.core, handle: 'taken.persona', displayName: 'Taken' },
+          core: {
+            ...persona.core,
+            identity: {
+              handle: 'taken.persona',
+              name: 'Taken',
+              summary: 'Taken persona',
+              concept: 'Taken persona',
+            },
+            presentation: {
+              displayName: 'Taken',
+              profileLine: 'Taken persona',
+            },
+          },
         },
       ]),
       worldCoreControllerGetRealmPersona: vi.fn(async (request: { readonly path: { readonly personaId: string } }) => ({
@@ -163,10 +213,7 @@ export function mockRealm(): StudioRealmSurface {
           ...persona,
           id: 'persona-created-1',
           contentHash: 'hash-persona-created-1',
-          core: {
-            ...(request.body.core && typeof request.body.core === 'object' ? request.body.core as Record<string, unknown> : {}),
-            state: 'INCUBATING',
-          },
+          core: request.body.core && typeof request.body.core === 'object' ? request.body.core as Record<string, unknown> : {},
       })),
       worldCoreControllerReplaceRealmPersona: vi.fn(async (request: { readonly path: { readonly personaId: string }; readonly body: Record<string, unknown> }) => ({
         ...persona,
@@ -567,17 +614,52 @@ export const createPayload: ReviewedCreateRealmPersonaPayload = {
       sourceVersion: 'owner-reviewed-v1',
     },
     core: {
-      handle: 'mira.persona',
-      displayName: 'Mira Persona',
-      concept: 'Durable public RealmPersona',
-      description: 'Owner-created public identity',
-      homeWorldId: 'world-oasis',
-      dnaPrimary: 'CARING',
-      dnaSecondary: ['GENTLE', 'WISE'],
-      ownerReviewedGuidelines: {
-        format: 'line-list-v1',
-        lines: ['Stay visible.', 'Stay owner-reviewed.'],
-        text: 'Stay visible.\nStay owner-reviewed.',
+      identity: {
+        handle: 'mira.persona',
+        name: 'Mira Persona',
+        summary: 'Owner-created public identity',
+        concept: 'Durable public RealmPersona',
+      },
+      presentation: {
+        displayName: 'Mira Persona',
+        profileLine: 'Owner-created public identity',
+      },
+      personaStyle: {
+        archetype: 'CARING',
+        traits: ['GENTLE', 'WISE'],
+        voice: 'owner-reviewed',
+        pacing: 'responsive',
+      },
+      contentProfile: {
+        topics: [],
+        boundaries: [],
+        guidelines: [
+          {
+            guidelineId: 'owner-reviewed-1',
+            statement: 'Stay visible.',
+            source: 'realm-persona-studio',
+          },
+          {
+            guidelineId: 'owner-reviewed-2',
+            statement: 'Stay owner-reviewed.',
+            source: 'realm-persona-studio',
+          },
+        ],
+      },
+      interactionProfile: {
+        homeWorldId: 'world-oasis',
+        interactionModes: ['conversation'],
+      },
+      assets: {
+        resourceRefs: [],
+        intents: [],
+      },
+      authoring: {
+        source: 'realm-persona-studio',
+        notes: [],
+        review: {
+          status: 'owner-reviewed',
+        },
       },
     },
   },

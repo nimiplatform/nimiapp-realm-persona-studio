@@ -209,9 +209,60 @@ function readRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' ? value as Record<string, unknown> : {};
 }
 
+function readAuthoringExtensions(core: Record<string, unknown>): Record<string, unknown> {
+  return readRecord(readRecord(core.authoring).extensions);
+}
+
+function readOwnerSettingsExtension(core: Record<string, unknown>): Record<string, unknown> {
+  return readRecord(readAuthoringExtensions(core).ownerSettings);
+}
+
+function writeRecordSection(
+  core: Record<string, unknown>,
+  key: string,
+  patch: Record<string, unknown>,
+): Record<string, unknown> {
+  return {
+    ...core,
+    [key]: {
+      ...readRecord(core[key]),
+      ...patch,
+    },
+  };
+}
+
+function deleteUndefinedValues(record: Record<string, unknown>): Record<string, unknown> {
+  const next: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(record)) {
+    if (value !== undefined) {
+      next[key] = value;
+    }
+  }
+  return next;
+}
+
+function writeAuthoringExtension(
+  core: Record<string, unknown>,
+  key: string,
+  value: Record<string, unknown>,
+): Record<string, unknown> {
+  const authoring = readRecord(core.authoring);
+  const extensions = readRecord(authoring.extensions);
+  return {
+    ...core,
+    authoring: {
+      ...authoring,
+      extensions: {
+        ...extensions,
+        [key]: value,
+      },
+    },
+  };
+}
+
 function readPersonaSocialVisibility(persona: RealmPersonaDto): RealmPersonaVisibilitySettings {
   const core = readRecord(persona.core);
-  const socialVisibility = readRecord(core.socialVisibility);
+  const socialVisibility = readRecord(readAuthoringExtensions(core).socialVisibility);
   return {
     accountVisibility: isPersonaVisibilityValue(String(socialVisibility.accountVisibility || ''))
       ? socialVisibility.accountVisibility as PersonaVisibilityValue
@@ -230,21 +281,28 @@ function readPersonaSocialVisibility(persona: RealmPersonaDto): RealmPersonaVisi
 
 function readPersonaSettings(persona: RealmPersonaDto): RealmOwnerPersonaSettings {
   const core = readRecord(persona.core);
+  const identity = readRecord(core.identity);
+  const presentation = readRecord(core.presentation);
+  const interactionProfile = readRecord(core.interactionProfile);
+  const ownerSettings = readOwnerSettingsExtension(core);
   return {
     id: persona.id,
     contentHash: persona.contentHash,
     homeWorldId: persona.homeWorldId,
     origin: persona.origin,
     core,
-    displayName: readOptionalString(core, 'displayName') ?? null,
-    description: readOptionalString(core, 'description') ?? null,
-    greeting: readOptionalString(core, 'greeting') ?? null,
-    naturalLanguageIntent: readOptionalString(core, 'naturalLanguageIntent') ?? null,
-    identity: readRecord(core.identity),
-    personality: readRecord(core.personality),
-    communication: readRecord(core.communication),
-    boundaries: readRecord(core.boundaries),
-    positioning: readRecord(core.positioning),
+    displayName: readOptionalString(presentation, 'displayName') ?? readOptionalString(identity, 'name') ?? null,
+    description: readOptionalString(ownerSettings, 'description')
+      ?? readOptionalString(identity, 'summary')
+      ?? readOptionalString(presentation, 'profileLine')
+      ?? null,
+    greeting: readOptionalString(interactionProfile, 'greeting') ?? null,
+    naturalLanguageIntent: readOptionalString(ownerSettings, 'naturalLanguageIntent') ?? null,
+    identity: readRecord(ownerSettings.identity),
+    personality: readRecord(ownerSettings.personality),
+    communication: readRecord(ownerSettings.communication),
+    boundaries: readRecord(ownerSettings.boundaries),
+    positioning: readRecord(ownerSettings.positioning),
   };
 }
 
@@ -252,21 +310,43 @@ function mergeOwnerSettingsCore(
   current: RealmOwnerPersonaSettings,
   patch: OwnerPersonaSettingsUpdateInput,
 ): Record<string, unknown> {
-  const next: Record<string, unknown> = { ...current.core };
-  for (const key of ['displayName', 'description', 'greeting', 'naturalLanguageIntent'] as const) {
-    if (Object.prototype.hasOwnProperty.call(patch, key)) {
-      next[key] = patch[key];
+  let next: Record<string, unknown> = { ...current.core };
+  const ownerSettings = { ...readOwnerSettingsExtension(next) };
+
+  if (Object.prototype.hasOwnProperty.call(patch, 'displayName') && patch.displayName) {
+    next = writeRecordSection(next, 'identity', { name: patch.displayName });
+    next = writeRecordSection(next, 'presentation', { displayName: patch.displayName });
+  }
+
+  if (Object.prototype.hasOwnProperty.call(patch, 'description')) {
+    ownerSettings.description = patch.description ?? null;
+    if (patch.description) {
+      next = writeRecordSection(next, 'identity', { summary: patch.description });
+      next = writeRecordSection(next, 'presentation', { profileLine: patch.description });
     }
   }
+
+  if (Object.prototype.hasOwnProperty.call(patch, 'greeting')) {
+    next = writeRecordSection(next, 'interactionProfile', deleteUndefinedValues({
+      greeting: patch.greeting ?? undefined,
+    }));
+    ownerSettings.greeting = patch.greeting ?? null;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(patch, 'naturalLanguageIntent')) {
+    ownerSettings.naturalLanguageIntent = patch.naturalLanguageIntent ?? null;
+  }
+
   for (const key of ['identity', 'personality', 'communication', 'boundaries', 'positioning'] as const) {
     if (patch[key]) {
-      next[key] = {
-        ...readRecord(next[key]),
+      ownerSettings[key] = {
+        ...readRecord(ownerSettings[key]),
         ...patch[key],
       };
     }
   }
-  return next;
+
+  return writeAuthoringExtension(next, 'ownerSettings', ownerSettings);
 }
 
 function buildReplaceRealmPersonaInput(
@@ -458,13 +538,13 @@ export async function updateReviewedPersonaVisibility(
     const current = await getOwnerPersonaSettings(personaId, realm);
     const settings = await realm.worldCoreControllerReplaceRealmPersona({
       path: { personaId: personaId },
-      body: buildReplaceRealmPersonaInput(current, {
-        ...current.core,
-        socialVisibility: {
-          ...readRecord(current.core.socialVisibility),
+      body: buildReplaceRealmPersonaInput(
+        current,
+        writeAuthoringExtension(current.core, 'socialVisibility', {
+          ...readRecord(readAuthoringExtensions(current.core).socialVisibility),
           ...input,
-        },
-      }),
+        }),
+      ),
     });
     return {
       ok: true,

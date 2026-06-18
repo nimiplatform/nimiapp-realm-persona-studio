@@ -167,14 +167,18 @@ describe('owner portfolio core client', () => {
       expect(collectKeys(submittedPayload).has('model')).toBe(false);
       expect(collectKeys(submittedPayload).has('LocalAgent')).toBe(false);
       expect(collectKeys(submittedPayload).has('dna')).toBe(false);
-      expect(collectKeys(submittedPayload).has('dnaPrimary')).toBe(true);
-      expect(collectKeys(submittedPayload).has('dnaSecondary')).toBe(true);
+      expect(collectKeys(submittedPayload).has('dnaPrimary')).toBe(false);
+      expect(collectKeys(submittedPayload).has('dnaSecondary')).toBe(false);
+      expect(submittedPayload?.core).toMatchObject({
+        identity: { handle: 'mira.persona' },
+        presentation: { displayName: 'Mira Persona' },
+        personaStyle: { archetype: 'CARING', traits: ['GENTLE', 'WISE'] },
+      });
       expect(result).toMatchObject({
         ok: true,
         source: REALM_PERSONA_CREATE_SOURCE,
         canonical: {
           id: 'persona-created-1',
-          state: 'INCUBATING',
         },
       });
     });
@@ -200,7 +204,12 @@ describe('owner portfolio core client', () => {
         body: expect.objectContaining({
           baseContentHash: 'hash-persona-created-1',
           core: expect.objectContaining({
-            description: 'Owner-created public identity',
+            identity: expect.objectContaining({
+              summary: 'Owner-created public identity',
+            }),
+            presentation: expect.objectContaining({
+              profileLine: 'Owner-created public identity',
+            }),
           }),
         }),
       });
@@ -267,7 +276,7 @@ describe('owner portfolio core client', () => {
       expect(input).toEqual(createPayload.body);
       expect(collectKeys(input).has('publicFields')).toBe(false);
       expect(collectKeys(input).has('path')).toBe(false);
-      expect(collectKeys(input).has('source')).toBe(false);
+      expect(Object.keys(input).includes('source')).toBe(false);
     });
 
     it('passes the reviewed RealmPersona core package without restoring old create fields', () => {
@@ -294,24 +303,44 @@ describe('owner portfolio core client', () => {
       expect(collectKeys(input).has('provider')).toBe(false);
       expect(collectKeys(input).has('model')).toBe(false);
       expect(collectKeys(input).has('ownerId')).toBe(false);
-      expect(collectKeys(input.core).has('dnaPrimary')).toBe(true);
-      expect(collectKeys(input.core).has('dnaSecondary')).toBe(true);
+      expect(collectKeys(input.core).has('dnaPrimary')).toBe(false);
+      expect(collectKeys(input.core).has('dnaSecondary')).toBe(false);
+      expect(input.core).toMatchObject({
+        identity: { handle: 'mira.persona' },
+        personaStyle: { archetype: 'CARING', traits: ['GENTLE', 'WISE'] },
+      });
     });
 
-    it('admits reviewed referenceImageUrl without treating it as asset binding truth', () => {
+    it('admits reviewed reference image as a canonical external asset ref', () => {
       const payloadWithReference: ReviewedCreateRealmPersonaPayload = {
         ...createPayload,
         body: {
           ...createPayload.body,
           core: {
             ...createPayload.body.core,
-            referenceImageUrl: 'https://cdn.example.test/reviewed-reference.png',
+            assets: {
+              resourceRefs: [],
+              externalRefs: [{
+                refId: 'reference-image-1',
+                kind: 'referenceImage',
+                uri: 'https://cdn.example.test/reviewed-reference.png',
+                purpose: 'visual-reference',
+              }],
+              intents: [],
+            },
           },
         },
       };
       const input = buildRealmCreatePersonaInput(payloadWithReference);
 
-      expect(input.core.referenceImageUrl).toBe('https://cdn.example.test/reviewed-reference.png');
+      expect(input.core).toMatchObject({
+        assets: {
+          externalRefs: [{
+            kind: 'referenceImage',
+            uri: 'https://cdn.example.test/reviewed-reference.png',
+          }],
+        },
+      });
       expect(collectKeys(input).has('bindingPoint')).toBe(false);
       expect(collectKeys(input).has('assetId')).toBe(false);
       expect(collectKeys(input).has('resourceId')).toBe(false);

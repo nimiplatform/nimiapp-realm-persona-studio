@@ -527,6 +527,12 @@ export function buildRealmOwnerPersonaSettingsUpdateInput(
   addNullableChange(input, 'description', normalizeNullableText(normalized.description), current.description);
   addNullableChange(input, 'greeting', normalizeNullableText(normalized.greeting), current.greeting);
   addNullableChange(input, 'naturalLanguageIntent', normalizeNullableText(normalized.naturalLanguageIntent), current.naturalLanguageIntent);
+  if (Object.prototype.hasOwnProperty.call(input, 'displayName') && input.displayName === null) {
+    errors.push('displayName cannot be empty because RealmPersonaCoreV1 requires presentation.displayName');
+  }
+  if (Object.prototype.hasOwnProperty.call(input, 'description') && input.description === null) {
+    errors.push('description cannot be empty because RealmPersonaCoreV1 requires identity.summary and presentation.profileLine');
+  }
 
   const identity: NonNullable<OwnerPersonaSettingsUpdateInput['identity']> = {};
   addNullableChange(identity, 'publicRole', normalizeNullableSingleLine(normalized.publicRole), current.identity?.publicRole);

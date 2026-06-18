@@ -81,7 +81,15 @@ describe('owner portfolio media client', () => {
         body: expect.objectContaining({
           baseContentHash: 'hash-persona-1',
           core: expect.objectContaining({
-            avatarUrl: 'https://cdn.example.test/avatar.png',
+            assets: expect.objectContaining({
+              externalRefs: expect.arrayContaining([
+                expect.objectContaining({
+                  kind: 'avatar',
+                  uri: 'https://cdn.example.test/avatar.png',
+                  purpose: 'profile-avatar',
+                }),
+              ]),
+            }),
           }),
         }),
       });
@@ -121,7 +129,19 @@ describe('owner portfolio media client', () => {
       };
       const result = normalizeRealmPersonaAvatarSelectResult({
         ...personaFixture,
-        core: { ...personaFixture.core, avatarUrl: 'https://cdn.example.test/other.png' },
+        core: {
+          ...personaFixture.core,
+          assets: {
+            resourceRefs: [],
+            externalRefs: [{
+              refId: 'selected-avatar',
+              kind: 'avatar',
+              uri: 'https://cdn.example.test/other.png',
+              purpose: 'profile-avatar',
+            }],
+            intents: [],
+          },
+        },
       }, submitted);
 
       expect(result).toMatchObject({
