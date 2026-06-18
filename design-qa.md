@@ -1,13 +1,13 @@
-# Realm Agent Create Page Design QA
+# Realm Persona Create Page Design QA
 
-source target: `C:/Users/admin/Desktop/wendy nimi/Realm Agent Studio.html` plus supplied five screenshots.
+status: superseded visual QA note retained only as historical evidence.
 
-implementation target: `src/shell/renderer/features/portfolio/CreateRealmAgentWorkspace.tsx`.
+current implementation target: `src/shell/renderer/features/portfolio/CreateRealmPersonaWorkspace.tsx`.
 
 checks:
 - Code build: passed via `pnpm build:renderer`.
 - Type/lint: passed via `pnpm lint`.
-- Focused create workspace test: passed via `pnpm test -- src/shell/renderer/features/portfolio/CreateRealmAgentWorkspace.test.ts`.
+- Focused create workspace test: passed via `pnpm test -- src/shell/renderer/features/portfolio/CreateRealmPersonaWorkspace.test.ts`.
 - Browser render: blocked in Vite-only browser at `http://127.0.0.1:1450/#/portfolio/create`.
 
 blocking evidence:
