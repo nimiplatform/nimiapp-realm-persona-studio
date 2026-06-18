@@ -81,6 +81,7 @@ export const persona: MyRealmPersonaDto = {
   origin: { kind: 'manual', sourceId: 'test' },
   ownerId: 'user-1',
   homeWorldId: 'world-oasis',
+  visibility: 'public',
   core: {
     identity: {
       handle: 'mira',
