@@ -462,7 +462,6 @@ export function SettingProposalWorkspace({ persona, onPersonaWrite }: { persona:
 }
 
 export const VISIBILITY_FIELD_LABEL_KEYS: Record<PersonaVisibilityField, StudioCopyKey> = {
-  accountVisibility: 'visibility.field.accountVisibility',
   defaultPostVisibility: 'visibility.field.defaultPostVisibility',
   dmVisibility: 'visibility.field.dmVisibility',
   profileVisibility: 'visibility.field.profileVisibility',

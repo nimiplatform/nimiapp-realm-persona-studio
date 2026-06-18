@@ -123,7 +123,6 @@ export const persona: MyRealmPersonaDto = {
           },
         },
         socialVisibility: {
-          accountVisibility: 'PUBLIC',
           defaultPostVisibility: 'PUBLIC',
           dmVisibility: 'FRIENDS',
           profileVisibility: 'PUBLIC',

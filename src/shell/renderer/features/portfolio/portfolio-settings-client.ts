@@ -49,7 +49,6 @@ export const REALM_RUNTIME_PROJECTION_SOURCE = 'Realm WorldCoreController.create
 export const REALM_PERSONA_VISIBILITY_SOURCE = 'Realm WorldCoreController.replaceRealmPersona';
 export const PERSONA_VISIBILITY_VALUES = ['PUBLIC', 'FRIENDS', 'PRIVATE'] as const;
 export const PERSONA_VISIBILITY_FIELDS = [
-  'accountVisibility',
   'defaultPostVisibility',
   'dmVisibility',
   'profileVisibility',
@@ -265,9 +264,6 @@ function readPersonaSocialVisibility(persona: RealmPersonaDto): RealmPersonaVisi
   const core = readRecord(persona.core);
   const socialVisibility = readRecord(readAuthoringExtensions(core).socialVisibility);
   return {
-    accountVisibility: isPersonaVisibilityValue(String(socialVisibility.accountVisibility || ''))
-      ? socialVisibility.accountVisibility as PersonaVisibilityValue
-      : 'PRIVATE',
     defaultPostVisibility: isPersonaVisibilityValue(String(socialVisibility.defaultPostVisibility || ''))
       ? socialVisibility.defaultPostVisibility as PersonaVisibilityValue
       : 'PRIVATE',
@@ -383,7 +379,6 @@ function isPersonaVisibilityValue(value: string): value is PersonaVisibilityValu
 
 export function createPersonaVisibilityDraft(settings: RealmPersonaVisibilitySettings): PersonaVisibilityDraft {
   return {
-    accountVisibility: settings.accountVisibility,
     defaultPostVisibility: settings.defaultPostVisibility,
     dmVisibility: settings.dmVisibility,
     profileVisibility: settings.profileVisibility,

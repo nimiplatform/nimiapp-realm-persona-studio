@@ -273,7 +273,6 @@ describe('owner portfolio settings client', () => {
         path: { personaId: 'persona-1' },
       });
       expect(settings).toEqual({
-        accountVisibility: 'PUBLIC',
         defaultPostVisibility: 'PUBLIC',
         dmVisibility: 'FRIENDS',
         profileVisibility: 'PUBLIC',
@@ -283,16 +282,14 @@ describe('owner portfolio settings client', () => {
      it('updates owner visibility through WorldCoreController.replaceRealmPersona with changed allowlisted fields only', async () => {
       const realm = mockRealm();
       const current: RealmPersonaVisibilitySettings = {
-        accountVisibility: 'PUBLIC',
         defaultPostVisibility: 'PUBLIC',
         dmVisibility: 'FRIENDS',
         profileVisibility: 'PUBLIC',
       };
       const draft: PersonaVisibilityDraft = {
-        accountVisibility: 'FRIENDS',
         defaultPostVisibility: 'PUBLIC',
         dmVisibility: 'PRIVATE',
-        profileVisibility: 'PUBLIC',
+        profileVisibility: 'FRIENDS',
       };
       const result = await updateReviewedPersonaVisibility('persona-1', draft, current, realm);
       const updateVisibility = realm.worldCoreControllerReplaceRealmPersona;
@@ -307,16 +304,18 @@ describe('owner portfolio settings client', () => {
             authoring: expect.objectContaining({
               extensions: expect.objectContaining({
                 socialVisibility: expect.objectContaining({
-                  accountVisibility: 'FRIENDS',
                   dmVisibility: 'PRIVATE',
+                  profileVisibility: 'FRIENDS',
                 }),
               }),
             }),
           }),
+          visibility: 'unlisted',
         }),
       });
-      expect(collectKeys(submittedPayload).has('accountVisibility')).toBe(true);
+      expect(collectKeys(submittedPayload).has('accountVisibility')).toBe(false);
       expect(collectKeys(submittedPayload).has('dmVisibility')).toBe(true);
+      expect(collectKeys(submittedPayload).has('profileVisibility')).toBe(true);
       expect(Object.keys((submittedPayload?.core as { socialVisibility?: unknown } | undefined) || {}).includes('socialVisibility')).toBe(false);
       expect(collectKeys(submittedPayload).has('lifecycle')).toBe(false);
       expect(collectKeys(submittedPayload).has('moderationStatus')).toBe(false);
@@ -328,8 +327,8 @@ describe('owner portfolio settings client', () => {
         source: 'Realm WorldCoreController.replaceRealmPersona',
         lifecycleTruth: false,
         submitted: {
-          accountVisibility: 'FRIENDS',
           dmVisibility: 'PRIVATE',
+          profileVisibility: 'FRIENDS',
         },
       });
     });
@@ -337,7 +336,6 @@ describe('owner portfolio settings client', () => {
      it('fails closed on visibility no-op or invalid enum without calling Realm', async () => {
       const realm = mockRealm();
       const current: RealmPersonaVisibilitySettings = {
-        accountVisibility: 'PUBLIC',
         defaultPostVisibility: 'PUBLIC',
         dmVisibility: 'FRIENDS',
         profileVisibility: 'PUBLIC',
@@ -369,7 +367,6 @@ describe('owner portfolio settings client', () => {
 
      it('builds UpdatePersonaVisibilityDto from changed visibility fields only', () => {
       const current: RealmPersonaVisibilitySettings = {
-        accountVisibility: 'PUBLIC',
         defaultPostVisibility: 'PUBLIC',
         dmVisibility: 'FRIENDS',
         profileVisibility: 'PUBLIC',
