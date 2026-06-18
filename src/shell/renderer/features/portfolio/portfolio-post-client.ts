@@ -224,6 +224,7 @@ export function buildRealmCreatePostInput(payload: CandidatePostPayload): RealmC
     })),
     ...(payload.realmCreatePost.caption ? { caption: payload.realmCreatePost.caption } : {}),
     ...(payload.realmCreatePost.tags && payload.realmCreatePost.tags.length > 0 ? { tags: [...payload.realmCreatePost.tags] } : {}),
+    sourceRef: { ...payload.personaRef.sourceRef },
   };
 }
 
@@ -377,12 +378,12 @@ export function buildRealmPostTextResourceInput(payload: CandidatePostPayload): 
     deliveryAccess: 'SIGNED',
     label: `Reviewed post text for ${payload.personaRef.handle ? `@${payload.personaRef.handle}` : payload.personaRef.displayName}`,
     mimeType: 'text/plain; charset=utf-8',
-    sourceRef: payload.personaRef.sourceRef,
+    sourceRef: payload.personaRef.sourceRefKey,
     title: normalizeResourceTitle(content),
     ...(payload.realmCreatePost.tags && payload.realmCreatePost.tags.length > 0 ? { tags: [...payload.realmCreatePost.tags] } : {}),
     metadata: {
       source: 'realm-persona-studio.reviewed-post-text-resource',
-      sourceRef: payload.personaRef.sourceRef,
+      sourceRef: payload.personaRef.sourceRefKey,
       sourceKind: 'realmPersona',
       attachmentPurpose: 'post',
       humanReviewed: true,

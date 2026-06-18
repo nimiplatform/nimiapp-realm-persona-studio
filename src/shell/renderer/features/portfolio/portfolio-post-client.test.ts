@@ -77,10 +77,16 @@ describe('owner portfolio posts client', () => {
         }],
         caption: 'Published caption',
         tags: ['studio'],
+        sourceRef: {
+          kind: 'realmPersona',
+          worldId: 'world-oasis',
+          sourceId: 'persona-1',
+          sourceContentHash: 'hash-persona-1',
+        },
       });
       expect(collectKeys(submittedPayload).has('id')).toBe(false);
       expect(collectKeys(submittedPayload).has('authorId')).toBe(false);
-      expect(collectKeys(submittedPayload).has('worldId')).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(submittedPayload || {}, 'worldId')).toBe(false);
       expect(collectKeys(submittedPayload).has('scheduledAt')).toBe(false);
       expect(result).toMatchObject({
         ok: true,
@@ -488,7 +494,15 @@ describe('owner portfolio posts client', () => {
      it('builds CreatePostDto shape from reviewed payload only', () => {
       const input = buildRealmCreatePostInput(candidatePayload);
 
-      expect(input).toEqual(candidatePayload.realmCreatePost);
+      expect(input).toEqual({
+        ...candidatePayload.realmCreatePost,
+        sourceRef: {
+          kind: 'realmPersona',
+          worldId: 'world-oasis',
+          sourceId: 'persona-1',
+          sourceContentHash: 'hash-persona-1',
+        },
+      });
       expect(collectKeys(input).has('personaRef')).toBe(false);
       expect(collectKeys(input).has('review')).toBe(false);
     });

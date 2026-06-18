@@ -39,10 +39,13 @@ export type CandidatePostPayload = {
   personaRef: {
     source: PortfolioPersonaDetailSource;
     sourceKind: 'realmPersona';
-    sourceId: string;
-    sourceWorldId: string;
-    sourceContentHash: string;
-    sourceRef: string;
+    sourceRef: {
+      kind: 'realmPersona';
+      worldId: string;
+      sourceId: string;
+      sourceContentHash: string;
+    };
+    sourceRefKey: string;
     handle: string;
     displayName: string;
   };
@@ -181,6 +184,10 @@ function assertNoForbiddenPayloadKeys(value: unknown): string | null {
   return null;
 }
 
+function buildRealmPersonaSourceRefKey(sourceRef: CandidatePostPayload['personaRef']['sourceRef']): string {
+  return `${sourceRef.kind}:${sourceRef.worldId}:${sourceRef.sourceId}:${sourceRef.sourceContentHash}`;
+}
+
 function proposalValueToText(value: unknown): string | null {
   if (typeof value === 'string') {
     const normalized = value.trim();
@@ -238,16 +245,20 @@ export function validateLocalPostDraft(
     return { publishable: false, errors, payload: null };
   }
 
+  const sourceRef: CandidatePostPayload['personaRef']['sourceRef'] = {
+    kind: 'realmPersona',
+    worldId: persona.homeWorldId,
+    sourceId: persona.id,
+    sourceContentHash: persona.contentHash,
+  };
   const payload: CandidatePostPayload = {
     candidate: true,
     source: 'realm-persona-studio.local-post-draft',
     personaRef: {
       source: persona.source,
       sourceKind: 'realmPersona',
-      sourceId: persona.id,
-      sourceWorldId: persona.homeWorldId,
-      sourceContentHash: persona.contentHash,
-      sourceRef: `realmPersona:${persona.homeWorldId}:${persona.id}:${persona.contentHash}`,
+      sourceRef,
+      sourceRefKey: buildRealmPersonaSourceRefKey(sourceRef),
       handle: persona.handle.value,
       displayName: persona.displayName.value,
     },
@@ -266,7 +277,7 @@ export function validateLocalPostDraft(
     },
   };
 
-  const forbiddenKey = assertNoForbiddenPayloadKeys(payload);
+  const forbiddenKey = assertNoForbiddenPayloadKeys(payload.realmCreatePost);
   if (forbiddenKey) {
     return {
       publishable: false,
@@ -352,7 +363,15 @@ export function buildLocalPostScheduleCandidate(
     postCandidate: postValidation.payload,
   };
 
-  const forbiddenKey = assertNoForbiddenPayloadKeys(candidate);
+  const scheduleBoundary = {
+    candidate: candidate.candidate,
+    source: candidate.source,
+    appLocalOnly: candidate.appLocalOnly,
+    localRunAt: candidate.localRunAt,
+    boundary: candidate.boundary,
+  };
+  const forbiddenKey = assertNoForbiddenPayloadKeys(scheduleBoundary)
+    ?? assertNoForbiddenPayloadKeys(candidate.postCandidate.realmCreatePost);
   if (forbiddenKey) {
     return {
       scheduleable: false,

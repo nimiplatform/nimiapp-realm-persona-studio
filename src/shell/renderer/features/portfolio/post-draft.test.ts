@@ -165,10 +165,13 @@ describe('local post draft validation', () => {
       personaRef: {
         source: 'Realm WorldCoreController.getRealmPersona',
         sourceKind: 'realmPersona',
-        sourceId: 'persona-1',
-        sourceWorldId: 'world-oasis',
-        sourceContentHash: 'hash-persona-1',
-        sourceRef: 'realmPersona:world-oasis:persona-1:hash-persona-1',
+        sourceRef: {
+          kind: 'realmPersona',
+          worldId: 'world-oasis',
+          sourceId: 'persona-1',
+          sourceContentHash: 'hash-persona-1',
+        },
+        sourceRefKey: 'realmPersona:world-oasis:persona-1:hash-persona-1',
         handle: 'mira',
         displayName: 'Mira',
       },
@@ -184,7 +187,7 @@ describe('local post draft validation', () => {
         humanReviewed: true,
       },
     } satisfies CandidatePostPayload);
-    expect(collectKeys(result.payload).has('worldId')).toBe(false);
+    expect(collectKeys(result.payload?.realmCreatePost).has('worldId')).toBe(false);
     expect(collectKeys(result.payload).has('id')).toBe(false);
     expect(collectKeys(result.payload).has('authorId')).toBe(false);
   });
@@ -306,7 +309,7 @@ describe('app-local post schedule candidate', () => {
     });
     expect(collectKeys(result.candidate).has('scheduledAt')).toBe(false);
     expect(collectKeys(result.candidate).has('scheduleId')).toBe(false);
-    expect(collectKeys(result.candidate).has('worldId')).toBe(false);
+    expect(collectKeys(result.candidate?.postCandidate.realmCreatePost).has('worldId')).toBe(false);
     expect(collectKeys(result.candidate).has('authorId')).toBe(false);
     expect(collectKeys(result.candidate).has('id')).toBe(false);
     expect(collectKeys(result.candidate).has('queue')).toBe(false);

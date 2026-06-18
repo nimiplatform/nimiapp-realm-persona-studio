@@ -37,10 +37,13 @@ const candidate: LocalPostScheduleCandidate = {
     personaRef: {
       source: 'Realm WorldCoreController.getRealmPersona',
       sourceKind: 'realmPersona',
-      sourceId: 'persona-1',
-      sourceWorldId: 'world-oasis',
-      sourceContentHash: 'hash-persona-1',
-      sourceRef: 'realmPersona:world-oasis:persona-1:hash-persona-1',
+      sourceRef: {
+        kind: 'realmPersona',
+        worldId: 'world-oasis',
+        sourceId: 'persona-1',
+        sourceContentHash: 'hash-persona-1',
+      },
+      sourceRefKey: 'realmPersona:world-oasis:persona-1:hash-persona-1',
       handle: 'mira',
       displayName: 'Mira',
     },
