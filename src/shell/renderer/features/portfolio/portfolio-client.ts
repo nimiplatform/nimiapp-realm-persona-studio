@@ -38,10 +38,10 @@ type RealmCreatePersonaResponse = RealmWorldCoreControllerCreateRealmPersonaOper
 
 export type RealmPersonaCreateCanonicalFields = {
   id: string;
-    state?: string;
-    contentHash: string;
-    homeWorldId: string;
-  };
+  state?: string;
+  contentHash: string;
+  homeWorldId: string;
+};
 
 export type RealmPersonaCreateResult =
   | {
@@ -149,6 +149,14 @@ export function normalizeRealmPersonaCreateResult(persona: RealmCreatePersonaRes
       message: 'Realm create RealmPersona returned no canonical persona id.',
     };
   }
+  if (!contentHash || !homeWorldId) {
+    return {
+      ok: false,
+      source: REALM_PERSONA_CREATE_SOURCE,
+      failure: 'realm-create-persona-missing-canonical-id',
+      message: 'Realm create RealmPersona returned incomplete canonical source fields.',
+    };
+  }
 
   const state = readOptionalString(record, 'state');
   const core = record.core && typeof record.core === 'object' ? record.core as Record<string, unknown> : {};
@@ -158,8 +166,8 @@ export function normalizeRealmPersonaCreateResult(persona: RealmCreatePersonaRes
     persona,
     canonical: {
       id,
-      contentHash: contentHash || '',
-      homeWorldId: homeWorldId || '',
+      contentHash,
+      homeWorldId,
       ...(state ? { state } : readOptionalString(core, 'state') ? { state: readOptionalString(core, 'state') } : {}),
     },
   };

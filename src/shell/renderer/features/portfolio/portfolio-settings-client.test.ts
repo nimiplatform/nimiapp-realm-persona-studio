@@ -476,13 +476,16 @@ describe('owner portfolio settings client', () => {
       expect(collectKeys(summary).has('contentStyle')).toBe(false);
     });
 
-     it('fails closed before Runtime projection when world evidence is missing', async () => {
+     it('fails closed before Runtime projection when source evidence is incomplete', async () => {
       const realm = mockRealm();
       const result = await projectPersonaRuntimeContextSummary({
         ...ownerPersonaDetail(),
         homeWorldId: '',
       }, realm);
 
+      expect(buildRuntimeProjectionInput({ ...ownerPersonaDetail(), id: '' })).toBeNull();
+      expect(buildRuntimeProjectionInput({ ...ownerPersonaDetail(), homeWorldId: '' })).toBeNull();
+      expect(buildRuntimeProjectionInput({ ...ownerPersonaDetail(), contentHash: '' })).toBeNull();
       expect(realm.worldCoreControllerCreateRuntimeSourceSnapshot).not.toHaveBeenCalled();
       expect(result).toMatchObject({
         ok: false,

@@ -15,7 +15,7 @@ import {
 
 const oasisWorld: RealmPersonaCreationWorldDto = {
   id: 'world-oasis',
-  schemaVersion: 'world-core/v1',
+  schemaVersion: 'realm.world-core/v1',
   contentRevision: 1,
   contentHash: 'hash-world-oasis',
   origin: { kind: 'system', sourceId: 'OASIS' },

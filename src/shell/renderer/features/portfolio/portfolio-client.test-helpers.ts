@@ -75,7 +75,7 @@ export function configureStudioAIConfigTargetRefsForTest(input: {
 
 export const persona: MyRealmPersonaDto = {
   id: 'persona-1',
-  schemaVersion: 'realm-persona-core/v1',
+  schemaVersion: 'realm.persona/v1',
   contentRevision: 1,
   contentHash: 'hash-persona-1',
   origin: { kind: 'manual', sourceId: 'test' },
@@ -136,7 +136,7 @@ export const persona: MyRealmPersonaDto = {
 
 export const world: RealmPersonaCreationWorldDto = {
   id: 'world-oasis',
-  schemaVersion: 'world-core/v1',
+  schemaVersion: 'realm.world-core/v1',
   contentRevision: 1,
   contentHash: 'hash-world-oasis',
   origin: { kind: 'system', sourceId: 'OASIS' },
@@ -233,7 +233,7 @@ export function mockRealm(): StudioRealmSurface {
       })),
       worldCoreControllerGetOasisWorld: vi.fn(async () => world),
       worldCoreControllerCreateRuntimeSourceSnapshot: vi.fn(async (request: { readonly body: { readonly sourceRef: { readonly kind: 'realmPersona' | 'worldCharacter'; readonly worldId: string; readonly sourceId: string; readonly sourceContentHash: string } } }) => ({
-        snapshotSchemaVersion: 'runtime-source-snapshot/v1',
+        snapshotSchemaVersion: 'realm.runtime-source-snapshot/v1',
         snapshotId: `snapshot-${request.body.sourceRef.sourceId}`,
         sourceKind: request.body.sourceRef.kind,
         sourceId: request.body.sourceRef.sourceId,
@@ -242,7 +242,7 @@ export function mockRealm(): StudioRealmSurface {
         sourceContentHash: request.body.sourceRef.sourceContentHash,
         capturedAt: '2026-05-22T00:00:00.000Z',
         payloadHash: 'checksum-runtime-1',
-        runtimeSourceRef: `runtime-source:${request.body.sourceRef.kind}:${request.body.sourceRef.sourceId}:checksum-runtime-1`,
+        runtimeSourceRef: `runtime-source:${request.body.sourceRef.kind}:${request.body.sourceRef.worldId}:${request.body.sourceRef.sourceId}:${request.body.sourceRef.sourceContentHash}`,
         payload: {
           displayName: 'Mira',
           communication: { contentStyle: 'Concise.' },

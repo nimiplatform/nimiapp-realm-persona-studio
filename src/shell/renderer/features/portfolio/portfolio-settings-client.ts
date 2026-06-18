@@ -403,7 +403,7 @@ export function buildRealmUpdateVisibilityInput(
   return { input, errors: [] };
 }
 export function buildRuntimeProjectionInput(persona: OwnerPortfolioPersonaDetail): RealmRuntimeProjectionInput | null {
-  if (!persona.homeWorldId.trim() || !persona.contentHash.trim()) {
+  if (!persona.id.trim() || !persona.homeWorldId.trim() || !persona.contentHash.trim()) {
     return null;
   }
 

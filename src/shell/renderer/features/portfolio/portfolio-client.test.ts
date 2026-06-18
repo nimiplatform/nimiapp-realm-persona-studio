@@ -270,6 +270,30 @@ describe('owner portfolio core client', () => {
       });
     });
 
+    it('normalizes Create Persona responses without canonical source fields as create failure', () => {
+      const missingHash = normalizeRealmPersonaCreateResult({
+        id: 'persona-created-1',
+        homeWorldId: 'world-oasis',
+      } as Awaited<ReturnType<StudioRealmSurface['worldCoreControllerCreateRealmPersona']>>);
+      const missingHomeWorld = normalizeRealmPersonaCreateResult({
+        id: 'persona-created-1',
+        contentHash: 'hash-persona-created-1',
+      } as Awaited<ReturnType<StudioRealmSurface['worldCoreControllerCreateRealmPersona']>>);
+
+      expect(missingHash).toMatchObject({
+        ok: false,
+        source: REALM_PERSONA_CREATE_SOURCE,
+        failure: 'realm-create-persona-missing-canonical-id',
+        message: 'Realm create RealmPersona returned incomplete canonical source fields.',
+      });
+      expect(missingHomeWorld).toMatchObject({
+        ok: false,
+        source: REALM_PERSONA_CREATE_SOURCE,
+        failure: 'realm-create-persona-missing-canonical-id',
+        message: 'Realm create RealmPersona returned incomplete canonical source fields.',
+      });
+    });
+
     it('builds CreatePersonaDto shape from reviewed payload body only', () => {
       const input = buildRealmCreatePersonaInput(createPayload);
 

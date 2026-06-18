@@ -10,7 +10,7 @@ import {
 
 const basePersona: MyRealmPersonaDto = {
   id: 'persona-1',
-  schemaVersion: 'realm-persona-core/v1',
+  schemaVersion: 'realm.persona/v1',
   contentRevision: 1,
   contentHash: 'hash-persona-1',
   origin: { kind: 'manual', sourceId: 'test' },
