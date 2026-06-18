@@ -86,4 +86,31 @@ describe('local post schedule store', () => {
     clearLocalPostSchedule('persona-1', storage);
     expect(loadLocalPostSchedule('persona-1', storage)).toBeNull();
   });
+
+  it('fails closed on old local candidates with string sourceRef', () => {
+    const storage = createStorage();
+    const oldCandidate = structuredClone(candidate) as unknown as Record<string, unknown>;
+    const postCandidate = oldCandidate.postCandidate as Record<string, unknown>;
+    const personaRef = postCandidate.personaRef as Record<string, unknown>;
+    personaRef.sourceRef = 'realmPersona:world-oasis:persona-1:hash-persona-1';
+    delete personaRef.sourceRefKey;
+    const oldRecord = {
+      localKey: 'persona-1:2026-05-22T09:30',
+      personaId: 'persona-1',
+      savedAt: '2026-05-21T00:00:00.000Z',
+      localRunAt: '2026-05-22T09:30',
+      source: 'realm-persona-studio.local-single-post-schedule-store',
+      appLocalOnly: true,
+      candidate: oldCandidate,
+    };
+
+    storage.setItem('realm-persona-studio.local-post-schedule.persona-1', JSON.stringify(oldRecord));
+
+    expect(loadLocalPostSchedule('persona-1', storage)).toBeNull();
+    expect(() => saveLocalPostSchedule(
+      'persona-1',
+      oldCandidate as unknown as LocalPostScheduleCandidate,
+      storage,
+    )).toThrow(/typed RealmPersona sourceRef/);
+  });
 });

@@ -22,6 +22,53 @@ function scheduleKey(personaId: string): string {
   return `${SCHEDULE_PREFIX}${personaId}`;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function isRealmPersonaSourceRef(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return value.kind === 'realmPersona'
+    && isNonEmptyString(value.worldId)
+    && isNonEmptyString(value.sourceId)
+    && isNonEmptyString(value.sourceContentHash);
+}
+
+function isLocalPostScheduleCandidate(value: unknown): value is LocalPostScheduleCandidate {
+  if (!isRecord(value)) {
+    return false;
+  }
+  const boundary = isRecord(value.boundary) ? value.boundary : null;
+  const postCandidate = isRecord(value.postCandidate) ? value.postCandidate : null;
+  const personaRef = isRecord(postCandidate?.personaRef) ? postCandidate.personaRef : null;
+  const realmCreatePost = isRecord(postCandidate?.realmCreatePost) ? postCandidate.realmCreatePost : null;
+  const review = isRecord(postCandidate?.review) ? postCandidate.review : null;
+
+  return value.candidate === true
+    && value.source === 'realm-persona-studio.local-single-post-schedule'
+    && value.appLocalOnly === true
+    && isNonEmptyString(value.localRunAt)
+    && boundary?.scope === 'app-local-only'
+    && boundary.realmPublish === 'not-created'
+    && boundary.realmScheduling === 'not-created'
+    && boundary.moderation === 'not-claimed'
+    && postCandidate?.candidate === true
+    && postCandidate.source === 'realm-persona-studio.local-post-draft'
+    && personaRef?.sourceKind === 'realmPersona'
+    && isRealmPersonaSourceRef(personaRef.sourceRef)
+    && isNonEmptyString(personaRef.sourceRefKey)
+    && isNonEmptyString(personaRef.handle)
+    && isNonEmptyString(personaRef.displayName)
+    && realmCreatePost !== null
+    && review?.humanReviewed === true;
+}
+
 function resolveStorage(storage?: LocalStorageLike | null): LocalStorageLike | null {
   if (storage !== undefined) {
     return storage;
@@ -30,16 +77,14 @@ function resolveStorage(storage?: LocalStorageLike | null): LocalStorageLike | n
 }
 
 function normalizeRecord(value: unknown, personaId: string): LocalPostScheduleRecord | null {
-  if (!value || typeof value !== 'object') {
+  if (!isRecord(value)) {
     return null;
   }
-  const record = value as Record<string, unknown>;
+  const record = value;
   const localKey = typeof record.localKey === 'string' && record.localKey.trim() ? record.localKey : null;
   const savedAt = typeof record.savedAt === 'string' && record.savedAt.trim() ? record.savedAt : null;
   const localRunAt = typeof record.localRunAt === 'string' && record.localRunAt.trim() ? record.localRunAt : null;
-  const candidate = record.candidate && typeof record.candidate === 'object'
-    ? record.candidate as LocalPostScheduleCandidate
-    : null;
+  const candidate = isLocalPostScheduleCandidate(record.candidate) ? record.candidate : null;
 
   if (
     !localKey
@@ -90,6 +135,10 @@ export function saveLocalPostSchedule(
   storage?: LocalStorageLike | null,
   now = new Date(),
 ): LocalPostScheduleRecord {
+  if (!isLocalPostScheduleCandidate(candidate)) {
+    throw new Error('Local post schedule candidate requires typed RealmPersona sourceRef evidence.');
+  }
+
   const record: LocalPostScheduleRecord = {
     localKey: `${personaId}:${candidate.localRunAt}`,
     personaId,
