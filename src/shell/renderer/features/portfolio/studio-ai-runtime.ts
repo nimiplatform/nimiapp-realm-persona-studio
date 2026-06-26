@@ -10,6 +10,7 @@ import {
   isNimiRuntimeLocalEnvironmentDependencyJobActiveState,
   isNimiRuntimeLocalEnvironmentDependencyReadyState,
   isNimiRuntimeLocalEnvironmentDependencyStartableState,
+  findNimiRuntimeTargetInventoryItem,
   listNimiRuntimeLocalAssetEntries,
   listNimiRuntimeRouteOptionsWithHost,
   resolveNimiRuntimeLocalImageNativeEnvironmentPlan,
@@ -20,8 +21,9 @@ import {
   type NimiRuntimeLocalEnvironmentDependencyJob,
   type NimiRuntimeLocalEnvironmentPlan,
   type NimiRuntimeLocalEnvironmentPlanDependency,
-  type NimiRuntimeRouteBinding,
   type NimiRuntimeRouteOptionsSnapshot,
+  type NimiRuntimeRouteTargetRef,
+  type NimiRuntimeTargetInventoryItem,
   type NimiRuntimeSpeechVoiceReference,
   type Runtime,
 } from '@nimiplatform/sdk/runtime';
@@ -95,6 +97,80 @@ function toRuntimeRoutePolicy(route: 'local' | 'cloud' | undefined): RoutePolicy
   if (route === 'local') return RoutePolicy.LOCAL;
   if (route === 'cloud') return RoutePolicy.CLOUD;
   return RoutePolicy.UNSPECIFIED;
+}
+
+function runtimeDurableTargetRefFromStudioTargetRef(targetRef: NimiAIConfigTargetRef | undefined) {
+  if (!targetRef || targetRef.kind === 'profile-slice') {
+    return undefined;
+  }
+  if (targetRef.kind === 'local-runtime') {
+    const profileBindingId = normalizeStudioRouteText(targetRef.profileBindingId);
+    const readinessRef = normalizeStudioRouteText(targetRef.readinessRef);
+    return {
+      target: {
+        oneofKind: 'localRuntime' as const,
+        localRuntime: {
+          version: 'v2',
+          ref: profileBindingId
+            ? { oneofKind: 'profileBindingId' as const, profileBindingId }
+            : { oneofKind: 'readinessRef' as const, readinessRef },
+        },
+      },
+    };
+  }
+  return {
+    target: {
+      oneofKind: 'cloud' as const,
+      cloud: {
+        version: 'v2',
+        connectorId: targetRef.connectorId,
+        remoteModelCatalogId: targetRef.remoteModelCatalogId,
+        providerModelId: targetRef.providerModelId,
+        provider: targetRef.provider || '',
+      },
+    },
+  };
+}
+
+function runtimeRouteTargetRefFromStudioTargetRef(
+  targetRef: NimiAIConfigTargetRef | null | undefined,
+): NimiRuntimeRouteTargetRef | null {
+  if (!targetRef || targetRef.kind === 'profile-slice') {
+    return null;
+  }
+  if (targetRef.kind === 'local-runtime') {
+    const profileBindingId = normalizeStudioRouteText(targetRef.profileBindingId);
+    const readinessRef = normalizeStudioRouteText(targetRef.readinessRef);
+    if (profileBindingId && !readinessRef) {
+      return {
+        kind: 'local-runtime',
+        version: 'v2',
+        profileBindingId,
+      };
+    }
+    if (readinessRef && !profileBindingId) {
+      return {
+        kind: 'local-runtime',
+        version: 'v2',
+        readinessRef,
+      };
+    }
+    return null;
+  }
+  const connectorId = normalizeStudioRouteText(targetRef.connectorId);
+  const remoteModelCatalogId = normalizeStudioRouteText(targetRef.remoteModelCatalogId);
+  const providerModelId = normalizeStudioRouteText(targetRef.providerModelId);
+  if (!connectorId || !remoteModelCatalogId || !providerModelId) {
+    return null;
+  }
+  return {
+    kind: 'cloud-connector',
+    version: 'v2',
+    connectorId,
+    remoteModelCatalogId,
+    providerModelId,
+    provider: normalizeStudioRouteText(targetRef.provider) || undefined,
+  };
 }
 
 export function studioTextMessage(role: NimiMessage['role'], text: string): NimiMessage {
@@ -182,7 +258,7 @@ type StudioResolvedRuntimeRouteBinding = {
   readonly model: string;
   readonly route: 'local' | 'cloud';
   readonly connectorId?: string;
-  readonly localModelId?: string;
+  readonly resolvedLocalAssetId?: string;
   readonly provider?: string;
   readonly targetRef: NimiAIConfigTargetRef;
   readonly selectedParams: Readonly<Record<string, unknown>>;
@@ -299,145 +375,39 @@ function isAutoStudioRouteModel(value: unknown): boolean {
   return !normalized || normalized === 'auto';
 }
 
-function bindingModel(binding: NimiRuntimeRouteBinding): string {
-  return normalizeStudioRouteText(binding.modelId || binding.model);
-}
-
-function bindingToResolved(
-  binding: NimiRuntimeRouteBinding,
+function inventoryItemToStudioBinding(
+  item: NimiRuntimeTargetInventoryItem,
   snapshot: NimiRuntimeRouteOptionsSnapshot,
   targetRef: NimiAIConfigTargetRef,
   selectedParams: Readonly<Record<string, unknown>>,
 ): StudioResolvedRuntimeRouteBinding | null {
-  const model = bindingModel(binding);
-  if (!model) return null;
-  if (binding.source === 'cloud') {
-    const connectorId = normalizeStudioRouteText(binding.connectorId);
+  if (item.evidence.source === 'cloud-connector') {
+    const model = normalizeStudioRouteText(item.evidence.providerModelId || item.display.model);
+    const connectorId = normalizeStudioRouteText(item.evidence.connectorId);
+    if (!model) return null;
     if (!connectorId) return null;
     return {
       model,
       route: 'cloud',
       connectorId,
-      provider: normalizeStudioRouteText(binding.provider) || undefined,
+      provider: normalizeStudioRouteText(item.evidence.provider || item.display.provider) || undefined,
       targetRef,
       selectedParams,
       snapshot,
     };
   }
-  const localModelId = normalizeStudioRouteText(binding.localModelId || binding.goRuntimeLocalModelId);
+  const model = normalizeStudioRouteText(item.evidence.resolvedModelId || item.display.model);
+  if (!model) return null;
+  const localAssetId = normalizeStudioRouteText(item.evidence.localAssetId);
   return {
     model,
     route: 'local',
-    ...(localModelId ? { localModelId } : {}),
-    provider: normalizeStudioRouteText(binding.provider || binding.engine) || undefined,
+    ...(localAssetId ? { resolvedLocalAssetId: localAssetId } : {}),
+    provider: normalizeStudioRouteText(item.evidence.engine || item.display.engine || item.display.provider) || undefined,
     targetRef,
     selectedParams,
     snapshot,
   };
-}
-
-function routeCandidates(snapshot: NimiRuntimeRouteOptionsSnapshot): NimiRuntimeRouteBinding[] {
-  return [
-    ...snapshot.local.models.map((model): NimiRuntimeRouteBinding => ({
-      source: 'local',
-      connectorId: '',
-      model: normalizeStudioRouteText(model.modelId || model.model),
-      modelId: normalizeStudioRouteText(model.modelId || model.model) || undefined,
-      provider: normalizeStudioRouteText(model.provider || model.engine) || undefined,
-      localModelId: normalizeStudioRouteText(model.localModelId) || undefined,
-      engine: normalizeStudioRouteText(model.engine) || undefined,
-      endpoint: normalizeStudioRouteText(model.endpoint || snapshot.local.defaultEndpoint) || undefined,
-      goRuntimeLocalModelId: normalizeStudioRouteText(model.goRuntimeLocalModelId) || undefined,
-      goRuntimeStatus: normalizeStudioRouteText(model.goRuntimeStatus || model.status) || undefined,
-    })),
-    ...snapshot.connectors.flatMap((connector) =>
-      connector.models.map((model): NimiRuntimeRouteBinding => ({
-        source: 'cloud',
-        connectorId: connector.id,
-        model,
-        modelId: model,
-        provider: normalizeStudioRouteText(connector.provider) || undefined,
-      }))),
-  ].filter((binding) => bindingModel(binding));
-}
-
-function localTargetRefReadinessParts(
-  targetRef: Extract<NimiAIConfigTargetRef, { readonly kind: 'local-runtime' }>,
-): string[] {
-  const readinessParts = normalizeStudioRouteText(targetRef.readinessRef).split(':').map(normalizeStudioRouteText);
-  return readinessParts.length >= 4
-    && readinessParts[0] === 'runtime-route'
-    && readinessParts[1] === 'local'
-    ? readinessParts
-    : [];
-}
-
-function localTargetRefModelCandidates(targetRef: Extract<NimiAIConfigTargetRef, { readonly kind: 'local-runtime' }>): string[] {
-  const readinessParts = localTargetRefReadinessParts(targetRef);
-  return [
-    normalizeStudioRouteText(targetRef.profileId),
-    normalizeStudioRouteText(readinessParts[3]),
-  ].filter(Boolean);
-}
-
-function localTargetRefEngineCandidates(targetRef: Extract<NimiAIConfigTargetRef, { readonly kind: 'local-runtime' }>): string[] {
-  const readinessParts = localTargetRefReadinessParts(targetRef);
-  return [
-    normalizeStudioRouteText(targetRef.targetId),
-    normalizeStudioRouteText(readinessParts[2]),
-  ].filter((value) => value && value !== 'local-runtime');
-}
-
-function findTargetRefRouteCandidate(
-  candidates: readonly NimiRuntimeRouteBinding[],
-  targetRef: NimiAIConfigTargetRef,
-): NimiRuntimeRouteBinding | null {
-  if (targetRef.kind === 'profile-slice') {
-    return null;
-  }
-
-  if (targetRef.kind === 'cloud-connector') {
-    const connectorId = normalizeStudioRouteText(targetRef.connectorId).toLowerCase();
-    const providerModelId = normalizeStudioRouteText(targetRef.providerModelId).toLowerCase();
-    const matches = candidates.filter((candidate) => {
-      if (candidate.source !== 'cloud') {
-        return false;
-      }
-      const candidateConnectorId = normalizeStudioRouteText(candidate.connectorId).toLowerCase();
-      const modelTokens = [
-        candidate.model,
-        candidate.modelId,
-      ].map((value) => normalizeStudioRouteText(value).toLowerCase()).filter(Boolean);
-      return candidateConnectorId === connectorId && modelTokens.includes(providerModelId);
-    });
-    return matches.length === 1 ? matches[0]! : null;
-  }
-
-  const targetModelTokens = new Set(localTargetRefModelCandidates(targetRef).map((value) => value.toLowerCase()));
-  if (targetModelTokens.size === 0) {
-    return null;
-  }
-  const targetEngineTokens = new Set(localTargetRefEngineCandidates(targetRef).map((value) => value.toLowerCase()));
-  const modelMatches = candidates.filter((candidate) => {
-    if (candidate.source !== 'local') {
-      return false;
-    }
-    const candidateModelTokens = [
-      candidate.model,
-      candidate.modelId,
-      candidate.localModelId,
-      candidate.goRuntimeLocalModelId,
-    ].map((value) => normalizeStudioRouteText(value).toLowerCase()).filter(Boolean);
-    return candidateModelTokens.some((token) => targetModelTokens.has(token));
-  });
-  const engineMatches = targetEngineTokens.size === 0
-    ? modelMatches
-    : modelMatches.filter((candidate) => [
-      candidate.engine,
-      candidate.provider,
-    ].map((value) => normalizeStudioRouteText(value).toLowerCase()).some((token) => targetEngineTokens.has(token)));
-  const matches = targetEngineTokens.size === 0 ? modelMatches : engineMatches;
-  return matches.length === 1 ? matches[0]! : null;
 }
 
 function targetRefFailureMessage(
@@ -451,8 +421,7 @@ function targetRefFailureMessage(
   if (targetRef.kind === 'profile-slice') {
     return `NimiAIConfig targetRef for ${capability} is a profile-slice and cannot be executed until applied to a concrete Runtime target.`;
   }
-  const candidates = routeCandidates(snapshot);
-  if (candidates.length === 0) {
+  if ((snapshot.inventory?.targets || []).length === 0) {
     return `Runtime ${capability} route binding unavailable for configured NimiAIConfig target.`;
   }
   return `Runtime ${capability} route binding is missing or ambiguous for configured NimiAIConfig target.`;
@@ -472,8 +441,12 @@ export async function resolveStudioRuntimeRouteBinding(input: {
     createNimiRuntimeRouteOptionsHostDeps(input.runtime),
   );
   if (targetRef) {
-    const configured = findTargetRefRouteCandidate(routeCandidates(snapshot), targetRef);
-    const resolved = configured ? bindingToResolved(configured, snapshot, targetRef, selectedParams) : null;
+    if (targetRef.kind === 'profile-slice') {
+      throw new Error(targetRefFailureMessage(input.capability, targetRef, snapshot));
+    }
+    const routeTargetRef = runtimeRouteTargetRefFromStudioTargetRef(targetRef);
+    const item = routeTargetRef ? findNimiRuntimeTargetInventoryItem(snapshot.inventory, routeTargetRef) : null;
+    const resolved = item ? inventoryItemToStudioBinding(item, snapshot, targetRef, selectedParams) : null;
     if (!resolved) {
       throw new Error(targetRefFailureMessage(input.capability, targetRef, snapshot));
     }
@@ -545,6 +518,7 @@ export async function runStudioTextGenerate(
     routePolicy: boundPayload.params.route,
     connectorId: boundPayload.params.connectorId,
     timeoutMs: boundPayload.params.timeoutMs,
+    targetRef: readBoundRouteEvidence(boundPayload)?.targetRef,
     metadata: toStudioCoreMetadata(boundPayload.surfaceId, boundPayload.request.parameters?.metadata),
   });
   const result = await runNimiTextGenerate({
@@ -811,7 +785,7 @@ async function resolveStudioImageRuntimeBinding(
     const configuredModel = imageModelAssetIdFromConfiguredEntries(configuredEntries);
     if (configuredModel && !(
       optionalStudioParamText(configuredModel) === optionalStudioParamText(binding.model)
-      || optionalStudioParamText(configuredModel) === optionalStudioParamText(binding.localModelId)
+      || optionalStudioParamText(configuredModel) === optionalStudioParamText(binding.resolvedLocalAssetId)
     )) {
       throw new Error(`image.generate profile_entries main model ${configuredModel} does not match the NimiAIConfig targetRef resolved model ${binding.model}.`);
     }
@@ -829,7 +803,7 @@ async function resolveStudioImageRuntimeBinding(
         binding: {
           ...binding,
           model: mainAsset.assetId || binding.model,
-          localModelId: mainAsset.localAssetId || binding.localModelId,
+          resolvedLocalAssetId: mainAsset.localAssetId || binding.resolvedLocalAssetId,
           provider: mainAsset.engine || binding.provider,
         },
         profileEntries: configuredEntries,
@@ -904,7 +878,7 @@ async function resolveStudioImageRuntimeBinding(
     binding: {
       ...binding,
       model: mainAsset.assetId || binding.model,
-      localModelId: mainAsset.localAssetId || binding.localModelId,
+      resolvedLocalAssetId: mainAsset.localAssetId || binding.resolvedLocalAssetId,
       provider: mainAsset.engine || binding.provider,
     },
     profileEntries,
@@ -1032,6 +1006,7 @@ function createScenarioRequestHead(params: {
   readonly model: string;
   readonly route?: 'local' | 'cloud';
   readonly connectorId?: string;
+  readonly targetRef?: NimiAIConfigTargetRef;
   readonly timeoutMs?: number;
 }) {
   return {
@@ -1042,6 +1017,7 @@ function createScenarioRequestHead(params: {
     fallback: FallbackPolicy.DENY,
     timeoutMs: Number(params.timeoutMs ?? 0),
     connectorId: String(params.connectorId || ''),
+    targetRef: runtimeDurableTargetRefFromStudioTargetRef(params.targetRef),
   };
 }
 
@@ -1096,6 +1072,7 @@ function bindScenarioPayloadToRoute<TPayload extends StudioImageGeneratePayload 
         model: binding.model,
         route: binding.route,
         connectorId: binding.connectorId,
+        targetRef: binding.targetRef,
       }),
       ...(options.spec ? { spec: options.spec } : {}),
       extensions: options.extensions ? [...options.extensions] : payload.request.extensions,

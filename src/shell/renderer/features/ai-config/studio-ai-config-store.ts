@@ -5,6 +5,7 @@ import type {
   SharedAIConfigUnsubscribe,
 } from '@nimiplatform/kit/features/model-config';
 import {
+  areNimiAIScopeRefsEqual,
   createNimiAIConfigStore,
   createNimiAIConfigSubscriptionRegistry,
   createNimiAIHostSurface,
@@ -27,6 +28,7 @@ import { STUDIO_RUNTIME_APP_ID } from '@renderer/app-shell/studio-platform.js';
 export const STUDIO_AI_CONFIG_SURFACE_ID = 'owner-workbench';
 export const STUDIO_AI_CONFIG_STORAGE_INDEX_KEY = 'realm-persona-studio:ai-config:index:v1';
 export const STUDIO_AI_CONFIG_STORAGE_PREFIX = 'realm-persona-studio:ai-config:';
+export const STUDIO_AI_CONFIG_QUARANTINE_PREFIX = `${STUDIO_AI_CONFIG_STORAGE_PREFIX}quarantine:`;
 export const STUDIO_AI_SNAPSHOT_INDEX_KEY = 'realm-persona-studio:ai-snapshot:index:v1';
 export const STUDIO_AI_SNAPSHOT_STORAGE_PREFIX = 'realm-persona-studio:ai-snapshot:';
 export const STUDIO_AI_PROFILE_LIBRARY_STORAGE_KEY = 'realm-persona-studio:ai-profiles:v1';
@@ -49,6 +51,17 @@ export type StudioAIProfileImportResult =
     errors: string[];
     message: string;
   };
+
+export type StudioAIConfigStorageRepairResult = {
+  readonly scanned: number;
+  readonly quarantined: number;
+  readonly removedScopeKeys: readonly string[];
+  readonly quarantineKeys: readonly string[];
+};
+
+type StudioAIConfigStorageRepairOptions = {
+  readonly now?: () => string;
+};
 
 const configSubscriptions = createNimiAIConfigSubscriptionRegistry();
 let ephemeralProfiles: NimiAIProfile[] = [];
@@ -74,6 +87,108 @@ export function createStudioAIScopeRef(): NimiAIScopeRef {
 
 function studioAIConfigStorageKeyForScopeKey(scopeKey: string): string {
   return `${STUDIO_AI_CONFIG_STORAGE_PREFIX}${scopeKey}:v1`;
+}
+
+function removeStorageItem(storage: NimiAIHostStorage, key: string): void {
+  if (storage.removeItem) {
+    storage.removeItem(key);
+    return;
+  }
+  storage.setItem(key, '');
+}
+
+function readScopeIndex(storage: NimiAIHostStorage): string[] {
+  const raw = storage.getItem(STUDIO_AI_CONFIG_STORAGE_INDEX_KEY);
+  if (!raw) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? parsed.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function removeScopeKeyFromIndex(storage: NimiAIHostStorage, scopeKey: string): void {
+  const next = readScopeIndex(storage).filter((entry) => entry !== scopeKey);
+  storage.setItem(STUDIO_AI_CONFIG_STORAGE_INDEX_KEY, JSON.stringify([...new Set(next)].sort()));
+}
+
+function uniqueStudioAIConfigQuarantineKey(
+  storage: NimiAIHostStorage,
+  scopeKey: string,
+  quarantinedAt: string,
+): string {
+  const base = `${STUDIO_AI_CONFIG_QUARANTINE_PREFIX}${encodeURIComponent(scopeKey)}:${encodeURIComponent(quarantinedAt)}`;
+  let candidate = base;
+  let index = 1;
+  while (storage.getItem(candidate) !== null) {
+    candidate = `${base}:${index}`;
+    index += 1;
+  }
+  return candidate;
+}
+
+function storedAIConfigInvalidReason(raw: string, scopeRef: NimiAIScopeRef): string | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error || 'Invalid stored AIConfig JSON.');
+  }
+  const validation = validateNimiAIConfig(parsed);
+  if (!validation.valid) {
+    return validation.errors.join('; ');
+  }
+  const config = parsed as NimiAIConfig;
+  if (!areNimiAIScopeRefsEqual(config.scopeRef, scopeRef)) {
+    return 'Stored Studio AIConfig scopeRef does not match requested scopeRef.';
+  }
+  return null;
+}
+
+export function repairStudioAIConfigStorageForScope(
+  scopeRef: NimiAIScopeRef = createStudioAIScopeRef(),
+  storage: NimiAIHostStorage | null = getStorage(),
+  options: StudioAIConfigStorageRepairOptions = {},
+): StudioAIConfigStorageRepairResult {
+  if (!storage) {
+    return { scanned: 0, quarantined: 0, removedScopeKeys: [], quarantineKeys: [] };
+  }
+  const scopeKey = encodeNimiAIScopeRef(scopeRef);
+  const storageKey = studioAIConfigStorageKeyForScopeKey(scopeKey);
+  const raw = storage.getItem(storageKey);
+  if (!raw) {
+    removeScopeKeyFromIndex(storage, scopeKey);
+    return { scanned: 0, quarantined: 0, removedScopeKeys: [], quarantineKeys: [] };
+  }
+  const reason = storedAIConfigInvalidReason(raw, scopeRef);
+  if (!reason) {
+    return { scanned: 1, quarantined: 0, removedScopeKeys: [], quarantineKeys: [] };
+  }
+
+  const quarantinedAt = options.now?.() ?? new Date().toISOString();
+  const quarantineKey = uniqueStudioAIConfigQuarantineKey(storage, scopeKey, quarantinedAt);
+  storage.setItem(quarantineKey, JSON.stringify({
+    schemaVersion: 1,
+    reasonCode: 'STUDIO_AI_CONFIG_STORE_INVALID',
+    reason,
+    scopeKey,
+    originalKey: storageKey,
+    quarantinedAt,
+    raw,
+  }));
+  removeStorageItem(storage, storageKey);
+  removeScopeKeyFromIndex(storage, scopeKey);
+  return {
+    scanned: 1,
+    quarantined: 1,
+    removedScopeKeys: [scopeKey],
+    quarantineKeys: [quarantineKey],
+  };
 }
 
 const aiConfigStore = createNimiAIConfigStore({
@@ -200,6 +315,7 @@ export function importStudioAIProfileJson(rawJson: string): StudioAIProfileImpor
 }
 
 export function loadStudioAIConfig(scopeRef: NimiAIScopeRef = createStudioAIScopeRef()): NimiAIConfig {
+  repairStudioAIConfigStorageForScope(scopeRef);
   return aiConfigStore.load(scopeRef);
 }
 
@@ -208,6 +324,7 @@ export function saveStudioAIConfig(
   scopeRef: NimiAIScopeRef = createStudioAIScopeRef(),
   options?: { readonly expectedBaseVersion?: string },
 ): NimiAIConfig {
+  repairStudioAIConfigStorageForScope(scopeRef);
   const normalized = { ...next, scopeRef };
   const expectedBaseVersion = options?.expectedBaseVersion?.trim();
   if (expectedBaseVersion) {
@@ -276,9 +393,11 @@ export function createStudioAIConfigService(): SharedAIConfigService {
         return [...await createSurface().aiProfile.list()];
       },
       async previewApply(scopeRef: NimiAIScopeRef, profileId: string, options) {
+        repairStudioAIConfigStorageForScope(scopeRef);
         return createSurface().aiProfile.previewApply(scopeRef, profileId, options);
       },
       async apply(scopeRef: NimiAIScopeRef, profileId: string, options) {
+        repairStudioAIConfigStorageForScope(scopeRef);
         return createSurface().aiProfile.apply(scopeRef, profileId, options);
       },
     },

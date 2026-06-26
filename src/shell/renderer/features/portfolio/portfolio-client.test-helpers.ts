@@ -30,10 +30,15 @@ export type MockRuntimeRoute = {
   readonly connectorId?: string;
 };
 
-export function createStudioLocalRuntimeTargetRefForTest(model: string): NimiAIConfigTargetRef {
+export function createStudioLocalRuntimeTargetRefForTest(
+  model: string,
+  capability: MockRuntimeRoute['capability'] = 'text.generate',
+): NimiAIConfigTargetRef {
+  const localAssetId = `${localKindForCapability(capability)}:${model}`;
   return {
     kind: 'local-runtime',
-    profileId: model,
+    version: 'v2',
+    profileBindingId: `local-runtime:${localAssetId}`,
   };
 }
 
@@ -58,7 +63,7 @@ export function configureStudioAIConfigTargetRefsForTest(input: {
   const targetRefs: Record<string, NimiAIConfigTargetRef> = {};
   for (const [capability, targetRef] of Object.entries(input.targetRefs)) {
     targetRefs[capability] = typeof targetRef === 'string'
-      ? createStudioLocalRuntimeTargetRefForTest(targetRef)
+      ? createStudioLocalRuntimeTargetRefForTest(targetRef, capability as MockRuntimeRoute['capability'])
       : targetRef;
   }
   saveStudioAIConfig({
@@ -472,6 +477,9 @@ export function mockRuntimeWithRoutes(input: {
           .filter((route) => route.connectorId === request.connectorId)
           .map((route) => ({
             modelId: route.model,
+            remoteModelCatalogId: `remote-catalog:${route.connectorId}:${route.model}`,
+            providerModelId: route.model,
+            provider: route.connectorId,
             capabilities: [route.capability],
             available: true,
           })),

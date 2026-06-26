@@ -141,9 +141,8 @@ describe('studio ai runtime route hard boundary', () => {
       targetRefs: {
         'image.generate': {
           kind: 'local-runtime',
-          profileId: 'runtime-image-model',
-          targetId: 'other-engine',
-          readinessRef: 'runtime-route:local:other-engine:runtime-image-model',
+          version: 'v2',
+          profileBindingId: 'local-runtime:image:other-model',
         },
       },
     });
@@ -162,6 +161,7 @@ describe('studio ai runtime route hard boundary', () => {
         'text.generate': {
           kind: 'cloud-connector',
           connectorId: 'anthropic',
+          remoteModelCatalogId: 'remote-catalog:anthropic:runtime-text-model',
           providerModelId: 'runtime-text-model',
         },
       },
@@ -236,6 +236,7 @@ describe('studio ai runtime route hard boundary', () => {
         'image.generate': {
           kind: 'cloud-connector',
           connectorId: 'openai',
+          remoteModelCatalogId: 'remote-catalog:openai:runtime-image-model',
           providerModelId: 'runtime-image-model',
         },
       },
