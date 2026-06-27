@@ -2,3 +2,6 @@ packages:
   - .
   - ../../nimi/kit
   - ../../nimi/sdks/typescript
+allowBuilds:
+  esbuild: true
+  protobufjs: true

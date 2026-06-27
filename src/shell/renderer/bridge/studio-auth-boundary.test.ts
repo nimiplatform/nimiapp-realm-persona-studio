@@ -62,6 +62,21 @@ describe('studio auth bridge boundary', () => {
     expect(bootstrapSource).toContain('getStudioRuntimeDefaults');
   });
 
+  it('registers standard shell capabilities and shell-ui aliases through Kit', () => {
+    expect(tauriMainSource).toContain('use nimi_shell_tauri::capabilities::{oauth, runtime, session_logging}');
+    expect(tauriMainSource).toContain('oauth::open_external_url');
+    expect(tauriMainSource).toContain('oauth::oauth_listen_for_code');
+    expect(tauriMainSource).toContain('runtime::runtime_bridge_unary');
+    expect(tauriMainSource).toContain('runtime::runtime_bridge_stream_open');
+    expect(tauriMainSource).toContain('runtime::runtime_bridge_stream_close');
+    expect(tauriMainSource).toContain('runtime::runtime_bridge_status');
+    expect(tauriMainSource).toContain('confirm_dialog');
+    expect(tauriMainSource).toContain('start_window_drag');
+    expect(tauriMainSource).toContain('focus_main_window');
+    expect(tauriMainSource).not.toContain('use nimi_shell_tauri::oauth_commands');
+    expect(tauriMainSource).not.toContain('use nimi_shell_tauri::runtime_bridge');
+  });
+
   it('preserves Runtime-admitted local Realm host while normalizing missing ports', async () => {
     const previousNimiRealmUrl = process.env['NIMI_REALM_URL'];
     const previousViteRealmBaseUrl = process.env['VITE_NIMI_REALM_BASE_URL'];

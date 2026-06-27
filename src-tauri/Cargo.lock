@@ -2210,6 +2210,7 @@ version = "0.1.0"
 dependencies = [
  "dotenvy",
  "nimi-shell-tauri",
+ "serde",
  "tauri",
  "tauri-build",
 ]
