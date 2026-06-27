@@ -52,8 +52,8 @@
     "yaml": "^2.9.0"
   },
   "dependencies": {
-    "@nimiplatform/kit": "workspace:*",
-    "@nimiplatform/sdk": "workspace:*",
+    "@nimiplatform/kit": "link:../../nimi/kit",
+    "@nimiplatform/sdk": "link:../../nimi/sdks/typescript",
     "@tanstack/react-query": "^5.100.11",
     "@tauri-apps/api": "^2.11.0",
     "i18next": "^25.8.18",
