@@ -1,8 +1,8 @@
 import type {
   RealmPersonaDto,
   ReplaceRealmPersonaDto,
-  CreateRuntimeSourceSnapshotDto,
-  RuntimeSourceSnapshotDto,
+  CreateSourceMaterializationPacketDto,
+  SourceMaterializationPacketDto,
 } from '@nimiplatform/sdk/realm/generated';
 import { createStudioRealmClient, type StudioRealmSurface } from '@renderer/data/realm-client.js';
 import { createStudioRuntimeClient } from '@renderer/data/runtime-client.js';
@@ -41,11 +41,12 @@ export type RealmOwnerPersonaSettings = OwnerPersonaSettingsSnapshot & {
   core: Record<string, unknown>;
 };
 type RealmOwnerPersonaSettingsUpdateInput = ReplaceRealmPersonaDto;
-type RealmRuntimeProjectionInput = CreateRuntimeSourceSnapshotDto;
-type RealmRuntimeProjectionResponse = RuntimeSourceSnapshotDto;
+type RealmRuntimeProjectionInput = CreateSourceMaterializationPacketDto;
+type RealmRuntimeProjectionResponse = SourceMaterializationPacketDto;
 type PersonaChatReadinessSubmittedInput = RealmRuntimeProjectionInput;
 
-export const REALM_RUNTIME_PROJECTION_SOURCE = 'Realm WorldCoreController.createRuntimeSourceSnapshot';
+const STUDIO_RUNTIME_MATERIALIZATION_AUDIENCE = 'desktop.runtime';
+export const REALM_RUNTIME_PROJECTION_SOURCE = 'Realm WorldCoreController.createSourceMaterializationPacket';
 export const REALM_PERSONA_VISIBILITY_SOURCE = 'Realm WorldCoreController.replaceRealmPersona';
 export const PERSONA_VISIBILITY_VALUES = ['PUBLIC', 'FRIENDS', 'PRIVATE'] as const;
 export const PERSONA_VISIBILITY_FIELDS = [
@@ -419,6 +420,7 @@ export function buildRuntimeProjectionInput(persona: OwnerPortfolioPersonaDetail
   }
 
   return {
+    intendedRuntimeAudience: STUDIO_RUNTIME_MATERIALIZATION_AUDIENCE,
     sourceRef: {
       kind: 'realmPersona',
       worldId: persona.homeWorldId.trim(),
@@ -456,7 +458,7 @@ export function normalizeRuntimeProjectionSummary(response: RealmRuntimeProjecti
   }
   const record = response as unknown as Record<string, unknown>;
   const worldId = readOptionalString(record, 'sourceWorldId');
-  const checksum = readOptionalString(record, 'payloadHash');
+  const checksum = readOptionalString(record, 'packetHash');
   if (!worldId || !checksum) {
     return null;
   }
@@ -747,7 +749,7 @@ export async function projectPersonaRuntimeContextSummary(
   }
 
   try {
-    const response = await realm.worldCoreControllerCreateRuntimeSourceSnapshot({
+    const response = await realm.worldCoreControllerCreateSourceMaterializationPacket({
       path: {},
       body: submitted,
     });
@@ -758,7 +760,7 @@ export async function projectPersonaRuntimeContextSummary(
         source: REALM_RUNTIME_PROJECTION_SOURCE,
         truthWrite: false,
         failure: 'runtime-projection-invalid-response',
-        message: 'RuntimeSourceSnapshot response did not include payload hash summary.',
+        message: 'SourceMaterializationPacket response did not include packet hash summary.',
         submitted,
       };
     }
@@ -775,7 +777,7 @@ export async function projectPersonaRuntimeContextSummary(
       source: REALM_RUNTIME_PROJECTION_SOURCE,
       truthWrite: false,
       failure: 'runtime-projection-failed',
-      message: error instanceof Error ? error.message : 'Realm RuntimeSourceSnapshot creation failed.',
+      message: error instanceof Error ? error.message : 'Realm SourceMaterializationPacket creation failed.',
       submitted,
     };
   }
@@ -798,7 +800,7 @@ export async function projectPersonaChatReadinessContextSummary(
   }
 
   try {
-    const response = await realm.worldCoreControllerCreateRuntimeSourceSnapshot({
+    const response = await realm.worldCoreControllerCreateSourceMaterializationPacket({
       path: {},
       body: submitted,
     });
@@ -809,7 +811,7 @@ export async function projectPersonaChatReadinessContextSummary(
         source: REALM_RUNTIME_PROJECTION_SOURCE,
         truthWrite: false,
         failure: 'runtime-projection-invalid-response',
-        message: 'RuntimeSourceSnapshot response did not include source-specific payload summary.',
+        message: 'SourceMaterializationPacket response did not include source-specific payload summary.',
         submitted,
       };
     }
@@ -826,7 +828,7 @@ export async function projectPersonaChatReadinessContextSummary(
       source: REALM_RUNTIME_PROJECTION_SOURCE,
       truthWrite: false,
       failure: 'runtime-projection-failed',
-      message: error instanceof Error ? error.message : 'Realm RuntimeSourceSnapshot creation failed.',
+      message: error instanceof Error ? error.message : 'Realm SourceMaterializationPacket creation failed.',
       submitted,
     };
   }

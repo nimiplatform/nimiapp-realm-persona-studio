@@ -14,10 +14,10 @@
 
 | Layer | Technology | Location |
 |-------|-----------|----------|
-| Desktop shell | Tauri 2 | `src-tauri/` |
+| Desktop shell | Tauri 2 + Electron 42 | `src-tauri/`, `src-electron/` |
 | Renderer | React 19 + Vite 7 + Tailwind 4 | `src/shell/renderer/` |
 | Routing | react-router-dom 7 | `src/shell/renderer/app-shell/routes.tsx` |
-| Auth & runtime bridge | local `nimi-shell-tauri` crate | `src-tauri/src/main.rs` |
+| Auth & runtime bridge | Nimi installed app standard shell | `src-tauri/src/main.rs`, `src-electron/` |
 | UI components | `@nimiplatform/kit` (npm) | renderer-wide |
 | Platform client | `@nimiplatform/sdk` (npm) | `app-shell/studio-platform.ts` |
 | State | Zustand | `app-shell/app-store.ts` |
@@ -43,7 +43,7 @@ Studio canonical owner portfolio surfaces are
 `Realm WorldCoreController.getRealmPersona`. Create and update use
 `createRealmPersona` and `replaceRealmPersona`; home-world reads use
 `listWorldCores` / `getWorldCore`; runtime materialization uses
-`createRuntimeSourceSnapshot`. `/portfolio` must not call Forge-imported system,
+`createSourceMaterializationPacket`. `/portfolio` must not call Forge-imported system,
 creator, world-maintainer, or dev surfaces. `/api/creator/agents`,
 `/api/agent/dev/my-agents`, and `/api/agent/forge-imported-system/**` are
 explicitly non-current legacy anti-targets.
@@ -66,8 +66,9 @@ unavailable — render an explicit "source unavailable" state.
 
 ### Auth boundary
 - Studio does **not** own access or refresh tokens (mirrors parentos PO-SHELL-008 / K-ACCSVC-008).
-- All Runtime account state flows through `runtime.account.*` via the `nimi-shell-tauri` IPC bridge.
-- Login uses the kit's `DesktopShellAuthPage` with a code-only proof envelope; refresh-token custody lives in Runtime.
+- Studio does **not** render app-local login, open OAuth, exchange OAuth codes, save Runtime sessions, load Runtime sessions, clear Runtime sessions, or bootstrap Runtime defaults.
+- All Runtime account state is Desktop shared auth owned by the host shell and consumed through the installed app standard shell / SDK Runtime account bridge.
+- Missing Desktop shared Runtime account state is a fail-closed capability-unavailable product state, not a redirect to a Studio-owned login flow.
 
 ## Development Principles
 

@@ -3,7 +3,7 @@ id: SPEC-REALM-PERSONA-STUDIO-PRODUCT-ACCEPTANCE-001
 title: Product Acceptance And Execution Plan
 status: active
 owner: "@team"
-updated: 2026-06-18
+updated: 2026-07-09
 ---
 
 # Product Acceptance And Execution Plan
@@ -13,7 +13,7 @@ updated: 2026-06-18
 - **[R-RPS-ACCEPT-001]** App identity is Realm Persona Studio across package metadata, Tauri identity, routes, README, and spec.
 - **[R-RPS-ACCEPT-002]** Source reads use WorldCoreController RealmPersona surfaces only.
 - **[R-RPS-ACCEPT-003]** Create/update writes use Realm core DTOs only.
-- **[R-RPS-ACCEPT-004]** RuntimeSourceSnapshot is the only Realm-to-runtime materialization path in this app.
+- **[R-RPS-ACCEPT-004]** SourceMaterializationPacket is the only Realm-to-runtime materialization path in this app.
 - **[R-RPS-ACCEPT-005]** Non-runtime Agent naming is absent from source code and current app authority, except legacy-denylist strings.
 - **[R-RPS-ACCEPT-006]** CharacterCard import and RealmAgent compatibility are absent from current success paths.
 - **[R-RPS-ACCEPT-007]** Persona settings, assets, posts, and Runtime review all preserve candidate-vs-source boundaries.

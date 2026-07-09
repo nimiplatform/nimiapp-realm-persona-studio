@@ -21,6 +21,7 @@ import { createStudioRuntimeModelPickerProviderCache } from './studio-runtime-mo
 import {
   createStudioAIConfigService,
   createStudioAIScopeRef,
+  hydrateStudioAIConfigFromShell,
 } from './studio-ai-config-store.js';
 import { translateStudioModelConfigCopy } from './studio-ai-config-copy.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
@@ -96,13 +97,25 @@ function bindingStatus(
   };
 }
 
-function useLiveAIConfig(service: ReturnType<typeof createStudioAIConfigService>, scopeRef: NimiAIScopeRef): NimiAIConfig {
+function useLiveAIConfig(
+  service: ReturnType<typeof createStudioAIConfigService>,
+  scopeRef: NimiAIScopeRef,
+): { readonly config: NimiAIConfig; readonly error: string | null } {
   const [config, setConfig] = useState<NimiAIConfig>(() => service.aiConfig.get(scopeRef));
+  const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     setConfig(service.aiConfig.get(scopeRef));
+    setError(null);
+    void hydrateStudioAIConfigFromShell(scopeRef)
+      .then(() => {
+        setError(null);
+      })
+      .catch((caught: unknown) => {
+        setError(caught instanceof Error ? caught.message : String(caught || 'AI config unavailable.'));
+      });
     return service.aiConfig.subscribe(scopeRef, setConfig);
   }, [service, scopeRef]);
-  return config;
+  return { config, error };
 }
 
 function useStudioRuntimeReadiness(t: StudioTranslator): { ready: boolean; detail: string | null } {
@@ -196,7 +209,8 @@ export function StudioAIConfigPage() {
   const { locale, t } = useStudioI18n();
   const scopeRef = useMemo(() => createStudioAIScopeRef(), []);
   const service = useMemo(() => createStudioAIConfigService(), []);
-  const config = useLiveAIConfig(service, scopeRef);
+  const liveConfig = useLiveAIConfig(service, scopeRef);
+  const { config } = liveConfig;
   const runtime = useStudioRuntimeReadiness(t);
   const localAssetSource = useStudioRuntimeLocalAssetSource(runtime.ready);
   const providerResolver = useMemo(() => createStudioRuntimeModelPickerProviderCache(), []);
@@ -246,6 +260,11 @@ export function StudioAIConfigPage() {
             {runtime.detail || t('aiConfig.runtimeUnavailable')}
           </InlineAlert>
         )}
+        {liveConfig.error ? (
+          <InlineAlert tone="danger" className="mb-4">
+            {liveConfig.error}
+          </InlineAlert>
+        ) : null}
         <ModelConfigAiModelHub surface={surface} profile={profile} />
       </Surface>
     </div>

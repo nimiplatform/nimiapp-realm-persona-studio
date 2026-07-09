@@ -3,13 +3,13 @@ id: SPEC-REALM-PERSONA-STUDIO-CORE-RULES-001
 title: Realm Persona Studio Core Rules
 status: active
 owner: "@team"
-updated: 2026-06-18
+updated: 2026-07-09
 ---
 
 # Core Rules
 
 - **[R-RPS-CORE-001]** .nimi/spec/project/kernel/** is the single current app authority for Realm Persona Studio.
-- **[R-RPS-CORE-002]** Current app authority is based on WorldCore / RealmPersona / RuntimeSourceSnapshot; Realm-side Agent, CharacterCard, rule package, truth package, and projection package paths are non-current.
+- **[R-RPS-CORE-002]** Current app authority is based on WorldCore / RealmPersona / SourceMaterializationPacket; Realm-side Agent, CharacterCard, rule package, truth package, and projection package paths are non-current.
 - **[R-RPS-CORE-003]** The word Agent may appear in this app only as LocalAgent runtime terminology or in explicitly forbidden legacy surface names.
 - **[R-RPS-CORE-004]** Every public success claim must be backed by a typed Realm, Runtime, SDK, or Tauri result; renderer-local state cannot satisfy source authority.
 - **[R-RPS-CORE-005]** No app-local cache, draft, generated candidate, screenshot, test fixture, or local audit output may become product authority.
@@ -20,3 +20,5 @@ updated: 2026-06-18
 - **[R-RPS-CORE-010]** Tests for source reads, writes, Runtime candidates, and failure states must assert canonical current surfaces by name.
 - **[R-RPS-CORE-011]** Any new external surface must be admitted by this kernel before code can consume it as a success path.
 - **[R-RPS-CORE-012]** Spec changes and implementation changes for the same behavior must land together; a stale spec path is treated as an active defect.
+- **[R-RPS-CORE-013]** Realm Persona Studio is an installed Nimi app shell consumer; its shell boundary is `installed-nimi-app-standard-shell-v1` and not an app-local privileged shell.
+- **[R-RPS-CORE-014]** The app must not expose or consume installed-app-forbidden host capabilities: `auth.sessionLoad`, `auth.sessionSave`, `auth.sessionClear`, `oauth.openExternalUrl`, `oauth.tokenExchange`, `oauth.listenForCode`, `runtime-defaults.get`, `runtime-lifecycle.*`, `electron.raw-ipc`, `node.raw-fs`, local-agent trusted caller identity, or private LocalAgent identity.

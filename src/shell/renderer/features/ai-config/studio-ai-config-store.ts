@@ -1,43 +1,34 @@
-import { resolveBrowserStorage } from '@nimiplatform/kit/core/storage-json';
 import type {
   SharedAIConfigService,
   SharedAIConfigSubscribeListener,
   SharedAIConfigUnsubscribe,
 } from '@nimiplatform/kit/features/model-config';
 import {
-  areNimiAIScopeRefsEqual,
-  createNimiAIConfigStore,
+  applyNimiAIProfileToConfig,
+  createEmptyNimiAIConfig,
   createNimiAIConfigSubscriptionRegistry,
-  createNimiAIHostSurface,
-  createNimiAISnapshotStore,
   createNimiAppAIScopeRef,
   encodeNimiAIScopeRef,
   parseNimiAIProfile,
+  previewNimiAIProfileApply,
   validateNimiAIConfig,
   validateNimiAIProfile,
   versionNimiAIConfig,
   type NimiAIConfig,
   type NimiAIConfigTargetRef,
-  type NimiAIHostStorage,
   type NimiAIProfile,
+  type NimiAIProfileApplyOptions,
+  type NimiAIProfileApplyResult,
+  type NimiAIProfilePreviewOptions,
+  type NimiAIProfilePreviewResult,
   type NimiAIScopeRef,
   type NimiAISnapshot,
 } from '@nimiplatform/sdk/ai';
+import type { JsonObject } from '@renderer/bridge/index.js';
+import { createInstalledNimiAppStandardShellSurface } from '@renderer/bridge/index.js';
 import { STUDIO_RUNTIME_APP_ID } from '@renderer/app-shell/studio-platform.js';
 
 export const STUDIO_AI_CONFIG_SURFACE_ID = 'owner-workbench';
-export const STUDIO_AI_CONFIG_STORAGE_INDEX_KEY = 'realm-persona-studio:ai-config:index:v1';
-export const STUDIO_AI_CONFIG_STORAGE_PREFIX = 'realm-persona-studio:ai-config:';
-export const STUDIO_AI_CONFIG_QUARANTINE_PREFIX = `${STUDIO_AI_CONFIG_STORAGE_PREFIX}quarantine:`;
-export const STUDIO_AI_SNAPSHOT_INDEX_KEY = 'realm-persona-studio:ai-snapshot:index:v1';
-export const STUDIO_AI_SNAPSHOT_STORAGE_PREFIX = 'realm-persona-studio:ai-snapshot:';
-export const STUDIO_AI_PROFILE_LIBRARY_STORAGE_KEY = 'realm-persona-studio:ai-profiles:v1';
-export const STUDIO_AI_PROFILE_LIBRARY_SCHEMA_VERSION = 1;
-
-type StudioAIProfileLibraryStore = {
-  schemaVersion: typeof STUDIO_AI_PROFILE_LIBRARY_SCHEMA_VERSION;
-  profiles: NimiAIProfile[];
-};
 
 export type StudioAIProfileImportResult =
   | {
@@ -52,217 +43,53 @@ export type StudioAIProfileImportResult =
     message: string;
   };
 
-export type StudioAIConfigStorageRepairResult = {
-  readonly scanned: number;
-  readonly quarantined: number;
-  readonly removedScopeKeys: readonly string[];
-  readonly quarantineKeys: readonly string[];
-};
-
-type StudioAIConfigStorageRepairOptions = {
-  readonly now?: () => string;
-};
-
+const shellSurface = createInstalledNimiAppStandardShellSurface();
 const configSubscriptions = createNimiAIConfigSubscriptionRegistry();
-let ephemeralProfiles: NimiAIProfile[] = [];
-
-function isStorageLike(value: unknown): value is NimiAIHostStorage {
-  return Boolean(value)
-    && typeof (value as NimiAIHostStorage).getItem === 'function'
-    && typeof (value as NimiAIHostStorage).setItem === 'function';
-}
-
-function getStorage(): NimiAIHostStorage | null {
-  const storage = resolveBrowserStorage('local');
-  return isStorageLike(storage) ? storage : null;
-}
-
-function isNonBrowserAIConfigHarness(): boolean {
-  return typeof window === 'undefined' || import.meta.env.MODE === 'test';
-}
+const configCache = new Map<string, NimiAIConfig>();
+const snapshotByExecution = new Map<string, NimiAISnapshot>();
+const latestSnapshotByScope = new Map<string, string>();
+let profileLibrary: NimiAIProfile[] = [];
 
 export function createStudioAIScopeRef(): NimiAIScopeRef {
   return createNimiAppAIScopeRef(STUDIO_RUNTIME_APP_ID, STUDIO_AI_CONFIG_SURFACE_ID);
 }
 
-function studioAIConfigStorageKeyForScopeKey(scopeKey: string): string {
-  return `${STUDIO_AI_CONFIG_STORAGE_PREFIX}${scopeKey}:v1`;
-}
-
-function removeStorageItem(storage: NimiAIHostStorage, key: string): void {
-  if (storage.removeItem) {
-    storage.removeItem(key);
-    return;
-  }
-  storage.setItem(key, '');
-}
-
-function readScopeIndex(storage: NimiAIHostStorage): string[] {
-  const raw = storage.getItem(STUDIO_AI_CONFIG_STORAGE_INDEX_KEY);
-  if (!raw) {
-    return [];
-  }
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed)
-      ? parsed.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-function removeScopeKeyFromIndex(storage: NimiAIHostStorage, scopeKey: string): void {
-  const next = readScopeIndex(storage).filter((entry) => entry !== scopeKey);
-  storage.setItem(STUDIO_AI_CONFIG_STORAGE_INDEX_KEY, JSON.stringify([...new Set(next)].sort()));
-}
-
-function uniqueStudioAIConfigQuarantineKey(
-  storage: NimiAIHostStorage,
-  scopeKey: string,
-  quarantinedAt: string,
-): string {
-  const base = `${STUDIO_AI_CONFIG_QUARANTINE_PREFIX}${encodeURIComponent(scopeKey)}:${encodeURIComponent(quarantinedAt)}`;
-  let candidate = base;
-  let index = 1;
-  while (storage.getItem(candidate) !== null) {
-    candidate = `${base}:${index}`;
-    index += 1;
-  }
-  return candidate;
-}
-
-function storedAIConfigInvalidReason(raw: string, scopeRef: NimiAIScopeRef): string | null {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (error) {
-    return error instanceof Error ? error.message : String(error || 'Invalid stored AIConfig JSON.');
-  }
-  const validation = validateNimiAIConfig(parsed);
-  if (!validation.valid) {
-    return validation.errors.join('; ');
-  }
-  const config = parsed as NimiAIConfig;
-  if (!areNimiAIScopeRefsEqual(config.scopeRef, scopeRef)) {
-    return 'Stored Studio AIConfig scopeRef does not match requested scopeRef.';
-  }
-  return null;
-}
-
-export function repairStudioAIConfigStorageForScope(
+export async function hydrateStudioAIConfigFromShell(
   scopeRef: NimiAIScopeRef = createStudioAIScopeRef(),
-  storage: NimiAIHostStorage | null = getStorage(),
-  options: StudioAIConfigStorageRepairOptions = {},
-): StudioAIConfigStorageRepairResult {
-  if (!storage) {
-    return { scanned: 0, quarantined: 0, removedScopeKeys: [], quarantineKeys: [] };
-  }
+): Promise<NimiAIConfig> {
   const scopeKey = encodeNimiAIScopeRef(scopeRef);
-  const storageKey = studioAIConfigStorageKeyForScopeKey(scopeKey);
-  const raw = storage.getItem(storageKey);
-  if (!raw) {
-    removeScopeKeyFromIndex(storage, scopeKey);
-    return { scanned: 0, quarantined: 0, removedScopeKeys: [], quarantineKeys: [] };
-  }
-  const reason = storedAIConfigInvalidReason(raw, scopeRef);
-  if (!reason) {
-    return { scanned: 1, quarantined: 0, removedScopeKeys: [], quarantineKeys: [] };
-  }
-
-  const quarantinedAt = options.now?.() ?? new Date().toISOString();
-  const quarantineKey = uniqueStudioAIConfigQuarantineKey(storage, scopeKey, quarantinedAt);
-  storage.setItem(quarantineKey, JSON.stringify({
-    schemaVersion: 1,
-    reasonCode: 'STUDIO_AI_CONFIG_STORE_INVALID',
-    reason,
-    scopeKey,
-    originalKey: storageKey,
-    quarantinedAt,
-    raw,
-  }));
-  removeStorageItem(storage, storageKey);
-  removeScopeKeyFromIndex(storage, scopeKey);
-  return {
-    scanned: 1,
-    quarantined: 1,
-    removedScopeKeys: [scopeKey],
-    quarantineKeys: [quarantineKey],
-  };
-}
-
-const aiConfigStore = createNimiAIConfigStore({
-  storage: () => getStorage(),
-  indexKey: STUDIO_AI_CONFIG_STORAGE_INDEX_KEY,
-  configKeyForScope: studioAIConfigStorageKeyForScopeKey,
-  enableEphemeralStore: isNonBrowserAIConfigHarness(),
-});
-
-const aiSnapshotStore = createNimiAISnapshotStore({
-  storage: () => getStorage(),
-  indexKey: STUDIO_AI_SNAPSHOT_INDEX_KEY,
-  snapshotKeyForExecution: (executionId) => `${STUDIO_AI_SNAPSHOT_STORAGE_PREFIX}${executionId}`,
-  latestKeyForScope: (encodedScopeRef) => `${STUDIO_AI_SNAPSHOT_STORAGE_PREFIX}latest:${encodedScopeRef}`,
-  enableEphemeralStore: isNonBrowserAIConfigHarness(),
-});
-
-function defaultProfileStore(): StudioAIProfileLibraryStore {
-  return {
-    schemaVersion: STUDIO_AI_PROFILE_LIBRARY_SCHEMA_VERSION,
-    profiles: [],
-  };
-}
-
-function parseProfileLibraryStore(raw: string): StudioAIProfileLibraryStore {
-  const parsed = JSON.parse(raw) as Partial<StudioAIProfileLibraryStore>;
-  if (
-    parsed.schemaVersion !== STUDIO_AI_PROFILE_LIBRARY_SCHEMA_VERSION
-    || !Array.isArray(parsed.profiles)
-  ) {
-    throw new Error('Stored Studio AIProfile library schema is invalid.');
-  }
-  const profiles: NimiAIProfile[] = [];
-  for (const value of parsed.profiles) {
-    const profile = parseNimiAIProfile(value);
-    const validation = validateNimiAIProfile(profile);
-    if (!validation.valid) {
-      throw new Error(`Stored Studio AIProfile is invalid: ${validation.errors.join('; ')}`);
+  try {
+    const raw = await shellSurface.aiConfig.get(scopeKey);
+    const config = normalizeShellAIConfig(raw, scopeRef);
+    cacheStudioAIConfig(config);
+    return config;
+  } catch (error) {
+    if (isShellNotFound(error)) {
+      const config = createEmptyNimiAIConfig(scopeRef);
+      cacheStudioAIConfig(config);
+      return config;
     }
-    profiles.push(profile);
+    throw error;
   }
-  return {
-    schemaVersion: STUDIO_AI_PROFILE_LIBRARY_SCHEMA_VERSION,
-    profiles,
-  };
 }
 
-function loadProfileLibraryStore(storage: NimiAIHostStorage | null = getStorage()): StudioAIProfileLibraryStore {
-  if (!storage) {
-    if (!isNonBrowserAIConfigHarness()) {
-      throw new Error('Studio AIProfile library requires browser local storage.');
-    }
-    return {
-      schemaVersion: STUDIO_AI_PROFILE_LIBRARY_SCHEMA_VERSION,
-      profiles: [...ephemeralProfiles],
-    };
+export async function persistStudioAIConfigToShell(
+  config: NimiAIConfig,
+): Promise<NimiAIConfig> {
+  const validation = validateNimiAIConfig(config);
+  if (!validation.valid) {
+    throw new Error(`NimiAIConfig validation failed: ${validation.errors.join('; ')}`);
   }
-  const raw = storage.getItem(STUDIO_AI_PROFILE_LIBRARY_STORAGE_KEY);
-  return raw ? parseProfileLibraryStore(raw) : defaultProfileStore();
-}
-
-function saveProfileLibraryStore(store: StudioAIProfileLibraryStore, storage: NimiAIHostStorage | null = getStorage()): void {
-  if (!storage) {
-    if (!isNonBrowserAIConfigHarness()) {
-      throw new Error('Studio AIProfile library requires browser local storage.');
-    }
-    ephemeralProfiles = [...store.profiles];
-    return;
-  }
-  storage.setItem(STUDIO_AI_PROFILE_LIBRARY_STORAGE_KEY, JSON.stringify(store));
+  const saved = normalizeShellAIConfig(
+    await shellSurface.aiConfig.set(encodeNimiAIScopeRef(config.scopeRef), config as unknown as JsonObject),
+    config.scopeRef,
+  );
+  cacheStudioAIConfig(saved);
+  return saved;
 }
 
 export function listStudioAIProfiles(): NimiAIProfile[] {
-  return [...loadProfileLibraryStore().profiles];
+  return [...profileLibrary];
 }
 
 export function importStudioAIProfileJson(rawJson: string): StudioAIProfileImportResult {
@@ -297,26 +124,20 @@ export function importStudioAIProfileJson(rawJson: string): StudioAIProfileImpor
     };
   }
 
-  const store = loadProfileLibraryStore();
-  const profiles = [
+  profileLibrary = [
     profile,
-    ...store.profiles.filter((existing) => existing.profileId !== profile.profileId),
+    ...profileLibrary.filter((existing) => existing.profileId !== profile.profileId),
   ];
-  saveProfileLibraryStore({
-    schemaVersion: STUDIO_AI_PROFILE_LIBRARY_SCHEMA_VERSION,
-    profiles,
-  });
   return {
     ok: true,
     profile,
-    profileCount: profiles.length,
+    profileCount: profileLibrary.length,
     message: `Imported AIProfile ${profile.title || profile.profileId}.`,
   };
 }
 
 export function loadStudioAIConfig(scopeRef: NimiAIScopeRef = createStudioAIScopeRef()): NimiAIConfig {
-  repairStudioAIConfigStorageForScope(scopeRef);
-  return aiConfigStore.load(scopeRef);
+  return configCache.get(encodeNimiAIScopeRef(scopeRef)) ?? createEmptyNimiAIConfig(scopeRef);
 }
 
 export function saveStudioAIConfig(
@@ -324,7 +145,24 @@ export function saveStudioAIConfig(
   scopeRef: NimiAIScopeRef = createStudioAIScopeRef(),
   options?: { readonly expectedBaseVersion?: string },
 ): NimiAIConfig {
-  repairStudioAIConfigStorageForScope(scopeRef);
+  const normalized = validateNextStudioAIConfig(next, scopeRef, options);
+  cacheStudioAIConfig(normalized);
+  return normalized;
+}
+
+export async function commitStudioAIConfigToShell(
+  next: NimiAIConfig,
+  scopeRef: NimiAIScopeRef = createStudioAIScopeRef(),
+  options?: { readonly expectedBaseVersion?: string },
+): Promise<NimiAIConfig> {
+  return persistStudioAIConfigToShell(validateNextStudioAIConfig(next, scopeRef, options));
+}
+
+function validateNextStudioAIConfig(
+  next: NimiAIConfig,
+  scopeRef: NimiAIScopeRef,
+  options?: { readonly expectedBaseVersion?: string },
+): NimiAIConfig {
   const normalized = { ...next, scopeRef };
   const expectedBaseVersion = options?.expectedBaseVersion?.trim();
   if (expectedBaseVersion) {
@@ -337,9 +175,7 @@ export function saveStudioAIConfig(
   if (!validation.valid) {
     throw new Error(`NimiAIConfig validation failed: ${validation.errors.join('; ')}`);
   }
-  const saved = aiConfigStore.save(normalized);
-  configSubscriptions.notify(saved);
-  return saved;
+  return normalized;
 }
 
 export function readStudioAIConfigTargetRef(
@@ -360,29 +196,26 @@ export function readStudioAIConfigSelectedParams(
 }
 
 export function recordStudioAISnapshot(snapshot: NimiAISnapshot): NimiAISnapshot {
-  return aiSnapshotStore.record(snapshot);
+  snapshotByExecution.set(snapshot.executionId, snapshot);
+  latestSnapshotByScope.set(encodeNimiAIScopeRef(snapshot.scopeRef), snapshot.executionId);
+  return snapshot;
 }
 
 export function getLatestStudioAISnapshot(
   scopeRef: NimiAIScopeRef = createStudioAIScopeRef(),
 ): NimiAISnapshot | null {
-  return aiSnapshotStore.getLatest(scopeRef);
+  const executionId = latestSnapshotByScope.get(encodeNimiAIScopeRef(scopeRef));
+  return executionId ? snapshotByExecution.get(executionId) ?? null : null;
 }
 
 export function createStudioAIConfigService(): SharedAIConfigService {
-  const createSurface = () => createNimiAIHostSurface({
-    profiles: listStudioAIProfiles(),
-    configStore: aiConfigStore,
-    snapshotStore: aiSnapshotStore,
-    subscriptions: configSubscriptions,
-  });
   return {
     aiConfig: {
       get(scopeRef: NimiAIScopeRef) {
         return loadStudioAIConfig(scopeRef);
       },
-      update(scopeRef: NimiAIScopeRef, next: NimiAIConfig) {
-        saveStudioAIConfig(next, scopeRef);
+      async update(scopeRef: NimiAIScopeRef, next: NimiAIConfig) {
+        await commitStudioAIConfigToShell(next, scopeRef);
       },
       subscribe(scopeRef: NimiAIScopeRef, listener: SharedAIConfigSubscribeListener): SharedAIConfigUnsubscribe {
         return configSubscriptions.subscribe(scopeRef, listener);
@@ -390,15 +223,68 @@ export function createStudioAIConfigService(): SharedAIConfigService {
     },
     aiProfile: {
       async list() {
-        return [...await createSurface().aiProfile.list()];
+        return listStudioAIProfiles();
       },
-      async previewApply(scopeRef: NimiAIScopeRef, profileId: string, options) {
-        repairStudioAIConfigStorageForScope(scopeRef);
-        return createSurface().aiProfile.previewApply(scopeRef, profileId, options);
+      async previewApply(
+        scopeRef: NimiAIScopeRef,
+        profileId: string,
+        options: NimiAIProfilePreviewOptions,
+      ): Promise<NimiAIProfilePreviewResult> {
+        const profile = profileById(profileId);
+        if (!profile) {
+          throw new Error(`AIProfile not found: ${profileId}`);
+        }
+        return previewNimiAIProfileApply({
+          before: loadStudioAIConfig(scopeRef),
+          scopeRef,
+          profile,
+          requirementDeclarations: options.requirementDeclarations,
+        });
       },
-      async apply(scopeRef: NimiAIScopeRef, profileId: string, options) {
-        repairStudioAIConfigStorageForScope(scopeRef);
-        return createSurface().aiProfile.apply(scopeRef, profileId, options);
+      async apply(
+        scopeRef: NimiAIScopeRef,
+        profileId: string,
+        options: NimiAIProfileApplyOptions,
+      ): Promise<NimiAIProfileApplyResult> {
+        const preview = await this.previewApply(scopeRef, profileId, options);
+        if (preview.outcome !== 'ready_to_apply' || !preview.after) {
+          return {
+            success: false,
+            config: null,
+            failureReason: preview.outcome,
+            outcome: preview.outcome,
+            setupProjection: preview.setupProjection,
+            probeWarnings: preview.probeWarnings,
+          };
+        }
+        if (options.expectedBaseVersion && options.expectedBaseVersion !== preview.baseVersion) {
+          return {
+            success: false,
+            config: null,
+            failureReason: 'stale_base',
+            outcome: 'stale_base',
+            setupProjection: preview.setupProjection,
+            probeWarnings: preview.probeWarnings,
+          };
+        }
+        const profile = profileById(profileId);
+        if (!profile) {
+          throw new Error(`AIProfile not found: ${profileId}`);
+        }
+        const next = applyNimiAIProfileToConfig({
+          config: loadStudioAIConfig(scopeRef),
+          profile,
+          requirementDeclarations: options.requirementDeclarations,
+        });
+        const saved = await commitStudioAIConfigToShell(next, scopeRef, { expectedBaseVersion: preview.baseVersion });
+        return {
+          success: true,
+          config: saved,
+          failureReason: null,
+          outcome: 'ready_to_apply',
+          setupProjection: null,
+          probeWarnings: preview.probeWarnings,
+        };
       },
     },
   };
@@ -406,4 +292,35 @@ export function createStudioAIConfigService(): SharedAIConfigService {
 
 export function studioAIConfigScopeKey(scopeRef: NimiAIScopeRef = createStudioAIScopeRef()): string {
   return encodeNimiAIScopeRef(scopeRef);
+}
+
+function profileById(profileId: string): NimiAIProfile | null {
+  return profileLibrary.find((profile) => profile.profileId === profileId) ?? null;
+}
+
+function normalizeShellAIConfig(raw: JsonObject, scopeRef: NimiAIScopeRef): NimiAIConfig {
+  const config = { ...raw, scopeRef } as unknown as NimiAIConfig;
+  const validation = validateNimiAIConfig(config);
+  if (!validation.valid) {
+    throw new Error(`NimiAIConfig validation failed: ${validation.errors.join('; ')}`);
+  }
+  return config;
+}
+
+function cacheStudioAIConfig(config: NimiAIConfig): void {
+  configCache.set(encodeNimiAIScopeRef(config.scopeRef), config);
+  configSubscriptions.notify(config);
+}
+
+function isShellNotFound(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const record = error as { code?: unknown; reasonCode?: unknown; envelope?: { code?: unknown; reasonCode?: unknown } };
+  return record.code === 'not-found'
+    || record.reasonCode === 'electron-ai-config-scope-not-found'
+    || record.reasonCode === 'tauri-ai-config-scope-not-found'
+    || record.envelope?.code === 'not-found'
+    || record.envelope?.reasonCode === 'electron-ai-config-scope-not-found'
+    || record.envelope?.reasonCode === 'tauri-ai-config-scope-not-found';
 }

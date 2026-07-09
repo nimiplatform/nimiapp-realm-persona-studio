@@ -1,4 +1,4 @@
-import { hasTauriInvoke, invoke, type JsonValue } from '../../bridge/index.js';
+import type { JsonValue } from '../../bridge/index.js';
 
 export type RendererLogLevel = 'info' | 'warn' | 'error';
 
@@ -18,27 +18,12 @@ export function describeError(error: unknown): { name: string; message: string; 
 }
 
 /**
- * Forwards renderer events to the desktop session log via the nimi-shell-tauri
- * `log_renderer_event` command. Falls back to a no-op when the Tauri bridge is
- * unavailable (e.g. unit tests, vite-only dev preview). Never throws — the
- * caller is logging, not handling a contract.
+ * Keeps renderer diagnostics local to the installed app renderer. Installed
+ * apps do not get a raw logging IPC capability.
  */
 export function logRendererEvent(event: RendererLogEvent): void {
-  if (!hasTauriInvoke()) {
-    return;
-  }
-  void invoke('log_renderer_event', {
-    payload: {
-      level: event.level,
-      area: event.area,
-      message: event.message,
-      flowId: event.flowId,
-      details: event.details ?? null,
-      reportedAt: new Date().toISOString(),
-    },
-  }).catch(() => {
-    // Logging failures must not surface to the user or break the calling flow.
-  });
+  const consoleMethod = event.level === 'error' ? 'error' : event.level === 'warn' ? 'warn' : 'info';
+  globalThis.console?.[consoleMethod]?.(`[realm-persona-studio:${event.area}] ${event.message}`, event.details ?? null);
 }
 
 let installed = false;

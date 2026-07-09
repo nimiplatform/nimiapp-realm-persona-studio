@@ -3,7 +3,7 @@ id: SPEC-REALM-PERSONA-STUDIO-STORYBOOK-001
 title: Realm Persona Studio Storybook
 status: active
 owner: "@team"
-updated: 2026-06-18
+updated: 2026-07-09
 ---
 
 # Storybook
@@ -18,5 +18,5 @@ updated: 2026-06-18
 | Generate identity assets | **[R-RPS-STORY-006]** Visual and voice outputs are local candidates until a reviewed Realm core write succeeds. |
 | Draft post | **[R-RPS-STORY-007]** Post copy assistance uses visible persona context and remains local until Realm post creation succeeds. |
 | Schedule locally | **[R-RPS-STORY-008]** The local schedule is one foreground desktop operation per persona, not public schedule state. |
-| Prepare localAgent context | **[R-RPS-STORY-009]** localAgent chat readiness uses RuntimeSourceSnapshot by value and never exposes private LocalAgent memory. |
+| Prepare localAgent context | **[R-RPS-STORY-009]** localAgent chat readiness uses SourceMaterializationPacket by value and never exposes private LocalAgent memory. |
 | Keep adjacent products out | **[R-RPS-STORY-010]** WorldCharacter maintenance, Forge curation, CharacterCard import, and legacy Realm-side Agent routes stay out of Studio routes. |

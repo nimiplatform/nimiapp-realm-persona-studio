@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import type { StudioRuntimeDefaults } from '../bridge/index.js';
 
 export type AuthUser = {
   id: string;
@@ -11,21 +10,19 @@ export type AuthUser = {
 export type AuthStatus = 'bootstrapping' | 'authenticated' | 'unauthenticated';
 
 interface AppState {
-  // Studio stores only Runtime-projected account identity and the Studio
-  // defaults allowlist. Auth token values never enter renderer state.
+  // Studio stores only Runtime-projected account identity. Auth token values
+  // and Runtime defaults never enter renderer state.
   auth: {
     status: AuthStatus;
     user: AuthUser | null;
   };
   bootstrapReady: boolean;
   bootstrapError: string | null;
-  runtimeDefaults: StudioRuntimeDefaults | null;
 
   setAuthSession: (user: AuthUser) => void;
   clearAuthSession: () => void;
   setBootstrapReady: (ready: boolean) => void;
   setBootstrapError: (error: string | null) => void;
-  setRuntimeDefaults: (defaults: StudioRuntimeDefaults) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -35,7 +32,6 @@ export const useAppStore = create<AppState>((set) => ({
   },
   bootstrapReady: false,
   bootstrapError: null,
-  runtimeDefaults: null,
 
   setAuthSession(user) {
     set({ auth: { status: 'authenticated', user } });
@@ -47,5 +43,4 @@ export const useAppStore = create<AppState>((set) => ({
   },
   setBootstrapReady: (ready) => set({ bootstrapReady: ready }),
   setBootstrapError: (error) => set({ bootstrapError: error }),
-  setRuntimeDefaults: (defaults) => set({ runtimeDefaults: defaults }),
 }));

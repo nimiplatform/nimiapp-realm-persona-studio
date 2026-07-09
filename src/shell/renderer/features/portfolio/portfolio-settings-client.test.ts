@@ -384,16 +384,17 @@ describe('owner portfolio settings client', () => {
       });
     });
 
-     it('creates RuntimeSourceSnapshot through WorldCoreController and returns summary counts only', async () => {
+     it('creates SourceMaterializationPacket through WorldCoreController and returns summary counts only', async () => {
       const realm = mockRealm();
       const result = await projectPersonaRuntimeContextSummary(ownerPersonaDetail(), realm);
-      const projectRuntimePayload = realm.worldCoreControllerCreateRuntimeSourceSnapshot;
+      const projectRuntimePayload = realm.worldCoreControllerCreateSourceMaterializationPacket;
       const submittedRequest = vi.mocked(projectRuntimePayload).mock.calls[0]?.[0];
       const submittedPayload = submittedRequest?.body;
 
       expect(projectRuntimePayload).toHaveBeenCalledWith({
         path: {},
         body: {
+          intendedRuntimeAudience: 'desktop.runtime',
           sourceRef: {
             kind: 'realmPersona',
             worldId: 'world-oasis',
@@ -406,7 +407,7 @@ describe('owner portfolio settings client', () => {
       expect(collectKeys(submittedPayload).has('statement')).toBe(false);
       expect(result).toMatchObject({
         ok: true,
-        source: 'Realm WorldCoreController.createRuntimeSourceSnapshot',
+        source: 'Realm WorldCoreController.createSourceMaterializationPacket',
         truthWrite: false,
         summary: {
           consumerSurface: 'RUNTIME_PAYLOAD',
@@ -426,14 +427,14 @@ describe('owner portfolio settings client', () => {
      it('normalizes Runtime projection summary without exposing raw rule content', () => {
       const summary = normalizeRuntimeProjectionSummary({
         sourceWorldId: 'world-1',
-        payloadHash: 'checksum-1',
+        packetHash: 'checksum-1',
         payload: {
           worldRules: [{ statement: 'world raw' }],
         },
-      } as unknown as Awaited<ReturnType<StudioRealmSurface['worldCoreControllerCreateRuntimeSourceSnapshot']>>);
+      } as unknown as Awaited<ReturnType<StudioRealmSurface['worldCoreControllerCreateSourceMaterializationPacket']>>);
 
       expect(summary).toEqual({
-        source: 'Realm WorldCoreController.createRuntimeSourceSnapshot',
+        source: 'Realm WorldCoreController.createSourceMaterializationPacket',
         consumerSurface: 'RUNTIME_PAYLOAD',
         worldId: 'world-1',
         checksum: 'checksum-1',
@@ -450,14 +451,14 @@ describe('owner portfolio settings client', () => {
       const summary = normalizePersonaChatReadinessProjectionSummary({
         sourceWorldId: 'world-1',
         sourceId: 'persona-1',
-        payloadHash: 'checksum-1',
+        packetHash: 'checksum-1',
         payload: {
           'communication.contentStyle': 'must stay hidden',
         },
-      } as unknown as Awaited<ReturnType<StudioRealmSurface['worldCoreControllerCreateRuntimeSourceSnapshot']>>);
+      } as unknown as Awaited<ReturnType<StudioRealmSurface['worldCoreControllerCreateSourceMaterializationPacket']>>);
 
       expect(summary).toEqual({
-        source: 'Realm WorldCoreController.createRuntimeSourceSnapshot',
+        source: 'Realm WorldCoreController.createSourceMaterializationPacket',
         consumerSurface: 'RUNTIME_PAYLOAD',
         worldId: 'world-1',
         checksum: 'checksum-1',
@@ -483,7 +484,7 @@ describe('owner portfolio settings client', () => {
       expect(buildRuntimeProjectionInput({ ...ownerPersonaDetail(), id: '' })).toBeNull();
       expect(buildRuntimeProjectionInput({ ...ownerPersonaDetail(), homeWorldId: '' })).toBeNull();
       expect(buildRuntimeProjectionInput({ ...ownerPersonaDetail(), contentHash: '' })).toBeNull();
-      expect(realm.worldCoreControllerCreateRuntimeSourceSnapshot).not.toHaveBeenCalled();
+      expect(realm.worldCoreControllerCreateSourceMaterializationPacket).not.toHaveBeenCalled();
       expect(result).toMatchObject({
         ok: false,
         truthWrite: false,

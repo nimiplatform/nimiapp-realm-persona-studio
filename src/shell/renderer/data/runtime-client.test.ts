@@ -21,17 +21,17 @@ describe('studio runtime client gate', () => {
     } as unknown as typeof globalThis)).toBe(false);
   });
 
-  it('accepts test and native invoke hooks as available IPC runtime', () => {
+  it('accepts only Nimi-owned Tauri invoke hooks as available IPC runtime', () => {
     const invoke = async () => undefined;
 
     expect(hasTauriIpcRuntime({ __NIMI_TAURI_TEST__: { invoke } } as unknown as typeof globalThis)).toBe(true);
     expect(hasTauriIpcRuntime({ __NIMI_TAURI_RUNTIME__: { invoke } } as unknown as typeof globalThis)).toBe(true);
-    expect(hasTauriIpcRuntime({ __TAURI__: { core: { invoke } } } as unknown as typeof globalThis)).toBe(true);
-    expect(hasTauriIpcRuntime({ __TAURI_INTERNALS__: { invoke } } as unknown as typeof globalThis)).toBe(true);
-    expect(hasTauriIpcRuntime({ __TAURI_IPC__: { invoke } } as unknown as typeof globalThis)).toBe(true);
+    expect(hasTauriIpcRuntime({ __TAURI__: { core: { invoke } } } as unknown as typeof globalThis)).toBe(false);
+    expect(hasTauriIpcRuntime({ __TAURI_INTERNALS__: { invoke } } as unknown as typeof globalThis)).toBe(false);
+    expect(hasTauriIpcRuntime({ __TAURI_IPC__: { invoke } } as unknown as typeof globalThis)).toBe(false);
   });
 
-  it('does not construct app-owned Realm or Runtime clients in renderer data modules', () => {
+  it('uses installed app SDK Runtime account transport instead of app-owned auth or Realm transport', () => {
     const runtimeClientSource = readFileSync(resolve(dataDir, 'runtime-client.ts'), 'utf8');
     const realmClientSource = readFileSync(resolve(dataDir, 'realm-client.ts'), 'utf8');
     const realmTransportSource = readFileSync(resolve(rendererRoot, 'app-shell', 'studio-realm-transport.ts'), 'utf8');
@@ -43,24 +43,28 @@ describe('studio runtime client gate', () => {
     expect(combinedDataSource).not.toMatch(/VITE_REALM_ACCESS_TOKEN|external_principal|allowAnonymousRealm/);
     expect(combinedDataSource).not.toMatch(/createRealmClient|createPlatformClient/);
     expect(studioPlatformSource).toContain('createNimiClient');
-    expect(studioPlatformSource).toContain("type: 'tauri-ipc'");
-    expect(studioPlatformSource).toContain('createNimiLocalFirstPartyRuntimeAccountCaller');
-    expect(studioPlatformSource).toContain("'realm.worlds.read'");
-    expect(studioPlatformSource).toContain('scopes: [...STUDIO_REALM_API_SCOPES]');
-    expect(studioPlatformSource).toContain('createNimiRuntimeAppSessionMetadataProvider');
+    expect(studioPlatformSource).toContain('createInstalledNimiAppBootstrap');
     expect(studioPlatformSource).toContain('createStudioRealmBridgeOptions');
-    expect(realmTransportSource).toContain('invokeRealmUnary');
+    expect(studioPlatformSource).not.toContain('createNimiLocalFirstPartyRuntimeAccountCaller');
+    expect(studioPlatformSource).not.toContain('createNimiRuntimeAppSessionMetadataProvider');
+    expect(studioPlatformSource).not.toContain('createNimiRuntimeFullAppRegistration');
+    expect(studioPlatformSource).not.toContain('authorizeExternalPrincipal');
+    expect(studioPlatformSource).not.toContain('AuthorizationPreset');
+    expect(studioPlatformSource).not.toContain('protectedAccess');
+    expect(studioPlatformSource).not.toContain('scopes: [...STUDIO_REALM_API_SCOPES]');
+    expect(realmTransportSource).toContain('createRuntimeAccountMediatedRealmTransport');
+    expect(realmTransportSource).not.toContain('invokeRealmUnary');
     expect(realmTransportSource).not.toContain('realm_persona_studio_realm_unary');
     expect(realmTransportSource).not.toContain('getAccessToken');
     expect(studioPlatformSource).not.toContain('getAccessToken');
     expect(studioPlatformSource).not.toContain('createRealmFetchTransport');
     expect(studioPlatformSource).not.toMatch(/VITE_REALM_ACCESS_TOKEN|refreshToken|sessionStore|subjectUserIdProvider/);
-    expect(bridgeSource).toContain('getStudioRuntimeDefaults');
-    expect(bridgeSource).not.toContain('  getRuntimeDefaults,');
-    expect(bridgeSource).not.toContain('  RuntimeDefaults,');
-    expect(bridgeSource).not.toContain('  RealmDefaults,');
-    expect(bridgeSource).not.toContain('  RuntimeExecutionDefaults,');
-    expect(appStoreSource).toContain('StudioRuntimeDefaults');
+    expect(bridgeSource).not.toContain('getStudioRuntimeDefaults');
+    expect(bridgeSource).not.toContain('getRuntimeDefaults');
+    expect(bridgeSource).not.toContain('RuntimeDefaults');
+    expect(bridgeSource).not.toContain('RealmDefaults');
+    expect(bridgeSource).not.toContain('RuntimeExecutionDefaults');
+    expect(appStoreSource).not.toContain('StudioRuntimeDefaults');
     expect(appStoreSource).not.toContain('import type { RuntimeDefaults');
     expect(appStoreSource).not.toContain('runtimeDefaults: RuntimeDefaults');
     expect(appStoreSource).not.toContain('setRuntimeDefaults: (defaults: RuntimeDefaults)');

@@ -1,6 +1,6 @@
 import { useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { ChevronDown, LayoutGrid, Plus, LogOut, User, SlidersHorizontal } from 'lucide-react';
+import { ChevronDown, LayoutGrid, Plus, User, SlidersHorizontal } from 'lucide-react';
 import {
   AmbientBackground,
   Avatar,
@@ -13,9 +13,6 @@ import {
 } from '@nimiplatform/kit/ui';
 import { useAppStore } from './app-store.js';
 import { startStudioWindowDrag } from '../bridge/window-drag.js';
-import { logoutStudioRuntimeAccount } from '../features/auth/studio-auth-adapter.js';
-import { clearStudioNimiClient } from './studio-platform.js';
-import { studioQueryClient } from '../infra/query-client.js';
 import { useStudioI18n } from '../i18n/use-studio-i18n.js';
 import type { StudioCopyKey } from '../i18n/studio-copy.js';
 import type { StudioLocale } from '../i18n/studio-i18n.js';
@@ -69,29 +66,8 @@ function SidebarItem({
 function AccountMenu() {
   const { t } = useStudioI18n();
   const authUser = useAppStore((s) => s.auth.user);
-  const clearAuth = useAppStore((s) => s.clearAuthSession);
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [logoutPending, setLogoutPending] = useState(false);
-  const [logoutError, setLogoutError] = useState<string | null>(null);
-
-  const handleLogout = async () => {
-    setLogoutError(null);
-    setLogoutPending(true);
-    try {
-      await logoutStudioRuntimeAccount();
-      studioQueryClient.clear();
-      clearStudioNimiClient();
-      clearAuth();
-      setOpen(false);
-      navigate('/portfolio');
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      setLogoutError(message || t('shell.account.logoutFailed'));
-    } finally {
-      setLogoutPending(false);
-    }
-  };
 
   const displayName = authUser?.displayName || t('shell.account.ownerFallback');
   const avatarUrl = authUser?.avatarUrl ?? null;
@@ -102,7 +78,6 @@ function AccountMenu() {
       open={open}
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen);
-        if (nextOpen) setLogoutError(null);
       }}
     >
       <PopoverTrigger asChild>
@@ -159,24 +134,7 @@ function AccountMenu() {
             >
               {t('shell.account.ownerPortfolio')}
             </Button>
-            <Button
-              tone="danger"
-              size="sm"
-              fullWidth
-              role="menuitem"
-              className="ras-avatar-menu__action"
-              loading={logoutPending}
-              leadingIcon={<LogOut size={16} strokeWidth={1.8} />}
-              onClick={() => void handleLogout()}
-            >
-              {t('shell.account.signOut')}
-            </Button>
           </div>
-          {logoutError ? (
-            <p className="ras-avatar-menu__error" role="alert">
-              {logoutError}
-            </p>
-          ) : null}
         </div>
       </PopoverContent>
     </Popover>

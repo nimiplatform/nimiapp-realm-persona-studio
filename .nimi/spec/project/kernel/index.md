@@ -3,7 +3,7 @@ id: SPEC-REALM-PERSONA-STUDIO-KERNEL-INDEX-001
 title: Realm Persona Studio Kernel Authority
 status: active
 owner: "@team"
-updated: 2026-06-18
+updated: 2026-07-09
 ---
 
 # Realm Persona Studio Kernel Authority
@@ -12,7 +12,7 @@ updated: 2026-06-18
 
 This kernel is the single authoritative product/app contract source for Realm Persona Studio. Every current rule uses R-RPS-<DOMAIN>-NNN. Topic notes, screenshots, local audit output, and generated UI state are evidence only after they are absorbed here.
 
-Realm Persona Studio operates user-owned RealmPersona source objects. The current product data plane is WorldCore / RealmPersona / RuntimeSourceSnapshot through Realm core surfaces. It does not define a Realm-side Agent product domain, does not revive CharacterCard import, and does not route through rule/truth/projection package success paths.
+Realm Persona Studio operates user-owned RealmPersona source objects. The current product data plane is WorldCore / RealmPersona / SourceMaterializationPacket through Realm core surfaces. It does not define a Realm-side Agent product domain, does not revive CharacterCard import, and does not route through rule/truth/projection package success paths.
 
 ## Rule ID Format
 
@@ -42,7 +42,7 @@ The catalog enumerating every current rule ID lives in tables/rule-catalog.yaml.
 - Realm WorldCoreController.createRealmPersona is the owner persona creation surface.
 - Realm WorldCoreController.replaceRealmPersona is the owner-reviewed persona replacement surface. Writes must carry baseContentHash.
 - Realm WorldCoreController.listWorldCores and getWorldCore are the selectable home-world surfaces.
-- Realm WorldCoreController.createRuntimeSourceSnapshot materializes runtime input by value through sourceRef and never mutates RealmPersona.
+- Realm WorldCoreController.createSourceMaterializationPacket materializes runtime input by value through sourceRef and never mutates RealmPersona.
 - Runtime text, image, speech, and review calls are candidate generators only until an owner-reviewed Realm write succeeds.
 
 ## Explicit Non-Current Surfaces

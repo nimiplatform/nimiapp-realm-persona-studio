@@ -1,6 +1,6 @@
 # nimiapp-realm-persona-studio
 
-Realm Persona Studio — Owner-facing creation and operation desktop app for user-owned public Realm Personas. Packaged as a standalone Tauri 2 + React 19 desktop app.
+Realm Persona Studio — Owner-facing creation and operation desktop app for user-owned public Realm Personas. Packaged as a Tauri 2 / Electron 42 + React 19 desktop app.
 
 > Migrated from the `apps/realm-persona-studio` workspace in the `nimi-realm`
 > monorepo. The nimi-realm copy remains in place pending manual removal;
@@ -27,10 +27,10 @@ Normative product authority lives under [`.nimi/spec/project/kernel/`](./.nimi/s
 
 | Layer | Technology | Location |
 |-------|-----------|----------|
-| Desktop shell | Tauri 2 | `src-tauri/` |
+| Desktop shell | Tauri 2 + Electron 42 | `src-tauri/`, `src-electron/` |
 | Renderer | React 19 + Vite 7 + Tailwind 4 | `src/shell/renderer/` |
 | Routing | react-router-dom 7 | `src/shell/renderer/app-shell/routes.tsx` |
-| Auth & runtime bridge | `nimi-shell-tauri` (crates.io) | `src-tauri/src/main.rs` |
+| Auth & runtime bridge | Nimi installed app standard shell | `src-tauri/src/main.rs`, `src-electron/` |
 | UI components | `@nimiplatform/kit` (npm) | renderer-wide |
 | Platform client | `@nimiplatform/sdk` (npm) | `src/shell/renderer/app-shell/studio-platform.ts` |
 | State | Zustand | `src/shell/renderer/app-shell/app-store.ts` |
@@ -59,6 +59,9 @@ pnpm dev:renderer
 
 # Full Tauri shell (renderer + native window)
 pnpm dev:shell
+
+# Electron dev shell
+pnpm dev:electron
 ```
 
 ## Build & Verify
@@ -70,22 +73,18 @@ pnpm check:spec-consistency           # spec authority surface check
 pnpm lint                             # typecheck + eslint + cargo check
 ```
 
-## Login flow
+## Installed App Auth Boundary
 
-Realm Persona Studio inherits the Runtime account session from the Nimi
-desktop shell. On first launch:
+Realm Persona Studio inherits Runtime account state from the Nimi desktop host.
+It is an installed app shell consumer, not a login or OAuth broker:
 
-1. `runStudioBootstrap` loads `RuntimeDefaults` and constructs a
-   first-party Runtime client (`@nimiplatform/sdk`).
-2. If no Runtime account session exists, the kit's `DesktopShellAuthPage`
-   renders the login UI; on success, Runtime owns refresh-token custody and
-   projects an account identity into the app store.
-3. Once authenticated, the shell renders the workspace shell with the owner
-   storybook routes (Portfolio, Create, Detail, Settings + Review, Assets +
-   Voice, Posts + Schedule, Insights).
+- The app does not render `DesktopShellAuthPage`.
+- The app does not open OAuth, exchange OAuth codes, or save/load/clear Runtime sessions.
+- The app does not own access tokens, refresh tokens, Runtime defaults, or Runtime app registration.
+- Missing Desktop shared Runtime account state renders an explicit capability-unavailable state.
 
-Access tokens are pulled on-demand via Runtime; this app **does not** persist
-access or refresh tokens locally (PO-SHELL-008 / K-ACCSVC-008 equivalent).
+Realm and Runtime calls are mediated through Nimi kit / SDK installed app
+bridges and the standard shell capability set.
 
 ## Routes
 
@@ -94,7 +93,7 @@ access or refresh tokens locally (PO-SHELL-008 / K-ACCSVC-008 equivalent).
 | `/portfolio` | Current-user owner-created persona list, search, filter, sort, source warnings |
 | `/portfolio/create` | Create a Realm Persona (handle preflight, world select, identity fields) |
 | `/portfolio/:personaId` | Current public profile, ownership, world, state, friendCount |
-| `/portfolio/:personaId/settings` | Visibility + setting proposal + RuntimeSourceSnapshot materialization |
+| `/portfolio/:personaId/settings` | Visibility + setting proposal + SourceMaterializationPacket materialization |
 | `/portfolio/:personaId/settings/review` | Runtime consistency review (advisory critique) |
 | `/portfolio/:personaId/assets` | Avatar, profile cover, post-image candidates |
 | `/portfolio/:personaId/assets/voice` | Voice-demo candidates via `audio.synthesize` |
@@ -116,7 +115,7 @@ Studio canonical owner portfolio surfaces are
 `Realm WorldCoreController.getRealmPersona`. Create/update use
 `createRealmPersona` and `replaceRealmPersona`; home-world reads use
 `listWorldCores` / `getWorldCore`; runtime materialization uses
-`createRuntimeSourceSnapshot`. `/api/creator/agents`,
+`createSourceMaterializationPacket`. `/api/creator/agents`,
 `/api/agent/forge-imported-system/**`, and `/api/agent/dev/my-agents` are
 explicitly non-current legacy anti-targets and must not be promoted into owner
 portfolio surfaces.

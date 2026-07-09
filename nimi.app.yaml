@@ -20,7 +20,7 @@ permissions:
       purpose: Read WorldCore records for persona home-world selection and preview.
     - scope: realm.core.runtime-snapshots.write
       qualifier: local-agent-materialization
-      purpose: Create RuntimeSourceSnapshot payloads for localAgent runtime materialization.
+      purpose: Create SourceMaterializationPacket payloads for localAgent runtime materialization.
     - scope: realm.posts.write
       qualifier: persona-authored-post
       purpose: Publish persona-authored posts to the Realm feed after owner review.

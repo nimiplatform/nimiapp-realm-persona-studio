@@ -1,4 +1,3 @@
-import { getStudioRuntimeDefaults } from '../bridge/index.js';
 import { useAppStore } from '../app-shell/app-store.js';
 import {
   buildStudioNimiClient,
@@ -58,12 +57,8 @@ async function doRunStudioBootstrap(): Promise<void> {
     clearStudioNimiClient();
     store.setBootstrapReady(false);
     store.setBootstrapError(null);
-    const runtimeDefaults = await getStudioRuntimeDefaults();
-    store.setRuntimeDefaults(runtimeDefaults);
 
-    const client = await buildStudioNimiClient({
-      realmBaseUrl: runtimeDefaults.realm?.realmBaseUrl ?? null,
-    });
+    const client = await buildStudioNimiClient();
     setStudioNimiClient(client);
     const runtime = client.runtime;
 

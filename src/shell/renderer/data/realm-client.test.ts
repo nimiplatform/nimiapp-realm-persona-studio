@@ -20,7 +20,7 @@ describe('studio Realm facade boundary', () => {
       'worldCoreControllerListWorldCores',
       'worldCoreControllerGetWorldCore',
       'worldCoreControllerGetOasisWorld',
-      'worldCoreControllerCreateRuntimeSourceSnapshot',
+      'worldCoreControllerCreateSourceMaterializationPacket',
       'createPost',
       'listResources',
       'createImageDirectUpload',
@@ -40,6 +40,9 @@ describe('studio Realm facade boundary', () => {
       expect(source).not.toContain('.generated.');
       expect(source).not.toContain("Pick<Realm, 'generated'>");
       expect(source).not.toContain('import type { Realm }');
+      expect(source).not.toContain('CreateRuntimeSourceSnapshot');
+      expect(source).not.toContain('RuntimeSourceSnapshot');
+      expect(source).not.toContain('createRuntimeSourceSnapshot');
     }
   });
 });

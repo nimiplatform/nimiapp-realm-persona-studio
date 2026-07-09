@@ -2,8 +2,10 @@ import { useCallback, useEffect, type ReactNode } from 'react';
 import { AmbientBackground, Button, InlineAlert, LoadingSkeleton, Surface } from '@nimiplatform/kit/ui';
 import { useAppStore } from './app-store.js';
 import { runStudioBootstrap } from '../infra/studio-bootstrap.js';
-import { StudioLoginPage } from '../features/auth/studio-login-page.js';
 import { useStudioI18n } from '../i18n/use-studio-i18n.js';
+
+const INSTALLED_APP_AUTH_REQUIRED_TITLE = 'Desktop shared Runtime account required';
+const INSTALLED_APP_AUTH_REQUIRED_REASON = 'capability-unavailable';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { t } = useStudioI18n();
@@ -45,7 +47,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   if (authStatus === 'unauthenticated') {
-    return <StudioLoginPage />;
+    return (
+      <BootstrapFrame>
+        <InlineAlert tone="warning">
+          <div className="ras-bootstrap-copy">
+            <strong>{INSTALLED_APP_AUTH_REQUIRED_TITLE}</strong>
+            <span>
+              {INSTALLED_APP_AUTH_REQUIRED_REASON}: launch Realm Persona Studio from an authenticated Nimi Desktop installed app session.
+            </span>
+          </div>
+        </InlineAlert>
+      </BootstrapFrame>
+    );
   }
 
   return <>{children}</>;

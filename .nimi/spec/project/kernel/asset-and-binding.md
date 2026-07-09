@@ -3,7 +3,7 @@ id: SPEC-REALM-PERSONA-STUDIO-ASSET-BINDING-001
 title: Persona Asset And Binding Boundary
 status: active
 owner: "@team"
-updated: 2026-06-18
+updated: 2026-07-09
 ---
 
 # Persona Asset And Binding Boundary
@@ -16,3 +16,4 @@ updated: 2026-06-18
 - **[R-RPS-ASSET-006]** The app must not write AGENT host bindings, AGENT_* binding points, or Resource-to-Agent presentation records.
 - **[R-RPS-ASSET-007]** Asset candidates must preserve source persona id, source content hash, owner review state, and local timestamp.
 - **[R-RPS-ASSET-008]** Missing media source data renders as unavailable and must not be replaced with stock placeholders.
+- **[R-RPS-ASSET-009]** Local asset URL resolution, app data paths, and local JSON persistence must use the installed app standard shell local-assets, data, storage, or config capabilities; Studio must not expose raw Node filesystem or raw Electron IPC to the renderer.
