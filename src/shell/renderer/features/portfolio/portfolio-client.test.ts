@@ -225,7 +225,7 @@ describe('owner portfolio core client', () => {
       expect(realm.worldCoreControllerCreateRealmPersona).toHaveBeenCalledTimes(1);
     });
 
-    it('creates audio upload session with metadata and finalizes after storage upload', async () => {
+    it('keeps reviewed audio as a local ingress candidate until Runtime admission', async () => {
       const realm = mockRealm();
       const storageUpload = vi.fn(async () => undefined);
       const result = await uploadReviewedPostMediaResource({
@@ -233,29 +233,17 @@ describe('owner portfolio core client', () => {
         file: { name: 'voice.mp3', type: 'audio/mpeg', size: 4096 },
         persona: ownerPersonaDetailWithWorldId(),
       }, realm, storageUpload);
-      const audioPayload = vi.mocked(realm.createAudioDirectUpload).mock.calls[0]?.[0]?.body;
 
-      expect(audioPayload).toMatchObject({
-        filename: 'voice.mp3',
-        mimeType: 'audio/mpeg',
-        metadata: {
-          source: 'realmPersona:world-oasis:persona-1:hash-persona-1:reviewed-post-media-resource',
-          resourceType: 'AUDIO',
-          sourceKind: 'realmPersona',
-          sourceId: 'persona-1',
-        },
-      });
-      expect(storageUpload).toHaveBeenCalledWith({
-        uploadUrl: 'https://upload.example.test/audio',
-        resourceType: 'AUDIO',
-        file: { name: 'voice.mp3', type: 'audio/mpeg', size: 4096 },
-      });
+      expect(storageUpload).not.toHaveBeenCalled();
       expect(result).toMatchObject({
-        ok: true,
-        canonical: {
-          id: 'resource-audio-upload',
-          resourceType: 'AUDIO',
-          status: 'READY',
+        ok: false,
+        failure: 'persona-media-publication-not-admitted',
+        attachmentTruth: false,
+        publicTruth: false,
+        submitted: {
+        mimeType: 'audio/mpeg',
+          sizeBytes: 4096,
+          sourceRef: 'realmPersona:world-oasis:persona-1:hash-persona-1:reviewed-post-media-resource',
         },
       });
     });

@@ -2,8 +2,7 @@ import { useAppStore } from '../app-shell/app-store.js';
 import {
   buildStudioNimiClient,
   clearStudioNimiClient,
-  loadStudioRuntimeAccountUser,
-  type StudioAuthUser,
+  isStudioCapabilityUnavailable,
 } from '../app-shell/studio-platform.js';
 import { describeError, logRendererEvent } from './telemetry/renderer-log.js';
 import { hasStudioNimiClient, setStudioNimiClient } from './studio-nimi-client.js';
@@ -60,23 +59,15 @@ async function doRunStudioBootstrap(): Promise<void> {
 
     const client = await buildStudioNimiClient();
     setStudioNimiClient(client);
-    const runtime = client.runtime;
-
-    const runtimeAccountUser: StudioAuthUser | null = await loadStudioRuntimeAccountUser(runtime);
-
-    if (runtimeAccountUser) {
-      store.setAuthSession({
-        id: runtimeAccountUser.id,
-        displayName: runtimeAccountUser.displayName,
-      });
-    } else {
-      store.clearAuthSession();
-    }
-
-    store.setBootstrapReady(true);
-    store.setBootstrapError(null);
+    throw new Error('Realm Persona Studio protected installed client returned without an account projection.');
   } catch (error) {
     clearStudioNimiClient();
+    if (isStudioCapabilityUnavailable(error)) {
+      store.clearAuthSession();
+      store.setBootstrapError(null);
+      store.setBootstrapReady(true);
+      return;
+    }
     const message = error instanceof Error ? error.message : String(error);
     logRendererEvent({
       level: 'error',

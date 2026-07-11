@@ -1,17 +1,13 @@
 import type {
-  RealmCreateAudioDirectUploadOperationRequest,
-  RealmCreateAudioDirectUploadOperationResponse,
-  RealmCreateImageDirectUploadOperationResponse,
   RealmCreatePostOperationRequest,
   RealmCreatePostOperationResponse,
   RealmCreateTextResourceOperationRequest,
   RealmCreateTextResourceOperationResponse,
-  RealmCreateVideoDirectUploadOperationResponse,
   RealmFinalizeResourceOperationRequest,
   RealmFinalizeResourceOperationResponse,
   RealmListResourcesOperationResponse,
 } from '@nimiplatform/sdk/realm/generated';
-import { createStudioRealmClient, type StudioRealmSurface } from '@renderer/data/realm-client.js';
+import type { StudioRealmSurface } from '@renderer/data/realm-client.js';
 import { createStudioRuntimeClient } from '@renderer/data/runtime-client.js';
 import {
   isStudioAIRouteBindingFailure,
@@ -36,17 +32,15 @@ type RealmCreatePostResponse = RealmCreatePostOperationResponse;
 type RealmCreateTextResourceInput = RealmCreateTextResourceOperationRequest['body'];
 type RealmCreateTextResourceResponse = RealmCreateTextResourceOperationResponse;
 type RealmResourceListResponse = RealmListResourcesOperationResponse;
-type RealmCreateImageUploadResponse = RealmCreateImageDirectUploadOperationResponse;
-type RealmCreateVideoUploadResponse = RealmCreateVideoDirectUploadOperationResponse;
-type RealmCreateAudioUploadInput = RealmCreateAudioDirectUploadOperationRequest['body'];
-type RealmCreateAudioUploadResponse = RealmCreateAudioDirectUploadOperationResponse;
 type RealmFinalizeResourceInput = RealmFinalizeResourceOperationRequest['body'];
 type RealmFinalizeResourceResponse = RealmFinalizeResourceOperationResponse;
 
-export const REALM_POST_PUBLISH_SOURCE = 'Realm PostsService.createPost';
-export const REALM_TEXT_RESOURCE_SOURCE = 'Realm ResourcesService.createTextResource';
+export const REALM_POST_PUBLISH_SOURCE = 'Runtime-mediated Realm post publication (not admitted)';
+export const REALM_TEXT_RESOURCE_SOURCE = 'Runtime-mediated Realm text resource publication (not admitted)';
 export const REALM_RESOURCE_LIST_SOURCE = 'Realm ResourcesService.listResources';
-export const REALM_MEDIA_RESOURCE_UPLOAD_SOURCE = 'Realm ResourcesService direct upload + finalizeResource';
+export const REALM_MEDIA_RESOURCE_UPLOAD_SOURCE = 'Runtime-owned media ingress (not admitted)';
+export const PERSONA_PUBLICATION_UNAVAILABLE_MESSAGE = 'Publication is unavailable until Nimi Runtime admits the protected Persona post and media operation set.';
+export const PERSONA_PUBLICATION_ADMITTED = false;
 
 export type RealmPostPublishCanonicalFields = {
   id: string;
@@ -67,7 +61,7 @@ export type RealmPostPublishResult =
   | {
     ok: false;
     source: typeof REALM_POST_PUBLISH_SOURCE;
-    failure: 'realm-create-post-failed' | 'realm-create-post-missing-canonical-id';
+    failure: 'persona-post-publication-not-admitted' | 'realm-create-post-failed' | 'realm-create-post-missing-canonical-id';
     message: string;
   };
 
@@ -92,6 +86,7 @@ export type RealmTextResourceCreateResult =
     attachmentTruth: false;
     failure:
       | 'post-text-resource-payload-invalid'
+      | 'persona-text-resource-publication-not-admitted'
       | 'realm-create-text-resource-failed'
       | 'realm-create-text-resource-missing-id'
       | 'realm-create-text-resource-not-ready';
@@ -124,11 +119,6 @@ export type DirectMediaResourceUploadInput = {
   tags?: string[];
 };
 
-type DirectMediaResourceUploadSession =
-  | RealmCreateImageUploadResponse
-  | RealmCreateVideoUploadResponse
-  | RealmCreateAudioUploadResponse;
-
 type DirectMediaResourceCanonicalFields = {
   id: string;
   resourceType: DirectMediaResourceType;
@@ -158,22 +148,15 @@ export type DirectMediaResourceUploadResult =
     failure:
       | 'media-upload-file-invalid'
       | 'media-upload-type-invalid'
+      | 'persona-media-publication-not-admitted'
       | 'realm-direct-upload-session-failed'
       | 'realm-direct-upload-session-invalid'
       | 'storage-direct-upload-failed'
       | 'realm-finalize-resource-failed'
       | 'realm-finalize-resource-not-ready';
     message: string;
-      submitted: RealmFinalizeResourceInput | RealmCreateAudioUploadInput | null;
+      submitted: RealmFinalizeResourceInput | null;
   };
-
-type StorageUploadRequest = {
-  uploadUrl: string;
-  resourceType: DirectMediaResourceType;
-  file: DirectMediaResourceUploadFile;
-};
-
-type StorageUploadTransport = (request: StorageUploadRequest) => Promise<void>;
 export type RuntimePostCopyProposalResult =
   | {
     ok: true;
@@ -319,29 +302,6 @@ export function buildFinalizeDirectMediaResourceInput(input: DirectMediaResource
       resourceType: input.resourceType,
       humanReviewed: true,
     },
-  };
-}
-
-function normalizeDirectMediaUploadSession(
-  session: DirectMediaResourceUploadSession,
-  expectedResourceType: DirectMediaResourceType,
-): { resourceId: string; resourceType: DirectMediaResourceType; uploadUrl: string; status: string } | null {
-  if (!session || typeof session !== 'object') {
-    return null;
-  }
-  const record = session as unknown as Record<string, unknown>;
-  const resourceId = readOptionalString(record, 'resourceId');
-  const resourceType = readOptionalString(record, 'resourceType');
-  const uploadUrl = readOptionalString(record, 'uploadUrl');
-  const status = readOptionalString(record, 'status');
-  if (!resourceId || resourceType !== expectedResourceType || !uploadUrl || status !== 'PENDING') {
-    return null;
-  }
-  return {
-    resourceId,
-    resourceType,
-    uploadUrl,
-    status,
   };
 }
 
@@ -569,57 +529,27 @@ export async function proposeReviewedPostCopy(
   }
 }
 export async function publishReviewedPostDraft(
-  payload: CandidatePostPayload,
-  realm: StudioRealmClient = createStudioRealmClient(),
+  _payload: CandidatePostPayload,
+  _realm?: StudioRealmClient,
 ): Promise<RealmPostPublishResult> {
-  try {
-    const post = await realm.createPost({
-      path: {},
-      body: buildRealmCreatePostInput(payload),
-    });
-    return normalizeRealmPostPublishResult(post);
-  } catch (error) {
-    return {
-      ok: false,
-      source: REALM_POST_PUBLISH_SOURCE,
-      failure: 'realm-create-post-failed',
-      message: error instanceof Error ? error.message : 'Realm Create Post failed.',
-    };
-  }
+  return {
+    ok: false,
+    source: REALM_POST_PUBLISH_SOURCE,
+    failure: 'persona-post-publication-not-admitted',
+    message: PERSONA_PUBLICATION_UNAVAILABLE_MESSAGE,
+  };
 }
 
 export async function listReadyPostAttachmentResources(
-  realm: StudioRealmClient = createStudioRealmClient(),
+  _realm?: StudioRealmClient,
 ): Promise<PostAttachmentResourceOption[]> {
-  const response = await realm.listResources({ path: {} });
-  return normalizePostAttachmentResourceOptions(response);
-}
-
-async function defaultStorageUploadTransport(request: StorageUploadRequest): Promise<void> {
-  const response = request.resourceType === 'AUDIO'
-    ? await fetch(request.uploadUrl, {
-      method: 'PUT',
-      body: request.file as unknown as BodyInit,
-      headers: request.file.type ? { 'content-type': request.file.type } : undefined,
-    })
-    : await fetch(request.uploadUrl, {
-      method: 'POST',
-      body: (() => {
-        const formData = new FormData();
-        formData.append('file', request.file as unknown as Blob, request.file.name);
-        return formData;
-      })(),
-    });
-
-  if (!response.ok) {
-    throw new Error(`storage upload failed with HTTP ${response.status}`);
-  }
+  throw new Error(PERSONA_PUBLICATION_UNAVAILABLE_MESSAGE);
 }
 
 export async function uploadReviewedPostMediaResource(
   input: DirectMediaResourceUploadInput,
-  realm: StudioRealmClient = createStudioRealmClient(),
-  storageUpload: StorageUploadTransport = defaultStorageUploadTransport,
+  _realm?: StudioRealmClient,
+  _storageUpload?: unknown,
 ): Promise<DirectMediaResourceUploadResult> {
   const finalizeInput = buildFinalizeDirectMediaResourceInput(input);
   if (!finalizeInput) {
@@ -633,125 +563,28 @@ export async function uploadReviewedPostMediaResource(
       submitted: null,
     };
   }
-
-  let rawSession: DirectMediaResourceUploadSession;
-  try {
-    if (input.resourceType === 'IMAGE') {
-      rawSession = await realm.createImageDirectUpload({
-        path: {},
-        query: { requireSignedUrls: 'true' },
-      });
-    } else if (input.resourceType === 'VIDEO') {
-      rawSession = await realm.createVideoDirectUpload({
-        path: {},
-        query: { requireSignedUrls: 'true' },
-      });
-    } else {
-      rawSession = await realm.createAudioDirectUpload({
-        path: {},
-        body: {
-          ...finalizeInput,
-          filename: input.file.name,
-        },
-      });
-    }
-  } catch (error) {
-    return {
-      ok: false,
-      source: REALM_MEDIA_RESOURCE_UPLOAD_SOURCE,
-      attachmentTruth: false,
-      publicTruth: false,
-      failure: 'realm-direct-upload-session-failed',
-      message: error instanceof Error ? error.message : 'Realm direct upload session failed.',
-      submitted: input.resourceType === 'AUDIO' ? { ...finalizeInput, filename: input.file.name } : finalizeInput,
-    };
-  }
-
-  const session = normalizeDirectMediaUploadSession(rawSession, input.resourceType);
-  if (!session) {
-    return {
-      ok: false,
-      source: REALM_MEDIA_RESOURCE_UPLOAD_SOURCE,
-      attachmentTruth: false,
-      publicTruth: false,
-      failure: 'realm-direct-upload-session-invalid',
-      message: 'Realm direct upload session did not return a PENDING resource id and upload URL.',
-      submitted: finalizeInput,
-    };
-  }
-
-  try {
-    await storageUpload({
-      uploadUrl: session.uploadUrl,
-      resourceType: input.resourceType,
-      file: input.file,
-    });
-  } catch (error) {
-    return {
-      ok: false,
-      source: REALM_MEDIA_RESOURCE_UPLOAD_SOURCE,
-      attachmentTruth: false,
-      publicTruth: false,
-      failure: 'storage-direct-upload-failed',
-      message: error instanceof Error ? error.message : 'Storage direct upload failed.',
-      submitted: finalizeInput,
-    };
-  }
-
-  try {
-    const resource = await realm.finalizeResource({
-      path: { resourceId: session.resourceId },
-      body: finalizeInput,
-    });
-    const canonical = normalizeFinalizedDirectMediaResource(resource, input.resourceType);
-    if (!canonical) {
-      return {
-        ok: false,
-        source: REALM_MEDIA_RESOURCE_UPLOAD_SOURCE,
-        attachmentTruth: false,
-        publicTruth: false,
-        failure: 'realm-finalize-resource-not-ready',
-        message: 'Realm finalizeResource did not return a READY media Resource.',
-        submitted: finalizeInput,
-      };
-    }
-    return {
-      ok: true,
-      source: REALM_MEDIA_RESOURCE_UPLOAD_SOURCE,
-      attachmentTruth: true,
-      publicTruth: false,
-      session: {
-        resourceId: session.resourceId,
-        resourceType: session.resourceType,
-        status: session.status,
-      },
-      resource,
-      canonical,
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      source: REALM_MEDIA_RESOURCE_UPLOAD_SOURCE,
-      attachmentTruth: false,
-      publicTruth: false,
-      failure: 'realm-finalize-resource-failed',
-      message: error instanceof Error ? error.message : 'Realm finalizeResource failed.',
-      submitted: finalizeInput,
-    };
-  }
+  return {
+    ok: false,
+    source: REALM_MEDIA_RESOURCE_UPLOAD_SOURCE,
+    attachmentTruth: false,
+    publicTruth: false,
+    failure: 'persona-media-publication-not-admitted',
+    message: PERSONA_PUBLICATION_UNAVAILABLE_MESSAGE,
+    submitted: finalizeInput,
+  };
 }
 
 export async function uploadReviewedIdentityMediaResource(
   input: Omit<DirectMediaResourceUploadInput, 'purpose'>,
-  realm: StudioRealmClient = createStudioRealmClient(),
-  storageUpload: StorageUploadTransport = defaultStorageUploadTransport,
+  realm?: StudioRealmClient,
+  storageUpload?: unknown,
 ): Promise<DirectMediaResourceUploadResult> {
   return uploadReviewedPostMediaResource({ ...input, purpose: 'identity' }, realm, storageUpload);
 }
 
 export async function createReviewedPostTextResource(
   payload: CandidatePostPayload,
-  realm: StudioRealmClient = createStudioRealmClient(),
+  _realm?: StudioRealmClient,
 ): Promise<RealmTextResourceCreateResult> {
   const submitted = buildRealmPostTextResourceInput(payload);
   if (!submitted) {
@@ -765,20 +598,12 @@ export async function createReviewedPostTextResource(
     };
   }
 
-  try {
-    const resource = await realm.createTextResource({
-      path: {},
-      body: submitted,
-    });
-    return normalizeRealmTextResourceCreateResult(resource, submitted);
-  } catch (error) {
-    return {
-      ok: false,
-      source: REALM_TEXT_RESOURCE_SOURCE,
-      attachmentTruth: false,
-      failure: 'realm-create-text-resource-failed',
-      message: error instanceof Error ? error.message : 'Realm Create Text Resource failed.',
-      submitted,
-    };
-  }
+  return {
+    ok: false,
+    source: REALM_TEXT_RESOURCE_SOURCE,
+    attachmentTruth: false,
+    failure: 'persona-text-resource-publication-not-admitted',
+    message: PERSONA_PUBLICATION_UNAVAILABLE_MESSAGE,
+    submitted,
+  };
 }

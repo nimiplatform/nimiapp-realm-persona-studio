@@ -3,7 +3,7 @@ id: SPEC-REALM-PERSONA-STUDIO-FAILURE-SEMANTICS-001
 title: Failure Semantics
 status: active
 owner: "@team"
-updated: 2026-07-09
+updated: 2026-07-11
 ---
 
 # Failure Semantics
@@ -26,4 +26,4 @@ updated: 2026-07-09
 - **[R-RPS-FAIL-016]** Post publish failed.
 - **[R-RPS-FAIL-017]** Local schedule cannot be persisted.
 - **[R-RPS-FAIL-018]** No failure may be converted into placeholder success, fake return data, synthesized metric, or renderer-local source authority.
-- **[R-RPS-FAIL-019]** Missing Desktop shared Runtime account state, missing installed app launch binding, or unavailable standard shell capability is an explicit capability-unavailable failure and must not redirect to an app-owned login, OAuth, Runtime defaults bootstrap, or token/session fallback.
+- **[R-RPS-FAIL-019]** Missing protected installed session, unavailable standard-shell operation, or unadmitted Realm/Runtime operation is an explicit capability-unavailable failure and must not redirect to an app-owned login, OAuth, Runtime defaults bootstrap, portable launch binding, generic Runtime bridge, or token/session fallback.

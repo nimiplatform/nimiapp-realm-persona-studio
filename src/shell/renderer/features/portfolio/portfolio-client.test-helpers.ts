@@ -163,9 +163,17 @@ export const world: RealmPersonaCreationWorldDto = {
       relationshipTypes: [],
     },
     timeModel: {
-      mode: 'continuous',
+      anchor: {
+        realStartedAt: '2026-05-21T00:00:00.000Z',
+        worldStartedAt: '2026-05-21T00:00:00.000Z',
+        worldStartedAtDisplay: '2026-05-21 00:00',
+      },
+      calendar: null,
+      displayFormat: null,
+      mode: 'wallClockAnchored',
       flowRatio: 1,
       isPaused: false,
+      pausedWorldTime: null,
     },
     timeline: {
       events: [],

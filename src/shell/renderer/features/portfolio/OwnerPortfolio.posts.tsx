@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { Button, Checkbox, EmptyState, FieldShell, InlineAlert, SelectField, StatusBadge, Surface, TextareaField, TextField } from '@nimiplatform/kit/ui';
 import type { OwnerPortfolioPersonaDetail } from './portfolio-data.js';
 import {
+  PERSONA_PUBLICATION_ADMITTED,
+  REALM_MEDIA_RESOURCE_UPLOAD_SOURCE,
+  REALM_TEXT_RESOURCE_SOURCE,
   createReviewedPostTextResource,
   listReadyPostAttachmentResources,
   proposeReviewedPostCopy,
@@ -285,7 +288,7 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
     if (!postTextResourceDraft.publishable) {
       setTextResourceResult({
         ok: false,
-        source: 'Realm ResourcesService.createTextResource',
+        source: REALM_TEXT_RESOURCE_SOURCE,
         attachmentTruth: false,
         failure: 'post-text-resource-payload-invalid',
         message: postTextResourceDraft.errors.join('; ') || 'Reviewed post text resource requires caption content.',
@@ -363,7 +366,7 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
     if (!mediaUploadFile) {
       setMediaUploadResult({
         ok: false,
-        source: 'Realm ResourcesService direct upload + finalizeResource',
+        source: REALM_MEDIA_RESOURCE_UPLOAD_SOURCE,
         attachmentTruth: false,
         publicTruth: false,
         failure: 'media-upload-file-invalid',
@@ -639,6 +642,9 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
                 </div>
                 <StatusBadge tone="info">{t('posts.upload.badge')}</StatusBadge>
               </div>
+              <InlineAlert tone="warning" className="mt-3">
+                {t('posts.publicationUnavailable')}
+              </InlineAlert>
               <div className="mt-3 grid gap-3 md:grid-cols-[180px_1fr]">
                 <FieldShell label={t('posts.upload.mediaType')}>
                   <SelectField
@@ -672,7 +678,7 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
               </div>
               <div className="mt-3 flex flex-wrap gap-3">
                 <Button
-                  disabled={!draft.humanReviewed || !mediaUploadFile || isUploadingMediaResource}
+                  disabled={!PERSONA_PUBLICATION_ADMITTED || !draft.humanReviewed || !mediaUploadFile || isUploadingMediaResource}
                   loading={isUploadingMediaResource}
                   onClick={() => void uploadMediaResourceAttachment()}
                 >
@@ -704,6 +710,9 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
                 </div>
                 <StatusBadge tone="info">{t('posts.textAttachment.badge')}</StatusBadge>
               </div>
+              <InlineAlert tone="warning" className="mt-3">
+                {t('posts.publicationUnavailable')}
+              </InlineAlert>
               {postTextResourceDraft.publishable ? null : (
                 <InlineAlert tone="warning">
                   {translatePostFixedMessages(postTextResourceDraft.errors, t)}
@@ -711,7 +720,7 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
               )}
               <div className="mt-3 flex flex-wrap gap-3">
                 <Button
-                  disabled={!postTextResourceDraft.publishable || isCreatingTextResource}
+                  disabled={!PERSONA_PUBLICATION_ADMITTED || !postTextResourceDraft.publishable || isCreatingTextResource}
                   loading={isCreatingTextResource}
                   onClick={() => void createTextResourceAttachment()}
                 >
@@ -756,7 +765,7 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
                 {t('posts.previewReviewedPost')}
               </Button>
               <Button
-                disabled={!validation.publishable || isPublishing}
+                disabled={!PERSONA_PUBLICATION_ADMITTED || !validation.publishable || isPublishing}
                 onClick={async () => {
                   if (!validation.publishable) {
                     return;
@@ -775,6 +784,11 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
                 {isPublishing ? t('posts.publishing') : t('posts.publish')}
               </Button>
             </div> : null}
+            {!isScheduleWorkspace ? (
+              <InlineAlert tone="warning">
+                {t('posts.publicationUnavailable')}
+              </InlineAlert>
+            ) : null}
             {!isScheduleWorkspace ? (
               <TechnicalReviewDetails title={t('posts.reviewedPayload')}>
                 <pre className="ras-json-preview m-0 min-h-32 overflow-auto rounded-[var(--nimi-radius-field)] border border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-card)] p-3 text-xs">
@@ -871,13 +885,16 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
                   {t('posts.schedule.save')}
                 </Button>
                 <Button
-                  disabled={!savedSchedule || !isLocalPostScheduleDue(savedSchedule) || isPublishingSchedule}
+                  disabled={!PERSONA_PUBLICATION_ADMITTED || !savedSchedule || !isLocalPostScheduleDue(savedSchedule) || isPublishingSchedule}
                   loading={isPublishingSchedule}
                   onClick={() => void publishSavedSchedule()}
                 >
                   {t('posts.schedule.publishDue')}
                 </Button>
               </div>
+              <InlineAlert tone="warning" className="mt-3">
+                {t('posts.publicationUnavailable')}
+              </InlineAlert>
               {savedSchedule ? (
                 <InlineAlert tone={isLocalPostScheduleDue(savedSchedule) ? 'info' : 'success'} className="mt-3">
                   {isLocalPostScheduleDue(savedSchedule)

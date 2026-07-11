@@ -1,8 +1,6 @@
 import type {
   RealmPersonaDto,
   ReplaceRealmPersonaDto,
-  CreateSourceMaterializationPacketDto,
-  SourceMaterializationPacketDto,
 } from '@nimiplatform/sdk/realm/generated';
 import { createStudioRealmClient, type StudioRealmSurface } from '@renderer/data/realm-client.js';
 import { createStudioRuntimeClient } from '@renderer/data/runtime-client.js';
@@ -41,8 +39,16 @@ export type RealmOwnerPersonaSettings = OwnerPersonaSettingsSnapshot & {
   core: Record<string, unknown>;
 };
 type RealmOwnerPersonaSettingsUpdateInput = ReplaceRealmPersonaDto;
-type RealmRuntimeProjectionInput = CreateSourceMaterializationPacketDto;
-type RealmRuntimeProjectionResponse = SourceMaterializationPacketDto;
+type RealmRuntimeProjectionInput = {
+  intendedRuntimeAudience: string;
+  sourceRef: {
+    kind: 'realmPersona';
+    worldId: string;
+    sourceId: string;
+    sourceContentHash: string;
+  };
+};
+type RealmRuntimeProjectionResponse = unknown;
 type PersonaChatReadinessSubmittedInput = RealmRuntimeProjectionInput;
 
 const STUDIO_RUNTIME_MATERIALIZATION_AUDIENCE = 'desktop.runtime';
@@ -86,6 +92,7 @@ export type RuntimeProjectionSummaryResult =
     truthWrite: false;
     failure:
       | 'runtime-projection-world-unavailable'
+      | 'runtime-projection-not-admitted'
       | 'runtime-projection-failed'
       | 'runtime-projection-invalid-response';
     message: string;
@@ -106,6 +113,7 @@ export type PersonaChatReadinessSummaryResult =
     truthWrite: false;
     failure:
       | 'runtime-projection-world-unavailable'
+      | 'runtime-projection-not-admitted'
       | 'runtime-projection-failed'
       | 'runtime-projection-invalid-response';
     message: string;
@@ -734,7 +742,7 @@ export async function updateReviewedPortfolioPersonaSettings(
 }
 export async function projectPersonaRuntimeContextSummary(
   persona: OwnerPortfolioPersonaDetail,
-  realm: StudioRealmClient = createStudioRealmClient(),
+  _realm?: StudioRealmClient,
 ): Promise<RuntimeProjectionSummaryResult> {
   const submitted = buildRuntimeProjectionInput(persona);
   if (!submitted) {
@@ -748,44 +756,19 @@ export async function projectPersonaRuntimeContextSummary(
     };
   }
 
-  try {
-    const response = await realm.worldCoreControllerCreateSourceMaterializationPacket({
-      path: {},
-      body: submitted,
-    });
-    const summary = normalizeRuntimeProjectionSummary(response);
-    if (!summary) {
-      return {
-        ok: false,
-        source: REALM_RUNTIME_PROJECTION_SOURCE,
-        truthWrite: false,
-        failure: 'runtime-projection-invalid-response',
-        message: 'SourceMaterializationPacket response did not include packet hash summary.',
-        submitted,
-      };
-    }
-    return {
-      ok: true,
-      source: REALM_RUNTIME_PROJECTION_SOURCE,
-      truthWrite: false,
-      summary,
-      submitted,
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      source: REALM_RUNTIME_PROJECTION_SOURCE,
-      truthWrite: false,
-      failure: 'runtime-projection-failed',
-      message: error instanceof Error ? error.message : 'Realm SourceMaterializationPacket creation failed.',
-      submitted,
-    };
-  }
+  return {
+    ok: false,
+    source: REALM_RUNTIME_PROJECTION_SOURCE,
+    truthWrite: false,
+    failure: 'runtime-projection-not-admitted',
+    message: 'Runtime source materialization requires a protected Runtime-issued challenge and is not admitted for Persona Studio.',
+    submitted,
+  };
 }
 
 export async function projectPersonaChatReadinessContextSummary(
   persona: OwnerPortfolioPersonaDetail,
-  realm: StudioRealmClient = createStudioRealmClient(),
+  _realm?: StudioRealmClient,
 ): Promise<PersonaChatReadinessSummaryResult> {
   const submitted = buildPersonaChatReadinessProjectionInput(persona);
   if (!submitted) {
@@ -799,37 +782,12 @@ export async function projectPersonaChatReadinessContextSummary(
     };
   }
 
-  try {
-    const response = await realm.worldCoreControllerCreateSourceMaterializationPacket({
-      path: {},
-      body: submitted,
-    });
-    const summary = normalizePersonaChatReadinessProjectionSummary(response);
-    if (!summary) {
-      return {
-        ok: false,
-        source: REALM_RUNTIME_PROJECTION_SOURCE,
-        truthWrite: false,
-        failure: 'runtime-projection-invalid-response',
-        message: 'SourceMaterializationPacket response did not include source-specific payload summary.',
-        submitted,
-      };
-    }
-    return {
-      ok: true,
-      source: REALM_RUNTIME_PROJECTION_SOURCE,
-      truthWrite: false,
-      summary,
-      submitted,
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      source: REALM_RUNTIME_PROJECTION_SOURCE,
-      truthWrite: false,
-      failure: 'runtime-projection-failed',
-      message: error instanceof Error ? error.message : 'Realm SourceMaterializationPacket creation failed.',
-      submitted,
-    };
-  }
+  return {
+    ok: false,
+    source: REALM_RUNTIME_PROJECTION_SOURCE,
+    truthWrite: false,
+    failure: 'runtime-projection-not-admitted',
+    message: 'Runtime source materialization requires a protected Runtime-issued challenge and is not admitted for Persona Studio.',
+    submitted,
+  };
 }

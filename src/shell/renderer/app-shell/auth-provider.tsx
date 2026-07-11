@@ -4,9 +4,6 @@ import { useAppStore } from './app-store.js';
 import { runStudioBootstrap } from '../infra/studio-bootstrap.js';
 import { useStudioI18n } from '../i18n/use-studio-i18n.js';
 
-const INSTALLED_APP_AUTH_REQUIRED_TITLE = 'Desktop shared Runtime account required';
-const INSTALLED_APP_AUTH_REQUIRED_REASON = 'capability-unavailable';
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { t } = useStudioI18n();
   const authStatus = useAppStore((s) => s.auth.status);
@@ -51,10 +48,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       <BootstrapFrame>
         <InlineAlert tone="warning">
           <div className="ras-bootstrap-copy">
-            <strong>{INSTALLED_APP_AUTH_REQUIRED_TITLE}</strong>
-            <span>
-              {INSTALLED_APP_AUTH_REQUIRED_REASON}: launch Realm Persona Studio from an authenticated Nimi Desktop installed app session.
-            </span>
+            <strong>{t('shell.protectedSession.requiredTitle')}</strong>
+            <span>{t('shell.protectedSession.requiredReason')}</span>
+            <div className="ras-bootstrap-actions">
+              <Button tone="secondary" size="sm" disabled>
+                {t('shell.protectedSession.operationsUnavailable')}
+              </Button>
+              <Button tone="secondary" size="sm" onClick={retryBootstrap}>{t('common.retry')}</Button>
+            </div>
           </div>
         </InlineAlert>
       </BootstrapFrame>

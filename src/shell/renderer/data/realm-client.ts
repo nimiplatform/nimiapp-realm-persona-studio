@@ -10,13 +10,6 @@ export const STUDIO_REALM_SURFACE_METHODS = [
   'worldCoreControllerGetWorldCore',
   'worldCoreControllerGetOasisWorld',
   'worldCoreControllerCreateSourceMaterializationPacket',
-  'createPost',
-  'listResources',
-  'createImageDirectUpload',
-  'createVideoDirectUpload',
-  'createAudioDirectUpload',
-  'finalizeResource',
-  'createTextResource',
 ] as const;
 
 export type StudioRealmSurfaceMethod = typeof STUDIO_REALM_SURFACE_METHODS[number];
@@ -33,13 +26,6 @@ export function createStudioRealmSurface(realm: Pick<Realm, 'generated'>): Studi
     worldCoreControllerGetWorldCore: generated.worldCoreControllerGetWorldCore.bind(generated),
     worldCoreControllerGetOasisWorld: generated.worldCoreControllerGetOasisWorld.bind(generated),
     worldCoreControllerCreateSourceMaterializationPacket: generated.worldCoreControllerCreateSourceMaterializationPacket.bind(generated),
-    createPost: generated.createPost.bind(generated),
-    listResources: generated.listResources.bind(generated),
-    createImageDirectUpload: generated.createImageDirectUpload.bind(generated),
-    createVideoDirectUpload: generated.createVideoDirectUpload.bind(generated),
-    createAudioDirectUpload: generated.createAudioDirectUpload.bind(generated),
-    finalizeResource: generated.finalizeResource.bind(generated),
-    createTextResource: generated.createTextResource.bind(generated),
   };
 }
 

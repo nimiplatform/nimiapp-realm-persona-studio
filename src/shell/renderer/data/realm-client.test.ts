@@ -21,13 +21,6 @@ describe('studio Realm facade boundary', () => {
       'worldCoreControllerGetWorldCore',
       'worldCoreControllerGetOasisWorld',
       'worldCoreControllerCreateSourceMaterializationPacket',
-      'createPost',
-      'listResources',
-      'createImageDirectUpload',
-      'createVideoDirectUpload',
-      'createAudioDirectUpload',
-      'finalizeResource',
-      'createTextResource',
     ]);
   });
 

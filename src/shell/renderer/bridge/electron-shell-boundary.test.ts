@@ -2,20 +2,18 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-describe('studio Electron shell boundary', () => {
-  it('provides the dual-shell Electron entrypoints and package scripts', () => {
-    const requiredFiles = [
+describe('studio Electron protected installed-app boundary', () => {
+  it('keeps the standard Electron entrypoints and removes app-owned Runtime auth', () => {
+    for (const file of [
       'src-electron/main.ts',
       'src-electron/preload.cts',
-      'src-electron/runtime-auth.ts',
       'tsconfig.electron.json',
       'scripts/run-electron-dev.mjs',
       'scripts/bundle-electron-preload.mjs',
-    ];
-
-    for (const file of requiredFiles) {
+    ]) {
       expect(existsSync(join(process.cwd(), file)), file).toBe(true);
     }
+    expect(existsSync(join(process.cwd(), 'src-electron/runtime-auth.ts'))).toBe(false);
 
     const packageJson = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8')) as {
       scripts?: Record<string, string>;
@@ -25,7 +23,7 @@ describe('studio Electron shell boundary', () => {
     expect(packageJson.scripts?.['typecheck:electron']).toBeTruthy();
   });
 
-  it('installs only the Nimi Electron runtime bridge in preload', () => {
+  it('installs only the Nimi preload bridge', () => {
     const source = readFileSync(join(process.cwd(), 'src-electron/preload.cts'), 'utf8');
 
     expect(source).toContain('installNimiElectronRuntimeBridge');
@@ -34,40 +32,16 @@ describe('studio Electron shell boundary', () => {
     expect(source).not.toContain('fs');
   });
 
-  it('registers Electron standard shell without forbidden installed-app capabilities', () => {
+  it('binds the native installed host to the installed standard-shell capability set', () => {
     const mainSource = readFileSync(join(process.cwd(), 'src-electron/main.ts'), 'utf8');
-    const runtimeAuthSource = readFileSync(join(process.cwd(), 'src-electron/runtime-auth.ts'), 'utf8');
 
     expect(mainSource).toContain('registerNimiElectronRuntimeBridge');
-    expect(mainSource).toContain('NIMI_STANDARD_SHELL_COMMANDS');
-    expect(mainSource).toContain("NIMI_STANDARD_SHELL_COMMANDS['runtime.unary']");
-    expect(mainSource).toContain("NIMI_STANDARD_SHELL_COMMANDS['runtime.streamOpen']");
-    expect(mainSource).toContain("NIMI_STANDARD_SHELL_COMMANDS['runtime.streamClose']");
-    expect(mainSource).toContain("NIMI_STANDARD_SHELL_COMMANDS['ai-config.get']");
-    expect(mainSource).toContain("NIMI_STANDARD_SHELL_COMMANDS['ai-config.set']");
-    expect(mainSource).toContain("NIMI_STANDARD_SHELL_COMMANDS['shell-ui.startWindowDrag']");
-    expect(mainSource).toContain("NIMI_STANDARD_SHELL_COMMANDS['shell-ui.focusMainWindow']");
-    expect(mainSource).toContain("NIMI_STANDARD_SHELL_COMMANDS['shell-ui.confirmDialog']");
-    expect(mainSource).not.toContain('runtime-defaults.get');
-    expect(mainSource).not.toContain('oauth.openExternalUrl');
-    expect(mainSource).not.toContain('oauth.listenForCode');
-    expect(mainSource).not.toContain('oauth.tokenExchange');
-    expect(mainSource).not.toContain('auth.sessionLoad');
-    expect(mainSource).not.toContain('auth.sessionSave');
-    expect(mainSource).not.toContain('auth.sessionClear');
-    expect(mainSource).not.toContain('electron.raw-ipc');
-    expect(mainSource).not.toContain('node.raw-fs');
-    expect(mainSource).not.toContain('local-agent.runtimeTrustedCaller');
-    expect(runtimeAuthSource).toContain('createNimiElectronInstalledAppRuntimeAccountTrustedMetadataProvider');
-    expect(runtimeAuthSource).toMatch(/requireText\(\s*process\.env\.NIMI_REALM_PERSONA_STUDIO_ELECTRON_LAUNCH_NONCE/);
-    expect(runtimeAuthSource).toContain('NIMI_REALM_PERSONA_STUDIO_ELECTRON_REALM_BASE_URL');
-    expect(runtimeAuthSource).toContain('new URL(realmBaseUrl).toString()');
-    expect(runtimeAuthSource).not.toContain('ElectronRuntimeBridgeTrustedMetadataProvider | undefined');
-    expect(runtimeAuthSource).not.toContain('RealmPersonaStudioRendererLaunchBinding | undefined');
-    expect(runtimeAuthSource).not.toContain('return undefined');
-    expect(runtimeAuthSource).not.toContain('resolveElectronRuntimeDefaults');
-    expect(runtimeAuthSource).not.toContain('RuntimeDefaults');
-    expect(runtimeAuthSource).not.toContain('createNimiRuntimeAppSessionMetadataProvider');
-    expect(runtimeAuthSource).not.toContain('createNimiRuntimeFullAppRegistration');
+    expect(mainSource).toContain('createNimiElectronInstalledHost()');
+    expect(mainSource).toContain('NIMI_INSTALLED_NIMI_APP_STANDARD_SHELL_CAPABILITY_SET_ID');
+    expect(mainSource).toContain('standardShellHost:');
+    expect(mainSource).not.toContain('NIMI_STANDARD_SHELL_COMMANDS');
+    expect(mainSource).not.toMatch(/runtimeAuth|trustedMetadataProvider|additionalArguments|LAUNCH_NONCE|releaseDigest/);
+    expect(mainSource).not.toMatch(/ai-config\.(get|set)|runtime\.(unary|streamOpen|streamClose)|auth\.session|oauth\./);
+    expect(mainSource).not.toMatch(/electron\.raw-ipc|node\.raw-fs|local-agent\.runtimeTrustedCaller/);
   });
 });

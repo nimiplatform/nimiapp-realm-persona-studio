@@ -6,96 +6,53 @@ function readOptionalSource(path: string): string {
   return existsSync(path) ? readFileSync(path, 'utf8') : '';
 }
 
-describe('studio installed app auth and shell boundary', () => {
+describe('studio installed-app auth and Tauri boundary', () => {
   let tauriMainSource = '';
   let bridgeSource = '';
-  let studioAuthAdapterSource = '';
-  let studioLoginPageSource = '';
   let authProviderSource = '';
   let bootstrapSource = '';
 
   beforeAll(() => {
     tauriMainSource = readFileSync(join(process.cwd(), 'src-tauri/src/main.rs'), 'utf8');
     bridgeSource = readFileSync(join(process.cwd(), 'src/shell/renderer/bridge/index.ts'), 'utf8');
-    studioAuthAdapterSource = readOptionalSource(
-      join(process.cwd(), 'src/shell/renderer/features/auth/studio-auth-adapter.ts'),
-    );
-    studioLoginPageSource = readOptionalSource(
-      join(process.cwd(), 'src/shell/renderer/features/auth/studio-login-page.tsx'),
-    );
-    authProviderSource = readFileSync(
-      join(process.cwd(), 'src/shell/renderer/app-shell/auth-provider.tsx'),
-      'utf8',
-    );
-    bootstrapSource = readFileSync(
-      join(process.cwd(), 'src/shell/renderer/infra/studio-bootstrap.ts'),
-      'utf8',
-    );
+    authProviderSource = readFileSync(join(process.cwd(), 'src/shell/renderer/app-shell/auth-provider.tsx'), 'utf8');
+    bootstrapSource = readFileSync(join(process.cwd(), 'src/shell/renderer/infra/studio-bootstrap.ts'), 'utf8');
   });
 
-  it('does not expose renderer OAuth, token exchange, or Runtime defaults helpers', () => {
-    expect(bridgeSource).not.toContain('studioTauriOAuthBridge');
-    expect(bridgeSource).not.toContain('oauthListenForCode');
-    expect(bridgeSource).not.toContain('openExternalUrl');
-    expect(bridgeSource).not.toContain('oauthTokenExchange');
-    expect(bridgeSource).not.toContain('TauriOAuthBridge');
-    expect(bridgeSource).not.toContain('getStudioRuntimeDefaults');
-    expect(bridgeSource).not.toContain('getRuntimeDefaults');
-    expect(bridgeSource).not.toContain('NIMI_REALM_URL');
-    expect(bridgeSource).not.toContain('VITE_NIMI_REALM_BASE_URL');
-    expect(bridgeSource).not.toContain('localhost:3002');
+  it('registers only the installed artifact standard-shell command', () => {
+    expect(tauriMainSource).toContain('RuntimeBridgeInstalledHost::platform_default()');
+    expect(tauriMainSource).toContain('nimi_shell_tauri_installed_app_standard_shell_handler![]');
+    expect(tauriMainSource).not.toContain('installed_app_launch');
+    expect(tauriMainSource).not.toContain('resolve_installed_nimi_app_launch_binding_from_env');
+    expect(tauriMainSource).not.toContain('append_invoke_initialization_script');
+    expect(tauriMainSource).not.toContain('NIMI_REALM_PERSONA_STUDIO_TAURI_LAUNCH_NONCE');
+    expect(tauriMainSource).not.toMatch(/runtime_(unary|stream|defaults|bridge_status)/);
+    expect(tauriMainSource).not.toMatch(/ai_config|data_(read|write)|storage|oauth|auth_session|shell_ui/);
   });
 
-  it('does not register installed-app-forbidden Tauri capabilities', () => {
-    expect(tauriMainSource).not.toContain('oauth::');
-    expect(tauriMainSource).not.toContain('oauth_listen_for_code');
-    expect(tauriMainSource).not.toContain('open_external_url');
-    expect(tauriMainSource).not.toContain('runtime_bridge_status');
-    expect(tauriMainSource).not.toContain('runtime_defaults');
-    expect(tauriMainSource).not.toContain('auth_session');
-    expect(tauriMainSource).not.toContain('sessionLoad');
-    expect(tauriMainSource).not.toContain('sessionSave');
-    expect(tauriMainSource).not.toContain('sessionClear');
-    expect(tauriMainSource).not.toContain('local_agent');
-    expect(tauriMainSource).not.toContain('raw_ipc');
-    expect(tauriMainSource).not.toContain('raw_fs');
+  it('does not expose renderer OAuth, credential, launch-binding, or Runtime defaults helpers', () => {
+    expect(bridgeSource).toContain('createInstalledNimiAppStandardShellSurface');
+    expect(bridgeSource).not.toMatch(/oauth|TokenExchange|getStudioRuntimeDefaults|readInstalledNimiAppLaunchBinding/);
+    expect(bridgeSource).not.toMatch(/NIMI_REALM_URL|VITE_NIMI_REALM_BASE_URL|localhost:3002/);
   });
 
-  it('projects installed app launch binding through the shared Kit Tauri helper', () => {
-    expect(tauriMainSource).toContain('nimi_shell_tauri::installed_app_launch');
-    expect(tauriMainSource).toContain('resolve_installed_nimi_app_launch_binding_from_env');
-    expect(tauriMainSource).toContain('build_installed_nimi_app_launch_binding_script');
-    expect(tauriMainSource).toContain('append_invoke_initialization_script');
-    expect(tauriMainSource).toContain('NIMI_REALM_PERSONA_STUDIO_TAURI_LAUNCH_NONCE');
+  it('removes app-local login and shows an actionable capability-unavailable state', () => {
+    const removedAuthSources = [
+      'src/shell/renderer/features/auth/studio-auth-adapter.ts',
+      'src/shell/renderer/features/auth/studio-login-page.tsx',
+    ].map((path) => readOptionalSource(join(process.cwd(), path))).join('\n');
+
+    expect(removedAuthSources).not.toMatch(/DesktopShellAuthPage|createRuntimeAccountBrowserBroker|oauthLogin/);
+    expect(authProviderSource).toContain("t('shell.protectedSession.requiredTitle')");
+    expect(authProviderSource).toContain("t('shell.protectedSession.requiredReason')");
+    expect(authProviderSource).toContain("t('shell.protectedSession.operationsUnavailable')");
+    expect(authProviderSource).toContain('disabled');
+    expect(authProviderSource).toContain("t('common.retry')");
   });
 
-  it('uses kit shell-ui instead of app-local drag/focus/confirm commands', () => {
-    expect(tauriMainSource).toContain('shell_ui::start_window_drag');
-    expect(tauriMainSource).toContain('shell_ui::focus_main_window');
-    expect(tauriMainSource).toContain('shell_ui::confirm_dialog');
-    expect(tauriMainSource).not.toContain('realm_persona_studio_start_window_drag');
-    expect(tauriMainSource).not.toMatch(/async fn start_window_drag/);
-    expect(tauriMainSource).not.toMatch(/async fn focus_main_window/);
-    expect(tauriMainSource).not.toMatch(/async fn confirm_dialog/);
-  });
-
-  it('removes app-local login and browser OAuth broker code paths', () => {
-    const authSources = `${studioAuthAdapterSource}\n${studioLoginPageSource}\n${authProviderSource}`;
-
-    expect(authSources).not.toContain('DesktopShellAuthPage');
-    expect(authSources).not.toContain('createRuntimeAccountBrowserBroker');
-    expect(authSources).not.toContain('oauthBridge');
-    expect(authSources).not.toContain('oauthLogin');
-    expect(authSources).not.toContain('StudioLoginPage');
-    expect(authProviderSource).toContain('Desktop shared Runtime account required');
-    expect(authProviderSource).toContain('capability-unavailable');
-  });
-
-  it('keeps bootstrap fail-closed instead of falling back to app-owned Runtime defaults', () => {
-    expect(bootstrapSource).not.toContain('getStudioRuntimeDefaults');
-    expect(bootstrapSource).not.toContain('RuntimeDefaults');
-    expect(bootstrapSource).not.toContain('VITE_NIMI_REALM_BASE_URL');
+  it('keeps bootstrap fail closed without app-owned Runtime defaults', () => {
+    expect(bootstrapSource).not.toMatch(/RuntimeDefaults|VITE_NIMI_REALM_BASE_URL|getStudioRuntimeDefaults/);
     expect(bootstrapSource).toContain('runStudioBootstrap({ force: true })');
-    expect(bootstrapSource).toContain('store.setBootstrapError');
+    expect(bootstrapSource).toContain('store.setBootstrapReady(true)');
   });
 });

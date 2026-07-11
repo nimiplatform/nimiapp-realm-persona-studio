@@ -11,6 +11,8 @@ import {
   type RuntimeVoiceDemoSynthesisResult,
 } from './portfolio-client.js';
 import {
+  PERSONA_PUBLICATION_ADMITTED,
+  REALM_MEDIA_RESOURCE_UPLOAD_SOURCE,
   uploadReviewedIdentityMediaResource,
   type DirectMediaResourceUploadResult,
 } from './portfolio-client.js';
@@ -324,7 +326,7 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
     if (!identityUploadFile) {
       setIdentityUploadResult({
         ok: false,
-        source: 'Realm ResourcesService direct upload + finalizeResource',
+        source: REALM_MEDIA_RESOURCE_UPLOAD_SOURCE,
         attachmentTruth: false,
         publicTruth: false,
         failure: 'media-upload-file-invalid',
@@ -759,13 +761,16 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
               </div>
               <div className="mt-3 flex flex-wrap gap-3">
                 <Button
-                  disabled={!identityUploadReviewed || !identityUploadFile || isUploadingIdentityResource}
+                  disabled={!PERSONA_PUBLICATION_ADMITTED || !identityUploadReviewed || !identityUploadFile || isUploadingIdentityResource}
                   loading={isUploadingIdentityResource}
                   onClick={() => void uploadIdentityResource()}
                 >
                   {t('assets.uploadIdentity.button')}
                 </Button>
               </div>
+              <InlineAlert tone="warning" className="mt-3">
+                {t('assets.publicationUnavailable')}
+              </InlineAlert>
               {identityUploadResult ? (
                 <InlineAlert tone={identityUploadResult.ok ? 'success' : 'danger'} className="mt-3">
                   {identityUploadResult.ok

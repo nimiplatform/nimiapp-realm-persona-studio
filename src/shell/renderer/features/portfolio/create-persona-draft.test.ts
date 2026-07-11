@@ -22,6 +22,8 @@ const oasisWorld: RealmPersonaCreationWorldDto = {
   creatorId: null,
   visibility: 'system',
   core: {
+    assets: { intents: [], resourceRefs: [] },
+    authoring: { source: 'test' },
     identity: {
       name: 'OASIS',
       summary: 'Shared source world.',
@@ -32,7 +34,25 @@ const oasisWorld: RealmPersonaCreationWorldDto = {
       title: 'OASIS',
       tagline: 'The main world',
     },
-    entities: [{ entityId: 'character-1' }, { entityId: 'character-2' }],
+    ontology: { entityKinds: ['character'], relationshipTypes: [] },
+    entities: [{ entityId: 'character-1', kind: 'character' }, { entityId: 'character-2', kind: 'character' }],
+    relationships: [],
+    scenes: [],
+    systems: [],
+    timeModel: {
+      anchor: {
+        realStartedAt: '2026-05-21T00:00:00.000Z',
+        worldStartedAt: '2026-05-21T00:00:00.000Z',
+        worldStartedAtDisplay: '2026-05-21 00:00',
+      },
+      calendar: null,
+      displayFormat: null,
+      flowRatio: 1,
+      isPaused: false,
+      mode: 'wallClockAnchored',
+      pausedWorldTime: null,
+    },
+    timeline: { events: [] },
   },
   createdAt: '2026-05-21T00:00:00.000Z',
   updatedAt: '2026-05-21T00:00:00.000Z',
@@ -127,7 +147,7 @@ describe('selected world preview normalization', () => {
           title: 'OASIS',
           tagline: 'The main world',
         },
-        entities: [{ entityId: 'character-1' }, { entityId: 'character-2' }],
+        entities: [{ entityId: 'character-1', kind: 'character' }, { entityId: 'character-2', kind: 'character' }],
       },
     } satisfies RealmPersonaCreationWorldDetailDto);
 

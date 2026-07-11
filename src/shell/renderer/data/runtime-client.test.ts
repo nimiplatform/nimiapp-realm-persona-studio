@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -31,43 +31,19 @@ describe('studio runtime client gate', () => {
     expect(hasTauriIpcRuntime({ __TAURI_IPC__: { invoke } } as unknown as typeof globalThis)).toBe(false);
   });
 
-  it('uses installed app SDK Runtime account transport instead of app-owned auth or Realm transport', () => {
+  it('removes renderer-mediated Realm and portable installed-session authority', () => {
     const runtimeClientSource = readFileSync(resolve(dataDir, 'runtime-client.ts'), 'utf8');
     const realmClientSource = readFileSync(resolve(dataDir, 'realm-client.ts'), 'utf8');
-    const realmTransportSource = readFileSync(resolve(rendererRoot, 'app-shell', 'studio-realm-transport.ts'), 'utf8');
     const bridgeSource = readFileSync(resolve(rendererRoot, 'bridge', 'index.ts'), 'utf8');
-    const appStoreSource = readFileSync(resolve(rendererRoot, 'app-shell', 'app-store.ts'), 'utf8');
     const studioPlatformSource = readFileSync(resolve(rendererRoot, 'app-shell', 'studio-platform.ts'), 'utf8');
-    const combinedDataSource = `${runtimeClientSource}\n${realmClientSource}`;
+    const removedRealmTransportPath = resolve(rendererRoot, 'app-shell', 'studio-realm-transport.ts');
+    const combined = `${runtimeClientSource}\n${realmClientSource}\n${studioPlatformSource}`;
 
-    expect(combinedDataSource).not.toMatch(/VITE_REALM_ACCESS_TOKEN|external_principal|allowAnonymousRealm/);
-    expect(combinedDataSource).not.toMatch(/createRealmClient|createPlatformClient/);
-    expect(studioPlatformSource).toContain('createNimiClient');
-    expect(studioPlatformSource).toContain('createInstalledNimiAppBootstrap');
-    expect(studioPlatformSource).toContain('createStudioRealmBridgeOptions');
-    expect(studioPlatformSource).not.toContain('createNimiLocalFirstPartyRuntimeAccountCaller');
-    expect(studioPlatformSource).not.toContain('createNimiRuntimeAppSessionMetadataProvider');
-    expect(studioPlatformSource).not.toContain('createNimiRuntimeFullAppRegistration');
-    expect(studioPlatformSource).not.toContain('authorizeExternalPrincipal');
-    expect(studioPlatformSource).not.toContain('AuthorizationPreset');
-    expect(studioPlatformSource).not.toContain('protectedAccess');
-    expect(studioPlatformSource).not.toContain('scopes: [...STUDIO_REALM_API_SCOPES]');
-    expect(realmTransportSource).toContain('createRuntimeAccountMediatedRealmTransport');
-    expect(realmTransportSource).not.toContain('invokeRealmUnary');
-    expect(realmTransportSource).not.toContain('realm_persona_studio_realm_unary');
-    expect(realmTransportSource).not.toContain('getAccessToken');
-    expect(studioPlatformSource).not.toContain('getAccessToken');
-    expect(studioPlatformSource).not.toContain('createRealmFetchTransport');
-    expect(studioPlatformSource).not.toMatch(/VITE_REALM_ACCESS_TOKEN|refreshToken|sessionStore|subjectUserIdProvider/);
-    expect(bridgeSource).not.toContain('getStudioRuntimeDefaults');
-    expect(bridgeSource).not.toContain('getRuntimeDefaults');
-    expect(bridgeSource).not.toContain('RuntimeDefaults');
-    expect(bridgeSource).not.toContain('RealmDefaults');
-    expect(bridgeSource).not.toContain('RuntimeExecutionDefaults');
-    expect(appStoreSource).not.toContain('StudioRuntimeDefaults');
-    expect(appStoreSource).not.toContain('import type { RuntimeDefaults');
-    expect(appStoreSource).not.toContain('runtimeDefaults: RuntimeDefaults');
-    expect(appStoreSource).not.toContain('setRuntimeDefaults: (defaults: RuntimeDefaults)');
-    expect(appStoreSource).not.toContain('accessToken');
+    expect(existsSync(removedRealmTransportPath)).toBe(false);
+    expect(combined).not.toMatch(/VITE_REALM_ACCESS_TOKEN|external_principal|allowAnonymousRealm/);
+    expect(studioPlatformSource).not.toMatch(/createNimiClient|createStudioRealmBridgeOptions|createRuntimeAccountMediatedRealmTransport/);
+    expect(studioPlatformSource).not.toMatch(/getAccessToken|createRealmFetchTransport|refreshToken|sessionStore/);
+    expect(realmClientSource).not.toMatch(/createPost|createTextResource|create(Image|Video|Audio)DirectUpload|finalizeResource|listResources/);
+    expect(bridgeSource).not.toMatch(/RuntimeDefaults|RealmDefaults|readInstalledNimiAppLaunchBinding/);
   });
 });

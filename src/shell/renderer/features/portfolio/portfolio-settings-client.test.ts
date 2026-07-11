@@ -384,16 +384,18 @@ describe('owner portfolio settings client', () => {
       });
     });
 
-     it('creates SourceMaterializationPacket through WorldCoreController and returns summary counts only', async () => {
+     it('fails closed before source materialization without a Runtime-issued challenge', async () => {
       const realm = mockRealm();
       const result = await projectPersonaRuntimeContextSummary(ownerPersonaDetail(), realm);
       const projectRuntimePayload = realm.worldCoreControllerCreateSourceMaterializationPacket;
-      const submittedRequest = vi.mocked(projectRuntimePayload).mock.calls[0]?.[0];
-      const submittedPayload = submittedRequest?.body;
 
-      expect(projectRuntimePayload).toHaveBeenCalledWith({
-        path: {},
-        body: {
+      expect(projectRuntimePayload).not.toHaveBeenCalled();
+      expect(result).toMatchObject({
+        ok: false,
+        source: 'Realm WorldCoreController.createSourceMaterializationPacket',
+        truthWrite: false,
+        failure: 'runtime-projection-not-admitted',
+        submitted: {
           intendedRuntimeAudience: 'desktop.runtime',
           sourceRef: {
             kind: 'realmPersona',
@@ -401,22 +403,6 @@ describe('owner portfolio settings client', () => {
             sourceId: 'persona-1',
             sourceContentHash: 'hash-persona-1',
           },
-        },
-      });
-      expect(collectKeys(submittedPayload).has('personaId')).toBe(false);
-      expect(collectKeys(submittedPayload).has('statement')).toBe(false);
-      expect(result).toMatchObject({
-        ok: true,
-        source: 'Realm WorldCoreController.createSourceMaterializationPacket',
-        truthWrite: false,
-        summary: {
-          consumerSurface: 'RUNTIME_PAYLOAD',
-          worldId: 'world-oasis',
-          checksum: 'checksum-runtime-1',
-          selectedInputCount: 1,
-          suppressedInputCount: 0,
-          worldRuleCount: 0,
-          rawRuleContentExposed: false,
         },
       });
       expect(collectKeys(result).has('statement')).toBe(false);

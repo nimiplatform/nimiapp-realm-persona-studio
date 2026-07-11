@@ -7,12 +7,10 @@ export {
   hasNimiShellRuntime,
   hasTauriRuntime,
   installNimiShellRuntimeBridge,
-  readInstalledNimiAppLaunchBinding,
   startWindowDrag,
 } from '@nimiplatform/kit/shell/renderer/bridge';
 
 export type {
-  InstalledNimiAppLaunchBinding,
   InstalledNimiAppStandardShellSurface,
   InstalledNimiAppStorageRemoveJsonResult,
   JsonObject,

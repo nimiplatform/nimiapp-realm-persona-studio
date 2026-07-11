@@ -3,7 +3,7 @@ id: SPEC-REALM-PERSONA-STUDIO-POST-PUBLISHING-001
 title: Persona Post Publishing
 status: active
 owner: "@team"
-updated: 2026-06-18
+updated: 2026-07-11
 ---
 
 # Persona Post Publishing
@@ -16,3 +16,4 @@ updated: 2026-06-18
 - **[R-RPS-POST-006]** Local schedule stores at most one foreground executable draft per persona and is not Realm schedule authority.
 - **[R-RPS-POST-007]** Publish success requires Realm response identity; a scheduled local action is not publish success.
 - **[R-RPS-POST-008]** Post failures preserve the draft and display source failure without retrying through alternate legacy routes.
+- **[R-RPS-POST-009]** Until an exact Runtime-mediated post/resource operation is admitted, post publication, text-resource creation, attachment-resource reads, media upload, and scheduled publish are visibly disabled. Draft editing, review, payload preview, and local schedule candidate persistence remain local candidate behavior and must not invoke Realm or ordinary network transport.

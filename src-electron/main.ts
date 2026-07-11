@@ -1,22 +1,17 @@
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { app, BrowserWindow, ipcMain, Menu } from 'electron';
-import { NIMI_STANDARD_SHELL_COMMANDS } from '@nimiplatform/kit/shell/capabilities';
+import { NIMI_INSTALLED_NIMI_APP_STANDARD_SHELL_CAPABILITY_SET_ID } from '@nimiplatform/kit/shell/capabilities';
 import {
-  createNimiElectronFileAIConfigStore,
+  createNimiElectronInstalledHost,
   createNimiElectronStandardApplicationMenuTemplate,
   isAllowedElectronRendererUrl,
   registerNimiElectronRuntimeBridge,
-  type NimiElectronHostCommandPolicy,
 } from '@nimiplatform/kit/shell/electron/main';
 import {
   REALM_PERSONA_STUDIO_APP_ID,
   REALM_PERSONA_STUDIO_APP_NAME,
 } from '../src/shell/app-identity.js';
-import {
-  createRealmPersonaStudioElectronTrustedRuntimeMetadataProvider,
-  createRealmPersonaStudioRendererLaunchBinding,
-} from './runtime-auth.js';
 
 const currentFilePath = fileURLToPath(import.meta.url);
 const currentDir = path.dirname(currentFilePath);
@@ -25,10 +20,7 @@ const preloadPath = path.join(currentDir, 'preload.cjs');
 const rendererDistIndex = path.join(appRoot, 'dist', 'index.html');
 const rendererDistUrl = pathToFileURL(rendererDistIndex).toString();
 const rendererUrl = normalizeText(process.env.NIMI_REALM_PERSONA_STUDIO_ELECTRON_RENDERER_URL);
-const runtimeEndpoint = normalizeText(process.env.NIMI_RUNTIME_GRPC_ADDR)
-  || normalizeText(process.env.NIMI_REALM_PERSONA_STUDIO_ELECTRON_RUNTIME_ENDPOINT)
-  || '127.0.0.1:46371';
-let mainWindow: BrowserWindow | undefined;
+const runtimeEndpoint = '127.0.0.1:46371';
 
 app.setName(REALM_PERSONA_STUDIO_APP_NAME);
 installRealmPersonaStudioStandardApplicationMenu();
@@ -43,25 +35,9 @@ async function bootstrapElectron(): Promise<void> {
     allowedOrigins: allowedRendererOrigins(),
     allowedRendererUrls: allowedRendererUrls(),
     ipcMain,
-    trustedRuntimeMetadataProvider: createRealmPersonaStudioElectronTrustedRuntimeMetadataProvider({
-      runtimeEndpoint,
-    }),
-    commandPolicy: realmPersonaStudioElectronCommandPolicy,
     standardShellHost: {
-      capabilitySetRef: 'installed-nimi-app-standard-shell-v1',
-      standardDataRootBinding: {
-        source: 'runtime-launch-projection',
-        durableDataRoot: path.join(app.getPath('userData'), 'installed-app-data'),
-        cacheRoot: path.join(app.getPath('userData'), 'installed-app-cache'),
-        tempRoot: path.join(app.getPath('temp'), 'realm-persona-studio'),
-        projectionRef: 'realm-persona-studio-electron-dev-shell',
-      },
-      localAssetRoots: [appRoot],
-      aiConfigStore: createNimiElectronFileAIConfigStore({
-        dataRoot: path.join(app.getPath('userData'), 'installed-app-data'),
-        storeLabel: 'Realm Persona Studio Electron AI Config',
-      }),
-      focusMainWindow,
+      capabilitySetRef: NIMI_INSTALLED_NIMI_APP_STANDARD_SHELL_CAPABILITY_SET_ID,
+      installedHost: createNimiElectronInstalledHost(),
     },
   });
 
@@ -103,7 +79,6 @@ app.on('window-all-closed', () => {
 });
 
 async function createMainWindow(): Promise<BrowserWindow> {
-  const launchBinding = createRealmPersonaStudioRendererLaunchBinding();
   const window = new BrowserWindow({
     width: 1360,
     height: 860,
@@ -116,20 +91,7 @@ async function createMainWindow(): Promise<BrowserWindow> {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
-      ...(launchBinding
-        ? {
-            additionalArguments: [
-              `--nimi-installed-app-launch-binding=${Buffer.from(JSON.stringify(launchBinding), 'utf8').toString('base64url')}`,
-            ],
-          }
-        : {}),
     },
-  });
-  mainWindow = window;
-  window.on('closed', () => {
-    if (mainWindow === window) {
-      mainWindow = undefined;
-    }
   });
   hardenRealmPersonaStudioWindowChrome(window);
   secureRealmPersonaStudioWindow(window);
@@ -191,52 +153,6 @@ function allowedRendererUrls(): string[] {
 
 function isRealmPersonaStudioRendererUrl(url: string): boolean {
   return isAllowedElectronRendererUrl(url, allowedRendererUrls());
-}
-
-const allowedStandardCommands: ReadonlySet<string> = new Set([
-  NIMI_STANDARD_SHELL_COMMANDS['runtime.unary'],
-  NIMI_STANDARD_SHELL_COMMANDS['runtime.streamOpen'],
-  NIMI_STANDARD_SHELL_COMMANDS['runtime.streamClose'],
-  NIMI_STANDARD_SHELL_COMMANDS['data.pathResolve'],
-  NIMI_STANDARD_SHELL_COMMANDS['storage.readJson'],
-  NIMI_STANDARD_SHELL_COMMANDS['storage.writeJson'],
-  NIMI_STANDARD_SHELL_COMMANDS['storage.removeJson'],
-  NIMI_STANDARD_SHELL_COMMANDS['config.get'],
-  NIMI_STANDARD_SHELL_COMMANDS['config.set'],
-  NIMI_STANDARD_SHELL_COMMANDS['ai-config.get'],
-  NIMI_STANDARD_SHELL_COMMANDS['ai-config.set'],
-  NIMI_STANDARD_SHELL_COMMANDS['local-assets.resolveUrl'],
-  NIMI_STANDARD_SHELL_COMMANDS['desktop-open.openIntent'],
-  NIMI_STANDARD_SHELL_COMMANDS['shell-ui.confirmDialog'],
-  NIMI_STANDARD_SHELL_COMMANDS['shell-ui.startWindowDrag'],
-  NIMI_STANDARD_SHELL_COMMANDS['shell-ui.focusMainWindow'],
-]);
-
-const realmPersonaStudioElectronCommandPolicy: NimiElectronHostCommandPolicy = (input) => {
-  if (input.commandKind === 'standard' && allowedStandardCommands.has(input.command)) {
-    return { allow: true };
-  }
-  return {
-    allow: false,
-    code: 'capability-unavailable',
-    reasonCode: 'realm-persona-studio-electron-command-not-admitted',
-    actionHint: 'use_admitted_realm_persona_studio_shell_command',
-    details: { command: input.command, commandKind: input.commandKind },
-  };
-};
-
-async function focusMainWindow(): Promise<void> {
-  const window = mainWindow && !mainWindow.isDestroyed()
-    ? mainWindow
-    : BrowserWindow.getAllWindows().find((candidate) => !candidate.isDestroyed());
-  if (!window) {
-    throw new Error('Realm Persona Studio Electron main window unavailable');
-  }
-  if (window.isMinimized()) {
-    window.restore();
-  }
-  window.show();
-  window.focus();
 }
 
 function normalizeText(value: unknown): string {

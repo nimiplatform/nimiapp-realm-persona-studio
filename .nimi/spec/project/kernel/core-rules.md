@@ -3,7 +3,7 @@ id: SPEC-REALM-PERSONA-STUDIO-CORE-RULES-001
 title: Realm Persona Studio Core Rules
 status: active
 owner: "@team"
-updated: 2026-07-09
+updated: 2026-07-11
 ---
 
 # Core Rules
@@ -20,5 +20,5 @@ updated: 2026-07-09
 - **[R-RPS-CORE-010]** Tests for source reads, writes, Runtime candidates, and failure states must assert canonical current surfaces by name.
 - **[R-RPS-CORE-011]** Any new external surface must be admitted by this kernel before code can consume it as a success path.
 - **[R-RPS-CORE-012]** Spec changes and implementation changes for the same behavior must land together; a stale spec path is treated as an active defect.
-- **[R-RPS-CORE-013]** Realm Persona Studio is an installed Nimi app shell consumer; its shell boundary is `installed-nimi-app-standard-shell-v1` and not an app-local privileged shell.
-- **[R-RPS-CORE-014]** The app must not expose or consume installed-app-forbidden host capabilities: `auth.sessionLoad`, `auth.sessionSave`, `auth.sessionClear`, `oauth.openExternalUrl`, `oauth.tokenExchange`, `oauth.listenForCode`, `runtime-defaults.get`, `runtime-lifecycle.*`, `electron.raw-ipc`, `node.raw-fs`, local-agent trusted caller identity, or private LocalAgent identity.
+- **[R-RPS-CORE-013]** Realm Persona Studio is an installed Nimi app shell consumer; its shell boundary is `installed-nimi-app-standard-shell-v1` and not an app-local privileged shell. Renderer, argv, environment, preload, and app-owned host code receive no launch binding, caller identity, release identity, Realm endpoint, session proof, or credential material.
+- **[R-RPS-CORE-014]** The app must not expose or consume installed-app-forbidden host capabilities: generic `runtime.unary` / `runtime.stream*`, `auth.sessionLoad`, `auth.sessionSave`, `auth.sessionClear`, `oauth.openExternalUrl`, `oauth.tokenExchange`, `oauth.listenForCode`, `runtime-defaults.get`, `runtime-lifecycle.*`, `electron.raw-ipc`, `node.raw-fs`, local-agent trusted caller identity, or private LocalAgent identity. Standard-shell operations not admitted by the Platform capability set fail closed without an app-local fallback.
