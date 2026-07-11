@@ -10,7 +10,7 @@
     "noEmit": false,
     "allowImportingTsExtensions": false,
     "outDir": "dist-electron",
-    "rootDir": ".",
+    "rootDir": "src-electron",
     "types": [
       "node",
       "electron"
@@ -18,7 +18,6 @@
   },
   "include": [
     "src-electron/**/*.ts",
-    "src-electron/**/*.cts",
-    "src/shell/app-identity.ts"
+    "src-electron/**/*.cts"
   ]
 }

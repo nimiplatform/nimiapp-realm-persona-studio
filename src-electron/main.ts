@@ -1,17 +1,14 @@
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { app, BrowserWindow, ipcMain, Menu } from 'electron';
-import { NIMI_INSTALLED_NIMI_APP_STANDARD_SHELL_CAPABILITY_SET_ID } from '@nimiplatform/kit/shell/capabilities';
 import {
-  createNimiElectronInstalledHost,
   createNimiElectronStandardApplicationMenuTemplate,
   isAllowedElectronRendererUrl,
-  registerNimiElectronRuntimeBridge,
+  registerNimiElectronAppBridge,
 } from '@nimiplatform/kit/shell/electron/main';
-import {
-  REALM_PERSONA_STUDIO_APP_ID,
-  REALM_PERSONA_STUDIO_APP_NAME,
-} from '../src/shell/app-identity.js';
+
+const REALM_PERSONA_STUDIO_APP_ID = 'nimi.realm-persona-studio';
+const REALM_PERSONA_STUDIO_APP_NAME = 'Realm Persona Studio';
 
 const currentFilePath = fileURLToPath(import.meta.url);
 const currentDir = path.dirname(currentFilePath);
@@ -19,8 +16,7 @@ const appRoot = resolveAppRoot(currentDir);
 const preloadPath = path.join(currentDir, 'preload.cjs');
 const rendererDistIndex = path.join(appRoot, 'dist', 'index.html');
 const rendererDistUrl = pathToFileURL(rendererDistIndex).toString();
-const rendererUrl = normalizeText(process.env.NIMI_REALM_PERSONA_STUDIO_ELECTRON_RENDERER_URL);
-const runtimeEndpoint = '127.0.0.1:46371';
+const rendererUrl = readDevelopmentRendererUrl() || rendererDistUrl;
 
 app.setName(REALM_PERSONA_STUDIO_APP_NAME);
 installRealmPersonaStudioStandardApplicationMenu();
@@ -29,16 +25,10 @@ configureRealmPersonaStudioElectronChromiumRuntime();
 void app.whenReady().then(bootstrapElectron).catch(handleElectronStartupFailure);
 
 async function bootstrapElectron(): Promise<void> {
-  registerNimiElectronRuntimeBridge({
+  registerNimiElectronAppBridge({
     appId: REALM_PERSONA_STUDIO_APP_ID,
-    runtimeEndpoint,
-    allowedOrigins: allowedRendererOrigins(),
-    allowedRendererUrls: allowedRendererUrls(),
+    allowedRendererUrls: [rendererUrl],
     ipcMain,
-    standardShellHost: {
-      capabilitySetRef: NIMI_INSTALLED_NIMI_APP_STANDARD_SHELL_CAPABILITY_SET_ID,
-      installedHost: createNimiElectronInstalledHost(),
-    },
   });
 
   await createMainWindow();
@@ -100,11 +90,7 @@ async function createMainWindow(): Promise<BrowserWindow> {
 }
 
 async function loadRenderer(window: BrowserWindow): Promise<void> {
-  if (rendererUrl) {
-    await window.loadURL(rendererUrl);
-    return;
-  }
-  await window.loadURL(rendererDistUrl);
+  await window.loadURL(rendererUrl);
 }
 
 function hardenRealmPersonaStudioWindowChrome(window: BrowserWindow): void {
@@ -121,40 +107,33 @@ function secureRealmPersonaStudioWindow(window: BrowserWindow): void {
   });
 }
 
-function allowedRendererOrigins(): string[] {
-  const origins = new Set<string>();
-  for (const url of allowedRendererUrls()) {
-    origins.add(originForRendererUrl(url));
-  }
-  for (const origin of normalizeText(process.env.NIMI_REALM_PERSONA_STUDIO_ELECTRON_ALLOWED_ORIGINS).split(',')) {
-    const normalized = normalizeText(origin);
-    if (normalized) {
-      origins.add(normalized);
-    }
-  }
-  return [...origins];
-}
-
-function originForRendererUrl(url: string): string {
-  const parsed = new URL(url);
-  return parsed.protocol === 'file:' ? 'file://' : parsed.origin;
-}
-
 function allowedRendererUrls(): string[] {
-  const urls = new Set<string>([rendererUrl || rendererDistUrl]);
-  for (const url of normalizeText(process.env.NIMI_REALM_PERSONA_STUDIO_ELECTRON_ALLOWED_RENDERER_URLS).split(',')) {
-    const normalized = normalizeText(url);
-    if (normalized) {
-      urls.add(normalized);
-    }
-  }
-  return [...urls];
+  return [rendererUrl];
 }
 
 function isRealmPersonaStudioRendererUrl(url: string): boolean {
   return isAllowedElectronRendererUrl(url, allowedRendererUrls());
 }
 
-function normalizeText(value: unknown): string {
-  return typeof value === 'string' ? value.trim() : '';
+function readDevelopmentRendererUrl(): string {
+  const prefix = '--nimi-dev-renderer-url=';
+  const values = process.argv.filter((value) => value.startsWith(prefix));
+  if (values.length === 0) return '';
+  if (values.length !== 1) throw new Error('Nimi development renderer URL must be singular.');
+  const selected = values[0];
+  if (!selected) throw new Error('Nimi development renderer URL is missing.');
+  const parsed = new URL(selected.slice(prefix.length));
+  if (
+    parsed.protocol !== 'http:'
+    || !['127.0.0.1', 'localhost', '[::1]', '::1'].includes(parsed.hostname.toLowerCase())
+    || !parsed.port
+    || parsed.username
+    || parsed.password
+    || (parsed.pathname !== '/' && parsed.pathname !== '')
+    || parsed.search
+    || parsed.hash
+  ) {
+    throw new Error('Nimi development renderer URL must be exact loopback.');
+  }
+  return parsed.origin;
 }

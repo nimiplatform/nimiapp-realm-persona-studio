@@ -20,7 +20,7 @@ describe('studio installed-app auth and Tauri boundary', () => {
   });
 
   it('registers only the installed artifact standard-shell command', () => {
-    expect(tauriMainSource).toContain('RuntimeBridgeInstalledHost::platform_default()');
+    expect(tauriMainSource).toContain('RuntimeBridgeAppHost::platform_default()');
     expect(tauriMainSource).toContain('nimi_shell_tauri_installed_app_standard_shell_handler![]');
     expect(tauriMainSource).not.toContain('installed_app_launch');
     expect(tauriMainSource).not.toContain('resolve_installed_nimi_app_launch_binding_from_env');

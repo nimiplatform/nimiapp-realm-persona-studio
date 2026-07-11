@@ -8,7 +8,6 @@ describe('studio Electron protected installed-app boundary', () => {
       'src-electron/main.ts',
       'src-electron/preload.cts',
       'tsconfig.electron.json',
-      'scripts/run-electron-dev.mjs',
       'scripts/bundle-electron-preload.mjs',
     ]) {
       expect(existsSync(join(process.cwd(), file)), file).toBe(true);
@@ -18,7 +17,9 @@ describe('studio Electron protected installed-app boundary', () => {
     const packageJson = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8')) as {
       scripts?: Record<string, string>;
     };
-    expect(packageJson.scripts?.['dev:electron']).toBeTruthy();
+    expect(packageJson.scripts?.dev).toBe('nimi-app dev --shell tauri');
+    expect(packageJson.scripts?.['dev:shell']).toBe('nimi-app dev');
+    expect(packageJson.scripts?.['dev:electron']).toBe('nimi-app dev --shell electron');
     expect(packageJson.scripts?.['build:electron']).toBeTruthy();
     expect(packageJson.scripts?.['typecheck:electron']).toBeTruthy();
   });
@@ -32,16 +33,18 @@ describe('studio Electron protected installed-app boundary', () => {
     expect(source).not.toContain('fs');
   });
 
-  it('binds the native installed host to the installed standard-shell capability set', () => {
+  it('binds the fixed native app host without portable authority', () => {
     const mainSource = readFileSync(join(process.cwd(), 'src-electron/main.ts'), 'utf8');
 
-    expect(mainSource).toContain('registerNimiElectronRuntimeBridge');
-    expect(mainSource).toContain('createNimiElectronInstalledHost()');
-    expect(mainSource).toContain('NIMI_INSTALLED_NIMI_APP_STANDARD_SHELL_CAPABILITY_SET_ID');
-    expect(mainSource).toContain('standardShellHost:');
+    expect(mainSource).toContain('registerNimiElectronAppBridge');
+    expect(mainSource).toContain('--nimi-dev-renderer-url=');
+    expect(mainSource).not.toContain('createNimiElectronInstalledHost()');
+    expect(mainSource).not.toContain('NIMI_INSTALLED_NIMI_APP_STANDARD_SHELL_CAPABILITY_SET_ID');
+    expect(mainSource).not.toContain('standardShellHost:');
     expect(mainSource).not.toContain('NIMI_STANDARD_SHELL_COMMANDS');
     expect(mainSource).not.toMatch(/runtimeAuth|trustedMetadataProvider|additionalArguments|LAUNCH_NONCE|releaseDigest/);
     expect(mainSource).not.toMatch(/ai-config\.(get|set)|runtime\.(unary|streamOpen|streamClose)|auth\.session|oauth\./);
     expect(mainSource).not.toMatch(/electron\.raw-ipc|node\.raw-fs|local-agent\.runtimeTrustedCaller/);
+    expect(existsSync(join(process.cwd(), 'scripts/run-electron-dev.mjs'))).toBe(false);
   });
 });

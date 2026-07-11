@@ -9,30 +9,35 @@ summary: >-
   source-backed friendCount adoption signals.
 permissions:
   declared_nimi_api_scopes:
-    - scope: realm.core.personas.read
+    - scope: account.session.read
+      purpose: Bind product requests to the signed-in Nimi account when that operation family is admitted.
+    - scope: data.scope.read
       qualifier: owner-portfolio
       purpose: List the signed-in owner's Realm Personas in the studio portfolio.
-    - scope: realm.core.personas.write
+    - scope: data.scope.write
       qualifier: owner-portfolio
       purpose: Create, update, and retire user-owned public Realm Personas.
-    - scope: realm.core.worlds.read
+    - scope: data.scope.read
       qualifier: home-world-selection
       purpose: Read WorldCore records for persona home-world selection and preview.
-    - scope: realm.core.runtime-snapshots.write
+    - scope: data.scope.write
       qualifier: local-agent-materialization
       purpose: Create SourceMaterializationPacket payloads for localAgent runtime materialization.
-    - scope: realm.posts.write
+    - scope: data.scope.write
       qualifier: persona-authored-post
       purpose: Publish persona-authored posts to the Realm feed after owner review.
-    - scope: runtime.ai.text.generate
+    - scope: ai.spend.meter
       qualifier: studio-text
       purpose: Generate candidate persona seeds, settings proposals, and post copy.
-    - scope: runtime.ai.executeScenario.image.generate
+    - scope: ai.spend.meter
       qualifier: studio-image
       purpose: Generate reference image, avatar, profile cover, and post-image candidates.
-    - scope: runtime.ai.executeScenario.audio.synthesize
+    - scope: ai.spend.meter
       qualifier: studio-voice
       purpose: Generate voice-demo candidates for owner review.
-    - scope: app.local.drafts
-      qualifier: app-local-schedule
+    - scope: file.write.scoped
+      qualifier: app-local-drafts
       purpose: Persist a single foreground-only post schedule draft local to this app.
+    - scope: data.scope.read
+      qualifier: runtime.artifacts
+      purpose: Read the Runtime-owned bootstrap artifact through the admitted typed app-host operation.

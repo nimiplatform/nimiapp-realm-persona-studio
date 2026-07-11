@@ -9,9 +9,10 @@
     "pnpm": ">=10.0.0"
   },
   "scripts": {
+    "dev": "nimi-app dev --shell tauri",
     "dev:renderer": "vite --host 127.0.0.1 --port 1450 --strictPort",
-    "dev:shell": "tauri dev --config src-tauri/tauri.conf.json",
-    "dev:electron": "pnpm run build:electron && node scripts/run-electron-dev.mjs",
+    "dev:shell": "nimi-app dev",
+    "dev:electron": "nimi-app dev --shell electron",
     "tauri": "tauri",
     "build:renderer": "vite build",
     "build:electron": "tsc -p tsconfig.electron.json && node scripts/bundle-electron-preload.mjs",
@@ -29,11 +30,14 @@
     "validate": "node scripts/validate.mjs",
     "local-audit": "node scripts/local-audit.mjs",
     "pack": "pnpm run build:renderer && node scripts/pack.mjs",
-    "check": "pnpm run validate && pnpm run local-audit && pnpm run check:spec-consistency && pnpm run i18n:check && pnpm run i18n:audit && pnpm run typecheck && pnpm run lint && pnpm run test",
+    "doctor": "nimi-app doctor",
+    "check": "pnpm run doctor && pnpm run validate && pnpm run local-audit && pnpm run check:spec-consistency && pnpm run i18n:check && pnpm run i18n:audit && pnpm run typecheck && pnpm run lint && pnpm run test",
     "nimicoding": "nimicoding",
     "nimicoding:doctor": "nimicoding doctor"
   },
   "devDependencies": {
+    "@nimiplatform/app-tools": "link:../../nimi/app-tools",
+    "@nimiplatform/kit-protected-local-win32-x64": "link:../../nimi/kit/shell/protected-local-node/npm/win32-x64",
     "@eslint/js": "^10.0.1",
     "@nimiplatform/nimi-coding": "^0.2.5",
     "@tailwindcss/vite": "^4.3.0",

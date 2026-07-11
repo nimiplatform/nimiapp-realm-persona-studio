@@ -54,14 +54,15 @@ All runtime dependencies resolve from npm (`@nimiplatform/kit`,
 ## Development
 
 ```bash
-# Renderer only (vite dev server on http://127.0.0.1:1450)
+# Desktop-supervised Tauri
+pnpm dev
+
+# Explicit Desktop-supervised shell selection
+pnpm dev:shell -- --shell electron
+pnpm dev:shell -- --shell tauri
+
+# Renderer-only, intentionally without protected operations
 pnpm dev:renderer
-
-# Full Tauri shell (renderer + native window)
-pnpm dev:shell
-
-# Electron dev shell
-pnpm dev:electron
 ```
 
 ## Build & Verify
