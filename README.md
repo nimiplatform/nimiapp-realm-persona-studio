@@ -21,7 +21,8 @@ persona IP. It supports:
 It is **not** a LocalAgent runtime center, world maintenance tool, Forge
 package editor, team collaboration platform, or performance analytics suite.
 
-Normative product authority lives under [`.nimi/spec/project/kernel/`](./.nimi/spec/project/kernel/).
+Normative product authority lives under
+[`.nimi/spec/realm-persona-studio/canonical/`](./.nimi/spec/realm-persona-studio/canonical/).
 
 ## Architecture
 
@@ -30,7 +31,7 @@ Normative product authority lives under [`.nimi/spec/project/kernel/`](./.nimi/s
 | Desktop shell | Tauri 2 + Electron 42 | `src-tauri/`, `src-electron/` |
 | Renderer | React 19 + Vite 7 + Tailwind 4 | `src/shell/renderer/` |
 | Routing | react-router-dom 7 | `src/shell/renderer/app-shell/routes.tsx` |
-| Auth & runtime bridge | Nimi installed app standard shell | `src-tauri/src/main.rs`, `src-electron/` |
+| Auth & runtime bridge | Desktop-supervised protected standard bridge | `src-electron/` |
 | UI components | `@nimiplatform/kit` (npm) | renderer-wide |
 | Platform client | `@nimiplatform/sdk` (npm) | `src/shell/renderer/app-shell/studio-platform.ts` |
 | State | Zustand | `src/shell/renderer/app-shell/app-store.ts` |
@@ -54,12 +55,11 @@ All runtime dependencies resolve from npm (`@nimiplatform/kit`,
 ## Development
 
 ```bash
-# Desktop-supervised Tauri
+# Desktop-supervised Electron (active development path)
 pnpm dev
 
-# Explicit Desktop-supervised shell selection
-pnpm dev:shell -- --shell electron
-pnpm dev:shell -- --shell tauri
+# Explicit alias for the same active path
+pnpm dev:electron
 
 # Renderer-only, intentionally without protected operations
 pnpm dev:renderer
@@ -74,18 +74,21 @@ pnpm check:spec-consistency           # spec authority surface check
 pnpm lint                             # typecheck + eslint + cargo check
 ```
 
-## Installed App Auth Boundary
+The Tauri identifier remains reserved for future packaging work, but Tauri is
+not an active development path in this rollout.
+
+## Desktop-Supervised Protected Session
 
 Realm Persona Studio inherits Runtime account state from the Nimi desktop host.
-It is an installed app shell consumer, not a login or OAuth broker:
+It is a Desktop-supervised App, not a login or OAuth broker:
 
 - The app does not render `DesktopShellAuthPage`.
 - The app does not open OAuth, exchange OAuth codes, or save/load/clear Runtime sessions.
 - The app does not own access tokens, refresh tokens, Runtime defaults, or Runtime app registration.
 - Missing Desktop shared Runtime account state renders an explicit capability-unavailable state.
 
-Realm and Runtime calls are mediated through Nimi kit / SDK installed app
-bridges and the standard shell capability set.
+Realm and Runtime calls require separately admitted public Nimi kit / SDK
+operations delivered through the protected standard bridge.
 
 ## Routes
 
@@ -104,12 +107,10 @@ bridges and the standard shell capability set.
 
 ## Spec Authority
 
-Normative product authority lives under [`.nimi/spec/project/kernel/`](./.nimi/spec/project/kernel/)
-(kernel-style: per-domain kernel docs plus an enumerated rule catalog at
-[`tables/rule-catalog.yaml`](./.nimi/spec/project/kernel/tables/rule-catalog.yaml)).
-Top-level index is [`.nimi/spec/INDEX.md`](./.nimi/spec/INDEX.md); editing rules
-are in [`.nimi/spec/project/AGENTS.md`](./.nimi/spec/project/AGENTS.md). Every rule
-carries an explicit `R-RPS-<DOMAIN>-NNN` identifier.
+Normative product authority lives in closed v2 containers under
+[`.nimi/spec/realm-persona-studio/canonical/`](./.nimi/spec/realm-persona-studio/canonical/).
+Use `nimicoding authority query` or bounded `authority context` to retrieve
+exact IDs.
 
 Studio canonical owner portfolio surfaces are
 `Realm WorldCoreController.listRealmPersonas` and
@@ -121,10 +122,11 @@ Studio canonical owner portfolio surfaces are
 explicitly non-current legacy anti-targets and must not be promoted into owner
 portfolio surfaces.
 
-`.nimi/{config,contracts,methodology}/**` are package-canonical projections from
-`@nimiplatform/nimi-coding`; refresh with `pnpm exec nimicoding start --yes`
-after bumping the package. The full nimicoding spec validator suite is
-`pnpm exec nimicoding doctor && pnpm exec nimicoding validate-spec-tree && pnpm exec nimicoding validate-spec-audit && pnpm exec nimicoding validate-placement --profile nimi --root .nimi/spec && pnpm exec nimicoding validate-table-family --profile nimi --root .nimi/spec`.
+`.nimi/methodology/authority-authoring.yaml` is managed by
+`@nimiplatform/nimi-coding`; refresh it with
+`pnpm exec nimicoding sync --apply` after bumping the package. Validate the
+canonical corpus with `pnpm run spec:authority:check` and
+`pnpm run spec:authority:compile`.
 
 ## License
 

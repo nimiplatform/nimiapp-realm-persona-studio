@@ -9,7 +9,7 @@ Method: Product Design audit workflow using local spec authority, current render
 - Screenshot: `01-real-render-portfolio-bootstrap.png`
 - Live URL checked: `http://127.0.0.1:1450/#/portfolio`
 - Live render result: Vite/browser render stops at Runtime bootstrap failure: `tauri-ipc Runtime transport requires window.__TAURI__.core.invoke or __NIMI_TAURI_RUNTIME__.invoke`.
-- Product authority: `.nimi/spec/project/kernel/**`
+- Product authority: `.nimi/spec/realm-persona-studio/canonical/**`
 - UI implementation: `src/shell/renderer/app-shell/**`, `src/shell/renderer/features/**`, `src/shell/renderer/i18n/studio-copy.ts`, `src/shell/renderer/styles.css`
 
 ## User Goal

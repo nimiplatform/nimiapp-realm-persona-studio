@@ -1,0 +1,124 @@
+format: nimicoding.authority/v2
+owner: team.realm-persona-studio
+scope: realm-persona-studio.scope
+units:
+  - id: rule.realm-persona-studio.scope.r001
+    kind: rule
+    title: Owner persona scope
+    modality: must
+    statement: The app manages current-user-owned RealmPersona source objects.
+    condition: Always.
+    failure: Treat persona management as unavailable when the object is not returned as owned by the current user.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.realm-persona
+  - id: rule.realm-persona-studio.scope.r002
+    kind: rule
+    title: Admitted workspaces
+    modality: must
+    statement: Portfolio list, detail, create, settings, visibility, identity assets, post drafting, Runtime-assisted review, and local schedule workspaces remain source-backed or candidate-only.
+    condition: Whenever a listed workspace presents or changes data.
+    failure: Disable the affected source-backed action or retain the data as a local candidate when its boundary cannot be established.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.local-candidate
+  - id: rule.realm-persona-studio.scope.r003
+    kind: rule
+    title: Home-world selection
+    modality: must
+    statement: Home-world selection is read from Realm WorldCore data and submitted into RealmPersona.homeWorldId.
+    condition: Whenever an owner selects or submits a home world.
+    failure: Block submission and render home-world selection unavailable when Realm WorldCore data does not supply the selection.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.world-core
+  - id: rule.realm-persona-studio.scope.r004
+    kind: rule
+    title: Owner settings storage
+    modality: must
+    statement: Owner settings are stored as reviewed RealmPersona.core replacements rather than hidden app state.
+    condition: Whenever owner settings are saved.
+    failure: Reject the save as source-backed state when no reviewed RealmPersona.core replacement succeeds.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.realm-persona
+  - id: rule.realm-persona-studio.scope.r005
+    kind: rule
+    title: No local public-state claim
+    modality: must_not
+    statement: Local creative history or local schedules claim Realm public state.
+    condition: Always.
+    failure: Reject the public-state claim and retain the history or schedule as a desktop-local operation aid.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.local-candidate
+  - id: rule.realm-persona-studio.scope.r006
+    kind: rule
+    title: No world-character maintenance
+    modality: must_not
+    statement: Studio performs Realm World Studio world-character maintenance.
+    condition: Always.
+    failure: Reject the maintenance action and expose no success path for it.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.non-current-surfaces
+  - id: rule.realm-persona-studio.scope.r007
+    kind: rule
+    title: No Forge curation
+    modality: must_not
+    statement: Studio performs Forge-imported system curation or preset world authoring.
+    condition: Always.
+    failure: Reject the curation or authoring action and expose no success path for it.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.non-current-surfaces
+  - id: rule.realm-persona-studio.scope.r008
+    kind: rule
+    title: No private LocalAgent state
+    modality: must_not
+    statement: Studio accesses or manages LocalAgent private memory, emotion, cognition, transcript, or autonomous runtime state.
+    condition: Always.
+    failure: Reject access to the private state and expose none of it to Studio.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.local-agent
+  - id: rule.realm-persona-studio.scope.r009
+    kind: rule
+    title: No raw legacy authoring
+    modality: must_not
+    statement: Studio provides direct raw rule editing, CharacterCard import, or rule, truth, or projection package publication.
+    condition: Always.
+    failure: Reject the editing, import, or publication action and expose no success through it.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.non-current-surfaces
+  - id: rule.realm-persona-studio.scope.r010
+    kind: rule
+    title: No unadmitted expansion
+    modality: must_not
+    statement: Studio provides version history, rollback, economic settlement, team collaboration, recurring campaign automation, or public scheduling authority before a future authority change admits it.
+    condition: Always.
+    failure: Reject the unadmitted capability and expose no success path for it.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.non-current-surfaces
+  - id: rule.realm-persona-studio.scope.r011
+    kind: rule
+    title: No creator-route fallback
+    modality: must_not
+    statement: Creator or world-maintainer routes are used as fallback for owner persona reads or writes.
+    condition: Always.
+    failure: Fail the owner persona operation without retrying through a creator or world-maintainer route.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.realm-core-surfaces
+  - id: rule.realm-persona-studio.scope.r012
+    kind: rule
+    title: No profile-based write proof
+    modality: must_not
+    statement: Public profile or account data is used to prove owner write authority for a persona.
+    condition: Always.
+    failure: Reject the write-authority claim and perform no persona write.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.realm-persona

@@ -17,7 +17,7 @@
 | Desktop shell | Tauri 2 + Electron 42 | `src-tauri/`, `src-electron/` |
 | Renderer | React 19 + Vite 7 + Tailwind 4 | `src/shell/renderer/` |
 | Routing | react-router-dom 7 | `src/shell/renderer/app-shell/routes.tsx` |
-| Auth & runtime bridge | Nimi installed app standard shell | `src-tauri/src/main.rs`, `src-electron/` |
+| Auth & runtime bridge | Desktop-supervised protected standard bridge | `src-electron/` |
 | UI components | `@nimiplatform/kit` (npm) | renderer-wide |
 | Platform client | `@nimiplatform/sdk` (npm) | `app-shell/studio-platform.ts` |
 | State | Zustand | `app-shell/app-store.ts` |
@@ -25,18 +25,15 @@
 
 ## Spec Authority & Sync
 
-`.nimi/spec/project/kernel/**` is Realm Persona Studio's canonical product/app
-authority. Active authority documents are the kernel doc set declared by
-`.nimi/spec/project/kernel/index.md`, and every rule carries an explicit
-`R-RPS-<DOMAIN>-NNN` identifier. The full enumerated rule registry is
-`.nimi/spec/project/kernel/tables/rule-catalog.yaml`. Editing rules live in
-`.nimi/spec/project/AGENTS.md`; do not create parallel authority roots
+Closed v2 containers under `.nimi/spec/realm-persona-studio/canonical/**` are
+Realm Persona Studio's canonical product/app authority. Read only the affected
+containers or bounded authority context; do not create parallel authority roots
 (`apps/realm-persona-studio/spec/**`, repo-root `spec/**`, sibling
 `.nimi/spec/<other>/**`).
 
-`.nimi/{config,contracts,methodology}/**` are package-canonical projections
-from `@nimiplatform/nimi-coding`; refresh with `pnpm exec nimicoding start
---yes` after bumping the package.
+`.nimi/methodology/authority-authoring.yaml` is the package-managed authoring
+guide; refresh with `pnpm exec nimicoding sync --apply` after bumping the
+package.
 
 Studio canonical owner portfolio surfaces are
 `Realm WorldCoreController.listRealmPersonas` and
@@ -67,7 +64,7 @@ unavailable — render an explicit "source unavailable" state.
 ### Auth boundary
 - Studio does **not** own access or refresh tokens (mirrors parentos PO-SHELL-008 / K-ACCSVC-008).
 - Studio does **not** render app-local login, open OAuth, exchange OAuth codes, save Runtime sessions, load Runtime sessions, clear Runtime sessions, or bootstrap Runtime defaults.
-- All Runtime account state is Desktop shared auth owned by the host shell and consumed through the installed app standard shell / SDK Runtime account bridge.
+- All Runtime account state is Desktop shared auth owned by the supervisor and consumed through the protected standard bridge / public SDK Runtime account surface.
 - Missing Desktop shared Runtime account state is a fail-closed capability-unavailable product state, not a redirect to a Studio-owned login flow.
 
 ## Development Principles
@@ -150,7 +147,7 @@ admission decision.
 
 ## Retrieval Defaults
 
-Start with: `.nimi/spec/INDEX.md`, `.nimi/spec/project/kernel/`, `src/shell/renderer/app-shell/`, `src/shell/renderer/features/portfolio/`, `src-tauri/src/`.
+Start with: `.nimi/spec/realm-persona-studio/canonical/`, `src/shell/renderer/app-shell/`, `src/shell/renderer/features/portfolio/`, `src-tauri/src/`.
 
 Skip: `node_modules/`, `dist/`, `src-tauri/target/`, `src-tauri/gen/`, lockfiles.
 
@@ -164,20 +161,12 @@ Skip: `node_modules/`, `dist/`, `src-tauri/target/`, `src-tauri/gen/`, lockfiles
 <!-- nimicoding:managed:agents:start -->
 # Nimi Coding Managed Block
 
-- Read .nimi/methodology, .nimi/spec, and .nimi/contracts before high-risk changes.
-- Treat .nimi as the primary AI truth surface for this project.
-- Treat `/.nimi/spec/**` as the current repo-wide product authority for this project, and use Git history for retired pre-cutover authority evidence.
-- If .nimi/spec remains bootstrap-only, use .nimi/methodology/spec-reconstruction.yaml and .nimi/config/skills.yaml to drive AI-side truth reconstruction.
-- Treat .nimi/methodology/spec-target-truth-profile.yaml as repo-local support guidance for future governance slices, not as the canonical reconstruction completion target or a guaranteed fresh-bootstrap seed.
-- Treat .nimi/contracts/spec-reconstruction-result.yaml, .nimi/contracts/doc-spec-audit-result.yaml, .nimi/contracts/high-risk-execution-result.yaml, and .nimi/contracts/high-risk-admission.schema.yaml as machine contracts for reconstruction, audit, local-only high-risk closeout summaries, and canonical high-risk admission truth.
-- Treat .nimi/config/skill-manifest.yaml, .nimi/config/host-profile.yaml, .nimi/config/host-adapter.yaml, .nimi/config/external-execution-artifacts.yaml, .nimi/config/skill-installer.yaml, .nimi/methodology/skill-runtime.yaml, .nimi/methodology/skill-installer-result.yaml, .nimi/methodology/skill-handoff.yaml, and admitted package-owned adapter profiles under adapters/**/profile.yaml as the canonical bridge to any external AI/skill execution.
-- Treat standalone nimicoding as boundary-complete for bootstrap, handoff, validation, projection, and explicit admission only; do not assume packaged run-kernel, provider, scheduler, notification, or automation ownership.
-- Treat .nimi/config/installer-evidence.yaml and .nimi/methodology/skill-installer-summary-projection.yaml as the operational-to-semantic installer projection boundary; do not promote concrete evidence artifacts into semantic truth.
-- Treat high-risk external execution closeout, decision, ingest, and review payloads under .nimi/local/** as local-only operational projections; they do not promote semantic truth automatically, even when manager-owned.
-- Use high-risk packetized execution only when authority, ownership, or cross-layer risk justifies it.
-- Keep inline manager-worker as the default methodology posture; do not assume a separate worker runtime is mandatory.
-- Keep code changes AI-context-efficient: favor bounded, cohesive files and split by responsibility during implementation instead of first concentrating unrelated logic into one file.
-- Keep the methodology continuity-agnostic; do not assume daemon, heartbeat, or persistent manager ownership.
-- Treat cutover readiness as preflight evidence only; the authority flip must come from an admitted cutover batch, not from readiness green by itself.
-- Do not treat this managed block as a replacement for project-specific rules outside .nimi.
+- Product authority lives under `.nimi/spec/**`.
+- For canonical authority authoring, read only `.nimi/methodology/authority-authoring.yaml`, the affected authority files or bounded task context, and CLI diagnostics.
+- Use `nimicoding authority context <path> <id> --max-units <n> --max-bytes <n> --json` only for the complete declared outgoing interpretation closure; it is not complete task context, and failure never permits guessed or partial context.
+- Use `nimicoding authority diff` and `authority impact` with explicit `--max-bytes`; impact reports declared review obligations and does not prove implementation, consumers, or tests are synchronized.
+- Under `.nimi/spec/**`, author only closed multi-unit `*.authority.yaml` containers or single-unit `*.authority.md`; historical document formats are unsupported and never inferred.
+- Run `nimicoding authority fmt` on each changed file, then `nimicoding authority check` on the complete authority input set.
+- Never bypass a failure with inferred or fallback semantics; choose repair values only from product/task authority.
+- Keep derived and verification evidence under `.nimi/local/**`; it is never product authority.
 <!-- nimicoding:managed:agents:end -->

@@ -1,0 +1,152 @@
+format: nimicoding.authority/v2
+owner: team.realm-persona-studio
+scope: realm-persona-studio.setting
+units:
+  - id: definition.realm-persona-studio.setting.core-field-map
+    kind: definition
+    title: Persona core field map
+    meaning: The admitted owner-reviewed RealmPersona.core field map contains displayName, handle, profile description, greeting, identity, personality, communication, boundaries, positioning, socialVisibility with PUBLIC, FRIENDS, or PRIVATE values, avatarUrl, referenceImageUrl, profileCoverUrl, and voice settings.
+  - id: rule.realm-persona-studio.setting.r001
+    kind: rule
+    title: Display name field
+    modality: must
+    statement: displayName is admitted as RealmPersona.core.displayName.
+    condition: Whenever Studio reads or writes the persona display name.
+    failure: Treat the display name as unavailable or invalid when it cannot be read from or normalized to RealmPersona.core.displayName.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.setting.core-field-map
+  - id: rule.realm-persona-studio.setting.r002
+    kind: rule
+    title: Handle field
+    modality: must
+    statement: handle is admitted as RealmPersona.core.handle during create and replacement when owner-reviewed.
+    condition: Whenever Studio creates or replaces an owner-reviewed handle.
+    failure: Reject the handle write when it is not owner-reviewed or cannot be normalized to RealmPersona.core.handle.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.setting.core-field-map
+  - id: rule.realm-persona-studio.setting.r003
+    kind: rule
+    title: Profile description field
+    modality: must
+    statement: description and bio normalize to owner-reviewed profile description inside RealmPersona.core.
+    condition: Whenever Studio reads or writes description or bio.
+    failure: Reject the write when description or bio cannot be normalized to an owner-reviewed profile description.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.setting.core-field-map
+  - id: rule.realm-persona-studio.setting.r004
+    kind: rule
+    title: Greeting field
+    modality: must
+    statement: greeting is admitted as an owner-reviewed first-message field inside RealmPersona.core.
+    condition: Whenever Studio reads or writes a greeting.
+    failure: Reject the greeting write when the field is not owner-reviewed or cannot be stored inside RealmPersona.core.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.setting.core-field-map
+  - id: rule.realm-persona-studio.setting.r005
+    kind: rule
+    title: Structured persona sections
+    modality: must
+    statement: identity, personality, communication, boundaries, and positioning are admitted as structured owner-reviewed core sections.
+    condition: Whenever Studio reads or writes a listed section.
+    failure: Reject the section write when it is unreviewed or malformed.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.setting.core-field-map
+  - id: rule.realm-persona-studio.setting.r006
+    kind: rule
+    title: Social visibility field
+    modality: must
+    statement: socialVisibility is admitted as a structured core section with PUBLIC, FRIENDS, or PRIVATE values.
+    condition: Whenever Studio reads or writes socialVisibility.
+    failure: Reject the visibility write when its value is not PUBLIC, FRIENDS, or PRIVATE.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.setting.core-field-map
+  - id: rule.realm-persona-studio.setting.r007
+    kind: rule
+    title: Profile media fields
+    modality: must
+    statement: avatarUrl, referenceImageUrl, and profileCoverUrl are stored only as reviewed core fields or local candidates; a local preview is not public asset authority.
+    condition: Whenever Studio stores or previews a listed profile media field.
+    failure: Keep unreviewed media local and expose no public asset authority claim for a local preview.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.setting.core-field-map
+  - id: rule.realm-persona-studio.setting.r008
+    kind: rule
+    title: Voice publication boundary
+    modality: must
+    statement: Voice settings may be read or proposed from core, but public voice publication requires an admitted Realm write path.
+    condition: Whenever Studio reads, proposes, or publishes voice settings.
+    failure: Keep the voice setting as a local candidate and expose no public voice publication when no admitted Realm write succeeds.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.setting.core-field-map
+  - id: rule.realm-persona-studio.setting.r009
+    kind: rule
+    title: Complete setting replacement
+    modality: must
+    statement: Every setting write builds a complete ReplaceRealmPersonaDto from the latest detail read.
+    condition: Whenever Studio prepares a setting write.
+    failure: Reject the setting write when the replacement DTO is incomplete or not built from the latest detail read.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.persona.replace-dto
+      - type: applies_to
+        target: definition.realm-persona-studio.setting.core-field-map
+  - id: rule.realm-persona-studio.setting.r010
+    kind: rule
+    title: Required replacement fields
+    modality: must
+    statement: The setting write includes baseContentHash, homeWorldId, origin, and merged core.
+    condition: Whenever Studio submits a setting write.
+    failure: Reject the write before submission when any listed field is missing.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.persona.replace-dto
+      - type: applies_to
+        target: definition.realm-persona-studio.setting.core-field-map
+  - id: rule.realm-persona-studio.setting.r011
+    kind: rule
+    title: Forbidden setting payload
+    modality: must_not
+    statement: A setting write submits raw rule text, provider or model configuration, LocalAgent state, private transcript, or unreviewed generated JSON.
+    condition: Always.
+    failure: Reject the setting write before any Realm call.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.setting.core-field-map
+  - id: rule.realm-persona-studio.setting.r012
+    kind: rule
+    title: Runtime setting candidates
+    modality: must
+    statement: Runtime setting proposals remain editable candidates and return to the same owner-reviewed save path.
+    condition: Whenever Runtime proposes a setting.
+    failure: Keep the proposal local and do not save it as source state outside the owner-reviewed path.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.setting.core-field-map
+  - id: rule.realm-persona-studio.setting.r013
+    kind: rule
+    title: No-change setting result
+    modality: must
+    statement: A no-change diff returns a no-op failure state rather than a fake Realm write success.
+    condition: Whenever a setting diff contains no change.
+    failure: Return the no-op failure state and make no Realm write success claim.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.setting.core-field-map
+  - id: rule.realm-persona-studio.setting.r014
+    kind: rule
+    title: Setting validation failure
+    modality: must
+    statement: Invalid visibility values, malformed structured fields, and stale hashes fail closed before write.
+    condition: Whenever a setting payload contains an invalid visibility value, malformed structured field, or stale hash.
+    failure: Reject the payload before any Realm write.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.setting.core-field-map

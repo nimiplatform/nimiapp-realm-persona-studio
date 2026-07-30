@@ -7,7 +7,7 @@ Scope: current Realm Agent Studio app structure, owner portfolio, create flow, a
 
 - Product Design Browser/Chrome capture tools were not available in this session.
 - I did not switch to Playwright because the Product Design audit contract requires asking before using it as a fallback.
-- The audit is therefore grounded in the current code, i18n copy, style system, and `.nimi/spec/project/kernel/**` authority, not fresh screenshots.
+- The audit is therefore grounded in the current code, i18n copy, style system, and `.nimi/spec/realm-persona-studio/canonical/**` authority, not fresh screenshots.
 - Prior memory was used only as routing context; current conclusions were rechecked against current files.
 
 ## Core Verdict

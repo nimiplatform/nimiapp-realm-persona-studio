@@ -40,8 +40,8 @@ const packet = {
   manifestPath: 'nimi.app.yaml',
   admissionRequestPath: '.nimi/admission/submission.yaml',
   buildProfilePath: '.nimi/admission/build-profile.yaml',
-  specAuthorityRoot: '.nimi/spec/project/kernel',
-  specRuleCatalog: '.nimi/spec/project/kernel/tables/rule-catalog.yaml',
+  specAuthorityRoot: '.nimi/spec/realm-persona-studio/canonical',
+  specRuleCatalog: null,
   generatedAt: new Date().toISOString(),
   admissionTruth: 'platform-owned-after-review',
 };

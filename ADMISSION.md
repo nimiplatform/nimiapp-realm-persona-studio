@@ -14,18 +14,19 @@ For protected local development through the Desktop-owned supervisor:
 
 ```bash
 pnpm dev
-pnpm dev:shell -- --shell electron
-pnpm dev:shell -- --shell tauri
+pnpm dev:electron
 ```
 
 `pnpm dev:renderer` is renderer-only and cannot perform protected operations.
+The Tauri identifier is dormant packaging identity and is not a parallel
+development path.
 
 ## Submission Inputs
 
 - `nimi.app.yaml` declares app identity and requested Nimi API scopes.
 - `.nimi/admission/submission.yaml` records publish-readiness commands and review inputs.
 - `.nimi/admission/build-profile.yaml` records install, build, and lockfile policy.
-- `.nimi/spec/project/kernel/**` is the canonical product/app authority surface (kernel-style, with the enumerated `R-RPS-<DOMAIN>-NNN` rule catalog at `tables/rule-catalog.yaml`).
+- `.nimi/spec/realm-persona-studio/canonical/**` is the canonical v2 product/app authority surface.
 - `dist/nimi-app-submission.json` is produced by `pnpm run pack` after a successful renderer build.
 
 ## Reviewer Boundary

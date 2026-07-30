@@ -1,0 +1,108 @@
+format: nimicoding.authority/v2
+owner: team.realm-persona-studio
+scope: realm-persona-studio.story
+units:
+  - id: rule.realm-persona-studio.story.r001
+    kind: rule
+    title: "Story: review persona portfolio"
+    modality: must
+    statement: Owner personas load from listRealmPersonas; unavailable metrics stay unavailable.
+    condition: Whenever the owner reviews the persona portfolio.
+    failure: Render the portfolio or affected metric as source unavailable when listRealmPersonas or the metric source is unavailable.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.realm-persona
+  - id: rule.realm-persona-studio.story.r002
+    kind: rule
+    title: "Story: inspect persona detail"
+    modality: must
+    statement: Detail loads from getRealmPersona before edit workspaces enable source-backed actions.
+    condition: Whenever the owner inspects persona detail.
+    failure: Keep source-backed edit actions disabled and render persona detail unavailable until getRealmPersona returns detail.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.realm-persona
+  - id: rule.realm-persona-studio.story.r003
+    kind: rule
+    title: "Story: create persona"
+    modality: must
+    statement: Owner draft normalizes into CreateRealmPersonaDto, defaults world from WorldCore, and succeeds only after Realm returns canonical id.
+    condition: Whenever the owner creates a persona.
+    failure: Reject create submission when normalization or WorldCore defaulting fails and present no success without a canonical Realm id.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.persona.create-dto
+  - id: rule.realm-persona-studio.story.r004
+    kind: rule
+    title: "Story: update settings"
+    modality: must
+    statement: Owner-reviewed settings merge into RealmPersona.core and save through replaceRealmPersona with baseContentHash.
+    condition: Whenever the owner updates persona settings.
+    failure: Preserve the reviewed settings as a candidate and present no source-state success when merge or replacement fails.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.persona.replace-dto
+      - type: applies_to
+        target: definition.realm-persona-studio.setting.core-field-map
+  - id: rule.realm-persona-studio.story.r005
+    kind: rule
+    title: "Story: review consistency"
+    modality: must
+    statement: Runtime review is advisory and returns to owner-reviewed settings save.
+    condition: Whenever the owner requests a Runtime consistency review.
+    failure: Keep Runtime review output local and do not present it as saved source state outside the owner-reviewed path.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.local-candidate
+  - id: rule.realm-persona-studio.story.r006
+    kind: rule
+    title: "Story: generate identity assets"
+    modality: must
+    statement: Visual and voice outputs are local candidates until a reviewed Realm core write succeeds.
+    condition: Whenever the owner generates visual or voice output.
+    failure: Keep the output local and expose no public profile state until a reviewed Realm core write succeeds.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.asset.asset-candidate
+  - id: rule.realm-persona-studio.story.r007
+    kind: rule
+    title: "Story: draft post"
+    modality: must
+    statement: Post copy assistance uses visible persona context and remains local until Realm post creation succeeds.
+    condition: Whenever the owner drafts a post with copy assistance.
+    failure: Preserve the draft locally and present no publication success until Realm post creation succeeds.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.post.post-draft
+  - id: rule.realm-persona-studio.story.r008
+    kind: rule
+    title: "Story: schedule locally"
+    modality: must
+    statement: The local schedule is one foreground desktop operation per persona, not public schedule state.
+    condition: Whenever the owner schedules a post locally.
+    failure: Reject a second foreground operation for the persona and expose no public schedule-state claim.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.post.local-schedule
+  - id: rule.realm-persona-studio.story.r009
+    kind: rule
+    title: "Story: prepare localAgent context"
+    modality: must
+    statement: localAgent chat readiness uses SourceMaterializationPacket by value and never exposes private LocalAgent memory.
+    condition: Whenever the owner prepares localAgent chat context.
+    failure: Reject readiness generation when by-value materialization is unavailable or private LocalAgent memory would be exposed.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.local-agent
+      - type: applies_to
+        target: definition.realm-persona-studio.core.source-materialization-packet
+  - id: rule.realm-persona-studio.story.r010
+    kind: rule
+    title: "Story: keep adjacent products out"
+    modality: must
+    statement: WorldCharacter maintenance, Forge curation, CharacterCard import, and legacy Realm-side Agent routes stay out of Studio routes.
+    condition: Whenever Studio routes are defined or invoked.
+    failure: Reject the adjacent-product route and expose no Studio success through it.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.non-current-surfaces

@@ -1,0 +1,104 @@
+format: nimicoding.authority/v2
+owner: team.realm-persona-studio
+scope: realm-persona-studio.post
+units:
+  - id: definition.realm-persona-studio.post.post-draft
+    kind: definition
+    title: Post draft
+    meaning: An owner-reviewed local post draft candidate is pending canonical Realm post identity.
+  - id: definition.realm-persona-studio.post.local-schedule
+    kind: definition
+    title: Local schedule
+    meaning: The local schedule contains at most one foreground executable draft per persona, is desktop-local only, and is never Realm schedule authority.
+  - id: rule.realm-persona-studio.post.r001
+    kind: rule
+    title: Post draft candidate boundary
+    modality: must
+    statement: Post drafts remain owner-reviewed local candidates until Realm post creation returns canonical post identity.
+    condition: Whenever Studio creates or edits a post draft.
+    failure: Keep the draft local and make no publication success claim until Realm returns canonical post identity.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.post.post-draft
+  - id: rule.realm-persona-studio.post.r002
+    kind: rule
+    title: Copy assistance inputs
+    modality: must
+    statement: Copy assistance uses only owner-visible persona fields, owner prompt text, and reviewed local draft state.
+    condition: Whenever Studio provides post copy assistance.
+    failure: Reject copy assistance when its input includes material outside the admitted list.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.post.post-draft
+  - id: rule.realm-persona-studio.post.r003
+    kind: rule
+    title: No caller-selected destination
+    modality: must_not
+    statement: Post publication exposes a caller-selected world destination when Realm resolves author and world context server-side.
+    condition: Whenever Realm resolves post author and world context server-side.
+    failure: Reject the caller-selected destination and send no publication request containing it.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.post.post-draft
+  - id: rule.realm-persona-studio.post.r004
+    kind: rule
+    title: Attachment draft references
+    modality: must
+    statement: Attachment drafts reference reviewed media candidates or canonical Realm resources; missing resources fail closed.
+    condition: Whenever a post draft includes an attachment.
+    failure: Reject attachment publication while preserving the draft when its reviewed candidate or canonical Realm resource is missing.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.post.post-draft
+  - id: rule.realm-persona-studio.post.r005
+    kind: rule
+    title: Forbidden publication state
+    modality: must_not
+    statement: The app publishes from private LocalAgent state, hidden provider state, or unreviewed Runtime output.
+    condition: Always.
+    failure: Reject publication before any Realm call and preserve the post draft.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.local-agent
+  - id: rule.realm-persona-studio.post.r006
+    kind: rule
+    title: Single local schedule
+    modality: must
+    statement: The local schedule stores at most one foreground executable draft per persona and is not Realm schedule authority.
+    condition: Whenever Studio persists or presents a local schedule.
+    failure: Reject a second foreground executable draft for the persona and expose no Realm schedule authority claim.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.post.local-schedule
+  - id: rule.realm-persona-studio.post.r007
+    kind: rule
+    title: Canonical post success
+    modality: must
+    statement: Publish success requires Realm response identity; a scheduled local action is not publish success.
+    condition: Whenever Studio presents post publication as successful.
+    failure: Preserve the draft and present publication failure when Realm returns no canonical response identity.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.post.post-draft
+  - id: rule.realm-persona-studio.post.r008
+    kind: rule
+    title: Preserve failed post draft
+    modality: must
+    statement: Post failures preserve the draft and display source failure without retrying through alternate legacy routes.
+    condition: Whenever post publication fails.
+    failure: Preserve the draft, display the source failure, and perform no alternate legacy-route retry.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.post.post-draft
+  - id: rule.realm-persona-studio.post.r009
+    kind: rule
+    title: Unadmitted post operations
+    modality: must
+    statement: Post publication, text-resource creation, attachment-resource reads, media upload, and scheduled publish are visibly disabled; draft editing, review, payload preview, and local schedule candidate persistence remain local candidate behavior and invoke neither Realm nor ordinary network transport.
+    condition: Until an exact Runtime-mediated post or resource operation is admitted.
+    failure: Return capability-unavailable before any Realm or ordinary network call while preserving the draft and local schedule candidate.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.post.local-schedule
+      - type: applies_to
+        target: definition.realm-persona-studio.post.post-draft

@@ -1,0 +1,148 @@
+format: nimicoding.authority/v2
+owner: team.realm-persona-studio
+scope: realm-persona-studio.persona
+units:
+  - id: definition.realm-persona-studio.persona.create-dto
+    kind: definition
+    title: Persona create DTO
+    meaning: CreateRealmPersonaDto contains homeWorldId, origin, and reviewed core.
+  - id: definition.realm-persona-studio.persona.replace-dto
+    kind: definition
+    title: Persona replace DTO
+    meaning: ReplaceRealmPersonaDto contains the latest baseContentHash, homeWorldId, origin, and merged core built from the latest detail read.
+  - id: definition.realm-persona-studio.persona.world-character-core
+    kind: definition
+    title: World character core
+    meaning: WorldCharacterCore objects are world-created characters maintained by Realm World Studio, not owner personas.
+  - id: rule.realm-persona-studio.persona.r001
+    kind: rule
+    title: Canonical persona identity
+    modality: must
+    statement: A Studio persona exists only after Realm returns a canonical RealmPersonaDto.id.
+    condition: Whenever Studio claims that a persona exists.
+    failure: Return persona creation without success when Realm returns no canonical RealmPersonaDto.id.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.realm-persona
+  - id: rule.realm-persona-studio.persona.r002
+    kind: rule
+    title: Canonical detail object
+    modality: must
+    statement: The canonical detail object is RealmPersonaDto from WorldCoreController.getRealmPersona.
+    condition: Whenever Studio presents persona detail as source-backed.
+    failure: Render persona detail source unavailable when that surface returns no canonical RealmPersonaDto.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.realm-persona
+  - id: rule.realm-persona-studio.persona.r003
+    kind: rule
+    title: Canonical list object
+    modality: must
+    statement: The canonical list object is RealmPersonaDto[] from WorldCoreController.listRealmPersonas.
+    condition: Whenever Studio presents the owner persona list as source-backed.
+    failure: Render the portfolio source unavailable when that surface returns no canonical RealmPersonaDto list.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.realm-persona
+  - id: rule.realm-persona-studio.persona.r004
+    kind: rule
+    title: Preserve Realm fields
+    modality: must
+    statement: id, homeWorldId, origin, contentHash, contentRevision, state, and core are preserved from Realm responses without local reinterpretation.
+    condition: Whenever Studio consumes a RealmPersona response.
+    failure: Reject the locally reinterpreted object and do not present it as canonical source state.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.realm-persona
+  - id: rule.realm-persona-studio.persona.r005
+    kind: rule
+    title: Persona core source fields
+    modality: must
+    statement: Display name, handle, description, greeting, profile media, voice settings, visibility settings, and positioning are source fields inside RealmPersona.core when present.
+    condition: Whenever a listed field is present in RealmPersona.core.
+    failure: Do not claim the field as source-backed when it is absent from RealmPersona.core.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.realm-persona
+  - id: rule.realm-persona-studio.persona.r006
+    kind: rule
+    title: Missing optional persona fields
+    modality: must
+    statement: Missing optional fields render as unavailable or empty source-backed fields; Studio does not synthesize persona identity.
+    condition: Whenever an optional persona field is missing.
+    failure: Render the field as unavailable or source-backed empty and emit no synthesized persona identity.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.realm-persona
+  - id: rule.realm-persona-studio.persona.r007
+    kind: rule
+    title: Owner-scope proof
+    modality: must
+    statement: Owner scope is proven by the admitted Realm core surface returning the object for the current account session.
+    condition: Whenever Studio requires proof of owner scope.
+    failure: Treat owner authority as missing when the admitted Realm core surface does not return the object for the current account session.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.realm-persona
+  - id: rule.realm-persona-studio.persona.r008
+    kind: rule
+    title: Exclude world characters
+    modality: must_not
+    statement: WorldCharacterCore objects appear as owner personas in the owner portfolio.
+    condition: Always.
+    failure: Exclude the WorldCharacterCore object from the owner portfolio and present no owner-persona claim for it.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.realm-persona
+      - type: applies_to
+        target: definition.realm-persona-studio.persona.world-character-core
+  - id: rule.realm-persona-studio.persona.r009
+    kind: rule
+    title: Persona creation surface
+    modality: must
+    statement: Persona creation calls WorldCoreController.createRealmPersona with homeWorldId, origin, and reviewed core.
+    condition: Whenever Studio submits persona creation.
+    failure: Reject persona creation when the call or any listed field is missing.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.persona.create-dto
+  - id: rule.realm-persona-studio.persona.r010
+    kind: rule
+    title: Persona replacement surface
+    modality: must
+    statement: Persona replacement calls WorldCoreController.replaceRealmPersona with the latest baseContentHash.
+    condition: Whenever Studio submits persona replacement.
+    failure: Reject persona replacement when the latest baseContentHash is absent or stale.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.persona.replace-dto
+  - id: rule.realm-persona-studio.persona.r011
+    kind: rule
+    title: Replacement success identity
+    modality: must
+    statement: A replace success is valid only when Realm returns the updated RealmPersonaDto with a new or confirmed contentHash.
+    condition: Whenever Studio presents persona replacement as successful.
+    failure: Treat replacement as failed when Realm returns no updated RealmPersonaDto with a new or confirmed contentHash.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.persona.replace-dto
+  - id: rule.realm-persona-studio.persona.r012
+    kind: rule
+    title: Post-write canonical refresh
+    modality: must
+    statement: Studio re-reads or refreshes canonical detail after writes before presenting updated source-backed state.
+    condition: After a persona write succeeds.
+    failure: Withhold updated source-backed state until canonical detail is re-read or refreshed.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.realm-core-surfaces
+  - id: rule.realm-persona-studio.persona.r013
+    kind: rule
+    title: No candidate canonicalization
+    modality: must_not
+    statement: Local drafts, Runtime proposals, or media candidates become the canonical persona object by themselves.
+    condition: Always.
+    failure: Retain the material as a local candidate and present no canonical persona success.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.local-candidate

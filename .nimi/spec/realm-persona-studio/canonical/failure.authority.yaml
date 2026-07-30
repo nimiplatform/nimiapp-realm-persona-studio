@@ -1,0 +1,98 @@
+format: nimicoding.authority/v2
+owner: team.realm-persona-studio
+scope: realm-persona-studio.failure
+units:
+  - id: definition.realm-persona-studio.failure.failure-state
+    kind: definition
+    title: Failure state
+    meaning: A failure state is a typed, explicitly rendered failure state of the Studio.
+  - id: definition.realm-persona-studio.failure.realm-unavailable
+    kind: definition
+    title: Realm unavailable
+    meaning: The typed failure state raised when Realm is unavailable.
+  - id: definition.realm-persona-studio.failure.permission-missing
+    kind: definition
+    title: Permission missing
+    meaning: The typed failure state raised when a required permission is missing.
+  - id: definition.realm-persona-studio.failure.owner-authority-missing
+    kind: definition
+    title: Owner authority missing
+    meaning: The typed failure state raised when owner authority is missing.
+  - id: definition.realm-persona-studio.failure.portfolio-source-unavailable
+    kind: definition
+    title: Portfolio source unavailable
+    meaning: The typed failure state raised when the portfolio source is unavailable.
+  - id: definition.realm-persona-studio.failure.persona-detail-source-unavailable
+    kind: definition
+    title: Persona detail source unavailable
+    meaning: The typed failure state raised when the persona detail source is unavailable.
+  - id: definition.realm-persona-studio.failure.persona-creation-rejected
+    kind: definition
+    title: Persona creation rejected
+    meaning: The typed failure state raised when persona creation is rejected.
+  - id: definition.realm-persona-studio.failure.persona-creation-no-canonical-id
+    kind: definition
+    title: Persona creation has no canonical id
+    meaning: The typed failure state raised when persona creation returns no canonical id.
+  - id: definition.realm-persona-studio.failure.base-content-hash-missing-or-stale
+    kind: definition
+    title: Base content hash missing or stale
+    meaning: The typed failure state raised when the base content hash is missing or stale.
+  - id: definition.realm-persona-studio.failure.world-core-selection-unavailable
+    kind: definition
+    title: WorldCore selection unavailable
+    meaning: The typed failure state raised when WorldCore selection is unavailable.
+  - id: definition.realm-persona-studio.failure.setting-payload-invalid
+    kind: definition
+    title: Setting payload invalid
+    meaning: The typed failure state raised when a setting payload is invalid.
+  - id: definition.realm-persona-studio.failure.setting-replacement-no-canonical-object
+    kind: definition
+    title: Setting replacement has no canonical object
+    meaning: The typed failure state raised when setting replacement returns no canonical updated object.
+  - id: definition.realm-persona-studio.failure.runtime-transport-unavailable
+    kind: definition
+    title: Runtime transport unavailable
+    meaning: The typed failure state raised when Runtime transport is unavailable.
+  - id: definition.realm-persona-studio.failure.runtime-route-unbound
+    kind: definition
+    title: Runtime route unbound
+    meaning: The typed failure state raised when a Runtime route is unbound.
+  - id: definition.realm-persona-studio.failure.runtime-output-malformed
+    kind: definition
+    title: Runtime output malformed
+    meaning: The typed failure state raised when Runtime output is malformed.
+  - id: definition.realm-persona-studio.failure.local-candidate-history-unavailable
+    kind: definition
+    title: Local candidate history unavailable
+    meaning: The typed failure state raised when local candidate history is unavailable.
+  - id: definition.realm-persona-studio.failure.post-publish-failed
+    kind: definition
+    title: Post publish failed
+    meaning: The typed failure state raised when post publishing fails.
+  - id: definition.realm-persona-studio.failure.local-schedule-not-persistable
+    kind: definition
+    title: Local schedule not persistable
+    meaning: The typed failure state raised when a local schedule cannot be persisted.
+  - id: rule.realm-persona-studio.failure.r001
+    kind: rule
+    title: No failure pseudo-success
+    modality: must_not
+    statement: A failure is converted into placeholder success, fake return data, a synthesized metric, or renderer-local source authority.
+    condition: Always.
+    failure: Preserve and explicitly render the typed failure while returning no placeholder success, fake data, synthesized metric, or renderer-local authority claim.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.failure.failure-state
+  - id: rule.realm-persona-studio.failure.r002
+    kind: rule
+    title: Capability-unavailable failure
+    modality: must
+    statement: A missing Desktop-supervised protected session, unavailable protected standard-bridge operation, or unadmitted Realm or Runtime operation is an explicit capability-unavailable failure with no redirect to app-owned login, OAuth, Runtime defaults bootstrap, portable launch binding, generic Runtime bridge, or token or session fallback.
+    condition: Whenever a Desktop-supervised protected session is missing, a protected standard-bridge operation is unavailable, or a Realm or Runtime operation is unadmitted.
+    failure: Explicitly render capability-unavailable and perform no listed redirect or fallback.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.standard-shell
+      - type: applies_to
+        target: definition.realm-persona-studio.failure.failure-state

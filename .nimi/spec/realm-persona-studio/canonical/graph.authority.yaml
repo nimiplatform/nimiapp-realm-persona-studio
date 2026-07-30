@@ -1,0 +1,114 @@
+format: nimicoding.authority/v2
+owner: team.realm-persona-studio
+scope: realm-persona-studio.graph
+units:
+  - id: definition.realm-persona-studio.graph.creation-graph
+    kind: definition
+    title: Persona creation graph
+    meaning: The persona creation graph is a local owner-reviewed candidate workspace whose inputs may include owner text, selected world, reference image URL, and current owner-approved persona fields.
+  - id: rule.realm-persona-studio.graph.r001
+    kind: rule
+    title: Candidate creation graph
+    modality: must
+    statement: The creation graph remains a local owner-reviewed candidate workspace rather than Realm authority.
+    condition: Always.
+    failure: Reject any Realm authority claim made by creation graph state.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.graph.creation-graph
+  - id: rule.realm-persona-studio.graph.r002
+    kind: rule
+    title: Creation graph inputs
+    modality: must
+    statement: Graph inputs may include owner text, selected world, reference image URL, and current owner-approved persona fields.
+    condition: Whenever the creation graph uses owner text, a selected world, a reference image URL, or current owner-approved persona fields.
+    failure: Keep the affected graph input unavailable when its listed source value is unavailable.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.graph.creation-graph
+  - id: rule.realm-persona-studio.graph.r003
+    kind: rule
+    title: Forbidden graph inputs
+    modality: must_not
+    statement: CharacterCard files, RealmAgent exports, raw rule packages, or provider hidden state become creation graph inputs.
+    condition: Always.
+    failure: Reject the forbidden input without adding it to the creation graph.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.non-current-surfaces
+      - type: applies_to
+        target: definition.realm-persona-studio.graph.creation-graph
+  - id: rule.realm-persona-studio.graph.r004
+    kind: rule
+    title: Create payload normalization
+    modality: must
+    statement: Every graph-derived create payload normalizes to CreateRealmPersonaDto shape with homeWorldId, origin, and core.
+    condition: Whenever the creation graph derives a create payload.
+    failure: Reject the create payload before submission when it does not normalize to the required shape.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.graph.creation-graph
+      - type: applies_to
+        target: definition.realm-persona-studio.persona.create-dto
+  - id: rule.realm-persona-studio.graph.r005
+    kind: rule
+    title: OASIS default source
+    modality: must
+    statement: OASIS defaulting resolves from Realm WorldCore data before submit.
+    condition: Whenever OASIS defaulting is required for a create submission.
+    failure: Block submission when Realm WorldCore data does not resolve the OASIS default.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.world-core
+      - type: applies_to
+        target: definition.realm-persona-studio.graph.creation-graph
+  - id: rule.realm-persona-studio.graph.r006
+    kind: rule
+    title: Handle preflight boundary
+    modality: must
+    statement: Handle uniqueness preflight may compare current owner portfolio data, but create success still requires Realm create confirmation.
+    condition: Whenever handle uniqueness preflight is performed or create success is claimed.
+    failure: Present no create success until Realm confirms creation.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.graph.creation-graph
+  - id: rule.realm-persona-studio.graph.r007
+    kind: rule
+    title: Runtime draft output boundary
+    modality: must_not
+    statement: Runtime draft generation outputs IDs, content hashes, provider routing, LocalAgent state, or hidden lifecycle fields instead of proposing text fields only.
+    condition: Whenever Runtime generates a creation draft.
+    failure: Reject the generated draft and add none of its forbidden fields to the creation graph.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.graph.creation-graph
+  - id: rule.realm-persona-studio.graph.r008
+    kind: rule
+    title: Generated prompt candidates
+    modality: must
+    statement: Generated reference image prompts and voice prompts remain local candidates until owner review.
+    condition: Whenever such a prompt is generated.
+    failure: Keep the prompt local and do not use it as reviewed input before owner review.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.graph.creation-graph
+  - id: rule.realm-persona-studio.graph.r009
+    kind: rule
+    title: Existing persona remix boundary
+    modality: must
+    statement: Existing persona remix uses only owner-visible source fields and does not copy private runtime state.
+    condition: Whenever the creation graph remixes an existing persona.
+    failure: Reject the remix input when it contains a field that is not owner-visible or contains private runtime state.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.graph.creation-graph
+  - id: rule.realm-persona-studio.graph.r010
+    kind: rule
+    title: Post-create navigation
+    modality: must
+    statement: Studio routes to the created persona detail workspace and refreshes source state after Realm create succeeds.
+    condition: After Realm persona creation succeeds.
+    failure: Withhold the created persona success workspace until detail routing and source refresh complete.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.graph.creation-graph

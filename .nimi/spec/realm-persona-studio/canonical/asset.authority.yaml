@@ -1,0 +1,112 @@
+format: nimicoding.authority/v2
+owner: team.realm-persona-studio
+scope: realm-persona-studio.asset
+units:
+  - id: definition.realm-persona-studio.asset.media-workspaces
+    kind: definition
+    title: Media workspaces
+    meaning: The image, avatar, profile cover, and voice candidate workspaces produce media candidate material for owner review.
+  - id: definition.realm-persona-studio.asset.asset-candidate
+    kind: definition
+    title: Asset candidate
+    meaning: A local asset candidate preserves source persona id, source content hash, owner review state, and local timestamp.
+  - id: rule.realm-persona-studio.asset.r001
+    kind: rule
+    title: Media workspace candidates
+    modality: must
+    statement: Image, avatar, profile cover, and voice workspaces produce local candidates unless a Realm core replacement succeeds.
+    condition: Whenever a listed media workspace produces output.
+    failure: Keep the output local and make no Realm source-state claim until a Realm core replacement succeeds.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.asset.media-workspaces
+  - id: rule.realm-persona-studio.asset.r002
+    kind: rule
+    title: No creative-history public claim
+    modality: must_not
+    statement: Local creative history claims public profile state.
+    condition: Always.
+    failure: Reject the public-state claim and retain the history as desktop-local evidence.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.local-candidate
+  - id: rule.realm-persona-studio.asset.r003
+    kind: rule
+    title: Generated asset review
+    modality: must
+    statement: Runtime image and speech generation outputs remain candidates and require owner review.
+    condition: Whenever Runtime generates image or speech output.
+    failure: Keep the output local and do not use it as reviewed material before owner review.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.asset.asset-candidate
+  - id: rule.realm-persona-studio.asset.r004
+    kind: rule
+    title: Avatar replacement path
+    modality: must
+    statement: A reviewed avatar URL enters RealmPersona.core.avatarUrl only through replaceRealmPersona.
+    condition: Whenever Studio writes a reviewed avatar URL as source state.
+    failure: Reject the avatar write when it does not use replaceRealmPersona.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.realm-core-surfaces
+  - id: rule.realm-persona-studio.asset.r005
+    kind: rule
+    title: No resource binding publication
+    modality: must_not
+    statement: Resource or Binding publication occurs without a future Runtime-mediated owner-scoped Realm ingress; reviewed image, video, audio, avatar, or voice material is treated as published rather than as a local candidate.
+    condition: Until a Runtime-mediated owner-scoped Realm ingress is admitted for this app.
+    failure: Keep the reviewed material as a local candidate and return capability-unavailable without publishing it.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.asset.asset-candidate
+  - id: rule.realm-persona-studio.asset.r006
+    kind: rule
+    title: No Agent bindings
+    modality: must_not
+    statement: The app writes AGENT host bindings, AGENT_* binding points, or Resource-to-Agent presentation records.
+    condition: Always.
+    failure: Reject the binding write before any host or Realm state changes.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.non-current-surfaces
+  - id: rule.realm-persona-studio.asset.r007
+    kind: rule
+    title: Asset candidate provenance
+    modality: must
+    statement: Asset candidates preserve source persona id, source content hash, owner review state, and local timestamp.
+    condition: Whenever Studio stores an asset candidate.
+    failure: Reject candidate persistence when any listed provenance field is missing.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.asset.asset-candidate
+  - id: rule.realm-persona-studio.asset.r008
+    kind: rule
+    title: Missing media source
+    modality: must
+    statement: Missing media source data renders as unavailable and is not replaced with stock placeholders.
+    condition: Whenever media source data is missing.
+    failure: Render media as unavailable and emit no stock placeholder.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.asset.media-workspaces
+  - id: rule.realm-persona-studio.asset.r009
+    kind: rule
+    title: Local asset shell boundary
+    modality: must
+    statement: Local asset URL resolution, app data paths, and local JSON persistence use protected local-assets, data, storage, or config operations delivered through the Desktop-supervised standard bridge; Studio exposes no raw Node filesystem or raw Electron IPC to the renderer.
+    condition: Whenever Studio resolves a local asset URL or accesses app data, local storage, or local configuration.
+    failure: Return capability-unavailable when the required protected standard-bridge operation is unavailable and expose no raw filesystem or IPC fallback.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.standard-shell
+  - id: rule.realm-persona-studio.asset.r010
+    kind: rule
+    title: No renderer media publication
+    modality: must_not
+    statement: Studio renderer code requests or receives direct-upload sessions, signed upload URLs, or storage credentials, or finalizes Resource publication.
+    condition: Always.
+    failure: Until a Runtime-owned media ingress is admitted, visibly disable every media publication action and return capability-unavailable before any Realm or network call.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.standard-shell

@@ -1,0 +1,150 @@
+format: nimicoding.authority/v2
+owner: team.realm-persona-studio
+scope: realm-persona-studio.acceptance
+units:
+  - id: definition.realm-persona-studio.acceptance.studio-app
+    kind: definition
+    title: Realm Persona Studio app
+    meaning: The Realm Persona Studio installed app identity spans package metadata, Tauri identity, routes, README, and spec.
+  - id: rule.realm-persona-studio.acceptance.r001
+    kind: rule
+    title: Consistent app identity
+    modality: must
+    statement: App identity is Realm Persona Studio across package metadata, Tauri identity, routes, README, and spec.
+    condition: Always.
+    failure: Reject acceptance when any listed surface carries a different app identity.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.acceptance.studio-app
+  - id: rule.realm-persona-studio.acceptance.r002
+    kind: rule
+    title: RealmPersona source reads
+    modality: must
+    statement: Source reads use WorldCoreController RealmPersona surfaces only.
+    condition: Whenever Studio reads persona source state.
+    failure: Reject acceptance when a source read uses any other surface.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.realm-core-surfaces
+  - id: rule.realm-persona-studio.acceptance.r003
+    kind: rule
+    title: Realm core writes
+    modality: must
+    statement: Create and update writes use Realm core DTOs only.
+    condition: Whenever Studio creates or updates a persona.
+    failure: Reject the write and acceptance when a non-Realm-core DTO is used.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.persona.create-dto
+      - type: applies_to
+        target: definition.realm-persona-studio.persona.replace-dto
+  - id: rule.realm-persona-studio.acceptance.r004
+    kind: rule
+    title: Realm-to-runtime path
+    modality: must
+    statement: SourceMaterializationPacket is the only Realm-to-runtime materialization path in this app.
+    condition: Whenever Studio materializes Realm source state for Runtime.
+    failure: Reject the materialization and acceptance when any other path is used.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.source-materialization-packet
+  - id: rule.realm-persona-studio.acceptance.r005
+    kind: rule
+    title: Agent naming boundary
+    modality: must
+    statement: Non-runtime Agent naming is absent from source code and current app authority except legacy-denylist strings.
+    condition: Whenever source code or current app authority uses Agent naming.
+    failure: Reject acceptance when the occurrence is neither Runtime terminology nor a legacy-denylist string.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.local-agent
+  - id: rule.realm-persona-studio.acceptance.r006
+    kind: rule
+    title: No legacy success paths
+    modality: must
+    statement: CharacterCard import and RealmAgent compatibility are absent from current success paths.
+    condition: Always.
+    failure: Reject acceptance when a current success path includes CharacterCard import or RealmAgent compatibility.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.non-current-surfaces
+  - id: rule.realm-persona-studio.acceptance.r007
+    kind: rule
+    title: Candidate and source boundaries
+    modality: must
+    statement: Persona settings, assets, posts, and Runtime review all preserve candidate-versus-source boundaries.
+    condition: Whenever Studio accepts behavior for settings, assets, posts, or Runtime review.
+    failure: Reject acceptance when local candidate material is presented as source state without an admitted source write.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.local-candidate
+  - id: rule.realm-persona-studio.acceptance.r008
+    kind: rule
+    title: Explicit fail-closed states
+    modality: must
+    statement: Failure states are explicit and fail closed.
+    condition: Whenever Studio encounters a failure.
+    failure: Reject acceptance when a failure is hidden, converted to success, or lacks an explicit rendered state.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.failure.failure-state
+  - id: rule.realm-persona-studio.acceptance.r009
+    kind: rule
+    title: Acceptance gate set
+    modality: must
+    statement: pnpm run spec:authority:check, typecheck, test, validate, local-audit, build, and check must pass before acceptance.
+    condition: Before product acceptance.
+    failure: Reject acceptance when any named gate does not pass.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.acceptance.studio-app
+  - id: rule.realm-persona-studio.acceptance.r010
+    kind: rule
+    title: Remaining old terminology
+    modality: must
+    statement: Any remaining occurrence of old terminology is either LocalAgent runtime wording or an explicit forbidden legacy surface in a guard.
+    condition: Whenever old terminology remains.
+    failure: Reject acceptance when the occurrence is neither admitted Runtime wording nor an explicit forbidden guard string.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.local-agent
+  - id: rule.realm-persona-studio.acceptance.r011
+    kind: rule
+    title: Authority recut order
+    modality: must
+    statement: Recut spec authority before accepting implementation changes.
+    condition: Whenever implementation changes are considered for acceptance.
+    failure: Reject implementation acceptance until the spec authority recut is complete.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.acceptance.studio-app
+  - id: rule.realm-persona-studio.acceptance.r012
+    kind: rule
+    title: Source recut before packaging
+    modality: must
+    statement: Recut source identifiers and user-visible copy before release packaging.
+    condition: Before release packaging.
+    failure: Block release packaging until source identifiers and user-visible copy are recut.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.acceptance.studio-app
+  - id: rule.realm-persona-studio.acceptance.r013
+    kind: rule
+    title: Generated client checks
+    modality: must
+    statement: Re-run Studio checks after every generated client or SDK change.
+    condition: After every generated client or SDK change.
+    failure: Reject acceptance until Studio checks pass after the change.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.acceptance.studio-app
+  - id: rule.realm-persona-studio.acceptance.r014
+    kind: rule
+    title: No route restoration
+    modality: must_not
+    statement: Downstream compatibility work starts by restoring old routes instead of adapting to the hard-cut core interfaces.
+    condition: Whenever downstream compatibility work begins.
+    failure: Reject the old-route restoration and require downstream adaptation to the hard-cut core interfaces.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.acceptance.studio-app

@@ -1,6 +1,6 @@
 # Realm Agent Studio 全面改版产品说明文件
 
-> 用途：这是一份可以直接交给设计 AI、前端 AI、产品 AI 执行全面改版的产品说明文件。它基于当前 Realm Agent Studio App 已有内容、`.nimi/spec/project/kernel/**` 权威边界、`AGENTS.md` 项目规则，以及 `realm-agent-studio-three-layer-structure-report.zh.md` 的三层结构报告。
+> 用途：这是一份可以直接交给设计 AI、前端 AI、产品 AI 执行全面改版的产品说明文件。它基于当前 Realm Agent Studio App 已有内容、`.nimi/spec/realm-persona-studio/canonical/**` 权威边界、`AGENTS.md` 项目规则，以及 `realm-agent-studio-three-layer-structure-report.zh.md` 的三层结构报告。
 
 ## 0. 一句话定位
 

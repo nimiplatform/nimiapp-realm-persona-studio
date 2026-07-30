@@ -1,0 +1,92 @@
+format: nimicoding.authority/v2
+owner: team.realm-persona-studio
+scope: realm-persona-studio.metrics
+units:
+  - id: definition.realm-persona-studio.metrics.metric-source
+    kind: definition
+    title: Metric source
+    meaning: A metric is admitted for display only with a defined owner, source field, unavailable state, and failure semantics.
+  - id: definition.realm-persona-studio.metrics.friend-count
+    kind: definition
+    title: Friend count
+    meaning: The persona friendCount metric is sourced from Realm core or an admitted social source.
+  - id: rule.realm-persona-studio.metrics.r001
+    kind: rule
+    title: Friend count source
+    modality: must
+    statement: friendCount is displayed only when Realm core or an admitted social source returns it for the persona.
+    condition: Whenever Studio displays friendCount.
+    failure: Render friendCount as source unavailable when neither admitted source returns it.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.metrics.friend-count
+  - id: rule.realm-persona-studio.metrics.r002
+    kind: rule
+    title: Missing friend count
+    modality: must
+    statement: Missing friendCount renders as source unavailable and is not zero-filled.
+    condition: Whenever friendCount is missing from its admitted source.
+    failure: Render source unavailable and emit no zero-filled friendCount.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.metrics.friend-count
+  - id: rule.realm-persona-studio.metrics.r003
+    kind: rule
+    title: Visible source availability
+    modality: must
+    statement: Source availability is a visible state for list and detail surfaces.
+    condition: Whenever a list or detail surface presents a metric.
+    failure: Render an explicit source-unavailable state when source availability cannot be established.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.metrics.metric-source
+  - id: rule.realm-persona-studio.metrics.r004
+    kind: rule
+    title: World display source
+    modality: must
+    statement: World names and world previews come from WorldCore reads.
+    condition: Whenever Studio displays a world name or preview.
+    failure: Render the world field as source unavailable when no WorldCore read supplies it.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.world-core
+  - id: rule.realm-persona-studio.metrics.r005
+    kind: rule
+    title: No local world catalog authority
+    modality: must_not
+    statement: The app maintains a local world catalog as product authority.
+    condition: Always.
+    failure: Reject the local catalog authority claim and render unavailable data from no admitted WorldCore source as unavailable.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.world-core
+  - id: rule.realm-persona-studio.metrics.r006
+    kind: rule
+    title: Unadmitted metrics
+    modality: must
+    statement: Adoption, quota, friendship, engagement, and revenue metrics remain unavailable until admitted source fields exist.
+    condition: Until admitted source fields exist for a listed metric.
+    failure: Render the metric as unavailable and emit no synthesized value.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.metrics.metric-source
+  - id: rule.realm-persona-studio.metrics.r007
+    kind: rule
+    title: No operational authority mutation
+    modality: must_not
+    statement: Bundle-size, build, local-audit, or screenshot results alter product authority.
+    condition: Always.
+    failure: Retain the result as operational evidence and reject its product-authority effect.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.metrics.metric-source
+  - id: rule.realm-persona-studio.metrics.r008
+    kind: rule
+    title: New metric admission
+    modality: must
+    statement: Any new metric defines owner, source field, unavailable state, and failure semantics before use.
+    condition: Whenever Studio would use a new metric.
+    failure: Reject use of the metric until every required admission field is defined.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.metrics.metric-source

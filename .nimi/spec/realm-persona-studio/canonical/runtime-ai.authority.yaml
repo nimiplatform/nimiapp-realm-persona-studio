@@ -1,0 +1,120 @@
+format: nimicoding.authority/v2
+owner: team.realm-persona-studio
+scope: realm-persona-studio.runtime-ai
+units:
+  - id: definition.realm-persona-studio.runtime-ai.ai-config-operations
+    kind: definition
+    title: AI configuration operations
+    meaning: Protected AI configuration read and write operations are admissible only through the Desktop-supervised standard bridge and its granted capability posture.
+  - id: rule.realm-persona-studio.runtime-ai.r001
+    kind: rule
+    title: Runtime candidate generation
+    modality: must
+    statement: Runtime text, image, and speech calls are candidate-generation surfaces rather than Realm authority.
+    condition: Whenever Studio invokes a Runtime text, image, or speech call.
+    failure: Keep returned material local and reject any Realm authority claim for it.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.local-candidate
+  - id: rule.realm-persona-studio.runtime-ai.r002
+    kind: rule
+    title: Materialization source reference
+    modality: must
+    statement: SourceMaterializationPacket creation uses sourceRef.kind equal to realmPersona, worldId, sourceId, and sourceContentHash.
+    condition: Whenever Studio creates a SourceMaterializationPacket.
+    failure: Reject materialization when any required sourceRef value is missing or sourceRef.kind is not realmPersona.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.source-materialization-packet
+  - id: rule.realm-persona-studio.runtime-ai.r003
+    kind: rule
+    title: No materialization write-back
+    modality: must_not
+    statement: A SourceMaterializationPacket payload mutates RealmPersona instead of remaining a by-value materialization.
+    condition: Always.
+    failure: Reject the mutation and leave RealmPersona unchanged.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.source-materialization-packet
+  - id: rule.realm-persona-studio.runtime-ai.r004
+    kind: rule
+    title: LocalAgent chat readiness
+    modality: must
+    statement: localAgent chat readiness is generated only from SourceMaterializationPacket and owner-visible fields.
+    condition: Whenever Studio generates localAgent chat readiness.
+    failure: Return runtime input unavailable when the packet is missing or a field is not owner-visible.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.local-agent
+      - type: applies_to
+        target: definition.realm-persona-studio.core.source-materialization-packet
+  - id: rule.realm-persona-studio.runtime-ai.r005
+    kind: rule
+    title: No private LocalAgent input
+    modality: must_not
+    statement: Studio sends private LocalAgent memory, emotions, cognition, private transcript, or app-specific memory fragments to Runtime candidate workflows.
+    condition: Always.
+    failure: Reject the Runtime request before transport and expose none of the private state.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.local-agent
+  - id: rule.realm-persona-studio.runtime-ai.r006
+    kind: rule
+    title: Forbidden Runtime proposal fields
+    modality: must_not
+    statement: Runtime proposals include provider, model, lifecycle, owner override, hidden world override, raw rules, or canonical id creation.
+    condition: Always.
+    failure: Reject the proposal and add none of its forbidden fields to local candidate state.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.local-candidate
+  - id: rule.realm-persona-studio.runtime-ai.r007
+    kind: rule
+    title: Explicit Runtime failures
+    modality: must
+    statement: Runtime route-unbound, transport-unavailable, malformed-output, and invalid-payload states are explicit failures.
+    condition: Whenever a listed Runtime state occurs.
+    failure: Render the corresponding explicit failure and return no Runtime candidate success.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.realm-core-surfaces
+  - id: rule.realm-persona-studio.runtime-ai.r008
+    kind: rule
+    title: Owner-accepted output boundary
+    modality: must
+    statement: Runtime output accepted by the owner still requires the admitted Realm core replacement before it becomes source state.
+    condition: Whenever an owner accepts Runtime output.
+    failure: Keep the accepted output as a local candidate until the admitted Realm core replacement succeeds.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.local-candidate
+  - id: rule.realm-persona-studio.runtime-ai.r009
+    kind: rule
+    title: No app-owned Runtime auth
+    modality: must_not
+    statement: Studio logs in, opens OAuth, exchanges tokens, stores sessions, refreshes tokens, or accesses tokens instead of consuming host-owned Desktop shared Runtime account state.
+    condition: Always.
+    failure: Return capability-unavailable when host-owned Desktop shared Runtime account state is missing and expose no app-owned authentication fallback.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.standard-shell
+  - id: rule.realm-persona-studio.runtime-ai.r010
+    kind: rule
+    title: Forbidden Runtime transports
+    modality: must_not
+    statement: Studio implements custom Realm unary transport, generic Runtime bridge access, auth envelopes, caller metadata, Runtime app registration, renderer launch binding, or Runtime defaults bootstrap instead of using an admitted public SDK or Kit protected operation delivered through the Desktop-supervised standard bridge.
+    condition: Always.
+    failure: Return capability-unavailable before transport and expose no custom or generic fallback.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.standard-shell
+  - id: rule.realm-persona-studio.runtime-ai.r011
+    kind: rule
+    title: AI configuration capability gate
+    modality: must
+    statement: AI provider and model configuration uses protected public AI configuration operations only after those operations are admitted by the Desktop-supervised capability posture; Studio may preserve persona prompts, preferences, drafts, candidates, and review state, but creates no app-local provider token custody, model registry truth, configuration fallback, or model availability simulation.
+    condition: Whenever Studio reads or writes AI provider or model configuration.
+    failure: Fail closed when the protected AI configuration operation is unadmitted while preserving only persona prompts, preferences, drafts, candidates, and review state.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.runtime-ai.ai-config-operations

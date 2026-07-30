@@ -1,0 +1,180 @@
+format: nimicoding.authority/v2
+owner: team.realm-persona-studio
+scope: realm-persona-studio.core
+units:
+  - id: definition.realm-persona-studio.core.realm-persona
+    kind: definition
+    title: Realm persona
+    meaning: A RealmPersona is a user-owned RealmPersona source object whose canonical detail object is RealmPersonaDto from WorldCoreController.getRealmPersona and whose canonical list object is RealmPersonaDto[] from WorldCoreController.listRealmPersonas; id, homeWorldId, origin, contentHash, contentRevision, state, and core are preserved from Realm responses.
+  - id: definition.realm-persona-studio.core.world-core
+    kind: definition
+    title: World core
+    meaning: Realm WorldCore data for which listWorldCores and getWorldCore are the selectable home-world surfaces.
+  - id: definition.realm-persona-studio.core.source-materialization-packet
+    kind: definition
+    title: Source materialization packet
+    meaning: WorldCoreController.createSourceMaterializationPacket materializes runtime input by value through sourceRef with kind realmPersona, worldId, sourceId, and sourceContentHash, and never mutates RealmPersona.
+  - id: definition.realm-persona-studio.core.realm-core-surfaces
+    kind: definition
+    title: Realm core surfaces
+    meaning: The admitted current Realm data plane consists of WorldCoreController.listRealmPersonas, getRealmPersona, createRealmPersona, replaceRealmPersona with writes carrying baseContentHash, listWorldCores, getWorldCore, and createSourceMaterializationPacket.
+  - id: definition.realm-persona-studio.core.local-candidate
+    kind: definition
+    title: Local candidate
+    meaning: Desktop-local candidate material includes drafts, Runtime output, generated media, and creative history pending owner review and is never Realm authority by itself.
+  - id: definition.realm-persona-studio.core.local-agent
+    kind: definition
+    title: LocalAgent
+    meaning: LocalAgent is Runtime-private terminology only, is not a Realm source object, and is never managed by this Studio.
+  - id: definition.realm-persona-studio.core.standard-shell
+    kind: definition
+    title: Desktop-supervised standard shell
+    meaning: The Desktop-supervised local-app protected standard bridge is the shell boundary for Realm Persona Studio; Desktop owns admission, start, identity, authorization, and permission posture.
+  - id: definition.realm-persona-studio.core.non-current-surfaces
+    kind: definition
+    title: Non-current surfaces
+    meaning: Explicit non-current surfaces are /api/agent/**, /api/me/agents/**, /api/creator/agents/**, world-scoped rule CRUD, Forge-imported curation, CharacterCard import, previous RealmAgent flows, and rule, truth, and projection package paths.
+  - id: rule.realm-persona-studio.core.r001
+    kind: rule
+    title: Single current app authority
+    modality: must
+    statement: .nimi/spec/** is the single current app authority for Realm Persona Studio.
+    condition: Always.
+    failure: Reject any competing current app authority for Realm Persona Studio.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.realm-core-surfaces
+  - id: rule.realm-persona-studio.core.r002
+    kind: rule
+    title: Current object model
+    modality: must
+    statement: Current app authority is based on WorldCore, RealmPersona, and SourceMaterializationPacket; Realm-side Agent, CharacterCard, rule package, truth package, and projection package paths are non-current.
+    condition: Always.
+    failure: Reject any current success path based on a listed non-current object or package path.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.non-current-surfaces
+      - type: applies_to
+        target: definition.realm-persona-studio.core.realm-persona
+      - type: applies_to
+        target: definition.realm-persona-studio.core.source-materialization-packet
+  - id: rule.realm-persona-studio.core.r003
+    kind: rule
+    title: Agent terminology boundary
+    modality: must
+    statement: The word Agent may appear in this app only as LocalAgent runtime terminology or in explicitly forbidden legacy surface names.
+    condition: Always.
+    failure: Reject any other use of Agent terminology in the app.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.local-agent
+  - id: rule.realm-persona-studio.core.r004
+    kind: rule
+    title: Typed success backing
+    modality: must
+    statement: Every public success claim is backed by a typed Realm, Runtime, SDK, or Tauri result; renderer-local state cannot satisfy source authority.
+    condition: Always.
+    failure: Withhold the public success claim when no typed source result backs it.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.realm-core-surfaces
+  - id: rule.realm-persona-studio.core.r005
+    kind: rule
+    title: No local product authority
+    modality: must_not
+    statement: An app-local cache, draft, generated candidate, screenshot, test fixture, or local audit output becomes product authority.
+    condition: Always.
+    failure: Reject the local artifact as product authority and preserve its non-authoritative status.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.local-candidate
+  - id: rule.realm-persona-studio.core.r006
+    kind: rule
+    title: Missing source fields
+    modality: must
+    statement: Missing source fields render as unavailable, not as zero, empty invented values, or optimistic defaults.
+    condition: Whenever a source field is missing.
+    failure: Render the field as unavailable and emit no zero, invented empty value, or optimistic default.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.realm-persona
+  - id: rule.realm-persona-studio.core.r007
+    kind: rule
+    title: Required write inputs
+    modality: must
+    statement: Writes fail closed when baseContentHash, homeWorldId, origin, required core fields, or Realm response identity are missing.
+    condition: Whenever a listed required write input or response identity is missing.
+    failure: Reject the write or its success result without presenting updated source-backed state.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.realm-core-surfaces
+  - id: rule.realm-persona-studio.core.r008
+    kind: rule
+    title: Runtime candidate boundary
+    modality: must
+    statement: Runtime output remains candidate material until an owner-reviewed Realm core write succeeds.
+    condition: Whenever Runtime returns output.
+    failure: Keep the output local and do not present it as Realm source state before an owner-reviewed Realm core write succeeds.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.local-candidate
+  - id: rule.realm-persona-studio.core.r009
+    kind: rule
+    title: No dual-track compatibility
+    modality: must_not
+    statement: Studio implements dual-track compatibility with previous RealmAgent, CharacterCard, or rule, truth, or projection package flows.
+    condition: Always.
+    failure: Reject the compatibility path and expose no success through it.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.non-current-surfaces
+  - id: rule.realm-persona-studio.core.r010
+    kind: rule
+    title: Canonical surface assertions
+    modality: must
+    statement: Tests for source reads, writes, Runtime candidates, and failure states assert canonical current surfaces by name.
+    condition: Whenever such tests are authored or run.
+    failure: Fail the test suite when a tested success or failure path does not assert its canonical current surface by name.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.realm-core-surfaces
+  - id: rule.realm-persona-studio.core.r011
+    kind: rule
+    title: External surface admission
+    modality: must
+    statement: Any new external surface is admitted by current authority before code consumes it as a success path.
+    condition: Whenever code would consume a new external surface as a success path.
+    failure: Reject consumption until the external surface is admitted by current authority.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.realm-core-surfaces
+  - id: rule.realm-persona-studio.core.r012
+    kind: rule
+    title: Synchronized behavior changes
+    modality: must
+    statement: Spec changes and implementation changes for the same behavior must land together; a stale spec path is treated as an active defect.
+    condition: Whenever the same behavior changes in spec or implementation.
+    failure: Reject acceptance of the behavior change while either spec or implementation remains stale.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.realm-core-surfaces
+  - id: rule.realm-persona-studio.core.r013
+    kind: rule
+    title: Standard shell boundary
+    modality: must
+    statement: Realm Persona Studio is a Desktop-supervised installed App whose Electron main and preload expose only the protected standard bridge; renderer, argv, environment, preload, and app-owned host code receive no launch metadata, nonce, caller identity, release identity, Realm or Runtime endpoint, session proof, or credential material.
+    condition: Always.
+    failure: Fail shell capability initialization and expose none of the listed identity, endpoint, session, or credential material.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.standard-shell
+  - id: rule.realm-persona-studio.core.r014
+    kind: rule
+    title: Forbidden host capabilities
+    modality: must_not
+    statement: The app exposes or consumes Desktop-supervised-App-forbidden host capabilities including generic runtime.unary, generic runtime.stream*, auth.sessionLoad, auth.sessionSave, auth.sessionClear, oauth.openExternalUrl, oauth.tokenExchange, oauth.listenForCode, runtime-defaults.get, runtime-lifecycle.*, electron.raw-ipc, node.raw-fs, local-agent trusted caller identity, or private LocalAgent identity.
+    condition: Always.
+    failure: Fail closed without an app-local fallback when a protected standard-bridge operation is not admitted by the Desktop supervisor.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.standard-shell
