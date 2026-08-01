@@ -190,40 +190,29 @@ describe('create Realm Persona readiness', () => {
         rulesText: 'Stay visible and owner-reviewed.',
       },
       body: {
-        homeWorldId: 'world-oasis',
+        worldId: 'world-oasis',
         origin: {
           kind: 'manual',
           sourceId: 'realm-persona-studio:mira.persona',
           sourceVersion: 'owner-reviewed-v1',
         },
-        core: {
+        profile: {
+          profileSchemaVersion: 'realm.character-profile-core/v1',
           identity: {
             handle: 'mira.persona',
             name: 'Mira Persona',
             summary: 'Owner-created public identity',
-            concept: 'Durable public Realm Persona',
           },
           presentation: {
             displayName: 'Mira Persona',
             profileLine: 'Owner-created public identity',
           },
-          personaStyle: {
+          narrative: {
+            summary: 'Durable public Realm Persona',
             archetype: 'CARING',
             traits: ['GENTLE', 'WISE'],
-            voice: 'owner-reviewed',
-            pacing: 'responsive',
-          },
-          contentProfile: {
-            topics: [],
-            boundaries: [],
-            guidelines: [{
-              guidelineId: 'owner-reviewed-1',
-              statement: 'Stay visible and owner-reviewed.',
-              source: 'realm-persona-studio',
-            }],
           },
           interactionProfile: {
-            homeWorldId: 'world-oasis',
             interactionModes: ['conversation'],
           },
           assets: {
@@ -233,8 +222,23 @@ describe('create Realm Persona readiness', () => {
           authoring: {
             source: 'realm-persona-studio',
             notes: [],
-            review: {
-              status: 'owner-reviewed',
+            extensions: {
+              review: {
+                status: 'owner-reviewed',
+              },
+              personaStyle: {
+                voice: 'owner-reviewed',
+                pacing: 'responsive',
+              },
+              contentProfile: {
+                topics: [],
+                boundaries: [],
+                guidelines: [{
+                  guidelineId: 'owner-reviewed-1',
+                  statement: 'Stay visible and owner-reviewed.',
+                  source: 'realm-persona-studio',
+                }],
+              },
             },
           },
         },
@@ -254,7 +258,7 @@ describe('create Realm Persona readiness', () => {
     });
 
     expect(result.ready).toBe(true);
-    expect(result.payload?.body.core).toMatchObject({
+    expect(result.payload?.body.profile).toMatchObject({
       assets: {
         externalRefs: [{
           refId: 'reference-image-1',
@@ -274,7 +278,7 @@ describe('create Realm Persona readiness', () => {
         normalized: 'mira.persona',
       }),
     });
-    expect((rejected.payload?.body.core.assets as { externalRefs?: unknown[] }).externalRefs).toBeUndefined();
+    expect((rejected.payload?.body.profile.assets as { externalRefs?: unknown[] }).externalRefs).toBeUndefined();
   });
 
   it('fails readiness when required local draft fields are missing', () => {

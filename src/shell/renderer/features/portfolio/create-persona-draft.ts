@@ -1,12 +1,12 @@
 import type {
-  RealmWorldCoreControllerCreateRealmPersonaOperationRequest,
+  RealmModel,
   RealmWorldCoreControllerGetWorldCoreOperationResponse,
   RealmWorldCoreControllerListWorldCoresOperationResponse,
 } from '@nimiplatform/sdk/realm/generated';
 
 export type RealmPersonaCreationWorldDto = RealmWorldCoreControllerListWorldCoresOperationResponse[number];
 export type RealmPersonaCreationWorldDetailDto = RealmWorldCoreControllerGetWorldCoreOperationResponse;
-export type RealmCreatePersonaInput = RealmWorldCoreControllerCreateRealmPersonaOperationRequest['body'];
+export type RealmCreatePersonaInput = RealmModel<'CreatePersonaCharacterCoreDto'>;
 export type RealmPersonaHandleAvailabilityDto = {
   available: boolean;
   normalized?: string;
@@ -121,9 +121,9 @@ export type SelectedWorldPreview = {
 };
 
 export type ReviewedRealmCreatePersonaInput = {
-  homeWorldId: string;
+  worldId: string;
   origin: RealmCreatePersonaInput['origin'];
-  core: Record<string, unknown>;
+  profile: RealmModel<'CharacterProfileCoreInputDto'>;
 };
 
 export type ReviewedCreateRealmPersonaPayload = {
@@ -316,36 +316,25 @@ export function normalizeSelectedWorldPreview(world: RealmPersonaCreationWorldDe
   };
 }
 
-function buildRealmPersonaCoreV1(draft: NormalizedCreateRealmPersonaDraft): Record<string, unknown> {
+function buildRealmPersonaProfileV1(draft: NormalizedCreateRealmPersonaDraft): RealmModel<'CharacterProfileCoreInputDto'> {
   const ruleLines = normalizeRuleLines(draft.ruleText);
   return {
+    profileSchemaVersion: 'realm.character-profile-core/v1',
     identity: {
       handle: draft.handle,
       name: draft.displayName,
       summary: draft.description || draft.concept,
-      concept: draft.concept,
     },
     presentation: {
       displayName: draft.displayName,
       profileLine: draft.description || draft.concept,
     },
-    personaStyle: {
+    narrative: {
+      summary: draft.concept || draft.description,
       archetype: draft.personaArchetype,
       traits: draft.personaTraits,
-      voice: 'owner-reviewed',
-      pacing: 'responsive',
-    },
-    contentProfile: {
-      topics: [],
-      boundaries: [],
-      guidelines: ruleLines.map((line, index) => ({
-        guidelineId: `owner-reviewed-${index + 1}`,
-        statement: line,
-        source: 'realm-persona-studio',
-      })),
     },
     interactionProfile: {
-      homeWorldId: draft.selectedWorldId,
       interactionModes: ['conversation'],
     },
     assets: {
@@ -365,8 +354,23 @@ function buildRealmPersonaCoreV1(draft: NormalizedCreateRealmPersonaDraft): Reco
     authoring: {
       source: 'realm-persona-studio',
       notes: [],
-      review: {
-        status: 'owner-reviewed',
+      extensions: {
+        review: {
+          status: 'owner-reviewed',
+        },
+        personaStyle: {
+          voice: 'owner-reviewed',
+          pacing: 'responsive',
+        },
+        contentProfile: {
+          topics: [],
+          boundaries: [],
+          guidelines: ruleLines.map((line, index) => ({
+            guidelineId: `owner-reviewed-${index + 1}`,
+            statement: line,
+            source: 'realm-persona-studio',
+          })),
+        },
       },
     },
   };
@@ -421,13 +425,13 @@ export function validateCreateRealmPersonaReadiness(
   }
 
   const body: ReviewedRealmCreatePersonaInput = {
-    homeWorldId: draft.selectedWorldId,
+    worldId: draft.selectedWorldId,
     origin: {
       kind: 'manual',
       sourceId: `realm-persona-studio:${draft.handle}`,
       sourceVersion: 'owner-reviewed-v1',
     },
-    core: buildRealmPersonaCoreV1(draft),
+    profile: buildRealmPersonaProfileV1(draft),
   };
 
   return {

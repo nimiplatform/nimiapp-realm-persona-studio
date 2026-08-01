@@ -1,11 +1,6 @@
 import type {
-  RealmCreatePostOperationRequest,
-  RealmCreatePostOperationResponse,
-  RealmCreateTextResourceOperationRequest,
-  RealmCreateTextResourceOperationResponse,
-  RealmFinalizeResourceOperationRequest,
-  RealmFinalizeResourceOperationResponse,
-  RealmListResourcesOperationResponse,
+  PostDto,
+  RealmModel,
 } from '@nimiplatform/sdk/realm/generated';
 import type { StudioRealmSurface } from '@renderer/data/realm-client.js';
 import { createStudioRuntimeClient } from '@renderer/data/runtime-client.js';
@@ -27,13 +22,13 @@ import {
 
 type StudioRealmClient = StudioRealmSurface;
 
-type RealmCreatePostInput = RealmCreatePostOperationRequest['body'];
-type RealmCreatePostResponse = RealmCreatePostOperationResponse;
-type RealmCreateTextResourceInput = RealmCreateTextResourceOperationRequest['body'];
-type RealmCreateTextResourceResponse = RealmCreateTextResourceOperationResponse;
-type RealmResourceListResponse = RealmListResourcesOperationResponse;
-type RealmFinalizeResourceInput = RealmFinalizeResourceOperationRequest['body'];
-type RealmFinalizeResourceResponse = RealmFinalizeResourceOperationResponse;
+type RealmCreatePostInput = RealmModel<'CreatePostDto'>;
+type RealmCreatePostResponse = PostDto;
+type RealmCreateTextResourceInput = RealmModel<'CreateTextResourceDto'>;
+type RealmCreateTextResourceResponse = RealmModel<'ResourceDetailDto'>;
+type RealmResourceListResponse = RealmModel<'ResourceListDto'>;
+type RealmFinalizeResourceInput = RealmModel<'FinalizeResourceDto'>;
+type RealmFinalizeResourceResponse = RealmModel<'ResourceDetailDto'>;
 
 export const REALM_POST_PUBLISH_SOURCE = 'Runtime-mediated Realm post publication (not admitted)';
 export const REALM_TEXT_RESOURCE_SOURCE = 'Runtime-mediated Realm text resource publication (not admitted)';

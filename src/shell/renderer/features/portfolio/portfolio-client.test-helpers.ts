@@ -47,7 +47,9 @@ export function resetStudioAIConfigForTest(): void {
   saveStudioAIConfig({
     scopeRef,
     capabilities: {
+      logicalModelIds: {},
       targetRefs: {},
+      selectedComponents: {},
       selectedParams: {},
     },
     profileOrigin: null,
@@ -61,15 +63,25 @@ export function configureStudioAIConfigTargetRefsForTest(input: {
   const scopeRef = createStudioAIScopeRef();
   const current = loadStudioAIConfig(scopeRef);
   const targetRefs: Record<string, NimiAIConfigTargetRef> = {};
+  const logicalModelIds: Record<string, string> = {};
   for (const [capability, targetRef] of Object.entries(input.targetRefs)) {
     targetRefs[capability] = typeof targetRef === 'string'
       ? createStudioLocalRuntimeTargetRefForTest(targetRef, capability as MockRuntimeRoute['capability'])
       : targetRef;
+    logicalModelIds[capability] = typeof targetRef === 'string'
+      ? targetRef
+      : targetRef.kind === 'cloud-connector'
+        ? targetRef.providerModelId
+        : targetRef.kind === 'local-runtime'
+          ? targetRef.profileBindingId ?? targetRef.readinessRef ?? capability
+          : `${targetRef.sourceProfileId}:${targetRef.sliceId}`;
   }
   saveStudioAIConfig({
     ...current,
     capabilities: {
+      logicalModelIds,
       targetRefs,
+      selectedComponents: {},
       selectedParams: {
         ...(input.selectedParams || {}),
       },
@@ -80,37 +92,44 @@ export function configureStudioAIConfigTargetRefsForTest(input: {
 
 export const persona: MyRealmPersonaDto = {
   id: 'persona-1',
-  schemaVersion: 'realm.persona/v1',
+  schemaVersion: 'realm.persona-character-core/v1',
   contentRevision: 1,
   contentHash: 'hash-persona-1',
   origin: { kind: 'manual', sourceId: 'test' },
-  ownerId: 'user-1',
-  homeWorldId: 'world-oasis',
+  ownerAccountId: 'user-1',
+  worldId: 'world-oasis',
   visibility: 'public',
-  core: {
+  sourceHash: 'source-hash-persona-1',
+  materializationReadiness: { status: 'ready', blockers: [] },
+  validity: { status: 'valid', issues: [] },
+  profile: {
+    profileSchemaVersion: 'realm.character-profile-core/v1',
+    profileHash: 'profile-hash-persona-1',
+    profileCoverage: {
+      manifestSchemaVersion: 'realm.character-profile-coverage/v1',
+      aggregateStatus: 'complete',
+      requiredSections: [],
+      optionalSections: [],
+      requiredRefs: [],
+      optionalRefs: [],
+      diagnostics: [],
+      profileCoverageHash: 'profile-coverage-hash-persona-1',
+    },
     identity: {
       handle: 'mira',
       name: 'Mira',
       summary: 'Quiet strategist',
-      concept: 'Quiet strategist',
     },
     presentation: {
       displayName: 'Mira',
       profileLine: 'Quiet strategist',
     },
-    personaStyle: {
+    narrative: {
+      summary: 'Quiet strategist',
       archetype: 'CARING',
       traits: ['GENTLE'],
-      voice: 'clear',
-      pacing: 'responsive',
-    },
-    contentProfile: {
-      topics: ['strategy'],
-      boundaries: [],
-      guidelines: [],
     },
     interactionProfile: {
-      homeWorldId: 'world-oasis',
       interactionModes: ['conversation'],
       greeting: 'Welcome in.',
     },
@@ -196,19 +215,18 @@ export const world: RealmPersonaCreationWorldDto = {
 
 export function mockRealm(): StudioRealmSurface {
   return {
-      worldCoreControllerListRealmPersonas: vi.fn(async () => [
+      worldCoreControllerListPersonaCharacters: vi.fn(async () => [
         persona,
         {
           ...persona,
           id: 'persona-taken',
           contentHash: 'hash-persona-taken',
-          core: {
-            ...persona.core,
+          profile: {
+            ...persona.profile,
             identity: {
               handle: 'taken.persona',
               name: 'Taken',
               summary: 'Taken persona',
-              concept: 'Taken persona',
             },
             presentation: {
               displayName: 'Taken',
@@ -217,26 +235,26 @@ export function mockRealm(): StudioRealmSurface {
           },
         },
       ]),
-      worldCoreControllerGetRealmPersona: vi.fn(async (request: { readonly path: { readonly personaId: string } }) => ({
+      worldCoreControllerGetPersonaCharacter: vi.fn(async (request: { readonly path: { readonly personaCharacterId: string } }) => ({
         ...persona,
-        id: request.path.personaId,
-        contentHash: request.path.personaId === 'persona-1' ? persona.contentHash : `hash-${request.path.personaId}`,
+        id: request.path.personaCharacterId,
+        contentHash: request.path.personaCharacterId === 'persona-1' ? persona.contentHash : `hash-${request.path.personaCharacterId}`,
       })),
-      worldCoreControllerCreateRealmPersona: vi.fn(async (request: { readonly body: Record<string, unknown> }) => ({
+      worldCoreControllerCreatePersonaCharacter: vi.fn(async (request: { readonly body: Record<string, unknown> }) => ({
           ...persona,
           id: 'persona-created-1',
           contentHash: 'hash-persona-created-1',
-          core: request.body.core && typeof request.body.core === 'object' ? request.body.core as Record<string, unknown> : {},
+          profile: request.body.profile && typeof request.body.profile === 'object' ? request.body.profile as Record<string, unknown> : {},
       })),
-      worldCoreControllerReplaceRealmPersona: vi.fn(async (request: { readonly path: { readonly personaId: string }; readonly body: Record<string, unknown> }) => ({
+      worldCoreControllerReplacePersonaCharacter: vi.fn(async (request: { readonly path: { readonly personaCharacterId: string }; readonly body: Record<string, unknown> }) => ({
         ...persona,
-        id: request.path.personaId,
+        id: request.path.personaCharacterId,
         contentHash: 'hash-replaced',
-        homeWorldId: typeof request.body.homeWorldId === 'string' ? request.body.homeWorldId : persona.homeWorldId,
+        worldId: typeof request.body.worldId === 'string' ? request.body.worldId : persona.worldId,
         origin: request.body.origin && typeof request.body.origin === 'object'
           ? request.body.origin as typeof persona.origin
           : persona.origin,
-        core: request.body.core && typeof request.body.core === 'object' ? request.body.core as Record<string, unknown> : persona.core,
+        profile: request.body.profile && typeof request.body.profile === 'object' ? request.body.profile as Record<string, unknown> : persona.profile,
         updatedAt: '2026-05-22T00:00:00.000Z',
       })),
       worldCoreControllerListWorldCores: vi.fn(async () => [world]),
@@ -507,6 +525,14 @@ export function mockRuntimeWithRoutes(input: {
         assets: localRoutes.map((route) => ({
           localAssetId: `${localKindForCapability(route.capability)}:${route.model}`,
           assetId: route.model,
+          logicalModelId: route.model,
+          durableTargetRef: {
+            version: 'v2',
+            ref: {
+              oneofKind: 'profileBindingId',
+              profileBindingId: `local-runtime:${localKindForCapability(route.capability)}:${route.model}`,
+            },
+          },
           kind: localKindForCapability(route.capability),
           engine: 'mock-runtime',
           endpoint: 'runtime://mock-local',
@@ -631,47 +657,29 @@ export const createPayload: ReviewedCreateRealmPersonaPayload = {
     rulesText: 'Stay visible.\nStay owner-reviewed.',
   },
   body: {
-    homeWorldId: 'world-oasis',
+    worldId: 'world-oasis',
     origin: {
       kind: 'manual',
       sourceId: 'realm-persona-studio:mira.persona',
       sourceVersion: 'owner-reviewed-v1',
     },
-    core: {
+    profile: {
+      profileSchemaVersion: 'realm.character-profile-core/v1',
       identity: {
         handle: 'mira.persona',
         name: 'Mira Persona',
         summary: 'Owner-created public identity',
-        concept: 'Durable public RealmPersona',
       },
       presentation: {
         displayName: 'Mira Persona',
         profileLine: 'Owner-created public identity',
       },
-      personaStyle: {
+      narrative: {
+        summary: 'Durable public Realm Persona',
         archetype: 'CARING',
         traits: ['GENTLE', 'WISE'],
-        voice: 'owner-reviewed',
-        pacing: 'responsive',
-      },
-      contentProfile: {
-        topics: [],
-        boundaries: [],
-        guidelines: [
-          {
-            guidelineId: 'owner-reviewed-1',
-            statement: 'Stay visible.',
-            source: 'realm-persona-studio',
-          },
-          {
-            guidelineId: 'owner-reviewed-2',
-            statement: 'Stay owner-reviewed.',
-            source: 'realm-persona-studio',
-          },
-        ],
       },
       interactionProfile: {
-        homeWorldId: 'world-oasis',
         interactionModes: ['conversation'],
       },
       assets: {
@@ -681,8 +689,30 @@ export const createPayload: ReviewedCreateRealmPersonaPayload = {
       authoring: {
         source: 'realm-persona-studio',
         notes: [],
-        review: {
-          status: 'owner-reviewed',
+        extensions: {
+          review: {
+            status: 'owner-reviewed',
+          },
+          personaStyle: {
+            voice: 'owner-reviewed',
+            pacing: 'responsive',
+          },
+          contentProfile: {
+            topics: [],
+            boundaries: [],
+            guidelines: [
+              {
+                guidelineId: 'owner-reviewed-1',
+                statement: 'Stay visible.',
+                source: 'realm-persona-studio',
+              },
+              {
+                guidelineId: 'owner-reviewed-2',
+                statement: 'Stay owner-reviewed.',
+                source: 'realm-persona-studio',
+              },
+            ],
+          },
         },
       },
     },

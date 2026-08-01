@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Checkbox, EmptyState, FieldShell, InlineAlert, SelectField, StatusBadge, Surface, TextareaField, TextField } from '@nimiplatform/kit/ui';
+import { Button, Checkbox, EmptyState, FieldShell, InlineAlert, nimiToast, SelectField, StatusBadge, Surface, TextareaField, TextField } from '@nimiplatform/kit/ui';
 import type { OwnerPortfolioPersonaDetail } from './portfolio-data.js';
 import {
   PERSONA_PUBLICATION_ADMITTED,
@@ -144,7 +144,6 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
   const [textResourceResult, setTextResourceResult] = useState<RealmTextResourceCreateResult | null>(null);
   const [isCreatingTextResource, setIsCreatingTextResource] = useState(false);
   const [resourceOptions, setResourceOptions] = useState<PostAttachmentResourceOption[]>([]);
-  const [resourceListStatus, setResourceListStatus] = useState<{ tone: 'info' | 'success' | 'warning' | 'danger'; message: string } | null>(null);
   const [isLoadingResources, setIsLoadingResources] = useState(false);
   const [mediaResourceType, setMediaResourceType] = useState<DirectMediaResourceType>('IMAGE');
   const [mediaUploadFile, setMediaUploadFile] = useState<File | null>(null);
@@ -153,7 +152,6 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
   const [scheduleInput, setScheduleInput] = useState<LocalPostScheduleInput>(() => createEmptyLocalPostScheduleInput());
   const [schedulePreview, setSchedulePreview] = useState<LocalPostScheduleCandidate | null>(null);
   const [savedSchedule, setSavedSchedule] = useState<LocalPostScheduleRecord | null>(null);
-  const [schedulePublishResult, setSchedulePublishResult] = useState<RealmPostPublishResult | null>(null);
   const [isPublishingSchedule, setIsPublishingSchedule] = useState(false);
   const [scheduleErrors, setScheduleErrors] = useState<string[]>([]);
   const [assetCandidates, setAssetCandidates] = useState<LocalCreativeAssetCandidate[]>([]);
@@ -174,7 +172,6 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
     setTextResourceResult(null);
     setIsCreatingTextResource(false);
     setResourceOptions([]);
-    setResourceListStatus(null);
     setIsLoadingResources(false);
     setMediaResourceType('IMAGE');
     setMediaUploadFile(null);
@@ -183,7 +180,6 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
     setScheduleInput(createEmptyLocalPostScheduleInput());
     setSchedulePreview(null);
     setSavedSchedule(loadLocalPostSchedule(persona.id));
-    setSchedulePublishResult(null);
     setIsPublishingSchedule(false);
     setScheduleErrors([]);
     setAssetCandidates([]);
@@ -196,10 +192,8 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
     setPublishResult(null);
     setTextResourceResult(null);
     setPostCopyResult(null);
-    setResourceListStatus(null);
     setMediaUploadResult(null);
     setSchedulePreview(null);
-    setSchedulePublishResult(null);
     setScheduleErrors([]);
   }
 
@@ -220,7 +214,6 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
   function updateScheduleInput(patch: Partial<LocalPostScheduleInput>) {
     setScheduleInput((current) => ({ ...current, ...patch }));
     setSchedulePreview(null);
-    setSchedulePublishResult(null);
     setScheduleErrors([]);
   }
 
@@ -243,15 +236,19 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
     setPayloadPreview(null);
     setPublishResult(null);
     setSchedulePreview(null);
-    setSchedulePublishResult(null);
   }
 
   function saveScheduleCandidate() {
     if (!schedulePreview) {
       return;
     }
-    setSavedSchedule(saveLocalPostSchedule(persona.id, schedulePreview));
-    setSchedulePublishResult(null);
+    const saved = saveLocalPostSchedule(persona.id, schedulePreview);
+    setSavedSchedule(saved);
+    if (isLocalPostScheduleDue(saved)) {
+      nimiToast.info(t('posts.schedule.due'));
+    } else {
+      nimiToast.success(t('posts.schedule.savedFor', { time: saved.localRunAt }));
+    }
   }
 
   async function publishSavedSchedule() {
@@ -259,13 +256,14 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
       return;
     }
     setIsPublishingSchedule(true);
-    setSchedulePublishResult(null);
     try {
       const result = await publishReviewedPostDraft(savedSchedule.candidate.postCandidate);
-      setSchedulePublishResult(result);
       if (result.ok) {
+        nimiToast.success(t('posts.schedule.published'));
         clearLocalPostSchedule(persona.id);
         setSavedSchedule(null);
+      } else {
+        nimiToast.danger(translatePostFixedMessage(result.message, t));
       }
     } finally {
       setIsPublishingSchedule(false);
@@ -286,14 +284,16 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
 
   async function createTextResourceAttachment() {
     if (!postTextResourceDraft.publishable) {
-      setTextResourceResult({
+      const result: RealmTextResourceCreateResult = {
         ok: false,
         source: REALM_TEXT_RESOURCE_SOURCE,
         attachmentTruth: false,
         failure: 'post-text-resource-payload-invalid',
         message: postTextResourceDraft.errors.join('; ') || 'Reviewed post text resource requires caption content.',
         submitted: null,
-      });
+      };
+      setTextResourceResult(result);
+      nimiToast.danger(translatePostFixedMessage(result.message, t));
       return;
     }
 
@@ -304,6 +304,7 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
       const result = await createReviewedPostTextResource(postTextResourceDraft.payload);
       setTextResourceResult(result);
       if (result.ok) {
+        nimiToast.success(t('posts.textAttachment.created', { id: result.canonical.id }));
         setDraft((current) => ({
           ...current,
           attachmentEnabled: true,
@@ -314,6 +315,8 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
         setPublishResult(null);
         setSchedulePreview(null);
         setScheduleErrors([]);
+      } else {
+        nimiToast.danger(translatePostFixedMessage(result.message, t));
       }
     } finally {
       setIsCreatingTextResource(false);
@@ -322,25 +325,20 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
 
   async function loadReadyResources() {
     setIsLoadingResources(true);
-    setResourceListStatus(null);
     try {
       const resources = await listReadyPostAttachmentResources();
       setResourceOptions(resources);
-      setResourceListStatus(resources.length > 0
-        ? {
-          tone: 'success',
-          message: t('posts.attachment.loaded', {
-            count: resources.length,
-            plural: resources.length === 1 ? '' : 's',
-          }),
-        }
-        : { tone: 'warning', message: t('posts.attachment.noneReturned') });
+      if (resources.length > 0) {
+        nimiToast.success(t('posts.attachment.loaded', {
+          count: resources.length,
+          plural: resources.length === 1 ? '' : 's',
+        }));
+      } else {
+        nimiToast.info(t('posts.attachment.noneReturned'));
+      }
     } catch (error) {
       setResourceOptions([]);
-      setResourceListStatus({
-        tone: 'danger',
-        message: error instanceof Error ? error.message : t('posts.attachment.listFailed'),
-      });
+      nimiToast.danger(error instanceof Error ? error.message : t('posts.attachment.listFailed'));
     } finally {
       setIsLoadingResources(false);
     }
@@ -356,15 +354,12 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
       attachmentTargetType: 'RESOURCE',
       attachmentTargetId: resource.id,
     });
-    setResourceListStatus({
-      tone: 'info',
-      message: t('posts.attachment.selected', { type: resource.resourceType.toLowerCase(), id: resource.id }),
-    });
+    nimiToast.info(t('posts.attachment.selected', { type: resource.resourceType.toLowerCase(), id: resource.id }));
   }
 
   async function uploadMediaResourceAttachment() {
     if (!mediaUploadFile) {
-      setMediaUploadResult({
+      const result: DirectMediaResourceUploadResult = {
         ok: false,
         source: REALM_MEDIA_RESOURCE_UPLOAD_SOURCE,
         attachmentTruth: false,
@@ -372,7 +367,9 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
         failure: 'media-upload-file-invalid',
         message: 'Reviewed media upload requires a selected file.',
         submitted: null,
-      });
+      };
+      setMediaUploadResult(result);
+      nimiToast.danger(translatePostFixedMessage(result.message, t));
       return;
     }
     setMediaUploadResult(null);
@@ -385,6 +382,7 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
       });
       setMediaUploadResult(result);
       if (result.ok) {
+        nimiToast.success(t('posts.upload.attached', { id: result.canonical.id }));
         setDraft((current) => ({
           ...current,
           attachmentEnabled: true,
@@ -395,6 +393,8 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
         setPublishResult(null);
         setSchedulePreview(null);
         setScheduleErrors([]);
+      } else {
+        nimiToast.danger(translatePostFixedMessage(result.message, t));
       }
     } finally {
       setIsUploadingMediaResource(false);
@@ -626,11 +626,6 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
                   />
                 </FieldShell>
               </div>
-              {resourceListStatus ? (
-                <InlineAlert tone={resourceListStatus.tone}>
-                  {resourceListStatus.message}
-                </InlineAlert>
-              ) : null}
             </Surface> : null}
             {!isScheduleWorkspace ? <Surface tone="card" padding="md">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -686,13 +681,6 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
                 </Button>
               </div>
               {mediaUploadResult ? (
-                <InlineAlert tone={mediaUploadResult.ok ? 'success' : 'danger'} className="mt-3">
-                  {mediaUploadResult.ok
-                    ? t('posts.upload.attached', { id: mediaUploadResult.canonical.id })
-                    : translatePostFixedMessage(mediaUploadResult.message, t)}
-                </InlineAlert>
-              ) : null}
-              {mediaUploadResult ? (
                 <TechnicalReviewDetails title={t('posts.upload.response')}>
                   <pre className="ras-json-preview m-0 min-h-24 overflow-auto rounded-[var(--nimi-radius-field)] border border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-panel)] p-3 text-xs">
                     {JSON.stringify(mediaUploadResult, null, 2)}
@@ -727,13 +715,6 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
                   {t('posts.textAttachment.button')}
                 </Button>
               </div>
-              {textResourceResult ? (
-                <InlineAlert tone={textResourceResult.ok ? 'success' : 'danger'} className="mt-3">
-                  {textResourceResult.ok
-                    ? t('posts.textAttachment.created', { id: textResourceResult.canonical.id })
-                    : translatePostFixedMessage(textResourceResult.message, t)}
-                </InlineAlert>
-              ) : null}
               {textResourceResult ? (
                 <TechnicalReviewDetails title={t('posts.textAttachment.response')}>
                   <pre className="ras-json-preview m-0 min-h-24 overflow-auto rounded-[var(--nimi-radius-field)] border border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-panel)] p-3 text-xs">
@@ -776,6 +757,9 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
                   try {
                     const result = await publishReviewedPostDraft(validation.payload);
                     setPublishResult(result);
+                    if (!result.ok) {
+                      nimiToast.danger(translatePostFixedMessage(result.message, t));
+                    }
                   } finally {
                     setIsPublishing(false);
                   }
@@ -818,11 +802,7 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
                       </div>
                     ))}
                   </dl>
-                ) : (
-                  <InlineAlert tone="danger">
-                    {translatePostFixedMessage(publishResult.message, t)}
-                  </InlineAlert>
-                )}
+                ) : null}
               </Surface>
             ) : null}
             {isScheduleWorkspace ? <Surface tone="card" padding="md">
@@ -895,20 +875,6 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
               <InlineAlert tone="warning" className="mt-3">
                 {t('posts.publicationUnavailable')}
               </InlineAlert>
-              {savedSchedule ? (
-                <InlineAlert tone={isLocalPostScheduleDue(savedSchedule) ? 'info' : 'success'} className="mt-3">
-                  {isLocalPostScheduleDue(savedSchedule)
-                    ? t('posts.schedule.due')
-                    : t('posts.schedule.savedFor', { time: savedSchedule.localRunAt })}
-                </InlineAlert>
-              ) : null}
-              {schedulePublishResult ? (
-                <InlineAlert tone={schedulePublishResult.ok ? 'success' : 'danger'} className="mt-3">
-                  {schedulePublishResult.ok
-                    ? t('posts.schedule.published')
-                    : translatePostFixedMessage(schedulePublishResult.message, t)}
-                </InlineAlert>
-              ) : null}
               <TechnicalReviewDetails title={t('posts.schedule.payload')}>
                 <pre className="ras-json-preview m-0 min-h-28 overflow-auto rounded-[var(--nimi-radius-field)] border border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-panel)] p-3 text-xs">
                   {schedulePreview ? JSON.stringify(schedulePreview, null, 2) : savedSchedule ? JSON.stringify(savedSchedule, null, 2) : t('posts.schedule.noPreview')}

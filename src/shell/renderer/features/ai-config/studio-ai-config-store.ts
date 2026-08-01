@@ -9,6 +9,7 @@ import {
   createNimiAIConfigSubscriptionRegistry,
   createNimiAppAIScopeRef,
   encodeNimiAIScopeRef,
+  formatNimiAIValidationIssues,
   parseNimiAIProfile,
   previewNimiAIProfileApply,
   validateNimiAIConfig,
@@ -24,9 +25,10 @@ import {
   type NimiAIScopeRef,
   type NimiAISnapshot,
 } from '@nimiplatform/sdk/ai';
-import type { JsonObject } from '@renderer/bridge/index.js';
-import { createInstalledNimiAppStandardShellSurface } from '@renderer/bridge/index.js';
-import { STUDIO_RUNTIME_APP_ID } from '@renderer/app-shell/studio-platform.js';
+import {
+  createStudioProtectedOperationUnavailableError,
+  STUDIO_RUNTIME_APP_ID,
+} from '@renderer/app-shell/studio-platform.js';
 
 export const STUDIO_AI_CONFIG_SURFACE_ID = 'owner-workbench';
 
@@ -43,7 +45,6 @@ export type StudioAIProfileImportResult =
     message: string;
   };
 
-const shellSurface = createInstalledNimiAppStandardShellSurface();
 const configSubscriptions = createNimiAIConfigSubscriptionRegistry();
 const configCache = new Map<string, NimiAIConfig>();
 const snapshotByExecution = new Map<string, NimiAISnapshot>();
@@ -54,38 +55,24 @@ export function createStudioAIScopeRef(): NimiAIScopeRef {
   return createNimiAppAIScopeRef(STUDIO_RUNTIME_APP_ID, STUDIO_AI_CONFIG_SURFACE_ID);
 }
 
-export async function hydrateStudioAIConfigFromShell(
+export async function hydrateStudioAIConfigFromProtectedBridge(
   scopeRef: NimiAIScopeRef = createStudioAIScopeRef(),
 ): Promise<NimiAIConfig> {
-  const scopeKey = encodeNimiAIScopeRef(scopeRef);
-  try {
-    const raw = await shellSurface.aiConfig.get(scopeKey);
-    const config = normalizeShellAIConfig(raw, scopeRef);
-    cacheStudioAIConfig(config);
-    return config;
-  } catch (error) {
-    if (isShellNotFound(error)) {
-      const config = createEmptyNimiAIConfig(scopeRef);
-      cacheStudioAIConfig(config);
-      return config;
-    }
-    throw error;
-  }
+  throw createStudioProtectedOperationUnavailableError(
+    `AI configuration for ${encodeNimiAIScopeRef(scopeRef)}`,
+  );
 }
 
-export async function persistStudioAIConfigToShell(
+export async function persistStudioAIConfigToProtectedBridge(
   config: NimiAIConfig,
 ): Promise<NimiAIConfig> {
   const validation = validateNimiAIConfig(config);
   if (!validation.valid) {
-    throw new Error(`NimiAIConfig validation failed: ${validation.errors.join('; ')}`);
+    throw new Error(`NimiAIConfig validation failed: ${formatNimiAIValidationIssues(validation.issues)}`);
   }
-  const saved = normalizeShellAIConfig(
-    await shellSurface.aiConfig.set(encodeNimiAIScopeRef(config.scopeRef), config as unknown as JsonObject),
-    config.scopeRef,
+  throw createStudioProtectedOperationUnavailableError(
+    `AI configuration for ${encodeNimiAIScopeRef(config.scopeRef)}`,
   );
-  cacheStudioAIConfig(saved);
-  return saved;
 }
 
 export function listStudioAIProfiles(): NimiAIProfile[] {
@@ -119,7 +106,7 @@ export function importStudioAIProfileJson(rawJson: string): StudioAIProfileImpor
   if (!validation.valid) {
     return {
       ok: false,
-      errors: [...validation.errors],
+      errors: validation.issues.map((issue) => `${issue.code}:${issue.path}`),
       message: 'AIProfile validation failed.',
     };
   }
@@ -150,12 +137,12 @@ export function saveStudioAIConfig(
   return normalized;
 }
 
-export async function commitStudioAIConfigToShell(
+export async function commitStudioAIConfigToProtectedBridge(
   next: NimiAIConfig,
   scopeRef: NimiAIScopeRef = createStudioAIScopeRef(),
   options?: { readonly expectedBaseVersion?: string },
 ): Promise<NimiAIConfig> {
-  return persistStudioAIConfigToShell(validateNextStudioAIConfig(next, scopeRef, options));
+  return persistStudioAIConfigToProtectedBridge(validateNextStudioAIConfig(next, scopeRef, options));
 }
 
 function validateNextStudioAIConfig(
@@ -173,7 +160,7 @@ function validateNextStudioAIConfig(
   }
   const validation = validateNimiAIConfig(normalized);
   if (!validation.valid) {
-    throw new Error(`NimiAIConfig validation failed: ${validation.errors.join('; ')}`);
+    throw new Error(`NimiAIConfig validation failed: ${formatNimiAIValidationIssues(validation.issues)}`);
   }
   return normalized;
 }
@@ -215,7 +202,7 @@ export function createStudioAIConfigService(): SharedAIConfigService {
         return loadStudioAIConfig(scopeRef);
       },
       async update(scopeRef: NimiAIScopeRef, next: NimiAIConfig) {
-        await commitStudioAIConfigToShell(next, scopeRef);
+        await commitStudioAIConfigToProtectedBridge(next, scopeRef);
       },
       subscribe(scopeRef: NimiAIScopeRef, listener: SharedAIConfigSubscribeListener): SharedAIConfigUnsubscribe {
         return configSubscriptions.subscribe(scopeRef, listener);
@@ -276,7 +263,7 @@ export function createStudioAIConfigService(): SharedAIConfigService {
           profile,
           requirementDeclarations: options.requirementDeclarations,
         });
-        const saved = await commitStudioAIConfigToShell(next, scopeRef, { expectedBaseVersion: preview.baseVersion });
+        const saved = await commitStudioAIConfigToProtectedBridge(next, scopeRef, { expectedBaseVersion: preview.baseVersion });
         return {
           success: true,
           config: saved,
@@ -298,29 +285,7 @@ function profileById(profileId: string): NimiAIProfile | null {
   return profileLibrary.find((profile) => profile.profileId === profileId) ?? null;
 }
 
-function normalizeShellAIConfig(raw: JsonObject, scopeRef: NimiAIScopeRef): NimiAIConfig {
-  const config = { ...raw, scopeRef } as unknown as NimiAIConfig;
-  const validation = validateNimiAIConfig(config);
-  if (!validation.valid) {
-    throw new Error(`NimiAIConfig validation failed: ${validation.errors.join('; ')}`);
-  }
-  return config;
-}
-
 function cacheStudioAIConfig(config: NimiAIConfig): void {
   configCache.set(encodeNimiAIScopeRef(config.scopeRef), config);
   configSubscriptions.notify(config);
-}
-
-function isShellNotFound(error: unknown): boolean {
-  if (!error || typeof error !== 'object') {
-    return false;
-  }
-  const record = error as { code?: unknown; reasonCode?: unknown; envelope?: { code?: unknown; reasonCode?: unknown } };
-  return record.code === 'not-found'
-    || record.reasonCode === 'electron-ai-config-scope-not-found'
-    || record.reasonCode === 'tauri-ai-config-scope-not-found'
-    || record.envelope?.code === 'not-found'
-    || record.envelope?.reasonCode === 'electron-ai-config-scope-not-found'
-    || record.envelope?.reasonCode === 'tauri-ai-config-scope-not-found';
 }

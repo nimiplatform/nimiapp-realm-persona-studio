@@ -2,8 +2,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-describe('studio protected installed-app boundary', () => {
-  it('bootstraps only the installed standard shell and fails closed for unadmitted account operations', () => {
+describe('studio Desktop-supervised protected boundary', () => {
+  it('uses only the local-app standard bridge and fails closed for unadmitted product operations', () => {
     const studioPlatformSource = readFileSync(
       join(process.cwd(), 'src/shell/renderer/app-shell/studio-platform.ts'),
       'utf8',
@@ -14,19 +14,22 @@ describe('studio protected installed-app boundary', () => {
     );
     const combined = `${studioPlatformSource}\n${bootstrapSource}`;
 
-    expect(studioPlatformSource).toContain('createInstalledNimiAppBootstrap');
-    expect(studioPlatformSource).toContain('createInstalledNimiAppStandardShellSurface');
-    expect(studioPlatformSource).toContain('standardShell: createInstalledNimiAppStandardShellSurface()');
-    expect(studioPlatformSource).toContain("'nimi.realm-persona-studio'");
+    expect(studioPlatformSource).toContain('createNimiClient');
+    expect(studioPlatformSource).toContain('createNimiLocalAppStandardShellSurface');
+    expect(studioPlatformSource).toContain('standardShell: createNimiLocalAppStandardShellSurface()');
+    expect(studioPlatformSource).toContain('REALM_PERSONA_STUDIO_APP_ID');
     expect(studioPlatformSource).toContain("reasonCode: STUDIO_CAPABILITY_UNAVAILABLE_REASON");
-    expect(studioPlatformSource).not.toContain('createNimiClient');
+    expect(studioPlatformSource).not.toContain('createInstalledNimiAppBootstrap');
+    expect(studioPlatformSource).not.toContain('createInstalledNimiAppStandardShellSurface');
     expect(studioPlatformSource).not.toContain('createStudioRealmBridgeOptions');
     expect(studioPlatformSource).not.toContain('createRuntimeAccountMediatedRealmTransport');
     expect(studioPlatformSource).not.toContain('readInstalledNimiAppLaunchBinding');
     expect(studioPlatformSource).not.toContain('caller:');
     expect(studioPlatformSource).not.toContain('realmBaseUrl');
     expect(combined).not.toMatch(/accessToken|refreshToken|sessionProof|launchNonce|releaseDigest/);
-    expect(bootstrapSource).toContain('isStudioCapabilityUnavailable');
+    expect(bootstrapSource).toContain('getStudioLocalAppClient().auth.status()');
+    expect(bootstrapSource).toContain('session.sessionBound');
+    expect(bootstrapSource).toContain('store.setProtectedSessionBound()');
     expect(bootstrapSource).toContain('store.setBootstrapReady(true)');
     expect(bootstrapSource).toContain('store.clearAuthSession()');
   });

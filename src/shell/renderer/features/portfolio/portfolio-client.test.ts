@@ -65,27 +65,27 @@ describe('owner portfolio core client', () => {
       const realm = mockRealm();
       const personas = await listOwnerPortfolioPersonas(realm);
 
-      expect(realm.worldCoreControllerListRealmPersonas).toHaveBeenCalledTimes(1);
-      expect(realm.worldCoreControllerGetRealmPersona).not.toHaveBeenCalled();
+      expect(realm.worldCoreControllerListPersonaCharacters).toHaveBeenCalledTimes(1);
+      expect(realm.worldCoreControllerGetPersonaCharacter).not.toHaveBeenCalled();
       expect(personas[0]?.source).toBe('Realm WorldCoreController.listRealmPersonas');
     });
 
     it('does not fall through from owner detail reads when owner authority is missing', async () => {
       const realm = mockRealm();
-      vi.mocked(realm.worldCoreControllerGetRealmPersona).mockRejectedValueOnce(new Error('owner authority missing'));
+      vi.mocked(realm.worldCoreControllerGetPersonaCharacter).mockRejectedValueOnce(new Error('owner authority missing'));
 
       await expect(getOwnerPortfolioPersonaDetail('persona-not-owned', realm)).rejects.toThrow(
         'owner authority missing',
       );
 
-      expect(realm.worldCoreControllerGetRealmPersona).toHaveBeenCalledWith({ path: { personaId: 'persona-not-owned' } });
+      expect(realm.worldCoreControllerGetPersonaCharacter).toHaveBeenCalledWith({ path: { personaCharacterId: 'persona-not-owned' } });
     });
 
     it('fetches selected detail through WorldCoreController.getRealmPersona', async () => {
       const realm = mockRealm();
       const detail = await getOwnerPortfolioPersonaDetail('persona-detail-1', realm);
 
-      expect(realm.worldCoreControllerGetRealmPersona).toHaveBeenCalledWith({ path: { personaId: 'persona-detail-1' } });
+      expect(realm.worldCoreControllerGetPersonaCharacter).toHaveBeenCalledWith({ path: { personaCharacterId: 'persona-detail-1' } });
       expect(detail.id).toBe('persona-detail-1');
       expect(detail.bio.value).toBe('Quiet strategist');
       expect(detail.source).toBe('Realm WorldCoreController.getRealmPersona');
@@ -96,7 +96,7 @@ describe('owner portfolio core client', () => {
       const worlds = await listCreateRealmPersonaSelectableWorlds(realm);
 
       expect(realm.worldCoreControllerListWorldCores).toHaveBeenCalledTimes(1);
-      expect(realm.worldCoreControllerCreateRealmPersona).not.toHaveBeenCalled();
+      expect(realm.worldCoreControllerCreatePersonaCharacter).not.toHaveBeenCalled();
       expect(worlds[0]).toMatchObject({
         id: 'world-oasis',
         source: 'Realm WorldCoreController.listWorldCores',
@@ -110,7 +110,7 @@ describe('owner portfolio core client', () => {
       expect(realm.worldCoreControllerGetWorldCore).toHaveBeenCalledWith({
         path: { worldId: 'world-oasis' },
       });
-      expect(realm.worldCoreControllerCreateRealmPersona).not.toHaveBeenCalled();
+      expect(realm.worldCoreControllerCreatePersonaCharacter).not.toHaveBeenCalled();
       expect(preview.source).toBe('Realm WorldCoreController.getWorldCore');
     });
 
@@ -119,7 +119,7 @@ describe('owner portfolio core client', () => {
       const available = await checkCreateRealmPersonaHandleAvailability(' @Mira.Persona ', realm);
       const unavailable = await checkCreateRealmPersonaHandleAvailability('taken.persona', realm);
 
-      expect(realm.worldCoreControllerListRealmPersonas).toHaveBeenCalledTimes(2);
+      expect(realm.worldCoreControllerListPersonaCharacters).toHaveBeenCalledTimes(2);
       expect(available).toMatchObject({
         ok: true,
         truthWrite: false,
@@ -139,21 +139,21 @@ describe('owner portfolio core client', () => {
           message: 'A RealmPersona with this handle already exists in the owner portfolio.',
         },
       });
-      expect(realm.worldCoreControllerCreateRealmPersona).not.toHaveBeenCalled();
+      expect(realm.worldCoreControllerCreatePersonaCharacter).not.toHaveBeenCalled();
     });
 
     it('creates a RealmPersona through WorldCoreController.createRealmPersona with core allowlist only', async () => {
       const realm = mockRealm();
       const result = await createReviewedRealmPersona(createPayload, realm);
-      const createPersona = realm.worldCoreControllerCreateRealmPersona;
+      const createPersona = realm.worldCoreControllerCreatePersonaCharacter;
       const submittedPayload = vi.mocked(createPersona).mock.calls[0]?.[0]?.body;
 
       expect(createPersona).toHaveBeenCalledTimes(1);
       expect(submittedPayload).toEqual(createPayload.body);
       expect(Object.keys(submittedPayload || {}).sort()).toEqual([
-        'core',
-        'homeWorldId',
         'origin',
+        'profile',
+        'worldId',
       ]);
       expect(collectKeys(submittedPayload).has('publicBio')).toBe(false);
       expect(collectKeys(submittedPayload).has('id')).toBe(false);
@@ -169,10 +169,10 @@ describe('owner portfolio core client', () => {
       expect(collectKeys(submittedPayload).has('dna')).toBe(false);
       expect(collectKeys(submittedPayload).has('personaArchetype')).toBe(false);
       expect(collectKeys(submittedPayload).has('personaTraits')).toBe(false);
-      expect(submittedPayload?.core).toMatchObject({
+      expect(submittedPayload?.profile).toMatchObject({
         identity: { handle: 'mira.persona' },
         presentation: { displayName: 'Mira Persona' },
-        personaStyle: { archetype: 'CARING', traits: ['GENTLE', 'WISE'] },
+        narrative: { archetype: 'CARING', traits: ['GENTLE', 'WISE'] },
       });
       expect(result).toMatchObject({
         ok: true,
@@ -186,7 +186,7 @@ describe('owner portfolio core client', () => {
     it('completes reviewed profile description through owner settings after create', async () => {
       const realm = mockRealm();
       const result = await createReviewedRealmPersonaWithProfileSettings(createPayload, realm);
-      const settingsUpdate = realm.worldCoreControllerReplaceRealmPersona;
+      const settingsUpdate = realm.worldCoreControllerReplacePersonaCharacter;
 
       expect(result).toMatchObject({
         ok: true,
@@ -198,12 +198,12 @@ describe('owner portfolio core client', () => {
           description: 'Owner-created public identity',
         },
       });
-      expect(realm.worldCoreControllerGetRealmPersona).toHaveBeenCalledWith({ path: { personaId: 'persona-created-1' } });
+      expect(realm.worldCoreControllerGetPersonaCharacter).toHaveBeenCalledWith({ path: { personaCharacterId: 'persona-created-1' } });
       expect(settingsUpdate).toHaveBeenCalledWith({
-        path: { personaId: 'persona-created-1' },
+        path: { personaCharacterId: 'persona-created-1' },
         body: expect.objectContaining({
           baseContentHash: 'hash-persona-created-1',
-          core: expect.objectContaining({
+          profile: expect.objectContaining({
             identity: expect.objectContaining({
               summary: 'Owner-created public identity',
             }),
@@ -222,7 +222,7 @@ describe('owner portfolio core client', () => {
       await getCreateRealmPersonaWorldPreview('world-oasis', realm);
       await createReviewedRealmPersona(createPayload, realm);
 
-      expect(realm.worldCoreControllerCreateRealmPersona).toHaveBeenCalledTimes(1);
+      expect(realm.worldCoreControllerCreatePersonaCharacter).toHaveBeenCalledTimes(1);
     });
 
     it('keeps reviewed audio as a local ingress candidate until Runtime admission', async () => {
@@ -249,7 +249,7 @@ describe('owner portfolio core client', () => {
     });
 
     it('normalizes Create Persona responses without canonical id as create failure', () => {
-      const result = normalizeRealmPersonaCreateResult({} as Awaited<ReturnType<StudioRealmSurface['worldCoreControllerCreateRealmPersona']>>);
+      const result = normalizeRealmPersonaCreateResult({} as Awaited<ReturnType<StudioRealmSurface['worldCoreControllerCreatePersonaCharacter']>>);
 
       expect(result).toMatchObject({
         ok: false,
@@ -261,12 +261,12 @@ describe('owner portfolio core client', () => {
     it('normalizes Create Persona responses without canonical source fields as create failure', () => {
       const missingHash = normalizeRealmPersonaCreateResult({
         id: 'persona-created-1',
-        homeWorldId: 'world-oasis',
-      } as Awaited<ReturnType<StudioRealmSurface['worldCoreControllerCreateRealmPersona']>>);
+        worldId: 'world-oasis',
+      } as Awaited<ReturnType<StudioRealmSurface['worldCoreControllerCreatePersonaCharacter']>>);
       const missingHomeWorld = normalizeRealmPersonaCreateResult({
         id: 'persona-created-1',
         contentHash: 'hash-persona-created-1',
-      } as Awaited<ReturnType<StudioRealmSurface['worldCoreControllerCreateRealmPersona']>>);
+      } as Awaited<ReturnType<StudioRealmSurface['worldCoreControllerCreatePersonaCharacter']>>);
 
       expect(missingHash).toMatchObject({
         ok: false,
@@ -291,12 +291,12 @@ describe('owner portfolio core client', () => {
       expect(Object.keys(input).includes('source')).toBe(false);
     });
 
-    it('passes the reviewed RealmPersona core package without restoring old create fields', () => {
+    it('passes the reviewed RealmPersona profile package without restoring old create fields', () => {
       const dirtyPayload = {
         ...createPayload,
         body: {
           ...createPayload.body,
-          worldId: 'world-oasis',
+          homeWorldId: 'world-oasis',
           ownershipType: 'WORLD_OWNED',
           dna: { hidden: true },
           lifecycle: 'ACTIVE',
@@ -308,18 +308,18 @@ describe('owner portfolio core client', () => {
       const input = buildRealmCreatePersonaInput(dirtyPayload);
 
       expect(input).toEqual(createPayload.body);
-      expect(collectKeys(input).has('worldId')).toBe(false);
-      expect(input.core).toEqual(createPayload.body.core);
+      expect(collectKeys(input).has('homeWorldId')).toBe(false);
+      expect(input.profile).toEqual(createPayload.body.profile);
       expect(collectKeys(input).has('dna')).toBe(false);
       expect(collectKeys(input).has('lifecycle')).toBe(false);
       expect(collectKeys(input).has('provider')).toBe(false);
       expect(collectKeys(input).has('model')).toBe(false);
       expect(collectKeys(input).has('ownerId')).toBe(false);
-      expect(collectKeys(input.core).has('personaArchetype')).toBe(false);
-      expect(collectKeys(input.core).has('personaTraits')).toBe(false);
-      expect(input.core).toMatchObject({
+      expect(collectKeys(input.profile).has('personaArchetype')).toBe(false);
+      expect(collectKeys(input.profile).has('personaTraits')).toBe(false);
+      expect(input.profile).toMatchObject({
         identity: { handle: 'mira.persona' },
-        personaStyle: { archetype: 'CARING', traits: ['GENTLE', 'WISE'] },
+        narrative: { archetype: 'CARING', traits: ['GENTLE', 'WISE'] },
       });
     });
 
@@ -328,8 +328,8 @@ describe('owner portfolio core client', () => {
         ...createPayload,
         body: {
           ...createPayload.body,
-          core: {
-            ...createPayload.body.core,
+          profile: {
+            ...createPayload.body.profile,
             assets: {
               resourceRefs: [],
               externalRefs: [{
@@ -345,7 +345,7 @@ describe('owner portfolio core client', () => {
       };
       const input = buildRealmCreatePersonaInput(payloadWithReference);
 
-      expect(input.core).toMatchObject({
+      expect(input.profile).toMatchObject({
         assets: {
           externalRefs: [{
             kind: 'referenceImage',

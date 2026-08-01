@@ -1,5 +1,5 @@
 import type {
-  RealmPersonaDto,
+  RealmModel,
 } from '@nimiplatform/sdk/realm/generated';
 import type { Runtime } from '@nimiplatform/sdk/runtime';
 import type { ExecuteScenarioResponse, ScenarioArtifact } from '@nimiplatform/sdk/runtime/generated';
@@ -38,7 +38,7 @@ import {
 type StudioRealmClient = StudioRealmSurface;
 
 type RealmSelectAvatarInput = { avatarUrl: string };
-type RealmSelectAvatarResponse = RealmPersonaDto;
+type RealmSelectAvatarResponse = RealmModel<'PersonaCharacterCoreDto'>;
 
 export const REALM_PERSONA_AVATAR_SELECT_SOURCE = 'Realm WorldCoreController.replaceRealmPersona';
 
@@ -244,8 +244,8 @@ export function normalizeRealmPersonaAvatarSelectResult(
   response: RealmSelectAvatarResponse,
   submitted: RealmSelectAvatarInput,
 ): RealmPersonaAvatarSelectResult {
-  const core = response && typeof response === 'object' && response.core && typeof response.core === 'object'
-    ? response.core as Record<string, unknown>
+  const core = response && typeof response === 'object' && response.profile && typeof response.profile === 'object'
+    ? response.profile as unknown as Record<string, unknown>
     : {};
   if (!coreHasExternalRef(core, 'avatar', submitted.avatarUrl)) {
     return {
@@ -282,13 +282,14 @@ function coreHasExternalRef(core: Record<string, unknown>, kind: string, uri: st
   });
 }
 
-function withSelectedAvatarExternalRef(core: unknown, avatarUrl: string): Record<string, unknown> {
-  const coreRecord = asRecord(core);
-  const assets = asRecord(coreRecord.assets);
+function withSelectedAvatarExternalRef(
+  profile: RealmModel<'PersonaCharacterCoreDto'>['profile'],
+  avatarUrl: string,
+): RealmModel<'CharacterProfileCoreInputDto'> {
+  const assets = asRecord(profile.assets);
   const existingRefs = Array.isArray(assets.externalRefs) ? assets.externalRefs : [];
   const retainedRefs = existingRefs.filter((entry) => asRecord(entry).kind !== 'avatar');
   return {
-    ...coreRecord,
     assets: {
       ...assets,
       resourceRefs: Array.isArray(assets.resourceRefs) ? assets.resourceRefs : [],
@@ -303,6 +304,18 @@ function withSelectedAvatarExternalRef(core: unknown, avatarUrl: string): Record
       ],
       intents: Array.isArray(assets.intents) ? assets.intents : [],
     },
+    authoring: asRecord(profile.authoring),
+    ...(profile.capabilities ? { capabilities: asRecord(profile.capabilities) } : {}),
+    identity: asRecord(profile.identity),
+    interactionProfile: asRecord(profile.interactionProfile),
+    ...(profile.knowledge ? { knowledge: asRecord(profile.knowledge) } : {}),
+    narrative: asRecord(profile.narrative),
+    presentation: asRecord(profile.presentation),
+    ...(profile.psychology ? { psychology: asRecord(profile.psychology) } : {}),
+    ...(profile.relationships
+      ? { relationships: profile.relationships.map((relationship) => asRecord(relationship)) }
+      : {}),
+    profileSchemaVersion: profile.profileSchemaVersion,
   };
 }
 
@@ -324,14 +337,14 @@ export async function selectReviewedPersonaAvatarUrl(
   }
 
   try {
-    const current = await realm.worldCoreControllerGetRealmPersona({ path: { personaId: personaId } });
-    const response = await realm.worldCoreControllerReplaceRealmPersona({
-      path: { personaId: personaId },
+    const current = await realm.worldCoreControllerGetPersonaCharacter({ path: { personaCharacterId: personaId } });
+    const response = await realm.worldCoreControllerReplacePersonaCharacter({
+      path: { personaCharacterId: personaId },
       body: {
         baseContentHash: current.contentHash,
-        homeWorldId: current.homeWorldId,
+        worldId: current.worldId,
         origin: current.origin,
-        core: withSelectedAvatarExternalRef(current.core, submitted.avatarUrl),
+        profile: withSelectedAvatarExternalRef(current.profile, submitted.avatarUrl),
       },
     });
     return normalizeRealmPersonaAvatarSelectResult(response, submitted);

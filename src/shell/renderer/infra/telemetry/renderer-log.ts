@@ -18,8 +18,8 @@ export function describeError(error: unknown): { name: string; message: string; 
 }
 
 /**
- * Keeps renderer diagnostics local to the installed app renderer. Installed
- * apps do not get a raw logging IPC capability.
+ * Keeps renderer diagnostics local to the Desktop-supervised App renderer.
+ * Apps do not get a raw logging IPC capability.
  */
 export function logRendererEvent(event: RendererLogEvent): void {
   const consoleMethod = event.level === 'error' ? 'error' : event.level === 'warn' ? 'warn' : 'info';

@@ -1,11 +1,9 @@
 import { useAppStore } from '../app-shell/app-store.js';
 import {
-  buildStudioNimiClient,
-  clearStudioNimiClient,
-  isStudioCapabilityUnavailable,
+  createStudioProtectedOperationUnavailableError,
+  getStudioLocalAppClient,
 } from '../app-shell/studio-platform.js';
 import { describeError, logRendererEvent } from './telemetry/renderer-log.js';
-import { hasStudioNimiClient, setStudioNimiClient } from './studio-nimi-client.js';
 
 let bootstrapPromise: Promise<void> | null = null;
 
@@ -38,14 +36,7 @@ export async function ensureStudioBootstrapReady(): Promise<void> {
 
 export async function ensureStudioRuntimeClientReady(): Promise<void> {
   await ensureStudioBootstrapReady();
-  if (hasStudioNimiClient()) {
-    return;
-  }
-
-  await runStudioBootstrap({ force: true });
-  if (!hasStudioNimiClient()) {
-    throw new Error('Realm Persona Studio Nimi client is unavailable after bootstrap retry');
-  }
+  throw createStudioProtectedOperationUnavailableError('Runtime client access');
 }
 
 async function doRunStudioBootstrap(): Promise<void> {
@@ -53,21 +44,19 @@ async function doRunStudioBootstrap(): Promise<void> {
   const flowId = `studio-bootstrap-${Date.now().toString(36)}`;
 
   try {
-    clearStudioNimiClient();
     store.setBootstrapReady(false);
     store.setBootstrapError(null);
+    store.clearAuthSession();
 
-    const client = await buildStudioNimiClient();
-    setStudioNimiClient(client);
-    throw new Error('Realm Persona Studio protected installed client returned without an account projection.');
-  } catch (error) {
-    clearStudioNimiClient();
-    if (isStudioCapabilityUnavailable(error)) {
-      store.clearAuthSession();
-      store.setBootstrapError(null);
+    const session = await getStudioLocalAppClient().auth.status();
+    if (!session.sessionBound) {
       store.setBootstrapReady(true);
       return;
     }
+    store.setProtectedSessionBound();
+    store.setBootstrapReady(true);
+  } catch (error) {
+    store.clearAuthSession();
     const message = error instanceof Error ? error.message : String(error);
     logRendererEvent({
       level: 'error',

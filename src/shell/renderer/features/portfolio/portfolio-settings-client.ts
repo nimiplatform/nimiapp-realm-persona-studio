@@ -1,6 +1,5 @@
 import type {
-  RealmPersonaDto,
-  ReplaceRealmPersonaDto,
+  RealmModel,
 } from '@nimiplatform/sdk/realm/generated';
 import { createStudioRealmClient, type StudioRealmSurface } from '@renderer/data/realm-client.js';
 import { createStudioRuntimeClient } from '@renderer/data/runtime-client.js';
@@ -26,6 +25,9 @@ import {
 
 type StudioRealmClient = StudioRealmSurface;
 
+type RealmPersonaCharacterDto = RealmModel<'PersonaCharacterCoreDto'>;
+type ReplacePersonaCharacterInput = RealmModel<'ReplacePersonaCharacterCoreDto'>;
+
 type RuntimeTextClient = StudioRuntimeAIClient;
 
 export type RealmPersonaVisibilitySettings = Record<PersonaVisibilityField, PersonaVisibilityValue>;
@@ -34,11 +36,11 @@ export type RealmOwnerPersonaSettings = OwnerPersonaSettingsSnapshot & {
   id: string;
   contentHash: string;
   homeWorldId: string;
-  visibility: RealmPersonaDto['visibility'];
-  origin: RealmPersonaDto['origin'];
+  visibility: RealmPersonaCharacterDto['visibility'];
+  origin: RealmPersonaCharacterDto['origin'];
   core: Record<string, unknown>;
 };
-type RealmOwnerPersonaSettingsUpdateInput = ReplaceRealmPersonaDto;
+type RealmOwnerPersonaSettingsUpdateInput = ReplacePersonaCharacterInput;
 type RealmRuntimeProjectionInput = {
   intendedRuntimeAudience: string;
   sourceRef: {
@@ -269,8 +271,8 @@ function writeAuthoringExtension(
   };
 }
 
-function readPersonaSocialVisibility(persona: RealmPersonaDto): RealmPersonaVisibilitySettings {
-  const core = readRecord(persona.core);
+function readPersonaSocialVisibility(persona: RealmPersonaCharacterDto): RealmPersonaVisibilitySettings {
+  const core = readRecord(persona.profile);
   const socialVisibility = readRecord(readAuthoringExtensions(core).socialVisibility);
   return {
     defaultPostVisibility: isPersonaVisibilityValue(String(socialVisibility.defaultPostVisibility || ''))
@@ -285,8 +287,8 @@ function readPersonaSocialVisibility(persona: RealmPersonaDto): RealmPersonaVisi
   };
 }
 
-function readPersonaSettings(persona: RealmPersonaDto): RealmOwnerPersonaSettings {
-  const core = readRecord(persona.core);
+function readPersonaSettings(persona: RealmPersonaCharacterDto): RealmOwnerPersonaSettings {
+  const core = readRecord(persona.profile);
   const identity = readRecord(core.identity);
   const presentation = readRecord(core.presentation);
   const interactionProfile = readRecord(core.interactionProfile);
@@ -294,7 +296,7 @@ function readPersonaSettings(persona: RealmPersonaDto): RealmOwnerPersonaSetting
   return {
     id: persona.id,
     contentHash: persona.contentHash,
-    homeWorldId: persona.homeWorldId,
+    homeWorldId: persona.worldId,
     visibility: persona.visibility,
     origin: persona.origin,
     core,
@@ -359,24 +361,26 @@ function mergeOwnerSettingsCore(
 function buildReplaceRealmPersonaInput(
   current: RealmOwnerPersonaSettings,
   core: Record<string, unknown>,
-  visibility: RealmPersonaDto['visibility'] = current.visibility,
-): ReplaceRealmPersonaDto {
+  visibility: RealmPersonaCharacterDto['visibility'] = current.visibility,
+): ReplacePersonaCharacterInput {
   return {
     baseContentHash: current.contentHash,
-    homeWorldId: current.homeWorldId,
+    worldId: current.homeWorldId,
     visibility,
     origin: current.origin,
-    core,
+    // The merged core starts from the full Realm profile and only patches
+    // sections, so the required profile input sections are preserved.
+    profile: core as unknown as RealmModel<'CharacterProfileCoreInputDto'>,
   };
 }
 
-function personaVisibilityToCoreVisibility(value: PersonaVisibilityValue): RealmPersonaDto['visibility'] {
+function personaVisibilityToCoreVisibility(value: PersonaVisibilityValue): RealmPersonaCharacterDto['visibility'] {
   if (value === 'PUBLIC') return 'public';
   if (value === 'FRIENDS') return 'unlisted';
   return 'private';
 }
 
-function coreVisibilityToPersonaVisibility(value: RealmPersonaDto['visibility']): PersonaVisibilityValue {
+function coreVisibilityToPersonaVisibility(value: RealmPersonaCharacterDto['visibility']): PersonaVisibilityValue {
   if (value === 'public' || value === 'system') return 'PUBLIC';
   if (value === 'unlisted') return 'FRIENDS';
   return 'PRIVATE';
@@ -515,7 +519,7 @@ export async function getPersonaVisibilitySettings(
   personaId: string,
   realm: StudioRealmClient = createStudioRealmClient(),
 ): Promise<RealmPersonaVisibilitySettings> {
-  const persona = await realm.worldCoreControllerGetRealmPersona({ path: { personaId: personaId } });
+  const persona = await realm.worldCoreControllerGetPersonaCharacter({ path: { personaCharacterId: personaId } });
   return readPersonaSocialVisibility(persona);
 }
 
@@ -523,7 +527,7 @@ export async function getOwnerPersonaSettings(
   personaId: string,
   realm: StudioRealmClient = createStudioRealmClient(),
 ): Promise<RealmOwnerPersonaSettings> {
-  const persona = await realm.worldCoreControllerGetRealmPersona({ path: { personaId: personaId } });
+  const persona = await realm.worldCoreControllerGetPersonaCharacter({ path: { personaCharacterId: personaId } });
   return readPersonaSettings(persona);
 }
 
@@ -558,8 +562,8 @@ export async function updateReviewedPersonaVisibility(
   try {
     const ownerSettings = await getOwnerPersonaSettings(personaId, realm);
     const nextProfileVisibility = input.profileVisibility ?? current.profileVisibility;
-    const settings = await realm.worldCoreControllerReplaceRealmPersona({
-      path: { personaId: personaId },
+    const settings = await realm.worldCoreControllerReplacePersonaCharacter({
+      path: { personaCharacterId: personaId },
       body: buildReplaceRealmPersonaInput(
         ownerSettings,
         writeAuthoringExtension(ownerSettings.core, 'socialVisibility', {
@@ -708,8 +712,8 @@ export async function updateReviewedOwnerPersonaSettings(
   const nextCore = mergeOwnerSettingsCore(current, built.input);
   const submitted = buildReplaceRealmPersonaInput(current, nextCore);
   try {
-    const settings = await realm.worldCoreControllerReplaceRealmPersona({
-      path: { personaId: personaId },
+    const settings = await realm.worldCoreControllerReplacePersonaCharacter({
+      path: { personaCharacterId: personaId },
       body: submitted,
     });
     return {

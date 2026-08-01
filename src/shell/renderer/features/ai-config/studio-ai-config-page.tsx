@@ -21,7 +21,7 @@ import { createStudioRuntimeModelPickerProviderCache } from './studio-runtime-mo
 import {
   createStudioAIConfigService,
   createStudioAIScopeRef,
-  hydrateStudioAIConfigFromShell,
+  hydrateStudioAIConfigFromProtectedBridge,
 } from './studio-ai-config-store.js';
 import { translateStudioModelConfigCopy } from './studio-ai-config-copy.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
@@ -106,7 +106,7 @@ function useLiveAIConfig(
   useEffect(() => {
     setConfig(service.aiConfig.get(scopeRef));
     setError(null);
-    void hydrateStudioAIConfigFromShell(scopeRef)
+    void hydrateStudioAIConfigFromProtectedBridge(scopeRef)
       .then(() => {
         setError(null);
       })

@@ -13,14 +13,13 @@ const PORTFOLIO_REALM_CONSUMERS = [
 describe('studio Realm facade boundary', () => {
   it('exposes only the admitted Studio Realm surface methods', () => {
     expect([...STUDIO_REALM_SURFACE_METHODS]).toEqual([
-      'worldCoreControllerListRealmPersonas',
-      'worldCoreControllerGetRealmPersona',
-      'worldCoreControllerCreateRealmPersona',
-      'worldCoreControllerReplaceRealmPersona',
+      'worldCoreControllerListPersonaCharacters',
+      'worldCoreControllerGetPersonaCharacter',
+      'worldCoreControllerCreatePersonaCharacter',
+      'worldCoreControllerReplacePersonaCharacter',
       'worldCoreControllerListWorldCores',
       'worldCoreControllerGetWorldCore',
       'worldCoreControllerGetOasisWorld',
-      'worldCoreControllerCreateSourceMaterializationPacket',
     ]);
   });
 

@@ -1,6 +1,6 @@
 import { HashRouter } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { TooltipProvider } from '@nimiplatform/kit/ui';
+import { NimiToaster, TooltipProvider } from '@nimiplatform/kit/ui';
 import { ShellErrorBoundary } from '@nimiplatform/kit/telemetry/error-boundary';
 import { AppRoutes } from './app-shell/routes.js';
 import { ShellLayout } from './app-shell/shell-layout.js';
@@ -26,6 +26,7 @@ export function App() {
               </ShellLayout>
             </AuthProvider>
           </HashRouter>
+          <NimiToaster />
         </TooltipProvider>
       </QueryClientProvider>
     </ShellErrorBoundary>

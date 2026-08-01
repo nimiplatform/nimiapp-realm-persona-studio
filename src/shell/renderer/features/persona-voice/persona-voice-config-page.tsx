@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Mic2, PlayCircle } from 'lucide-react';
-import { Button, FieldShell, InlineAlert, StatusBadge, Surface, TextareaField } from '@nimiplatform/kit/ui';
+import { Button, FieldShell, InlineAlert, nimiToast, StatusBadge, Surface, TextareaField } from '@nimiplatform/kit/ui';
 import { PersonaShell, WorkspaceIntro } from '@renderer/features/persona-detail/persona-shell.js';
 import { synthesizeReviewedVoiceDemo, type RuntimeVoiceDemoSynthesisResult } from '@renderer/features/portfolio/portfolio-client.js';
 import { appendLocalCreativeAssetHistory } from '@renderer/features/portfolio/creative-asset-history.js';
@@ -31,6 +31,7 @@ function VoiceConfigBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) 
       const next = await synthesizeReviewedVoiceDemo(draft, persona);
       setResult(next);
       if (next.ok) {
+        nimiToast.success(t('voiceConfig.generated'));
         appendLocalCreativeAssetHistory(persona.id, {
           kind: 'voice-demo-candidate',
           label: 'Voice demo candidate',
@@ -39,6 +40,8 @@ function VoiceConfigBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) 
           artifactIds: next.runtime.artifactIds,
           ...(next.runtime.traceId ? { traceId: next.runtime.traceId } : {}),
         });
+      } else {
+        nimiToast.danger(next.message);
       }
     } finally {
       setIsSynthesizing(false);
@@ -104,11 +107,6 @@ function VoiceConfigBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) 
               {t('voiceConfig.openDraftBox')}
             </Button>
           </div>
-          {result ? (
-            <InlineAlert tone={result.ok ? 'success' : 'danger'} className="mt-3">
-              {result.ok ? t('voiceConfig.generated') : result.message}
-            </InlineAlert>
-          ) : null}
           {previewUrl ? (
             <div className="mt-4">
               <div className="mb-2 flex items-center gap-2 text-[length:var(--nimi-type-body-sm-size)] text-[var(--nimi-text-muted)]">

@@ -1,4 +1,3 @@
-import type { StudioRealmSurface } from '@renderer/data/realm-client.js';
 import { FinishReason, RoutePolicy } from '@nimiplatform/sdk/runtime/generated';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -71,8 +70,8 @@ describe('owner portfolio settings client', () => {
       const realm = mockRealm();
       const settings = await getOwnerPersonaSettings('persona-1', realm);
 
-      expect(realm.worldCoreControllerGetRealmPersona).toHaveBeenCalledWith({
-        path: { personaId: 'persona-1' },
+      expect(realm.worldCoreControllerGetPersonaCharacter).toHaveBeenCalledWith({
+        path: { personaCharacterId: 'persona-1' },
       });
       expect(settings).toMatchObject({
         id: 'persona-1',
@@ -95,15 +94,15 @@ describe('owner portfolio settings client', () => {
         rawRuleTextCandidate: 'Visible raw rule candidate must stay deferred.',
       };
       const result = await updateReviewedOwnerPersonaSettings('persona-1', draft, current, realm);
-      const updateSettings = realm.worldCoreControllerReplaceRealmPersona;
+      const updateSettings = realm.worldCoreControllerReplacePersonaCharacter;
       const submittedRequest = vi.mocked(updateSettings).mock.calls[0]?.[0];
       const submittedPayload = submittedRequest?.body;
 
       expect(updateSettings).toHaveBeenCalledWith({
-        path: { personaId: 'persona-1' },
+        path: { personaCharacterId: 'persona-1' },
         body: expect.objectContaining({
           baseContentHash: 'hash-persona-1',
-          core: expect.objectContaining({
+          profile: expect.objectContaining({
             identity: expect.objectContaining({
               name: 'Mira Prime',
             }),
@@ -216,7 +215,7 @@ describe('owner portfolio settings client', () => {
           traceId: 'trace-settings',
         },
       });
-      expect(realm.worldCoreControllerReplaceRealmPersona).not.toHaveBeenCalled();
+      expect(realm.worldCoreControllerReplacePersonaCharacter).not.toHaveBeenCalled();
     });
 
      it('fails closed for Runtime settings proposal when intent is missing', async () => {
@@ -255,7 +254,7 @@ describe('owner portfolio settings client', () => {
         rawRuleTextCandidate: 'Only raw rule review.',
       }, current, realm);
 
-      expect(realm.worldCoreControllerReplaceRealmPersona).not.toHaveBeenCalled();
+      expect(realm.worldCoreControllerReplacePersonaCharacter).not.toHaveBeenCalled();
       expect(result).toMatchObject({
         ok: false,
         source: 'Realm WorldCoreController.replaceRealmPersona',
@@ -269,8 +268,8 @@ describe('owner portfolio settings client', () => {
       const realm = mockRealm();
       const settings = await getPersonaVisibilitySettings('persona-1', realm);
 
-      expect(realm.worldCoreControllerGetRealmPersona).toHaveBeenCalledWith({
-        path: { personaId: 'persona-1' },
+      expect(realm.worldCoreControllerGetPersonaCharacter).toHaveBeenCalledWith({
+        path: { personaCharacterId: 'persona-1' },
       });
       expect(settings).toEqual({
         defaultPostVisibility: 'PUBLIC',
@@ -292,15 +291,15 @@ describe('owner portfolio settings client', () => {
         profileVisibility: 'FRIENDS',
       };
       const result = await updateReviewedPersonaVisibility('persona-1', draft, current, realm);
-      const updateVisibility = realm.worldCoreControllerReplaceRealmPersona;
+      const updateVisibility = realm.worldCoreControllerReplacePersonaCharacter;
       const submittedRequest = vi.mocked(updateVisibility).mock.calls[0]?.[0];
       const submittedPayload = submittedRequest?.body;
 
       expect(updateVisibility).toHaveBeenCalledWith({
-        path: { personaId: 'persona-1' },
+        path: { personaCharacterId: 'persona-1' },
         body: expect.objectContaining({
           baseContentHash: 'hash-persona-1',
-          core: expect.objectContaining({
+          profile: expect.objectContaining({
             authoring: expect.objectContaining({
               extensions: expect.objectContaining({
                 socialVisibility: expect.objectContaining({
@@ -316,10 +315,10 @@ describe('owner portfolio settings client', () => {
       expect(collectKeys(submittedPayload).has('accountVisibility')).toBe(false);
       expect(collectKeys(submittedPayload).has('dmVisibility')).toBe(true);
       expect(collectKeys(submittedPayload).has('profileVisibility')).toBe(true);
-      expect(Object.keys((submittedPayload?.core as { socialVisibility?: unknown } | undefined) || {}).includes('socialVisibility')).toBe(false);
+      expect(Object.keys((submittedPayload?.profile as { socialVisibility?: unknown } | undefined) || {}).includes('socialVisibility')).toBe(false);
       expect(collectKeys(submittedPayload).has('lifecycle')).toBe(false);
       expect(collectKeys(submittedPayload).has('moderationStatus')).toBe(false);
-      expect(collectKeys(submittedPayload).has('worldId')).toBe(false);
+      expect(collectKeys(submittedPayload).has('homeWorldId')).toBe(false);
       expect(collectKeys(submittedPayload).has('provider')).toBe(false);
       expect(collectKeys(submittedPayload).has('model')).toBe(false);
       expect(result).toMatchObject({
@@ -348,7 +347,7 @@ describe('owner portfolio settings client', () => {
       } as PersonaVisibilityDraft;
       const invalid = await updateReviewedPersonaVisibility('persona-1', invalidDraft, current, realm);
 
-      expect(realm.worldCoreControllerReplaceRealmPersona).not.toHaveBeenCalled();
+      expect(realm.worldCoreControllerReplacePersonaCharacter).not.toHaveBeenCalled();
       expect(noChange).toMatchObject({
         ok: false,
         source: 'Realm WorldCoreController.replaceRealmPersona',
@@ -387,7 +386,7 @@ describe('owner portfolio settings client', () => {
      it('fails closed before source materialization without a Runtime-issued challenge', async () => {
       const realm = mockRealm();
       const result = await projectPersonaRuntimeContextSummary(ownerPersonaDetail(), realm);
-      const projectRuntimePayload = realm.worldCoreControllerCreateSourceMaterializationPacket;
+      const projectRuntimePayload = (realm as Record<string, unknown>).worldCoreControllerCreateSourceMaterializationPacket;
 
       expect(projectRuntimePayload).not.toHaveBeenCalled();
       expect(result).toMatchObject({
@@ -417,7 +416,7 @@ describe('owner portfolio settings client', () => {
         payload: {
           worldRules: [{ statement: 'world raw' }],
         },
-      } as unknown as Awaited<ReturnType<StudioRealmSurface['worldCoreControllerCreateSourceMaterializationPacket']>>);
+      });
 
       expect(summary).toEqual({
         source: 'Realm WorldCoreController.createSourceMaterializationPacket',
@@ -441,7 +440,7 @@ describe('owner portfolio settings client', () => {
         payload: {
           'communication.contentStyle': 'must stay hidden',
         },
-      } as unknown as Awaited<ReturnType<StudioRealmSurface['worldCoreControllerCreateSourceMaterializationPacket']>>);
+      });
 
       expect(summary).toEqual({
         source: 'Realm WorldCoreController.createSourceMaterializationPacket',
@@ -470,7 +469,7 @@ describe('owner portfolio settings client', () => {
       expect(buildRuntimeProjectionInput({ ...ownerPersonaDetail(), id: '' })).toBeNull();
       expect(buildRuntimeProjectionInput({ ...ownerPersonaDetail(), homeWorldId: '' })).toBeNull();
       expect(buildRuntimeProjectionInput({ ...ownerPersonaDetail(), contentHash: '' })).toBeNull();
-      expect(realm.worldCoreControllerCreateSourceMaterializationPacket).not.toHaveBeenCalled();
+      expect((realm as Record<string, unknown>).worldCoreControllerCreateSourceMaterializationPacket).not.toHaveBeenCalled();
       expect(result).toMatchObject({
         ok: false,
         truthWrite: false,

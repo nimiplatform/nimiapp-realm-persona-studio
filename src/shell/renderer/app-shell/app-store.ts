@@ -19,7 +19,7 @@ interface AppState {
   bootstrapReady: boolean;
   bootstrapError: string | null;
 
-  setAuthSession: (user: AuthUser) => void;
+  setProtectedSessionBound: () => void;
   clearAuthSession: () => void;
   setBootstrapReady: (ready: boolean) => void;
   setBootstrapError: (error: string | null) => void;
@@ -33,8 +33,8 @@ export const useAppStore = create<AppState>((set) => ({
   bootstrapReady: false,
   bootstrapError: null,
 
-  setAuthSession(user) {
-    set({ auth: { status: 'authenticated', user } });
+  setProtectedSessionBound() {
+    set({ auth: { status: 'authenticated', user: null } });
   },
   clearAuthSession() {
     set({

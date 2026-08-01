@@ -29,6 +29,7 @@ async function bootstrapElectron(): Promise<void> {
     appId: REALM_PERSONA_STUDIO_APP_ID,
     allowedRendererUrls: [rendererUrl],
     ipcMain,
+    onProtectedSessionFailure: () => app.quit(),
   });
 
   await createMainWindow();

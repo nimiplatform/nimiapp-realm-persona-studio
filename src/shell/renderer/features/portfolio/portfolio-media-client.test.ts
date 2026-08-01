@@ -73,14 +73,14 @@ describe('owner portfolio media client', () => {
      it('selects a reviewed avatar URL through WorldCoreController.replaceRealmPersona only', async () => {
       const realm = mockRealm();
       const result = await selectReviewedPersonaAvatarUrl('persona-1', ' https://cdn.example.test/avatar.png ', realm);
-      const selectAvatar = realm.worldCoreControllerReplaceRealmPersona;
+      const selectAvatar = realm.worldCoreControllerReplacePersonaCharacter;
       const submittedPayload = vi.mocked(selectAvatar).mock.calls[0]?.[0]?.body;
 
       expect(selectAvatar).toHaveBeenCalledWith({
-        path: { personaId: 'persona-1' },
+        path: { personaCharacterId: 'persona-1' },
         body: expect.objectContaining({
           baseContentHash: 'hash-persona-1',
-          core: expect.objectContaining({
+          profile: expect.objectContaining({
             assets: expect.objectContaining({
               externalRefs: expect.arrayContaining([
                 expect.objectContaining({
@@ -93,7 +93,7 @@ describe('owner portfolio media client', () => {
           }),
         }),
       });
-      expect(Object.keys(submittedPayload || {}).sort()).toEqual(['baseContentHash', 'core', 'homeWorldId', 'origin']);
+      expect(Object.keys(submittedPayload || {}).sort()).toEqual(['baseContentHash', 'origin', 'profile', 'worldId']);
       expect(collectKeys(submittedPayload).has('profileCoverUrl')).toBe(false);
       expect(collectKeys(submittedPayload).has('resourceId')).toBe(false);
       expect(collectKeys(submittedPayload).has('bindingId')).toBe(false);
@@ -113,7 +113,7 @@ describe('owner portfolio media client', () => {
       const realm = mockRealm();
       const result = await selectReviewedPersonaAvatarUrl('persona-1', 'data:text/plain,avatar', realm);
 
-      expect(realm.worldCoreControllerReplaceRealmPersona).not.toHaveBeenCalled();
+      expect(realm.worldCoreControllerReplacePersonaCharacter).not.toHaveBeenCalled();
       expect(result).toMatchObject({
         ok: false,
         source: 'Realm WorldCoreController.replaceRealmPersona',
@@ -129,8 +129,8 @@ describe('owner portfolio media client', () => {
       };
       const result = normalizeRealmPersonaAvatarSelectResult({
         ...personaFixture,
-        core: {
-          ...personaFixture.core,
+        profile: {
+          ...personaFixture.profile,
           assets: {
             resourceRefs: [],
             externalRefs: [{

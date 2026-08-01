@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Button, Checkbox, EmptyState, FieldShell, InlineAlert, SelectField, StatusBadge, Surface, TextareaField, TextField } from '@nimiplatform/kit/ui';
+import { Button, Checkbox, EmptyState, FieldShell, InlineAlert, nimiToast, SelectField, StatusBadge, Surface, TextareaField, TextField } from '@nimiplatform/kit/ui';
 import type { OwnerPortfolioPersonaDetail } from './portfolio-data.js';
 import {
   PERSONA_VISIBILITY_FIELDS,
@@ -121,8 +121,11 @@ export function SettingProposalWorkspace({ persona, onPersonaWrite }: { persona:
       const updateResult = await updateReviewedPortfolioPersonaSettings(persona, draft, settingsQuery.data);
       setResult(updateResult);
       if (updateResult.ok) {
+        nimiToast.success(t('settings.saved'));
         await settingsQuery.refetch();
         await onPersonaWrite();
+      } else {
+        nimiToast.danger(translateSettingsFixedMessage(updateResult.message, t));
       }
     } finally {
       setIsSaving(false);
@@ -403,13 +406,6 @@ export function SettingProposalWorkspace({ persona, onPersonaWrite }: { persona:
                   {t('settings.error.rawRuleReviewDeferred')}
                 </InlineAlert>
               ) : null}
-              {result ? (
-                <InlineAlert tone={result.ok ? 'success' : 'danger'}>
-                  {result.ok
-                    ? t('settings.saved')
-                    : translateSettingsFixedMessage(result.message, t)}
-                </InlineAlert>
-              ) : null}
               <Checkbox
                 checked={ownerReviewed}
                 onChange={(event) => setOwnerReviewed(event.currentTarget.checked)}
@@ -511,8 +507,11 @@ export function VisibilitySettingsWorkspace({ persona, onPersonaWrite }: { perso
       const updateResult = await updateReviewedPersonaVisibility(persona.id, draft, visibilityQuery.data);
       setResult(updateResult);
       if (updateResult.ok) {
+        nimiToast.success(t('visibility.saved'));
         await visibilityQuery.refetch();
         await onPersonaWrite();
+      } else {
+        nimiToast.danger(translateSettingsFixedMessage(updateResult.message, t));
       }
     } finally {
       setIsSaving(false);
@@ -561,13 +560,6 @@ export function VisibilitySettingsWorkspace({ persona, onPersonaWrite }: { perso
           {!hasChanges ? (
             <InlineAlert tone="warning">
               {t('visibility.noChanges')}
-            </InlineAlert>
-          ) : null}
-          {result ? (
-            <InlineAlert tone={result.ok ? 'success' : 'danger'}>
-              {result.ok
-                ? t('visibility.saved')
-                : translateSettingsFixedMessage(result.message, t)}
             </InlineAlert>
           ) : null}
           <div className="flex flex-wrap gap-3">
@@ -620,6 +612,11 @@ export function RuntimeProjectionWorkspace({ persona }: { persona: OwnerPortfoli
     try {
       const result = await projectPersonaRuntimeContextSummary(persona);
       setProjectionResult(result);
+      if (result.ok) {
+        nimiToast.success(t('runtimeProjection.generated'));
+      } else {
+        nimiToast.danger(translateSettingsFixedMessage(result.message, t));
+      }
     } finally {
       setIsProjecting(false);
     }
@@ -631,6 +628,11 @@ export function RuntimeProjectionWorkspace({ persona }: { persona: OwnerPortfoli
     try {
       const result = await projectPersonaChatReadinessContextSummary(persona);
       setProjectionResult(result);
+      if (result.ok) {
+        nimiToast.success(t('runtimeProjection.generated'));
+      } else {
+        nimiToast.danger(translateSettingsFixedMessage(result.message, t));
+      }
     } finally {
       setIsProjecting(false);
     }
@@ -658,13 +660,6 @@ export function RuntimeProjectionWorkspace({ persona }: { persona: OwnerPortfoli
       {persona.world.status !== 'available' ? (
         <InlineAlert tone="warning">
           {t('runtimeProjection.worldUnavailable')}
-        </InlineAlert>
-      ) : null}
-      {projectionResult ? (
-        <InlineAlert tone={projectionResult.ok ? 'success' : 'danger'} className="mt-3">
-          {projectionResult.ok
-            ? t('runtimeProjection.generated')
-            : translateSettingsFixedMessage(projectionResult.message, t)}
         </InlineAlert>
       ) : null}
       {projectionResult?.ok ? (

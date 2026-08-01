@@ -6,6 +6,7 @@ import {
   EmptyState,
   FieldShell,
   InlineAlert,
+  nimiToast,
   StatusBadge,
   Surface,
   TextareaField,
@@ -75,6 +76,9 @@ function ConsistencyReviewBody({ personaId, onApplied }: { personaId: string; on
       const draft = createOwnerPersonaSettingsDraft(settingsQuery.data);
       const review = await proposeReviewedOwnerPersonaSettings(personaId, { ...draft, naturalLanguageIntent: intent }, settingsQuery.data);
       setResult(review);
+      if (!review.ok) {
+        nimiToast.danger(translateReviewFixedMessage(review.message, t));
+      }
     } finally {
       setIsReviewing(false);
     }
@@ -155,9 +159,6 @@ function ConsistencyReviewBody({ personaId, onApplied }: { personaId: string; on
                   <Button tone="primary" onClick={onApplied}>{t('persona.review.goApply')}</Button>
                 </div>
               </Surface>
-            ) : null}
-            {result?.ok === false ? (
-              <InlineAlert tone="danger">{translateReviewFixedMessage(result.message, t)}</InlineAlert>
             ) : null}
           </div>
         )}

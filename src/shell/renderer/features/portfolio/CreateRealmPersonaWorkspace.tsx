@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, EmptyState, FieldShell, InlineAlert, SelectField, StatusBadge, Surface, TextareaField, TextField } from '@nimiplatform/kit/ui';
+import { Button, EmptyState, FieldShell, InlineAlert, nimiToast, SelectField, StatusBadge, Surface, TextareaField, TextField } from '@nimiplatform/kit/ui';
 import {
   PERSONA_ARCHETYPES,
   PERSONA_TRAIT_MAX_RECOMMENDED,
@@ -40,7 +40,6 @@ import {
 import {
   defaultReferenceImagePromptFromDraft,
   generatePersonaReferenceImage,
-  type PersonaReferenceImageResult,
 } from './persona-reference-image.js';
 import { useStudioI18n } from '../../i18n/use-studio-i18n.js';
 import type { StudioCopyKey } from '../../i18n/studio-copy.js';
@@ -540,10 +539,8 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
   const [seedResult, setSeedResult] = useState<PersonaSeedGenerationResult | null>(null);
   const [isGeneratingSeed, setIsGeneratingSeed] = useState(false);
   const [referenceImagePrompt, setReferenceImagePrompt] = useState<string>('');
-  const [referenceImageResult, setReferenceImageResult] = useState<PersonaReferenceImageResult | null>(null);
   const [isGeneratingReferenceImage, setIsGeneratingReferenceImage] = useState(false);
   const [draft, setDraft] = useState<CreateRealmPersonaDraftInput>(() => createEmptyDraft());
-  const [submitResult, setSubmitResult] = useState<RealmPersonaCreateWithProfileSettingsResult | null>(null);
   const [createdContext, setCreatedContext] = useState<CreatedRealmPersonaContext | null>(null);
   const [localSubmitErrors, setLocalSubmitErrors] = useState<string[]>([]);
   const queryClient = useQueryClient();
@@ -590,9 +587,27 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
     }
   }, [draft.selectedWorldId, oasisWorld]);
 
+  const handleAvailabilityData = handleAvailabilityQuery.data;
+  useEffect(() => {
+    if (!handleAvailabilityData) {
+      return;
+    }
+    if (!handleAvailabilityData.ok) {
+      nimiToast.danger(translateCreateFixedMessage(handleAvailabilityData.message, t));
+      return;
+    }
+    if (handleAvailabilityData.availability.available) {
+      nimiToast.success(t('create.handleAvailable', { handle: handleAvailabilityData.availability.normalized }));
+    } else {
+      nimiToast.danger(t('create.handleUnavailable', {
+        handle: handleAvailabilityData.availability.normalized,
+        message: translateCreateFixedMessage(handleAvailabilityData.availability.message, t),
+      }));
+    }
+  }, [handleAvailabilityData, t]);
+
   function resetCreateOutcome() {
     setLocalSubmitErrors([]);
-    setSubmitResult(null);
     setCreatedContext(null);
   }
 
@@ -612,8 +627,15 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
   const createMutation = useMutation<RealmPersonaCreateWithProfileSettingsResult, Error, ReviewedCreateRealmPersonaPayload>({
     mutationFn: (payload) => createReviewedRealmPersonaWithProfileSettings(payload),
     onSuccess: (result) => {
-      setSubmitResult(result);
       if (result.ok) {
+        nimiToast.success(t('create.createdSuccess', { id: result.canonical.id, status: result.profileSettings.status }));
+        if (result.profileSettings.status !== 'not-requested') {
+          nimiToast.success(t('create.profileDescriptionSaved', {
+            status: result.profileSettings.status === 'updated'
+              ? t('create.profileDescriptionSavedUpdated')
+              : t('create.profileDescriptionSavedCurrent'),
+          }));
+        }
         const currentDraft = normalizeCreateRealmPersonaDraft(draft);
         const context: CreatedRealmPersonaContext = {
           personaId: result.canonical.id,
@@ -626,6 +648,13 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
         setLocalSubmitErrors([]);
         onCreated?.(context);
         void queryClient.invalidateQueries({ queryKey: ['realm-persona-studio', 'owner-portfolio'] });
+      } else {
+        nimiToast.danger(t('create.createdPartial', {
+          message: translateCreateFixedMessage(result.message, t),
+          created: result.createdCanonical
+            ? t('create.createdPersonaId', { id: result.createdCanonical.id })
+            : '',
+        }));
       }
     },
   });
@@ -633,17 +662,14 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
   function submitCreate() {
     if (!creationGraphReview.ready) {
       setLocalSubmitErrors(creationGraphReview.errors);
-      setSubmitResult(null);
       return;
     }
     const readiness = validateCreateRealmPersonaReadiness(draft, { selectableWorldIds, handleAvailability });
     if (!readiness.ready) {
       setLocalSubmitErrors(readiness.errors);
-      setSubmitResult(null);
       return;
     }
     setLocalSubmitErrors([]);
-    setSubmitResult(null);
     createMutation.mutate(readiness.payload);
   }
 
@@ -678,6 +704,8 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
           personaArchetype: result.seed.personaArchetype || '',
         }));
         setStage('edit');
+      } else {
+        nimiToast.danger(t('create.seedGenerationFailed', { message: result.message }));
       }
     } finally {
       setIsGeneratingSeed(false);
@@ -710,7 +738,6 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
 
   async function runReferenceImageGeneration() {
     setIsGeneratingReferenceImage(true);
-    setReferenceImageResult(null);
     try {
       const prompt = referenceImagePrompt.trim()
         || defaultReferenceImagePromptFromDraft({
@@ -720,11 +747,12 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
           personaArchetype: draft.personaArchetype,
         });
       const result = await generatePersonaReferenceImage({ prompt });
-      setReferenceImageResult(result);
       if (result.ok) {
         setGraphAcceptedFingerprint(null);
         resetCreateOutcome();
         setDraft((current) => ({ ...current, referenceImageUrl: result.referenceImageUrl }));
+      } else {
+        nimiToast.danger(t('create.referenceFailed', { message: translateCreateFixedMessage(result.message, t) }));
       }
     } finally {
       setIsGeneratingReferenceImage(false);
@@ -735,7 +763,6 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
     setGraphAcceptedFingerprint(null);
     resetCreateOutcome();
     setDraft((current) => ({ ...current, referenceImageUrl: '' }));
-    setReferenceImageResult(null);
   }
 
   const readiness = validateCreateRealmPersonaReadiness(draft, { selectableWorldIds, handleAvailability });
@@ -795,11 +822,6 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
               </div>
             </Surface>
           ) : null}
-          {seedResult && !seedResult.ok ? (
-            <InlineAlert tone="danger">
-              {t('create.seedGenerationFailed', { message: seedResult.message })}
-            </InlineAlert>
-          ) : null}
           <InlineAlert tone="neutral">
             <strong>{t('create.boundaryLabel')}</strong> {t('create.boundaryDescription')}
           </InlineAlert>
@@ -854,16 +876,6 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
             ) : null}
             {handleAvailabilityQuery.isError ? (
               <InlineAlert tone="danger">{t('create.handleCheckFailed')}</InlineAlert>
-            ) : null}
-            {handleAvailabilityQuery.data?.ok === false ? (
-              <InlineAlert tone="danger">{translateCreateFixedMessage(handleAvailabilityQuery.data.message, t)}</InlineAlert>
-            ) : null}
-            {handleAvailability ? (
-              <InlineAlert tone={handleAvailability.available ? 'success' : 'danger'}>
-                {handleAvailability.available
-                  ? t('create.handleAvailable', { handle: handleAvailability.normalized })
-                  : t('create.handleUnavailable', { handle: handleAvailability.normalized, message: translateCreateFixedMessage(handleAvailability.message, t) })}
-              </InlineAlert>
             ) : null}
             <FieldShell label={t('create.profileDescriptionLabel')} message={t('create.profileDescriptionMessage')}>
               <TextareaField
@@ -979,18 +991,6 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
             {localSubmitErrors.length > 0 ? (
               <InlineAlert tone="danger">{t('create.validationFailed', { errors: translateCreateFixedMessages(localSubmitErrors, t) })}</InlineAlert>
             ) : null}
-            {submitResult ? (
-              <InlineAlert tone={submitResult.ok ? 'success' : 'danger'}>
-                {submitResult.ok
-                  ? t('create.createdSuccess', { id: submitResult.canonical.id, status: submitResult.profileSettings.status })
-                  : t('create.createdPartial', {
-                    message: translateCreateFixedMessage(submitResult.message, t),
-                    created: submitResult.createdCanonical
-                      ? t('create.createdPersonaId', { id: submitResult.createdCanonical.id })
-                      : '',
-                  })}
-              </InlineAlert>
-            ) : null}
             {createdContext ? (
               <Surface tone="card" padding="md">
                 <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
@@ -1002,15 +1002,6 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
                   </div>
                   <StatusBadge tone="success">{createdContext.state || t('create.createdStateFallback')}</StatusBadge>
                 </div>
-                {submitResult?.ok && submitResult.profileSettings.status !== 'not-requested' ? (
-                  <InlineAlert tone="success" className="mt-3">
-                    {t('create.profileDescriptionSaved', {
-                      status: submitResult.profileSettings.status === 'updated'
-                        ? t('create.profileDescriptionSavedUpdated')
-                        : t('create.profileDescriptionSavedCurrent'),
-                    })}
-                  </InlineAlert>
-                ) : null}
                 <div className="mt-3 flex flex-wrap gap-3">
                   <Button tone="secondary" onClick={() => onOpenCreatedPersona?.(createdContext.personaId, 'detail')}>
                     {t('create.openCockpit')}
@@ -1063,11 +1054,6 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
                   </Button>
                 ) : null}
               </div>
-              {referenceImageResult && !referenceImageResult.ok ? (
-                <InlineAlert tone="danger" className="mt-3">
-                  {t('create.referenceFailed', { message: translateCreateFixedMessage(referenceImageResult.message, t) })}
-                </InlineAlert>
-              ) : null}
               {draft.referenceImageUrl ? (
                 <div style={{ marginTop: 12 }}>
                   <div className="ras-text-muted ras-text-size-sm" style={{ marginBottom: 6 }}>{t('create.preview')}</div>

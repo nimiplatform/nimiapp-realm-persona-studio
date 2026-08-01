@@ -1,9 +1,9 @@
 import type {
-  RealmPersonaDto,
+  RealmModel,
 } from '@nimiplatform/sdk/realm/generated';
 
-export type MyRealmPersonaDto = RealmPersonaDto;
-export type MyRealmPersonaDetailDto = RealmPersonaDto;
+export type MyRealmPersonaDto = RealmModel<'PersonaCharacterCoreDto'>;
+export type MyRealmPersonaDetailDto = RealmModel<'PersonaCharacterCoreDto'>;
 
 export type PortfolioPersonaOwnerScope = 'owner-created';
 export type PortfolioPersonaListSource = 'Realm WorldCoreController.listRealmPersonas';
@@ -148,7 +148,7 @@ function stringFieldFromValue(value: string | null): StringFieldRead {
 }
 
 function readPersonaCore(persona: MyRealmPersonaDto | MyRealmPersonaDetailDto): Record<string, unknown> {
-  return readOptionalRecord(persona.core) ?? {};
+  return readOptionalRecord(persona.profile) ?? {};
 }
 
 function readCoreSection(core: Record<string, unknown>, key: string): Record<string, unknown> | null {
@@ -191,7 +191,7 @@ export function normalizeOwnerPortfolioPersona(
     ownerScope: 'owner-created',
     source: 'Realm WorldCoreController.listRealmPersonas',
     realmState: null,
-    worldName: persona.homeWorldId,
+    worldName: persona.worldId,
     updatedAt: persona.updatedAt,
     friendCount: normalizeFriendCount(persona),
   };
@@ -330,10 +330,10 @@ function settingField(
 }
 
 function readPersonaVoiceConfig(core: Record<string, unknown>): PortfolioPersonaVoiceConfig {
-  const personaStyle = readCoreSection(core, 'personaStyle');
+  const narrative = readCoreSection(core, 'narrative');
   return {
-    voiceId: readString(personaStyle?.voice) || '',
-    description: readString(personaStyle?.archetype) || '',
+    voiceId: '',
+    description: readString(narrative?.archetype) || '',
     emotionEnabled: null,
     speed: null,
     pitch: null,
@@ -364,14 +364,14 @@ export function normalizeOwnerPortfolioPersonaDetail(
       source,
     ),
     ownership: settingField('ownership', 'Ownership evidence', { present: true, value: 'owner-created RealmPersona' }, source),
-    world: settingField('world', 'World evidence', { present: true, value: persona.homeWorldId }, source),
+    world: settingField('world', 'World evidence', { present: true, value: persona.worldId }, source),
     state: settingField('state', 'State evidence', { present: false }, source),
     avatarUrl: readString(presentation?.avatarResourceRef)
       || readExternalAssetUri(core, 'avatar')
       || readExternalAssetUri(core, 'referenceImage'),
     contentHash: persona.contentHash,
     contentRevision: persona.contentRevision,
-    homeWorldId: persona.homeWorldId,
+    homeWorldId: persona.worldId,
     voice: readPersonaVoiceConfig(core),
     friendCount: normalizeFriendCount(persona),
     ownerScope: 'owner-created',

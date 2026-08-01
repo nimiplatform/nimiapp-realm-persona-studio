@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Checkbox, EmptyState, FieldShell, InlineAlert, SelectField, StatusBadge, Surface, TextareaField, TextField } from '@nimiplatform/kit/ui';
+import { Button, Checkbox, EmptyState, FieldShell, InlineAlert, nimiToast, SelectField, StatusBadge, Surface, TextareaField, TextField } from '@nimiplatform/kit/ui';
 import type { OwnerPortfolioPersonaDetail } from './portfolio-data.js';
 import {
   generateReviewedAvatarPackageCandidate,
@@ -267,7 +267,10 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
       const result = await selectReviewedPersonaAvatarUrl(persona.id, avatarUrlDraft);
       setAvatarResult(result);
       if (result.ok) {
+        nimiToast.success(t('assets.avatarUrl.saved'));
         await onPersonaWrite();
+      } else {
+        nimiToast.danger(translateFixedAssetMessage(result.message, t));
       }
     } finally {
       setIsSelectingAvatar(false);
@@ -281,6 +284,7 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
       const result = await generateReviewedVisualImageCandidate(visualImageDraft, persona);
       setVisualImageResult(result);
       if (result.ok) {
+        nimiToast.success(t('assets.imageGenerated'));
         setCreativeHistory(appendLocalCreativeAssetHistory(persona.id, {
           kind: 'runtime-image-candidate',
           label: 'Runtime image candidate',
@@ -289,6 +293,8 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
           artifactIds: result.runtime.artifactIds,
           ...(result.runtime.traceId ? { traceId: result.runtime.traceId } : {}),
         }));
+      } else {
+        nimiToast.danger(translateFixedAssetMessage(result.message, t));
       }
     } finally {
       setIsGeneratingVisualImage(false);
@@ -302,6 +308,7 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
       const result = await generateReviewedAvatarPackageCandidate(avatarPackageDraft, persona);
       setAvatarPackageResult(result);
       if (result.ok) {
+        nimiToast.success(t('assets.avatarPackageGenerated'));
         const avatarPackage = result.draft.source === 'realm-persona-studio.reviewed-avatar-package-candidate'
           ? result.draft.avatarPackage
           : null;
@@ -316,6 +323,8 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
           artifactIds: result.runtime.artifactIds,
           ...(result.runtime.traceId ? { traceId: result.runtime.traceId } : {}),
         }));
+      } else {
+        nimiToast.danger(translateFixedAssetMessage(result.message, t));
       }
     } finally {
       setIsGeneratingAvatarPackage(false);
@@ -324,7 +333,7 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
 
   async function uploadIdentityResource() {
     if (!identityUploadFile) {
-      setIdentityUploadResult({
+      const result: DirectMediaResourceUploadResult = {
         ok: false,
         source: REALM_MEDIA_RESOURCE_UPLOAD_SOURCE,
         attachmentTruth: false,
@@ -332,7 +341,9 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
         failure: 'media-upload-file-invalid',
         message: 'Reviewed identity Resource upload requires a selected image file.',
         submitted: null,
-      });
+      };
+      setIdentityUploadResult(result);
+      nimiToast.danger(translateFixedAssetMessage(result.message, t));
       return;
     }
 
@@ -347,6 +358,7 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
       });
       setIdentityUploadResult(result);
       if (result.ok) {
+        nimiToast.success(t('assets.identityUploaded', { id: result.canonical.id }));
         setCreativeHistory(appendLocalCreativeAssetHistory(persona.id, {
           kind: 'identity-resource-upload',
           label: 'Identity Resource upload',
@@ -354,6 +366,8 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
           detail: result.canonical.id,
           resourceId: result.canonical.id,
         }));
+      } else {
+        nimiToast.danger(translateFixedAssetMessage(result.message, t));
       }
     } finally {
       setIsUploadingIdentityResource(false);
@@ -367,6 +381,7 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
       const result = await synthesizeReviewedVoiceDemo(voiceDraft, persona);
       setVoiceResult(result);
       if (result.ok) {
+        nimiToast.info(t('assets.voiceGenerated'));
         setCreativeHistory(appendLocalCreativeAssetHistory(persona.id, {
           kind: 'voice-demo-candidate',
           label: 'Voice demo candidate',
@@ -375,6 +390,8 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
           artifactIds: result.runtime.artifactIds,
           ...(result.runtime.traceId ? { traceId: result.runtime.traceId } : {}),
         }));
+      } else {
+        nimiToast.danger(translateFixedAssetMessage(result.message, t));
       }
     } finally {
       setIsSynthesizingVoice(false);
@@ -499,13 +516,6 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
                 </div>
               </div>
               {avatarResult ? (
-                <InlineAlert tone={avatarResult.ok ? 'success' : 'danger'} className="mt-3">
-                  {avatarResult.ok
-                    ? t('assets.avatarUrl.saved')
-                    : translateFixedAssetMessage(avatarResult.message, t)}
-                </InlineAlert>
-              ) : null}
-              {avatarResult ? (
                 <TechnicalReviewDetails title={t('assets.avatarUrl.response')}>
                   <pre className="ras-json-preview m-0 min-h-24 overflow-auto rounded-[var(--nimi-radius-field)] border border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-panel)] p-3 text-xs">
                     {JSON.stringify(avatarResult, null, 2)}
@@ -584,13 +594,6 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
               <InlineAlert tone={visualImagePayload.changed ? 'info' : 'warning'} className="mt-3">
                 {visualImagePayload.changed ? t('assets.visualNotice') : translateFixedAssetMessages(visualImagePayload.errors, t)}
               </InlineAlert>
-              {visualImageResult ? (
-                <InlineAlert tone={visualImageResult.ok ? 'success' : 'danger'} className="mt-3">
-                  {visualImageResult.ok
-                    ? t('assets.imageGenerated')
-                    : translateFixedAssetMessage(visualImageResult.message, t)}
-                </InlineAlert>
-              ) : null}
               {visualImageResult?.ok ? (
                 <div className="mt-3 grid gap-3">
                   {visualPreviewUrl ? (
@@ -684,13 +687,6 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
               <InlineAlert tone={avatarPackagePayload.changed ? 'info' : 'warning'} className="mt-3">
                 {avatarPackagePayload.changed ? t('assets.avatarPackageNotice') : translateFixedAssetMessages(avatarPackagePayload.errors, t)}
               </InlineAlert>
-              {avatarPackageResult ? (
-                <InlineAlert tone={avatarPackageResult.ok ? 'success' : 'danger'} className="mt-3">
-                  {avatarPackageResult.ok
-                    ? t('assets.avatarPackageGenerated')
-                    : translateFixedAssetMessage(avatarPackageResult.message, t)}
-                </InlineAlert>
-              ) : null}
               {avatarPackageResult?.ok ? (
                 <div className="mt-3 grid gap-3">
                   {avatarPackagePreviewUrl ? (
@@ -772,13 +768,6 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
                 {t('assets.publicationUnavailable')}
               </InlineAlert>
               {identityUploadResult ? (
-                <InlineAlert tone={identityUploadResult.ok ? 'success' : 'danger'} className="mt-3">
-                  {identityUploadResult.ok
-                    ? t('assets.identityUploaded', { id: identityUploadResult.canonical.id })
-                    : translateFixedAssetMessage(identityUploadResult.message, t)}
-                </InlineAlert>
-              ) : null}
-              {identityUploadResult ? (
                 <TechnicalReviewDetails title={t('assets.identityUploadResponse')}>
                   <pre className="ras-json-preview m-0 min-h-24 overflow-auto rounded-[var(--nimi-radius-field)] border border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-panel)] p-3 text-xs">
                     {JSON.stringify(identityUploadResult, null, 2)}
@@ -846,13 +835,6 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
                 {t('assets.synthesizeVoice')}
               </Button>
             </div>
-            {voiceResult ? (
-              <InlineAlert tone={voiceResult.ok ? 'info' : 'danger'}>
-                  {voiceResult.ok
-                  ? t('assets.voiceGenerated')
-                  : translateFixedAssetMessage(voiceResult.message, t)}
-              </InlineAlert>
-            ) : null}
             {voiceResult?.ok ? (
               <div className="grid gap-3">
                 {voicePreviewUrl ? (

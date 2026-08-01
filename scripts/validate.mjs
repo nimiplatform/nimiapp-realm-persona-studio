@@ -16,8 +16,8 @@ if (!submission.includes('submission_role: developer-submitted-input')) {
 if (!submission.includes('dev_command: pnpm dev')) {
   throw new Error('official dev command marker missing in submission.yaml');
 }
-if (!submission.includes('dev_shell_command: pnpm dev:shell -- --shell tauri')) {
-  throw new Error('official shell selection marker missing in submission.yaml');
+if (!submission.includes('dev_electron_command: pnpm dev:electron')) {
+  throw new Error('official Desktop-supervised Electron command marker missing in submission.yaml');
 }
 if (!submission.includes('admission_truth: platform-owned-after-review')) {
   throw new Error('admission_truth marker missing in submission.yaml');

@@ -1,5 +1,5 @@
 import type {
-  RealmWorldCoreControllerCreateRealmPersonaOperationResponse,
+  RealmModel,
 } from '@nimiplatform/sdk/realm/generated';
 import { createStudioRealmClient, type StudioRealmSurface } from '@renderer/data/realm-client.js';
 import {
@@ -34,7 +34,7 @@ import {
 
 type StudioRealmClient = StudioRealmSurface;
 
-type RealmCreatePersonaResponse = RealmWorldCoreControllerCreateRealmPersonaOperationResponse;
+type RealmCreatePersonaResponse = RealmModel<'PersonaCharacterCoreDto'>;
 
 export type RealmPersonaCreateCanonicalFields = {
   id: string;
@@ -121,9 +121,9 @@ function readOptionalString(record: Record<string, unknown>, key: string): strin
 
 export function buildRealmCreatePersonaInput(payload: ReviewedCreateRealmPersonaPayload): RealmCreatePersonaInput {
   return {
-    homeWorldId: payload.body.homeWorldId,
+    worldId: payload.body.worldId,
     origin: payload.body.origin,
-    core: payload.body.core,
+    profile: payload.body.profile,
   };
 }
 
@@ -140,7 +140,7 @@ export function normalizeRealmPersonaCreateResult(persona: RealmCreatePersonaRes
   const record = persona as unknown as Record<string, unknown>;
   const id = readOptionalString(record, 'id');
   const contentHash = readOptionalString(record, 'contentHash');
-  const homeWorldId = readOptionalString(record, 'homeWorldId');
+  const homeWorldId = readOptionalString(record, 'worldId');
   if (!id) {
     return {
       ok: false,
@@ -159,7 +159,7 @@ export function normalizeRealmPersonaCreateResult(persona: RealmCreatePersonaRes
   }
 
   const state = readOptionalString(record, 'state');
-  const core = record.core && typeof record.core === 'object' ? record.core as Record<string, unknown> : {};
+  const core = record.profile && typeof record.profile === 'object' ? record.profile as Record<string, unknown> : {};
   return {
     ok: true,
     source: REALM_PERSONA_CREATE_SOURCE,
@@ -173,7 +173,7 @@ export function normalizeRealmPersonaCreateResult(persona: RealmCreatePersonaRes
   };
 }
 export async function listOwnerPortfolioPersonas(realm: StudioRealmClient = createStudioRealmClient()): Promise<OwnerPortfolioPersona[]> {
-  const personas = await realm.worldCoreControllerListRealmPersonas({ path: {} });
+  const personas = await realm.worldCoreControllerListPersonaCharacters({ path: {} });
   return normalizeOwnerPortfolio(personas);
 }
 
@@ -181,7 +181,7 @@ export async function getOwnerPortfolioPersonaDetail(
   personaId: string,
   realm: StudioRealmClient = createStudioRealmClient(),
 ): Promise<OwnerPortfolioPersonaDetail> {
-  const persona = await realm.worldCoreControllerGetRealmPersona({ path: { personaId: personaId } });
+  const persona = await realm.worldCoreControllerGetPersonaCharacter({ path: { personaCharacterId: personaId } });
   return normalizeOwnerPortfolioPersonaDetail(persona);
 }
 
@@ -227,9 +227,9 @@ export async function checkCreateRealmPersonaHandleAvailability(
   }
 
   try {
-    const personas = await realm.worldCoreControllerListRealmPersonas({ path: {} });
+    const personas = await realm.worldCoreControllerListPersonaCharacters({ path: {} });
     const unavailable = personas.some((persona) => {
-      const core = persona.core && typeof persona.core === 'object' ? persona.core as Record<string, unknown> : {};
+      const core = persona.profile && typeof persona.profile === 'object' ? persona.profile as unknown as Record<string, unknown> : {};
       const identity = core.identity && typeof core.identity === 'object'
         ? core.identity as Record<string, unknown>
         : {};
@@ -262,7 +262,7 @@ export async function createReviewedRealmPersona(
   realm: StudioRealmClient = createStudioRealmClient(),
 ): Promise<RealmPersonaCreateResult> {
   try {
-    const persona = await realm.worldCoreControllerCreateRealmPersona({
+    const persona = await realm.worldCoreControllerCreatePersonaCharacter({
       path: {},
       body: buildRealmCreatePersonaInput(payload),
     });

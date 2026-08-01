@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 describe('studio-ai-config-store shell boundary', () => {
-  it('uses standard shell ai-config instead of app-local browser model config storage', () => {
+  it('fails closed without an admitted protected AI-config operation', () => {
     const source = readFileSync(
       join(process.cwd(), 'src/shell/renderer/features/ai-config/studio-ai-config-store.ts'),
       'utf8',
@@ -13,9 +13,12 @@ describe('studio-ai-config-store shell boundary', () => {
       'utf8',
     );
 
-    expect(source).toContain('createInstalledNimiAppStandardShellSurface');
-    expect(source).toContain('aiConfig.get');
-    expect(source).toContain('aiConfig.set');
+    expect(source).toContain('createStudioProtectedOperationUnavailableError');
+    expect(source).toContain('hydrateStudioAIConfigFromProtectedBridge');
+    expect(source).toContain('persistStudioAIConfigToProtectedBridge');
+    expect(source).not.toContain('createInstalledNimiAppStandardShellSurface');
+    expect(source).not.toContain('aiConfig.get');
+    expect(source).not.toContain('aiConfig.set');
     expect(source).not.toContain('createNimiAIConfigStore');
     expect(source).not.toContain('resolveBrowserStorage');
     expect(source).not.toContain('window.localStorage');

@@ -31,7 +31,7 @@ describe('studio runtime client gate', () => {
     expect(hasTauriIpcRuntime({ __TAURI_IPC__: { invoke } } as unknown as typeof globalThis)).toBe(false);
   });
 
-  it('removes renderer-mediated Realm and portable installed-session authority', () => {
+  it('removes renderer-mediated Realm and portable session authority', () => {
     const runtimeClientSource = readFileSync(resolve(dataDir, 'runtime-client.ts'), 'utf8');
     const realmClientSource = readFileSync(resolve(dataDir, 'realm-client.ts'), 'utf8');
     const bridgeSource = readFileSync(resolve(rendererRoot, 'bridge', 'index.ts'), 'utf8');
@@ -41,8 +41,11 @@ describe('studio runtime client gate', () => {
 
     expect(existsSync(removedRealmTransportPath)).toBe(false);
     expect(combined).not.toMatch(/VITE_REALM_ACCESS_TOKEN|external_principal|allowAnonymousRealm/);
-    expect(studioPlatformSource).not.toMatch(/createNimiClient|createStudioRealmBridgeOptions|createRuntimeAccountMediatedRealmTransport/);
+    expect(studioPlatformSource).toContain('localApp:');
+    expect(studioPlatformSource).toContain('createNimiLocalAppStandardShellSurface');
+    expect(studioPlatformSource).not.toMatch(/createStudioRealmBridgeOptions|createRuntimeAccountMediatedRealmTransport/);
     expect(studioPlatformSource).not.toMatch(/getAccessToken|createRealmFetchTransport|refreshToken|sessionStore/);
+    expect(studioPlatformSource).not.toMatch(/appId:|runtime:|realm:|permissions:/);
     expect(realmClientSource).not.toMatch(/createPost|createTextResource|create(Image|Video|Audio)DirectUpload|finalizeResource|listResources/);
     expect(bridgeSource).not.toMatch(/RuntimeDefaults|RealmDefaults|readInstalledNimiAppLaunchBinding/);
   });

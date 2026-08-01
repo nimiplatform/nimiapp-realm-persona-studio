@@ -10,37 +10,44 @@ import {
 
 const basePersona: MyRealmPersonaDto = {
   id: 'persona-1',
-  schemaVersion: 'realm.persona/v1',
+  schemaVersion: 'realm.persona-character-core/v1',
   contentRevision: 1,
   contentHash: 'hash-persona-1',
   origin: { kind: 'manual', sourceId: 'test' },
-  ownerId: 'user-1',
-  homeWorldId: 'world-oasis',
+  ownerAccountId: 'user-1',
+  worldId: 'world-oasis',
   visibility: 'public',
-  core: {
+  sourceHash: 'source-hash-persona-1',
+  materializationReadiness: { status: 'ready', blockers: [] },
+  validity: { status: 'valid', issues: [] },
+  profile: {
+    profileSchemaVersion: 'realm.character-profile-core/v1',
+    profileHash: 'profile-hash-persona-1',
+    profileCoverage: {
+      manifestSchemaVersion: 'realm.character-profile-coverage/v1',
+      aggregateStatus: 'complete',
+      requiredSections: [],
+      optionalSections: [],
+      requiredRefs: [],
+      optionalRefs: [],
+      diagnostics: [],
+      profileCoverageHash: 'profile-coverage-hash-persona-1',
+    },
     identity: {
       handle: 'mira',
       name: 'Mira',
       summary: 'Quiet strategist',
-      concept: 'Quiet strategist',
     },
     presentation: {
       displayName: 'Mira',
       profileLine: 'Quiet strategist',
     },
-    personaStyle: {
+    narrative: {
+      summary: 'Quiet strategist',
       archetype: 'CARING',
       traits: ['GENTLE'],
-      voice: 'clear',
-      pacing: 'responsive',
-    },
-    contentProfile: {
-      topics: ['strategy'],
-      boundaries: [],
-      guidelines: [],
     },
     interactionProfile: {
-      homeWorldId: 'world-oasis',
       interactionModes: ['conversation'],
     },
     assets: {
@@ -94,15 +101,14 @@ describe('owner portfolio local view controls', () => {
     normalizeOwnerPortfolioPersona({
       ...basePersona,
       id: 'persona-2',
-      homeWorldId: 'workshop',
+      worldId: 'workshop',
       contentHash: 'hash-persona-2',
-      core: {
-        ...basePersona.core,
+      profile: {
+        ...basePersona.profile,
         identity: {
           handle: 'zed',
           name: 'Zed',
           summary: 'Workshop persona',
-          concept: 'Workshop persona',
         },
         presentation: {
           displayName: 'Zed',
@@ -114,13 +120,12 @@ describe('owner portfolio local view controls', () => {
       ...basePersona,
       id: 'persona-3',
       contentHash: 'hash-persona-3',
-      core: {
-        ...basePersona.core,
+      profile: {
+        ...basePersona.profile,
         identity: {
           handle: 'aster',
           name: 'Aster',
           summary: 'OASIS persona',
-          concept: 'OASIS persona',
         },
         presentation: {
           displayName: 'Aster',
@@ -193,21 +198,14 @@ describe('owner portfolio local view controls', () => {
 });
 
 describe('owner portfolio detail normalization', () => {
-  it('maps settings and evidence from RealmPersona core as read-only fields', () => {
+  it('maps settings and evidence from RealmPersona profile as read-only fields', () => {
     const detail = normalizeOwnerPortfolioPersonaDetail({
       ...basePersona,
-      core: {
-        ...basePersona.core,
+      profile: {
+        ...basePersona.profile,
         interactionProfile: {
-          homeWorldId: 'world-oasis',
           interactionModes: ['conversation'],
           greeting: 'Welcome in.',
-        },
-        personaStyle: {
-          archetype: 'CARING',
-          traits: ['GENTLE'],
-          voice: 'zh_narrator',
-          pacing: 'responsive',
         },
         assets: {
           resourceRefs: [],
@@ -231,7 +229,7 @@ describe('owner portfolio detail normalization', () => {
     expect(detail.world.value).toBe('world-oasis');
     expect(detail.state.status).toBe('source-unavailable');
     expect(detail.voice).toEqual({
-      voiceId: 'zh_narrator',
+      voiceId: '',
       description: 'CARING',
       emotionEnabled: null,
       speed: null,
@@ -258,7 +256,7 @@ describe('owner portfolio detail normalization', () => {
     expect(detail.world.status).toBe('available');
     expect(detail.state.status).toBe('source-unavailable');
     expect(detail.voice).toEqual({
-      voiceId: 'clear',
+      voiceId: '',
       description: 'CARING',
       emotionEnabled: null,
       speed: null,
@@ -275,20 +273,18 @@ describe('owner portfolio detail normalization', () => {
   it('does not treat present empty setting fields as source unavailable', () => {
     const detail = normalizeOwnerPortfolioPersonaDetail({
       ...basePersona,
-      core: {
-        ...basePersona.core,
+      profile: {
+        ...basePersona.profile,
         identity: {
           handle: '',
           name: '',
           summary: '',
-          concept: '',
         },
         presentation: {
           displayName: '',
           profileLine: '',
         },
         interactionProfile: {
-          homeWorldId: 'world-oasis',
           interactionModes: ['conversation'],
           greeting: '',
         },
@@ -313,7 +309,7 @@ describe('owner portfolio detail normalization', () => {
   it('does not treat world display names as write-safe world id evidence', () => {
     const detail = normalizeOwnerPortfolioPersonaDetail({
       ...basePersona,
-      core: basePersona.core,
+      profile: basePersona.profile,
     });
 
     expect(detail.world.status).toBe('available');

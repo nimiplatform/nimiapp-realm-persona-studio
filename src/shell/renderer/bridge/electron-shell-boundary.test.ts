@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-describe('studio Electron protected installed-app boundary', () => {
+describe('studio Desktop-supervised Electron boundary', () => {
   it('keeps the standard Electron entrypoints and removes app-owned Runtime auth', () => {
     for (const file of [
       'src-electron/main.ts',
@@ -17,7 +17,7 @@ describe('studio Electron protected installed-app boundary', () => {
     const packageJson = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8')) as {
       scripts?: Record<string, string>;
     };
-    expect(packageJson.scripts?.dev).toBe('nimi-app dev --shell tauri');
+    expect(packageJson.scripts?.dev).toBe('nimi-app dev --shell electron');
     expect(packageJson.scripts?.['dev:shell']).toBe('nimi-app dev');
     expect(packageJson.scripts?.['dev:electron']).toBe('nimi-app dev --shell electron');
     expect(packageJson.scripts?.['build:electron']).toBeTruthy();
@@ -37,14 +37,25 @@ describe('studio Electron protected installed-app boundary', () => {
     const mainSource = readFileSync(join(process.cwd(), 'src-electron/main.ts'), 'utf8');
 
     expect(mainSource).toContain('registerNimiElectronAppBridge');
+    expect(mainSource).toContain('onProtectedSessionFailure: () => app.quit()');
     expect(mainSource).toContain('--nimi-dev-renderer-url=');
     expect(mainSource).not.toContain('createNimiElectronInstalledHost()');
     expect(mainSource).not.toContain('NIMI_INSTALLED_NIMI_APP_STANDARD_SHELL_CAPABILITY_SET_ID');
     expect(mainSource).not.toContain('standardShellHost:');
     expect(mainSource).not.toContain('NIMI_STANDARD_SHELL_COMMANDS');
     expect(mainSource).not.toMatch(/runtimeAuth|trustedMetadataProvider|additionalArguments|LAUNCH_NONCE|releaseDigest/);
+    expect(mainSource).not.toMatch(/remote-debugging|cdp/i);
     expect(mainSource).not.toMatch(/ai-config\.(get|set)|runtime\.(unary|streamOpen|streamClose)|auth\.session|oauth\./);
     expect(mainSource).not.toMatch(/electron\.raw-ipc|node\.raw-fs|local-agent\.runtimeTrustedCaller/);
     expect(existsSync(join(process.cwd(), 'scripts/run-electron-dev.mjs'))).toBe(false);
+  });
+
+  it('declares no retired installed-app scope vocabulary', () => {
+    const manifestSource = readFileSync(join(process.cwd(), 'nimi.app.yaml'), 'utf8');
+
+    expect(manifestSource).toContain('permissions: []');
+    expect(manifestSource).toContain('renderer_origin: http://127.0.0.1:1450');
+    expect(manifestSource).not.toContain('declared_nimi_api_scopes');
+    expect(manifestSource).not.toContain('runtime.artifacts');
   });
 });
