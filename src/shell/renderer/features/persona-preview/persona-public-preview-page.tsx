@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Image, MessageSquareText, Mic2, UserRound } from 'lucide-react';
 import { Button, EmptyState, InlineAlert, StatusBadge, Surface } from '@nimiplatform/kit/ui';
 import { PersonaShell, WorkspaceIntro } from '@renderer/features/persona-detail/persona-shell.js';
-import { loadLocalCreativeAssetHistory, type CreativeAssetHistoryRecord } from '@renderer/features/portfolio/creative-asset-history.js';
+import type { CreativeAssetHistoryRecord } from '@renderer/features/portfolio/creative-asset-history.js';
+import { useLocalCreativeAssetHistory } from '@renderer/features/portfolio/use-local-creative-asset-history.js';
 import { loadLocalPostSchedule } from '@renderer/features/portfolio/local-post-schedule-store.js';
 import type { OwnerPortfolioPersonaDetail, SettingField } from '@renderer/features/portfolio/portfolio-data.js';
 import { settingFieldDisplayValue } from '@renderer/features/portfolio/OwnerPortfolio.shared.js';
@@ -20,7 +21,8 @@ function latestHistory(records: readonly CreativeAssetHistoryRecord[], kind: Cre
 function PreviewBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) {
   const { t } = useStudioI18n();
   const navigate = useNavigate();
-  const creativeHistory = useMemo(() => loadLocalCreativeAssetHistory(persona.id), [persona.id]);
+  const creativeHistoryState = useLocalCreativeAssetHistory(persona.id);
+  const creativeHistory = creativeHistoryState.records;
   const localSchedule = useMemo(() => loadLocalPostSchedule(persona.id), [persona.id]);
   const visualCandidate = latestHistory(creativeHistory, 'runtime-image-candidate')
     ?? latestHistory(creativeHistory, 'avatar-package-candidate')
@@ -50,6 +52,8 @@ function PreviewBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) {
           </>
         }
       />
+
+      {creativeHistoryState.unavailable ? <InlineAlert tone="warning">{t('assets.history.unavailable')}</InlineAlert> : null}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
         <Surface tone="panel" material="glass-regular" padding="lg" className="ras-radius-xl overflow-hidden">

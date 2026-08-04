@@ -74,9 +74,9 @@ units:
     kind: rule
     title: Asset candidate provenance
     modality: must
-    statement: Asset candidates preserve source persona id, source content hash, owner review state, and local timestamp.
+    statement: Persona-bound asset candidates preserve source persona id, source content hash, owner review state, and local timestamp; a pre-create candidate preserves its draft key in place of persona id and source content hash until canonical creation succeeds and the candidate is rebound.
     condition: Whenever Studio stores an asset candidate.
-    failure: Reject candidate persistence when any listed provenance field is missing.
+    failure: Reject candidate persistence when the provenance required for its current pre-create or persona-bound state is missing.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.asset.asset-candidate
@@ -110,3 +110,43 @@ units:
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.core.standard-shell
+  - id: definition.realm-persona-studio.asset.asset-library
+    kind: definition
+    title: Asset library
+    meaning: The owner-side local asset library organizes candidate workspaces by media category (image, audio, imported files); it presents local candidates and makes no public claim.
+  - id: definition.realm-persona-studio.asset.pre-create-asset-candidate
+    kind: definition
+    title: Pre-create asset candidate
+    meaning: An asset candidate generated before persona creation is traced to a creation draft key, owner review state, and local timestamp; after canonical creation succeeds, it is rebound to persona provenance.
+  - id: rule.realm-persona-studio.asset.r011
+    kind: rule
+    title: Asset source-kind provenance
+    modality: must
+    statement: Every asset candidate records source-kind (generated or imported) in its provenance.
+    condition: When a candidate is persisted.
+    failure: Reject persistence when source-kind is missing.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.asset.asset-candidate
+      - type: applies_to
+        target: definition.realm-persona-studio.asset.asset-library
+  - id: rule.realm-persona-studio.asset.r012
+    kind: rule
+    title: Local imported asset boundary
+    modality: must
+    statement: Local file import produces only an imported local candidate and initiates no Realm or network transfer.
+    condition: During the import action.
+    failure: Reject any network or publishing attempt during import; keep publishing visibly disabled under existing rule r010.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.asset.asset-library
+  - id: rule.realm-persona-studio.asset.r013
+    kind: rule
+    title: Pre-create candidate rebinding
+    modality: must
+    statement: Pre-creation candidates retain draft-key provenance and are rebound to persona provenance only after canonical creation succeeds.
+    condition: When an asset is generated within the creation flow.
+    failure: Reject persistence for a candidate without draft-key provenance.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.asset.pre-create-asset-candidate

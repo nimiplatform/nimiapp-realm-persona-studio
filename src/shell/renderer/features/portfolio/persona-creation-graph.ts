@@ -185,7 +185,11 @@ export function buildPersonaCreationGraphFromDraft(
     selectedWorldId: draft.selectedWorldId,
     personaArchetype: draft.personaArchetype,
     personaTraits: draft.personaTraits,
+    speechSupplement: draft.speechSupplement,
+    boundarySupplement: draft.boundarySupplement,
+    visualSupplement: draft.visualSupplement,
     referenceImageUrl: draft.referenceImageUrl,
+    referenceImageCandidates: draft.referenceImageCandidates,
     originalDescription: draft.originalDescription,
   });
 
@@ -199,6 +203,9 @@ export function buildPersonaCreationGraphFromDraft(
     sourceField('description', 'Profile description', present(draft.description), 'mapped', 'identity'),
     sourceField('personaArchetype', 'Persona archetype', present(draft.personaArchetype), 'mapped', 'personaStyle'),
     sourceField('personaTraits', 'Persona traits', draft.personaTraits.length > 0 ? draft.personaTraits.join(', ') : null, 'mapped', 'personaStyle'),
+    sourceField('speechSupplement', 'Speech style supplement', present(draft.speechSupplement), 'candidateOnly', 'communicationVoice'),
+    sourceField('boundarySupplement', 'Behavior boundary supplement', present(draft.boundarySupplement), 'candidateOnly', 'behavior'),
+    sourceField('visualSupplement', 'Visual style supplement', present(draft.visualSupplement), 'candidateOnly', 'visualBrief'),
     sourceField('ruleText', 'Visible behavior rules', present(draft.ruleText), 'candidateOnly', 'behavior'),
     sourceField('referenceImageUrl', 'Reference image URL', present(draft.referenceImageUrl), 'candidateOnly', 'visualBrief'),
     sourceField('runtimeRationale', 'Runtime draft rationale', present(options.runtimeRationale || ''), 'candidateOnly', 'riskNotes'),

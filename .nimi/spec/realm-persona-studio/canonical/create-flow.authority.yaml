@@ -1,0 +1,132 @@
+format: nimicoding.authority/v2
+owner: team.realm-persona-studio
+scope: realm-persona-studio.create-flow
+units:
+  - id: definition.realm-persona-studio.create-flow.persona-archetype
+    kind: definition
+    title: Persona archetype vocabulary
+    meaning: An owner-reviewed closed archetype vocabulary whose values match the implementation PERSONA_ARCHETYPES (CARING, PLAYFUL, INTELLECTUAL, CONFIDENT, MYSTERIOUS, ROMANTIC); selected values are stored in the reviewed persona core narrative area, while bilingual UI labels are presentation and the value set is product truth.
+  - id: definition.realm-persona-studio.create-flow.persona-traits
+    kind: definition
+    title: Persona traits vocabulary
+    meaning: An owner-reviewed closed 12-value trait vocabulary matching the implementation PERSONA_TRAITS (HUMOROUS, SARCASTIC, GENTLE, DIRECT, OPTIMISTIC, REALISTIC, DRAMATIC, PASSIONATE, REBELLIOUS, INNOCENT, WISE, ECCENTRIC); the subset selected by the owner is stored in the reviewed core.
+  - id: definition.realm-persona-studio.create-flow.core-concept
+    kind: definition
+    title: Core concept
+    meaning: A one-line core concept text in the creation flow that is normalized into an admitted owner-reviewed profile description or identity summary field and is not a new core field.
+  - id: definition.realm-persona-studio.create-flow.draft-autosave-record
+    kind: definition
+    title: Draft autosave record
+    meaning: A local autosave record for a creation draft containing draft fields, a draft key, and a local timestamp; it is persisted on the desktop and is candidate material only.
+  - id: definition.realm-persona-studio.create-flow.creation-draft-history
+    kind: definition
+    title: Creation draft history
+    meaning: A local list of creation drafts and candidates organized by draft key and local timestamp for listing and reopening local work.
+  - id: definition.realm-persona-studio.create-flow.portrait-variant-set
+    kind: definition
+    title: Portrait variant set
+    meaning: A set of local generated image candidates bound to the current draft, with 4 requested variants, from which the owner may select at most one.
+  - id: definition.realm-persona-studio.create-flow.generation-prompt-view
+    kind: definition
+    title: Generation prompt view
+    meaning: Owner-visible prompt content consisting only of owner-written description or supplemental text and admitted candidate prompt text.
+  - id: rule.realm-persona-studio.create-flow.r001
+    kind: rule
+    title: Closed persona archetype validation
+    modality: must
+    statement: Create-readiness validation requires the persona archetype to come from the closed value set.
+    condition: When building the reviewed create payload.
+    failure: Block creation with an explicit failure when the archetype is missing or outside the closed value set; do not inject a default value.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.create-flow.persona-archetype
+  - id: rule.realm-persona-studio.create-flow.r002
+    kind: rule
+    title: Closed persona trait validation
+    modality: must
+    statement: Persona trait selection contains at most 3 values and every value comes from the closed value set.
+    condition: During draft editing and create-readiness validation.
+    failure: Fail closed with a hard failure, not a warning, when more than 3 traits are selected or any trait is outside the closed value set.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.create-flow.persona-traits
+  - id: rule.realm-persona-studio.create-flow.r003
+    kind: rule
+    title: Admitted core concept field
+    modality: must
+    statement: The core concept text is normalized into an admitted owner-reviewed profile description or identity summary field only.
+    condition: When normalizing the payload.
+    failure: Reject the payload if it produces a new non-admitted core field.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.create-flow.core-concept
+  - id: rule.realm-persona-studio.create-flow.r004
+    kind: rule
+    title: Typed autosave status
+    modality: must
+    statement: The autosave indicator reflects the typed result of local persistence.
+    condition: Whenever any save status is displayed.
+    failure: A persistence failure must render an explicit save-failed state and must never imply success.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.create-flow.draft-autosave-record
+  - id: rule.realm-persona-studio.create-flow.r005
+    kind: rule
+    title: No Realm or public autosave claim
+    modality: must_not
+    statement: An autosaved draft claims Realm or public status.
+    condition: Always.
+    failure: Treating the draft as authority is a defect.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.create-flow.draft-autosave-record
+  - id: rule.realm-persona-studio.create-flow.r006
+    kind: rule
+    title: Local draft history only
+    modality: must
+    statement: The history panel lists only local drafts and candidates for listing and reopening.
+    condition: When the history panel is rendered or interacted with.
+    failure: Reject any restore or rollback operation on an already-created persona.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.create-flow.creation-draft-history
+  - id: rule.realm-persona-studio.create-flow.r007
+    kind: rule
+    title: Actual portrait variant count
+    modality: must
+    statement: Variant generation renders the actual returned count and explicitly marks an insufficient count.
+    condition: After generation completes.
+    failure: Placeholder tiles or fabricated variants are a defect.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.create-flow.portrait-variant-set
+  - id: rule.realm-persona-studio.create-flow.r008
+    kind: rule
+    title: Local portrait candidate operations
+    modality: must
+    statement: Variant selection and regeneration remain local candidate operations until an owner-reviewed Realm core write.
+    condition: Always.
+    failure: Reject a Realm write triggered solely by selection.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.create-flow.portrait-variant-set
+  - id: rule.realm-persona-studio.create-flow.r009
+    kind: rule
+    title: Prompt view boundary
+    modality: must_not
+    statement: The prompt view exposes provider, model, routing, lifecycle, or system-injected content, or provides rule editing.
+    condition: Always.
+    failure: Treat the view as defective when such content or editing capability appears; the view supports viewing and copying only.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.create-flow.generation-prompt-view
+  - id: rule.realm-persona-studio.create-flow.r010
+    kind: rule
+    title: OASIS world recommendation
+    modality: must
+    statement: The world selector recommended group contains only OASIS default worlds resolved from WorldCore data and places them first; ordering is local presentation, not a product ranking.
+    condition: When rendering the world selector.
+    failure: When WorldCore is unavailable, render world-core-selection-unavailable and block submission.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.world-core

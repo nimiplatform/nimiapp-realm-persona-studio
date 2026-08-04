@@ -17,6 +17,53 @@ export const studioI18nResources = {
 } as const;
 
 export type StudioTranslateOptions = Readonly<Record<string, string | number | boolean | null | undefined>>;
+export type StudioCopyTranslator = (key: StudioCopyKey, options?: StudioTranslateOptions) => string;
+
+const PERSONA_ARCHETYPE_LABEL_KEYS: Record<string, StudioCopyKey> = {
+  CARING: 'create.archetypeLabel.CARING',
+  PLAYFUL: 'create.archetypeLabel.PLAYFUL',
+  INTELLECTUAL: 'create.archetypeLabel.INTELLECTUAL',
+  CONFIDENT: 'create.archetypeLabel.CONFIDENT',
+  MYSTERIOUS: 'create.archetypeLabel.MYSTERIOUS',
+  ROMANTIC: 'create.archetypeLabel.ROMANTIC',
+};
+
+const PERSONA_TRAIT_DESCRIPTION_KEYS: Record<string, StudioCopyKey> = {
+  HUMOROUS: 'create.personaStyle.trait.HUMOROUS',
+  SARCASTIC: 'create.personaStyle.trait.SARCASTIC',
+  GENTLE: 'create.personaStyle.trait.GENTLE',
+  DIRECT: 'create.personaStyle.trait.DIRECT',
+  OPTIMISTIC: 'create.personaStyle.trait.OPTIMISTIC',
+  REALISTIC: 'create.personaStyle.trait.REALISTIC',
+  DRAMATIC: 'create.personaStyle.trait.DRAMATIC',
+  PASSIONATE: 'create.personaStyle.trait.PASSIONATE',
+  REBELLIOUS: 'create.personaStyle.trait.REBELLIOUS',
+  INNOCENT: 'create.personaStyle.trait.INNOCENT',
+  WISE: 'create.personaStyle.trait.WISE',
+  ECCENTRIC: 'create.personaStyle.trait.ECCENTRIC',
+};
+
+function normalizePersonaEnum(value: string | null | undefined): string {
+  return typeof value === 'string' ? value.trim().toUpperCase() : '';
+}
+
+export function translatePersonaArchetypeLabel(
+  value: string | null | undefined,
+  t: StudioCopyTranslator = translateStudioCopy,
+): string {
+  const normalized = normalizePersonaEnum(value);
+  const key = PERSONA_ARCHETYPE_LABEL_KEYS[normalized];
+  return key ? t(key) : t('common.sourceUnavailable');
+}
+
+export function translatePersonaTraitLabel(
+  value: string | null | undefined,
+  t: StudioCopyTranslator = translateStudioCopy,
+): string {
+  const normalized = normalizePersonaEnum(value);
+  const key = PERSONA_TRAIT_DESCRIPTION_KEYS[normalized];
+  return key ? `${normalized} · ${t(key)}` : t('common.sourceUnavailable');
+}
 
 export function isStudioCopyKey(key: string): key is StudioCopyKey {
   return Object.prototype.hasOwnProperty.call(studioEnglishCopy, key);

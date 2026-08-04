@@ -9,7 +9,10 @@ describe('Draft Box model', () => {
       creativeHistory: [{
         id: 'voice-1',
         personaId: 'persona-1',
+        sourceContentHash: 'hash-persona-1',
         kind: 'voice-demo-candidate',
+        sourceKind: 'generated',
+        reviewState: 'candidate-only',
         label: 'Voice demo candidate',
         createdAt: '2026-06-18T01:00:00.000Z',
         source: 'Runtime audio.synthesize',
@@ -19,7 +22,10 @@ describe('Draft Box model', () => {
       }, {
         id: 'image-1',
         personaId: 'persona-1',
+        sourceContentHash: 'hash-persona-1',
         kind: 'runtime-image-candidate',
+        sourceKind: 'generated',
+        reviewState: 'candidate-only',
         label: 'Runtime image candidate',
         createdAt: '2026-06-18T00:00:00.000Z',
         source: 'Runtime image.generate',

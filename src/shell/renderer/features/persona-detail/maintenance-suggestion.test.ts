@@ -47,7 +47,10 @@ const basePersona: OwnerPortfolioPersonaDetail = {
 const creativeCandidate: CreativeAssetHistoryRecord = {
   id: 'asset-1',
   personaId: 'persona-1',
+  sourceContentHash: 'hash-persona-1',
   kind: 'runtime-image-candidate',
+  sourceKind: 'generated',
+  reviewState: 'candidate-only',
   label: 'Portrait candidate',
   createdAt: '2026-06-16T10:00:00.000Z',
   source: 'Runtime image.generate',

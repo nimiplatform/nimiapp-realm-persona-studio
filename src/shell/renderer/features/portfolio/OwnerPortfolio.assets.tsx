@@ -32,6 +32,7 @@ import {
 import {
   appendLocalCreativeAssetHistory,
   loadLocalCreativeAssetHistory,
+  type CreativeAssetHistoryInput,
   type CreativeAssetHistoryKind,
   type CreativeAssetHistoryRecord,
 } from './creative-asset-history.js';
@@ -113,8 +114,16 @@ const FIXED_ASSET_MESSAGE_KEYS: Record<string, StudioCopyKey> = {
   'Reviewed identity Resource upload requires a selected image file.': 'assets.error.identityUploadFileMissing',
   'Avatar URL selection requires a valid http(s) URL.': 'assets.error.avatarUrlInvalid',
   'Realm avatar selection did not confirm success.': 'assets.error.avatarSelectUnconfirmed',
+  'RealmPersona replacement did not persist the reviewed avatar external ref.': 'assets.error.avatarSelectNotPersisted',
+  'Realm avatar selection failed.': 'assets.error.avatarSelectFailed',
   'Runtime imageGenerate scenario output missing readable artifact.': 'assets.error.runtimeImageMissingArtifact',
   'Runtime speechSynthesize scenario output missing artifact id.': 'assets.error.runtimeVoiceMissingArtifact',
+  'Runtime speechSynthesize scenario payload invalid.': 'assets.error.runtimeVoicePayloadInvalid',
+  'Runtime speechSynthesize scenario transport unavailable: Tauri IPC runtime transport is required.': 'assets.error.runtimeVoiceTransportUnavailable',
+  'Runtime imageGenerate scenario payload invalid.': 'assets.error.runtimeImagePayloadInvalid',
+  'Runtime imageGenerate scenario transport unavailable: Tauri IPC runtime transport is required.': 'assets.error.runtimeImageTransportUnavailable',
+  'Runtime avatar package imageGenerate scenario payload invalid.': 'assets.error.runtimeAvatarPackagePayloadInvalid',
+  'Runtime avatar package imageGenerate scenario transport unavailable: Tauri IPC runtime transport is required.': 'assets.error.runtimeAvatarPackageTransportUnavailable',
   'image artifact generated': 'assets.history.detail.imageArtifactGenerated',
   'avatar package design sheet generated': 'assets.history.detail.avatarPackageGenerated',
   'voice artifact generated': 'assets.history.detail.voiceArtifactGenerated',
@@ -137,8 +146,11 @@ const CREATIVE_HISTORY_LABEL_KEYS: Record<CreativeAssetHistoryKind, StudioCopyKe
 };
 
 function translateFixedAssetMessage(message: string, t: StudioTranslator): string {
+  if (message.startsWith('Runtime speechSynthesize scenario failed:')) return t('assets.error.runtimeVoiceFailed');
+  if (message.startsWith('Runtime imageGenerate scenario failed:')) return t('assets.error.runtimeImageFailed');
+  if (message.startsWith('Runtime avatar package imageGenerate scenario failed:')) return t('assets.error.runtimeAvatarPackageFailed');
   const key = FIXED_ASSET_MESSAGE_KEYS[message];
-  return key ? t(key) : message;
+  return key ? t(key) : t('common.operationFailed');
 }
 
 function translateFixedAssetMessages(messages: string[], t: StudioTranslator): string {
@@ -176,6 +188,7 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
   const [identityUploadResult, setIdentityUploadResult] = useState<DirectMediaResourceUploadResult | null>(null);
   const [isUploadingIdentityResource, setIsUploadingIdentityResource] = useState(false);
   const [creativeHistory, setCreativeHistory] = useState<CreativeAssetHistoryRecord[]>([]);
+  const [creativeHistoryUnavailable, setCreativeHistoryUnavailable] = useState(false);
   const [avatarUrlDraft, setAvatarUrlDraft] = useState(() => persona.avatarUrl || '');
   const [avatarReviewed, setAvatarReviewed] = useState(false);
   const [avatarResult, setAvatarResult] = useState<RealmPersonaAvatarSelectResult | null>(null);
@@ -195,6 +208,7 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
   const voicePreviewUrl = voiceResult?.ok ? voiceResult.runtime.previewUrls[0] || '' : '';
 
   useEffect(() => {
+    let cancelled = false;
     setIdentityPack(null);
     setVisualImageDraft(createVisualImageGenerationDraft());
     setVisualImageResult(null);
@@ -206,7 +220,13 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
     setIdentityUploadFile(null);
     setIdentityUploadResult(null);
     setIsUploadingIdentityResource(false);
-    setCreativeHistory(loadLocalCreativeAssetHistory(persona.id));
+    setCreativeHistory([]);
+    setCreativeHistoryUnavailable(false);
+    void loadLocalCreativeAssetHistory(persona.id).then((result) => {
+      if (cancelled) return;
+      setCreativeHistory(result.records);
+      setCreativeHistoryUnavailable(!result.ok || result.unavailableCount > 0);
+    });
     setAvatarUrlDraft(persona.avatarUrl || '');
     setAvatarReviewed(false);
     setAvatarResult(null);
@@ -214,7 +234,19 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
     setVoiceDraft(createVoiceDemoCandidateInput(persona));
     setVoiceResult(null);
     setIsSynthesizingVoice(false);
+    return () => {
+      cancelled = true;
+    };
   }, [persona.id]);
+
+  async function persistCreativeHistoryCandidate(input: CreativeAssetHistoryInput) {
+    const persisted = await appendLocalCreativeAssetHistory(persona.id, input);
+    setCreativeHistory(persisted.records);
+    if (!persisted.ok) {
+      setCreativeHistoryUnavailable(true);
+      nimiToast.danger(t('assets.history.persistFailed'));
+    }
+  }
 
   function buildIdentityPack() {
     setIdentityPack(buildIdentityPackFromPersona(persona));
@@ -285,14 +317,18 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
       setVisualImageResult(result);
       if (result.ok) {
         nimiToast.success(t('assets.imageGenerated'));
-        setCreativeHistory(appendLocalCreativeAssetHistory(persona.id, {
+        await persistCreativeHistoryCandidate({
+          sourceContentHash: persona.contentHash,
           kind: 'runtime-image-candidate',
+          sourceKind: 'generated',
+          reviewState: 'candidate-only',
           label: 'Runtime image candidate',
           source: result.source,
+          ...(result.runtime.previewUrls[0] ? { previewUrl: result.runtime.previewUrls[0] } : {}),
           detail: result.runtime.previewUrls[0] || result.runtime.artifactUris[0] || result.runtime.artifactIds[0] || result.runtime.jobId || 'image artifact generated',
           artifactIds: result.runtime.artifactIds,
           ...(result.runtime.traceId ? { traceId: result.runtime.traceId } : {}),
-        }));
+        });
       } else {
         nimiToast.danger(translateFixedAssetMessage(result.message, t));
       }
@@ -312,17 +348,21 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
         const avatarPackage = result.draft.source === 'realm-persona-studio.reviewed-avatar-package-candidate'
           ? result.draft.avatarPackage
           : null;
-        setCreativeHistory(appendLocalCreativeAssetHistory(persona.id, {
+        await persistCreativeHistoryCandidate({
+          sourceContentHash: persona.contentHash,
           kind: 'avatar-package-candidate',
+          sourceKind: 'generated',
+          reviewState: 'candidate-only',
           label: 'Avatar package candidate',
           source: result.source,
+          ...(result.runtime.previewUrls[0] ? { previewUrl: result.runtime.previewUrls[0] } : {}),
           detail: [
             avatarPackage ? avatarPackage.target : avatarPackageDraft.packageTarget,
             result.runtime.previewUrls[0] || result.runtime.artifactUris[0] || result.runtime.artifactIds[0] || result.runtime.jobId || 'avatar package design sheet generated',
           ].filter(Boolean).join(' / '),
           artifactIds: result.runtime.artifactIds,
           ...(result.runtime.traceId ? { traceId: result.runtime.traceId } : {}),
-        }));
+        });
       } else {
         nimiToast.danger(translateFixedAssetMessage(result.message, t));
       }
@@ -359,13 +399,16 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
       setIdentityUploadResult(result);
       if (result.ok) {
         nimiToast.success(t('assets.identityUploaded', { id: result.canonical.id }));
-        setCreativeHistory(appendLocalCreativeAssetHistory(persona.id, {
+        await persistCreativeHistoryCandidate({
+          sourceContentHash: persona.contentHash,
           kind: 'identity-resource-upload',
+          sourceKind: 'imported',
+          reviewState: 'owner-reviewed',
           label: 'Identity Resource upload',
           source: result.source,
           detail: result.canonical.id,
           resourceId: result.canonical.id,
-        }));
+        });
       } else {
         nimiToast.danger(translateFixedAssetMessage(result.message, t));
       }
@@ -382,14 +425,18 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
       setVoiceResult(result);
       if (result.ok) {
         nimiToast.info(t('assets.voiceGenerated'));
-        setCreativeHistory(appendLocalCreativeAssetHistory(persona.id, {
+        await persistCreativeHistoryCandidate({
+          sourceContentHash: persona.contentHash,
           kind: 'voice-demo-candidate',
+          sourceKind: 'generated',
+          reviewState: 'candidate-only',
           label: 'Voice demo candidate',
           source: result.source,
+          ...(result.runtime.previewUrls[0] ? { previewUrl: result.runtime.previewUrls[0] } : {}),
           detail: result.runtime.previewUrls[0] || result.runtime.artifactIds[0] || result.runtime.jobId || 'voice artifact generated',
           artifactIds: result.runtime.artifactIds,
           ...(result.runtime.traceId ? { traceId: result.runtime.traceId } : {}),
-        }));
+        });
       } else {
         nimiToast.danger(translateFixedAssetMessage(result.message, t));
       }
@@ -884,6 +931,7 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
           </div>
           <StatusBadge tone="warning">{t('common.appLocal')}</StatusBadge>
         </div>
+        {creativeHistoryUnavailable ? <InlineAlert tone="warning" className="mt-3">{t('assets.history.unavailable')}</InlineAlert> : null}
         {creativeHistory.length === 0 ? (
           <EmptyState title={t('assets.history.emptyTitle')} description={t('assets.history.emptyDescription')} />
         ) : (

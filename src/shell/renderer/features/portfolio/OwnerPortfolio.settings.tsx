@@ -45,8 +45,13 @@ const SETTINGS_FIXED_MESSAGE_KEYS: Record<string, StudioCopyKey> = {
   'Runtime settings proposal output invalid.': 'settings.error.runtimeProposalOutputInvalid',
   'Owner settings payload invalid.': 'settings.error.ownerSettingsPayloadInvalid',
   'Realm owner settings update failed.': 'settings.error.ownerSettingsUpdateFailed',
+  'Runtime source materialization requires a protected Runtime-issued challenge and is not admitted for Persona Studio.': 'runtimeProjection.error.notAdmitted',
   'visibility payload invalid': 'settings.error.visibilityPayloadInvalid',
+  'visibility settings have no reviewed changes': 'visibility.noChanges',
   'Realm visibility update failed.': 'settings.error.visibilityUpdateFailed',
+  'displayName cannot be empty because RealmPersonaCoreV1 requires presentation.displayName': 'settings.error.displayNameRequired',
+  'description cannot be empty because RealmPersonaCoreV1 requires identity.summary and presentation.profileLine': 'settings.error.descriptionRequired',
+  'Runtime settings proposal returned no admitted setting changes.': 'settings.error.proposalNoChanges',
   'Runtime projection requires worldId evidence from Realm WorldCoreController.getRealmPersona.': 'runtimeProjection.error.worldIdRequired',
   'Runtime projection response did not include RUNTIME_PAYLOAD checksum summary.': 'runtimeProjection.error.checksumMissing',
   'Realm runtime projection failed.': 'runtimeProjection.error.failed',
@@ -58,10 +63,32 @@ const SETTINGS_FIXED_MESSAGE_KEYS: Record<string, StudioCopyKey> = {
 function translateSettingsFixedMessage(message: string, t: StudioTranslator): string {
   const visibilityFieldInvalid = message.match(/^(.+) must be PUBLIC, FRIENDS, or PRIVATE$/);
   if (visibilityFieldInvalid) {
-    return t('settings.error.visibilityFieldInvalid', { field: visibilityFieldInvalid[1] });
+    const field = visibilityFieldInvalid[1] ?? '';
+    const fieldKeyMap: Record<string, StudioCopyKey> = {
+      defaultPostVisibility: 'visibility.field.defaultPostVisibility',
+      dmVisibility: 'visibility.field.dmVisibility',
+      profileVisibility: 'visibility.field.profileVisibility',
+    };
+    const fieldKey = fieldKeyMap[field];
+    return t('settings.error.visibilityFieldInvalid', {
+      field: fieldKey ? t(fieldKey) : t('common.operationFailed'),
+    });
   }
+  const enumInvalid = message.match(/^(formality|response length|sentiment) must be one of:/);
+  if (enumInvalid) {
+    const fieldKey: StudioCopyKey = enumInvalid[1] === 'formality'
+      ? 'settings.formalityLabel'
+      : enumInvalid[1] === 'response length'
+        ? 'settings.responseLengthLabel'
+        : 'settings.sentimentLabel';
+    return t('settings.error.enumInvalid', { field: t(fieldKey) });
+  }
+  if (message.startsWith('Runtime settings proposal rejected forbidden ')) return t('settings.error.proposalForbiddenField');
+  if (message.startsWith('Runtime settings proposal rejected invalid ')) return t('settings.error.proposalInvalidField');
+  if (message.startsWith('Runtime runtime.ai.text.generate failed:')) return t('settings.error.runtimeProposalFailed');
+  if (message.startsWith('owner settings update rejected: forbidden ')) return t('settings.error.updateForbiddenField');
   const key = SETTINGS_FIXED_MESSAGE_KEYS[message];
-  return key ? t(key) : message;
+  return key ? t(key) : t('common.operationFailed');
 }
 
 function translateSettingsFixedMessages(messages: string[], t: StudioTranslator): string {
@@ -174,7 +201,7 @@ export function SettingProposalWorkspace({ persona, onPersonaWrite }: { persona:
           {settingsQuery.isError ? (
             <InlineAlert tone="danger">
               {t('settings.unavailable', {
-                message: settingsQuery.error instanceof Error ? settingsQuery.error.message : t('settings.readFailed'),
+                message: t('settings.readFailed'),
               })}
             </InlineAlert>
           ) : null}
@@ -535,7 +562,7 @@ export function VisibilitySettingsWorkspace({ persona, onPersonaWrite }: { perso
       {visibilityQuery.isError ? (
         <InlineAlert tone="danger">
           {t('visibility.unavailable', {
-            message: visibilityQuery.error instanceof Error ? visibilityQuery.error.message : t('visibility.readFailed'),
+            message: t('visibility.readFailed'),
           })}
         </InlineAlert>
       ) : null}

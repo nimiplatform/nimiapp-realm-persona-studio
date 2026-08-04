@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, InlineAlert, StatusBadge, Surface } from '@nimiplatform/kit/ui';
-import { loadLocalCreativeAssetHistory } from '@renderer/features/portfolio/creative-asset-history.js';
+import { useLocalCreativeAssetHistory } from '@renderer/features/portfolio/use-local-creative-asset-history.js';
 import { loadLocalPostSchedule } from '@renderer/features/portfolio/local-post-schedule-store.js';
 import type { OwnerPortfolioPersonaDetail } from '@renderer/features/portfolio/portfolio-data.js';
 import { detailFriendCountLabel, settingFieldDisplayValue } from '@renderer/features/portfolio/OwnerPortfolio.shared.js';
@@ -230,7 +230,8 @@ export function PersonaCockpit({ persona }: { persona: OwnerPortfolioPersonaDeta
   const { t } = useStudioI18n();
   const navigate = useNavigate();
   const model = derivePersonaCockpitModel(persona);
-  const creativeHistory = useMemo(() => loadLocalCreativeAssetHistory(persona.id), [persona.id]);
+  const creativeHistoryState = useLocalCreativeAssetHistory(persona.id);
+  const creativeHistory = creativeHistoryState.records;
   const localPostSchedule = useMemo(() => loadLocalPostSchedule(persona.id), [persona.id]);
   const suggestions = deriveMaintenanceSuggestions({ persona, creativeHistory, localPostSchedule });
   const actionsByKey = new Map(model.actions.map((action) => [action.key, action]));
@@ -249,6 +250,8 @@ export function PersonaCockpit({ persona }: { persona: OwnerPortfolioPersonaDeta
         }
         description={t('persona.cockpit.description')}
       />
+
+      {creativeHistoryState.unavailable ? <InlineAlert tone="warning">{t('assets.history.unavailable')}</InlineAlert> : null}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="grid gap-4">

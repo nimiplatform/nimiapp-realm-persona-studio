@@ -1,21 +1,9 @@
-import { useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
-import { ChevronDown, LayoutGrid, Plus, User, SlidersHorizontal } from 'lucide-react';
-import {
-  AmbientBackground,
-  Avatar,
-  Button,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  SegmentedControl,
-  Tooltip,
-} from '@nimiplatform/kit/ui';
-import { useAppStore } from './app-store.js';
+import { useEffect, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
+import { AmbientBackground, InlineAlert } from '@nimiplatform/kit/ui';
+import { StudioSidebar, STUDIO_SIDEBAR_PREFERENCE_STORAGE_PATH } from './studio-sidebar/index.js';
+import { getStudioProtectedJsonStorage, isStudioStorageNotFoundError } from './studio-storage.js';
 import { startStudioWindowDrag } from '../bridge/window-drag.js';
 import { useStudioI18n } from '../i18n/use-studio-i18n.js';
-import type { StudioCopyKey } from '../i18n/studio-copy.js';
-import type { StudioLocale } from '../i18n/studio-i18n.js';
 
 const MACOS_TRAFFIC_LIGHT_SAFE_ZONE_PX = 84;
 const TITLEBAR_INTERACTIVE_SELECTOR = [
@@ -29,139 +17,57 @@ const TITLEBAR_INTERACTIVE_SELECTOR = [
   '[tabindex]',
 ].join(',');
 
-const navItems = [
-  { to: '/portfolio', labelKey: 'shell.nav.portfolio', Icon: LayoutGrid, end: true },
-  { to: '/portfolio/create', labelKey: 'shell.nav.create', Icon: Plus, end: true },
-  { to: '/ai-config', labelKey: 'shell.nav.aiModels', Icon: SlidersHorizontal, end: true },
-] as const;
+type SidebarPreferenceReadResult =
+  | { ok: true; collapsed: boolean }
+  | { ok: false };
 
-function SidebarItem({
-  to,
-  label,
-  end,
-  children,
-}: {
-  to: string;
-  label: string;
-  end: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <Tooltip content={label}>
-      <NavLink
-        to={to}
-        end={end}
-        data-titlebar-interactive="true"
-        aria-label={label}
-        className={({ isActive }) =>
-          isActive ? 'ras-sidebar__item ras-sidebar__item--active' : 'ras-sidebar__item'
-        }
-      >
-        {children}
-      </NavLink>
-    </Tooltip>
-  );
+async function readStoredSidebarCollapsed(): Promise<SidebarPreferenceReadResult> {
+  try {
+    const document = await getStudioProtectedJsonStorage().readJson(STUDIO_SIDEBAR_PREFERENCE_STORAGE_PATH);
+    if (!document.value || typeof document.value !== 'object' || Array.isArray(document.value)) return { ok: false };
+    const collapsed = (document.value as Record<string, unknown>).collapsed;
+    return typeof collapsed === 'boolean' ? { ok: true, collapsed } : { ok: false };
+  } catch (error) {
+    return isStudioStorageNotFoundError(error) ? { ok: true, collapsed: false } : { ok: false };
+  }
 }
 
-function AccountMenu() {
-  const { t } = useStudioI18n();
-  const authUser = useAppStore((s) => s.auth.user);
-  const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
-
-  const displayName = authUser?.displayName || t('shell.account.ownerFallback');
-  const avatarUrl = authUser?.avatarUrl ?? null;
-  const initial = displayName.charAt(0).toUpperCase() || t('shell.account.ownerFallback').charAt(0).toUpperCase();
-
-  return (
-    <Popover
-      open={open}
-      onOpenChange={(nextOpen) => {
-        setOpen(nextOpen);
-      }}
-    >
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          data-titlebar-interactive="true"
-          aria-expanded={open}
-          aria-haspopup="dialog"
-          aria-label={t('shell.account.openMenu')}
-          className="ras-avatar-trigger"
-        >
-          <Avatar
-            src={avatarUrl}
-            alt={displayName}
-            size="sm"
-            shape="circle"
-            fallback={<span style={{ fontSize: 14, fontWeight: 600 }}>{initial}</span>}
-          />
-          <ChevronDown
-            className="ras-avatar-trigger__chevron"
-            size={14}
-            strokeWidth={1.9}
-            aria-hidden="true"
-          />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={10} className="ras-avatar-popover">
-        <div role="menu" aria-label={t('shell.account.menu')}>
-          <div className="ras-avatar-menu__header">
-            <Avatar
-              src={avatarUrl}
-              alt={displayName}
-              size="md"
-              shape="circle"
-              fallback={<span style={{ fontSize: 16, fontWeight: 600 }}>{initial}</span>}
-            />
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <p className="ras-avatar-menu__name">{displayName}</p>
-              <p className="ras-avatar-menu__email">{authUser?.email || t('shell.account.runtimeAccount')}</p>
-            </div>
-          </div>
-          <div className="ras-avatar-menu__actions">
-            <Button
-              tone="ghost"
-              size="sm"
-              fullWidth
-              role="menuitem"
-              className="ras-avatar-menu__action"
-              leadingIcon={<User size={16} strokeWidth={1.8} />}
-              onClick={() => {
-                setOpen(false);
-                navigate('/portfolio');
-              }}
-            >
-              {t('shell.account.ownerPortfolio')}
-            </Button>
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-function LanguageSwitcher() {
-  const { locale, setLocale, t } = useStudioI18n();
-  return (
-    <SegmentedControl
-      size="sm"
-      className="ras-language-switcher"
-      ariaLabel={t('locale.ariaLabel')}
-      value={locale}
-      onValueChange={(value) => void setLocale(value as StudioLocale)}
-      items={[
-        { value: 'en', label: t('locale.english') },
-        { value: 'zh', label: t('locale.chinese') },
-      ]}
-    />
-  );
+async function persistSidebarCollapsed(collapsed: boolean): Promise<boolean> {
+  try {
+    await getStudioProtectedJsonStorage().writeJson(STUDIO_SIDEBAR_PREFERENCE_STORAGE_PATH, { collapsed });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function ShellLayout({ children }: { children: ReactNode }) {
   const { t } = useStudioI18n();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarPreferenceUnavailable, setSidebarPreferenceUnavailable] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void readStoredSidebarCollapsed().then((result) => {
+      if (cancelled) return;
+      if (result.ok) {
+        setSidebarCollapsed(result.collapsed);
+      } else {
+        setSidebarPreferenceUnavailable(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const isTitlebarInteractiveTarget = (target: EventTarget | null) =>
     target instanceof Element && target.closest(TITLEBAR_INTERACTIVE_SELECTOR) !== null;
+
+  const handleSidebarCollapsedChange = (collapsed: boolean) => {
+    setSidebarCollapsed(collapsed);
+    void persistSidebarCollapsed(collapsed).then((persisted) => {
+      if (!persisted) setSidebarPreferenceUnavailable(true);
+    });
+  };
 
   const handleTitlebarMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
@@ -177,28 +83,11 @@ export function ShellLayout({ children }: { children: ReactNode }) {
         <div className="ras-topbar__inner">
           <h1 className="ras-topbar__title">{t('app.name')}</h1>
           <span className="ras-topbar__chip">{t('app.owner')}</span>
-          <div className="ras-topbar__right">
-            <LanguageSwitcher />
-            <AccountMenu />
-          </div>
         </div>
       </div>
 
       <div className="ras-shell__body">
-        <aside className="ras-sidebar">
-          <div className="ras-sidebar__logo">
-            <div className="ras-sidebar__logo-mark" aria-label={t('app.name')}>
-              {t('app.logoMark')}
-            </div>
-          </div>
-          <nav className="ras-sidebar__nav" aria-label={t('shell.nav.appNavigation')}>
-            {navItems.map((item) => (
-              <SidebarItem key={item.to} to={item.to} label={t(item.labelKey as StudioCopyKey)} end={item.end}>
-                <item.Icon size={19} strokeWidth={1.8} />
-              </SidebarItem>
-            ))}
-          </nav>
-        </aside>
+        <StudioSidebar collapsed={sidebarCollapsed} onCollapsedChange={handleSidebarCollapsedChange} />
 
         <main
           className="ras-main"
@@ -213,6 +102,11 @@ export function ShellLayout({ children }: { children: ReactNode }) {
           }}
           data-testid="shell-main-drag-region"
         >
+          {sidebarPreferenceUnavailable ? (
+            <div className="px-6 pt-4 xl:px-8">
+              <InlineAlert tone="warning">{t('shell.sidebar.preferenceUnavailable')}</InlineAlert>
+            </div>
+          ) : null}
           {children}
         </main>
       </div>

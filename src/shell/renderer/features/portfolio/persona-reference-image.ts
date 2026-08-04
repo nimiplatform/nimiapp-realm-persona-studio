@@ -21,6 +21,8 @@ type RuntimeImageClient = Runtime;
 export type PersonaReferenceImageInput = {
   prompt: string;
   aspectRatio?: string;
+  /** Requested variant count; callers must render the actual returned URL count. */
+  count?: number;
 };
 
 export type PersonaReferenceImageResult =
@@ -77,7 +79,7 @@ export function buildPersonaReferenceImagePayload(input: PersonaReferenceImageIn
       spec: {
         prompt,
         negativePrompt: '',
-        n: 1,
+        n: Math.max(1, Math.min(4, Math.floor(input.count ?? 1))),
         size: callParams.size || '',
         aspectRatio: callParams.aspectRatio ?? '',
         quality: '',

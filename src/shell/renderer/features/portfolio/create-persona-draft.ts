@@ -64,7 +64,16 @@ export const PERSONA_TRAITS: readonly PersonaTrait[] = [
   'ECCENTRIC',
 ];
 
-export const PERSONA_TRAIT_MAX_RECOMMENDED = 3;
+export const PERSONA_TRAIT_MAX = 3;
+
+export type ReferenceImageCandidate = {
+  draftKey: string;
+  url: string;
+  prompt: string;
+  createdAt: string;
+  sourceKind: 'generated' | 'imported';
+  reviewState: 'candidate-only' | 'owner-selected';
+};
 
 export type CreateRealmPersonaDraftInput = {
   handle: string;
@@ -77,9 +86,14 @@ export type CreateRealmPersonaDraftInput = {
   personaTraits: PersonaTrait[];
   /** Optional reference image URL produced by Runtime image generation in the AI-seeded create flow. */
   referenceImageUrl: string;
-  /** Client-only: the one-liner the owner typed in the seed phase. Re-used as
-   * the image-generation prompt seed. Not submitted to Realm. */
+  /** Client-only: the one-liner the owner typed in the describe phase. Not submitted to Realm. */
   originalDescription: string;
+  /** Owner-written local prompt supplements. These are candidate input only. */
+  speechSupplement?: string;
+  boundarySupplement?: string;
+  visualSupplement?: string;
+  /** Local image candidates bound to this draft. Candidates are never Realm writes. */
+  referenceImageCandidates?: ReferenceImageCandidate[];
 };
 
 export type NormalizedCreateRealmPersonaDraft = {
@@ -93,6 +107,10 @@ export type NormalizedCreateRealmPersonaDraft = {
   personaTraits: PersonaTrait[];
   referenceImageUrl: string;
   originalDescription: string;
+  speechSupplement: string;
+  boundarySupplement: string;
+  visualSupplement: string;
+  referenceImageCandidates: ReferenceImageCandidate[];
 };
 
 export type SelectableRealmWorld = {
@@ -199,7 +217,7 @@ function normalizePersonaTraits(values: readonly PersonaTrait[] | readonly strin
   const known = new Set<PersonaTrait>(PERSONA_TRAITS);
   const seen = new Set<PersonaTrait>();
   const out: PersonaTrait[] = [];
-  for (const value of values) {
+  for (const value of values || []) {
     const trimmed = String(value || '').trim().toUpperCase() as PersonaTrait;
     if (!known.has(trimmed) || seen.has(trimmed)) continue;
     seen.add(trimmed);
@@ -208,8 +226,8 @@ function normalizePersonaTraits(values: readonly PersonaTrait[] | readonly strin
   return out;
 }
 
-function normalizeReferenceImageUrl(value: string): string {
-  const trimmed = String(value || '').trim();
+function normalizeReferenceImageUrl(value: unknown): string {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
   if (!trimmed) return '';
   try {
     const url = new URL(trimmed);
@@ -219,22 +237,63 @@ function normalizeReferenceImageUrl(value: string): string {
   }
 }
 
+function normalizeSupplement(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function normalizeReferenceImageCandidates(values: unknown): ReferenceImageCandidate[] {
+  if (!Array.isArray(values)) return [];
+  return values.flatMap((value) => {
+    const record = readRecord(value);
+    if (
+      !record
+      || typeof record.draftKey !== 'string'
+      || !/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(record.draftKey.trim())
+      || typeof record.url !== 'string'
+      || typeof record.prompt !== 'string'
+      || typeof record.createdAt !== 'string'
+    ) {
+      return [];
+    }
+    const draftKey = record.draftKey.trim();
+    const url = normalizeReferenceImageUrl(record.url);
+    const prompt = record.prompt.trim();
+    const createdAt = record.createdAt.trim();
+    const sourceKind = record.sourceKind === 'generated' || record.sourceKind === 'imported'
+      ? record.sourceKind
+      : null;
+    const reviewState = record.reviewState === 'candidate-only' || record.reviewState === 'owner-selected'
+      ? record.reviewState
+      : null;
+    if (!url || !prompt || Number.isNaN(Date.parse(createdAt)) || !sourceKind || !reviewState) return [];
+    return [{ draftKey, url, prompt, createdAt, sourceKind, reviewState }];
+  });
+}
+
+function normalizeDraftText(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
 export function normalizeCreateRealmPersonaDraft(input: CreateRealmPersonaDraftInput): NormalizedCreateRealmPersonaDraft {
-  const rawPrimary = String(input.personaArchetype || '').trim().toUpperCase();
+  const rawPrimary = normalizeDraftText(input.personaArchetype).toUpperCase();
   const personaArchetype = (PERSONA_ARCHETYPES as readonly string[]).includes(rawPrimary)
     ? (rawPrimary as PersonaArchetype)
     : '';
   return {
-    handle: normalizeHandle(input.handle),
-    displayName: input.displayName.trim(),
-    concept: input.concept.trim(),
-    description: input.description.trim(),
-    ruleText: input.ruleText.trim(),
-    selectedWorldId: input.selectedWorldId.trim(),
+    handle: normalizeHandle(normalizeDraftText(input.handle)),
+    displayName: normalizeDraftText(input.displayName),
+    concept: normalizeDraftText(input.concept),
+    description: normalizeDraftText(input.description),
+    ruleText: normalizeDraftText(input.ruleText),
+    selectedWorldId: normalizeDraftText(input.selectedWorldId),
     personaArchetype,
-    personaTraits: normalizePersonaTraits(input.personaTraits || []),
-    referenceImageUrl: normalizeReferenceImageUrl(input.referenceImageUrl || ''),
-    originalDescription: String(input.originalDescription || '').trim(),
+    personaTraits: normalizePersonaTraits(Array.isArray(input.personaTraits) ? input.personaTraits : []),
+    referenceImageUrl: normalizeReferenceImageUrl(input.referenceImageUrl),
+    originalDescription: normalizeDraftText(input.originalDescription),
+    speechSupplement: normalizeSupplement(input.speechSupplement),
+    boundarySupplement: normalizeSupplement(input.boundarySupplement),
+    visualSupplement: normalizeSupplement(input.visualSupplement),
+    referenceImageCandidates: normalizeReferenceImageCandidates(input.referenceImageCandidates),
   };
 }
 
@@ -290,6 +349,28 @@ export function selectOasisDefaultWorld(worlds: SelectableRealmWorld[]): Selecta
     || worlds.find((world) => world.name.toLocaleLowerCase() === 'oasis')
     || null;
 }
+
+export type SelectableRealmWorldGroups = {
+  recommended: SelectableRealmWorld[];
+  others: SelectableRealmWorld[];
+};
+
+/**
+ * OASIS is a local presentation recommendation only. The source-backed world
+ * list remains the complete selectable set and no other world is promoted.
+ */
+export function groupSelectableRealmWorldsForPicker(worlds: readonly SelectableRealmWorld[]): SelectableRealmWorldGroups {
+  const oasis = selectOasisDefaultWorld([...worlds]);
+  if (!oasis) {
+    return { recommended: [], others: [...worlds] };
+  }
+  return {
+    recommended: [oasis],
+    others: worlds.filter((world) => world.id !== oasis.id),
+  };
+}
+
+export const splitSelectableRealmWorldsForPicker = groupSelectableRealmWorldsForPicker;
 
 export function normalizeSelectedWorldPreview(world: RealmPersonaCreationWorldDetailDto): SelectedWorldPreview {
   const core = readRecord(world.core);
@@ -399,9 +480,35 @@ export function validateCreateRealmPersonaReadiness(
   if (!draft.selectedWorldId) {
     errors.push('selected world missing');
   }
-  if (!draft.personaArchetype) {
+  const rawArchetype = typeof input.personaArchetype === 'string' ? input.personaArchetype.trim().toUpperCase() : '';
+  if (rawArchetype && !(PERSONA_ARCHETYPES as readonly string[]).includes(rawArchetype)) {
+    errors.push('persona archetype outside closed value set');
+  } else if (!draft.personaArchetype) {
     errors.push('persona archetype missing');
   }
+
+  const rawTraits = Array.isArray(input.personaTraits) ? input.personaTraits : [];
+  const normalizedRawTraits = rawTraits.map((trait) => String(trait || '').trim().toUpperCase());
+  const hasUnknownTrait = normalizedRawTraits.some((trait) => !(PERSONA_TRAITS as readonly string[]).includes(trait));
+  if (hasUnknownTrait) {
+    errors.push('persona trait outside closed value set');
+  }
+  if (new Set(normalizedRawTraits).size > PERSONA_TRAIT_MAX) {
+    errors.push('persona traits exceed hard maximum of 3');
+  }
+
+  const selectedReferenceCandidates = draft.referenceImageCandidates
+    .filter((candidate) => candidate.reviewState === 'owner-selected');
+  if (selectedReferenceCandidates.length > 1) {
+    errors.push('more than one reference image candidate is owner-selected');
+  }
+  if (
+    draft.referenceImageUrl
+    && !selectedReferenceCandidates.some((candidate) => candidate.url === draft.referenceImageUrl)
+  ) {
+    errors.push('reference image candidate is not owner-selected');
+  }
+
   if (draft.selectedWorldId && selectableWorldIds && !selectableWorldIds.has(draft.selectedWorldId)) {
     errors.push('selected world not source-backed by WorldCoreController.listWorldCores');
   }

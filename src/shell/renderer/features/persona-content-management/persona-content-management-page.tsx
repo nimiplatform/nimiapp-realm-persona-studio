@@ -4,7 +4,7 @@ import { Archive, CalendarClock, FileText, Image, Mic2 } from 'lucide-react';
 import { Button, EmptyState, InlineAlert, StatusBadge, Surface } from '@nimiplatform/kit/ui';
 import { PersonaShell, WorkspaceIntro } from '@renderer/features/persona-detail/persona-shell.js';
 import { buildDraftBoxEntries, type DraftBoxEntry } from '@renderer/features/portfolio/draft-box.js';
-import { loadLocalCreativeAssetHistory } from '@renderer/features/portfolio/creative-asset-history.js';
+import { useLocalCreativeAssetHistory } from '@renderer/features/portfolio/use-local-creative-asset-history.js';
 import { loadLocalPostSchedule } from '@renderer/features/portfolio/local-post-schedule-store.js';
 import type { OwnerPortfolioPersonaDetail } from '@renderer/features/portfolio/portfolio-data.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
@@ -77,11 +77,12 @@ function DraftBoxEntryCard({ entry }: { entry: DraftBoxEntry }) {
 function ContentManagementBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) {
   const { t } = useStudioI18n();
   const navigate = useNavigate();
+  const creativeHistoryState = useLocalCreativeAssetHistory(persona.id);
   const draftBoxEntries = useMemo(() => buildDraftBoxEntries({
     personaId: persona.id,
-    creativeHistory: loadLocalCreativeAssetHistory(persona.id),
+    creativeHistory: creativeHistoryState.records,
     localSchedule: loadLocalPostSchedule(persona.id),
-  }), [persona.id]);
+  }), [creativeHistoryState.records, persona.id]);
   const localOnlyCount = draftBoxEntries.filter((entry) => entry.truthBoundary === 'local-only').length;
   const candidateCount = draftBoxEntries.filter((entry) => entry.truthBoundary === 'candidate-only').length;
   const dueCount = draftBoxEntries.filter((entry) => entry.status === 'ready-when-due').length;
@@ -108,6 +109,8 @@ function ContentManagementBody({ persona }: { persona: OwnerPortfolioPersonaDeta
           </>
         }
       />
+
+      {creativeHistoryState.unavailable ? <InlineAlert tone="warning">{t('assets.history.unavailable')}</InlineAlert> : null}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="grid gap-4">

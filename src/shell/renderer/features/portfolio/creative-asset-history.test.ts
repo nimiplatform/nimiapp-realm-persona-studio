@@ -1,107 +1,115 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  CREATIVE_ASSET_HISTORY_STORAGE_PATH,
   appendLocalCreativeAssetHistory,
+  loadAllLocalCreativeAssetHistory,
   loadLocalCreativeAssetHistory,
+  type CreativeAssetHistoryStorage,
 } from './creative-asset-history.js';
 
-function createStorage() {
-  const values = new Map<string, string>();
+function createStorage(): CreativeAssetHistoryStorage & { values: Map<string, unknown> } {
+  const values = new Map<string, unknown>();
   return {
-    getItem: vi.fn((key: string) => values.get(key) ?? null),
-    setItem: vi.fn((key: string, value: string) => {
-      values.set(key, value);
+    values,
+    readJson: vi.fn(async (path: string) => {
+      if (!values.has(path)) throw { code: 'not-found' };
+      return { value: values.get(path) as never, sizeBytes: 1 };
+    }),
+    writeJson: vi.fn(async (path: string, value: Parameters<CreativeAssetHistoryStorage['writeJson']>[1]) => {
+      values.set(path, value);
+      return { value, sizeBytes: 1 };
     }),
   };
 }
 
-describe('local creative asset history', () => {
-  it('persists app-local candidate history per persona without public truth', () => {
+describe('protected local creative asset history', () => {
+  it('persists persona provenance and keeps histories isolated by persona', async () => {
     const storage = createStorage();
-
-    const next = appendLocalCreativeAssetHistory('persona-1', {
-      id: 'history-1',
+    const next = await appendLocalCreativeAssetHistory('persona-1', {
+      id: '01J00000000000000000000011',
       createdAt: '2026-05-22T00:00:00.000Z',
+      sourceContentHash: 'hash-persona-1',
       kind: 'runtime-image-candidate',
+      sourceKind: 'generated',
+      reviewState: 'candidate-only',
       label: 'Runtime image candidate',
-        source: 'Runtime ScenarioService.submitScenarioJob image.generate',
+      source: 'Runtime ScenarioService.submitScenarioJob image.generate',
       detail: 'artifact-image-1',
       artifactIds: ['artifact-image-1'],
     }, storage);
 
-    expect(next).toEqual([{
-      id: 'history-1',
-      personaId: 'persona-1',
-      createdAt: '2026-05-22T00:00:00.000Z',
-      kind: 'runtime-image-candidate',
-      label: 'Runtime image candidate',
-        source: 'Runtime ScenarioService.submitScenarioJob image.generate',
-      publicTruth: false,
-      detail: 'artifact-image-1',
-      artifactIds: ['artifact-image-1'],
-    }]);
-    expect(loadLocalCreativeAssetHistory('persona-1', storage)).toEqual(next);
-    expect(loadLocalCreativeAssetHistory('persona-2', storage)).toEqual([]);
+    expect(next).toMatchObject({
+      ok: true,
+      records: [{
+        id: '01J00000000000000000000011',
+        personaId: 'persona-1',
+        sourceContentHash: 'hash-persona-1',
+        reviewState: 'candidate-only',
+        publicTruth: false,
+      }],
+    });
+    expect(await loadLocalCreativeAssetHistory('persona-1', storage)).toMatchObject({ ok: true, records: next.records });
+    expect(await loadLocalCreativeAssetHistory('persona-2', storage)).toMatchObject({ ok: true, records: [] });
   });
 
-  it('drops malformed or public-truth records when loading', () => {
+  it('drops malformed records while reporting their source unavailability', async () => {
     const storage = createStorage();
-    storage.setItem('realm-persona-studio.creative-asset-history.persona-1', JSON.stringify([
+    storage.values.set(CREATIVE_ASSET_HISTORY_STORAGE_PATH, [
       {
-        id: 'bad-public',
+        id: 'bad-local',
+        personaId: 'persona-1',
         kind: 'identity-resource-upload',
-        label: 'Bad public',
+        sourceKind: 'imported',
+        reviewState: 'owner-reviewed',
+        sourceContentHash: 'hash-persona-1',
+        label: 'Broken id',
         createdAt: '2026-05-22T00:00:00.000Z',
-        source: 'Realm ResourcesService direct upload + finalizeResource',
+        source: 'Realm ResourcesService',
+        publicTruth: false,
         detail: 'resource-1',
-        publicTruth: true,
       },
       {
-        id: 'good-local',
+        id: '01J00000000000000000000012',
+        personaId: 'persona-1',
         kind: 'identity-resource-upload',
+        sourceKind: 'imported',
+        reviewState: 'owner-reviewed',
+        sourceContentHash: 'hash-persona-1',
         label: 'Identity Resource upload',
         createdAt: '2026-05-22T00:00:00.000Z',
-        source: 'Realm ResourcesService direct upload + finalizeResource',
-        detail: 'resource-2',
-        resourceId: 'resource-2',
+        source: 'Realm ResourcesService',
         publicTruth: false,
+        detail: 'resource-1',
       },
-    ]));
+    ]);
 
-    expect(loadLocalCreativeAssetHistory('persona-1', storage)).toEqual([{
-      id: 'good-local',
-      personaId: 'persona-1',
-      kind: 'identity-resource-upload',
-      label: 'Identity Resource upload',
-      createdAt: '2026-05-22T00:00:00.000Z',
-      source: 'Realm ResourcesService direct upload + finalizeResource',
-      publicTruth: false,
-      detail: 'resource-2',
-      resourceId: 'resource-2',
-    }]);
+    const loaded = await loadAllLocalCreativeAssetHistory(storage);
+    expect(loaded).toMatchObject({ ok: true, unavailableCount: 1 });
+    expect(loaded.records).toHaveLength(1);
   });
 
-  it('persists avatar package candidates as local-only history', () => {
+  it('retains origin draft provenance only after canonical creation rebinding', async () => {
     const storage = createStorage();
-
-    const next = appendLocalCreativeAssetHistory('persona-1', {
-      id: 'avatar-package-1',
+    const persisted = await appendLocalCreativeAssetHistory('persona-1', {
+      id: '01J00000000000000000000013',
       createdAt: '2026-05-22T00:00:00.000Z',
+      sourceContentHash: 'hash-persona-1',
+      originDraftKey: '01J00000000000000000000001',
       kind: 'avatar-package-candidate',
+      sourceKind: 'generated',
+      reviewState: 'owner-reviewed',
       label: 'Avatar package candidate',
       source: 'Runtime ScenarioService.submitScenarioJob image.generate',
-      detail: 'LIVE2D / artifact-avatar-design-sheet',
-      artifactIds: ['artifact-avatar-design-sheet'],
+      detail: 'https://cdn.example.test/avatar.png',
+      previewUrl: 'https://cdn.example.test/avatar.png',
+      artifactIds: ['artifact-avatar-1'],
     }, storage);
 
-    expect(next[0]).toMatchObject({
-      id: 'avatar-package-1',
+    expect(persisted.record).toMatchObject({
       personaId: 'persona-1',
-      kind: 'avatar-package-candidate',
-      label: 'Avatar package candidate',
-      publicTruth: false,
-      detail: 'LIVE2D / artifact-avatar-design-sheet',
-      artifactIds: ['artifact-avatar-design-sheet'],
+      sourceContentHash: 'hash-persona-1',
+      originDraftKey: '01J00000000000000000000001',
+      reviewState: 'owner-reviewed',
     });
-    expect(loadLocalCreativeAssetHistory('persona-1', storage)).toEqual(next);
   });
 });

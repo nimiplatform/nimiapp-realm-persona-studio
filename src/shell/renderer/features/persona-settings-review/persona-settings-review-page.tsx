@@ -31,11 +31,15 @@ const REVIEW_FIXED_MESSAGE_KEYS: Record<string, StudioCopyKey> = {
   'Runtime settings proposal payload invalid.': 'settings.error.runtimeProposalPayloadInvalid',
   'Runtime runtime.ai.text.generate runtime transport unavailable: Tauri IPC runtime transport is required.': 'settings.error.runtimeProposalTransportUnavailable',
   'Runtime settings proposal output invalid.': 'settings.error.runtimeProposalOutputInvalid',
+  'Runtime settings proposal returned no admitted setting changes.': 'settings.error.proposalNoChanges',
 };
 
 function translateReviewFixedMessage(message: string, t: StudioTranslator): string {
+  if (message.startsWith('Runtime settings proposal rejected forbidden ')) return t('settings.error.proposalForbiddenField');
+  if (message.startsWith('Runtime settings proposal rejected invalid ')) return t('settings.error.proposalInvalidField');
+  if (message.startsWith('Runtime runtime.ai.text.generate failed:')) return t('settings.error.runtimeProposalFailed');
   const key = REVIEW_FIXED_MESSAGE_KEYS[message];
-  return key ? t(key) : message;
+  return key ? t(key) : t('common.operationFailed');
 }
 
 export function PersonaSettingsReviewPage() {
@@ -102,7 +106,7 @@ function ConsistencyReviewBody({ personaId, onApplied }: { personaId: string; on
           <EmptyState title={t('persona.review.loadingTitle')} description={t('persona.review.loadingDescription')} />
         ) : settingsQuery.isError ? (
           <InlineAlert tone="danger">
-            {t('persona.review.unavailablePrefix')} {settingsQuery.error instanceof Error ? settingsQuery.error.message : t('persona.review.readFailed')}
+            {t('persona.review.unavailablePrefix')} {t('persona.review.readFailed')}
           </InlineAlert>
         ) : (
           <div className="ras-stack-tight" style={{ gap: 16 }}>

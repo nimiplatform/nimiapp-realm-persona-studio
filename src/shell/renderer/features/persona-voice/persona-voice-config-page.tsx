@@ -32,14 +32,19 @@ function VoiceConfigBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) 
       setResult(next);
       if (next.ok) {
         nimiToast.success(t('voiceConfig.generated'));
-        appendLocalCreativeAssetHistory(persona.id, {
+        const persisted = await appendLocalCreativeAssetHistory(persona.id, {
+          sourceContentHash: persona.contentHash,
           kind: 'voice-demo-candidate',
+          sourceKind: 'generated',
+          reviewState: 'candidate-only',
           label: 'Voice demo candidate',
           source: next.source,
+          ...(next.runtime.previewUrls[0] ? { previewUrl: next.runtime.previewUrls[0] } : {}),
           detail: next.runtime.previewUrls[0] || next.runtime.artifactIds[0] || next.runtime.jobId || 'voice artifact generated',
           artifactIds: next.runtime.artifactIds,
           ...(next.runtime.traceId ? { traceId: next.runtime.traceId } : {}),
         });
+        if (!persisted.ok) nimiToast.danger(t('assets.history.persistFailed'));
       } else {
         nimiToast.danger(next.message);
       }

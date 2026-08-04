@@ -55,6 +55,9 @@ const PersonaInsightsPage = lazy(() =>
 const StudioAIConfigPage = lazy(() =>
   import('../features/ai-config/studio-ai-config-page.js').then((m) => ({ default: m.StudioAIConfigPage })),
 );
+const AssetsLibraryPage = lazy(() =>
+  import('../features/assets-library/assets-library-page.js').then((m) => ({ default: m.AssetsLibraryPage })),
+);
 
 function PageFallback() {
   const { t } = useStudioI18n();
@@ -82,6 +85,7 @@ export function AppRoutes() {
         <Route path="/portfolio/:personaId/preview" element={<PersonaPublicPreviewPage />} />
         <Route path="/portfolio/:personaId/launch" element={<PersonaLaunchPage />} />
         <Route path="/portfolio/:personaId/insights" element={<PersonaInsightsPage />} />
+        <Route path="/assets" element={<AssetsLibraryPage />} />
         <Route path="/ai-config" element={<StudioAIConfigPage />} />
         <Route path="*" element={<Navigate to="/portfolio" replace />} />
       </Routes>

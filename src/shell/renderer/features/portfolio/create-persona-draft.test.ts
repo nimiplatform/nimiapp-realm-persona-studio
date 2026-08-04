@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  PERSONA_TRAIT_MAX,
   REALM_PERSONA_CREATE_PATH,
   REALM_PERSONA_CREATE_SOURCE,
   normalizeRealmPersonaHandleAvailability,
   normalizeCreateRealmPersonaDraft,
   normalizeSelectableWorlds,
   normalizeSelectedWorldPreview,
+  groupSelectableRealmWorldsForPicker,
   selectOasisDefaultWorld,
   validateCreateRealmPersonaReadiness,
   type CreateRealmPersonaDraftInput,
@@ -103,6 +105,10 @@ describe('create Realm Persona draft normalization', () => {
       personaTraits: ['GENTLE', 'WISE'],
       referenceImageUrl: '',
       originalDescription: '',
+      speechSupplement: '',
+      boundarySupplement: '',
+      visualSupplement: '',
+      referenceImageCandidates: [],
     });
   });
 
@@ -111,6 +117,14 @@ describe('create Realm Persona draft normalization', () => {
 
     expect(selectOasisDefaultWorld(worlds)?.id).toBe('world-oasis');
     expect(worlds[0]?.source).toBe('Realm WorldCoreController.listWorldCores');
+  });
+
+  it('groups only the source-backed OASIS default ahead of all other worlds', () => {
+    const worlds = normalizeSelectableWorlds([creatorWorld, oasisWorld]);
+    const groups = groupSelectableRealmWorldsForPicker(worlds);
+
+    expect(groups.recommended.map((world) => world.id)).toEqual(['world-oasis']);
+    expect(groups.others.map((world) => world.id)).toEqual(['world-creator']);
   });
 
   it('falls back to id/name when OASIS type is unavailable', () => {
@@ -250,6 +264,14 @@ describe('create Realm Persona readiness', () => {
     const result = validateCreateRealmPersonaReadiness({
       ...baseInput,
       referenceImageUrl: ' https://cdn.example.test/reference.png ',
+      referenceImageCandidates: [{
+        draftKey: '01J00000000000000000000001',
+        url: 'https://cdn.example.test/reference.png',
+        prompt: 'Owner reviewed reference image',
+        createdAt: '2026-08-04T12:00:00.000Z',
+        sourceKind: 'generated',
+        reviewState: 'owner-selected',
+      }],
     }, {
       handleAvailability: normalizeRealmPersonaHandleAvailability('mira.persona', {
         available: true,
@@ -281,6 +303,29 @@ describe('create Realm Persona readiness', () => {
     expect((rejected.payload?.body.profile.assets as { externalRefs?: unknown[] }).externalRefs).toBeUndefined();
   });
 
+  it('rejects an automatically populated image URL until the owner selects its candidate', () => {
+    const result = validateCreateRealmPersonaReadiness({
+      ...baseInput,
+      referenceImageUrl: 'https://cdn.example.test/reference.png',
+      referenceImageCandidates: [{
+        draftKey: '01J00000000000000000000001',
+        url: 'https://cdn.example.test/reference.png',
+        prompt: 'Unreviewed generated reference image',
+        createdAt: '2026-08-04T12:00:00.000Z',
+        sourceKind: 'generated',
+        reviewState: 'candidate-only',
+      }],
+    }, {
+      handleAvailability: normalizeRealmPersonaHandleAvailability('mira.persona', {
+        available: true,
+        normalized: 'mira.persona',
+      }),
+    });
+
+    expect(result.ready).toBe(false);
+    expect(result.errors).toContain('reference image candidate is not owner-selected');
+  });
+
   it('fails readiness when required local draft fields are missing', () => {
     const result = validateCreateRealmPersonaReadiness({ ...baseInput, handle: ' ', concept: ' ', selectedWorldId: '' });
 
@@ -288,6 +333,53 @@ describe('create Realm Persona readiness', () => {
     expect(result.errors).toEqual(['handle missing', 'concept missing', 'selected world missing']);
     expect(result.source).toBe(REALM_PERSONA_CREATE_SOURCE);
     expect(result.payload).toBeNull();
+  });
+
+  it('hard-fails when more than the closed trait maximum is selected', () => {
+    const result = validateCreateRealmPersonaReadiness({
+      ...baseInput,
+      personaTraits: ['GENTLE', 'WISE', 'DIRECT', 'REALISTIC'],
+    }, {
+      handleAvailability: normalizeRealmPersonaHandleAvailability('mira.persona', {
+        available: true,
+        normalized: 'mira.persona',
+      }),
+    });
+
+    expect(PERSONA_TRAIT_MAX).toBe(3);
+    expect(result.ready).toBe(false);
+    expect(result.errors).toEqual(['persona traits exceed hard maximum of 3']);
+    expect(result.payload).toBeNull();
+  });
+
+  it('hard-fails when the archetype is outside the closed vocabulary', () => {
+    const result = validateCreateRealmPersonaReadiness({
+      ...baseInput,
+      personaArchetype: 'NOT_AN_ARCHETYPE' as never,
+    }, {
+      handleAvailability: normalizeRealmPersonaHandleAvailability('mira.persona', {
+        available: true,
+        normalized: 'mira.persona',
+      }),
+    });
+
+    expect(result.ready).toBe(false);
+    expect(result.errors).toEqual(['persona archetype outside closed value set']);
+  });
+
+  it('hard-fails when a selected trait is outside the closed vocabulary', () => {
+    const result = validateCreateRealmPersonaReadiness({
+      ...baseInput,
+      personaTraits: ['GENTLE', 'NOT_A_TRAIT' as never],
+    }, {
+      handleAvailability: normalizeRealmPersonaHandleAvailability('mira.persona', {
+        available: true,
+        normalized: 'mira.persona',
+      }),
+    });
+
+    expect(result.ready).toBe(false);
+    expect(result.errors).toEqual(['persona trait outside closed value set']);
   });
 
   it('fails readiness when selected world is not source-backed by the current world list', () => {
