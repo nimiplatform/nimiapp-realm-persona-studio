@@ -1,0 +1,153 @@
+/*
+ * Nimi Glass Material Design System — token surface.
+ *
+ * Distilled from the authoritative tables:
+ *   .nimi/spec/platform/kernel/tables/nimi-ui-tokens.yaml
+ *   .nimi/spec/platform/kernel/tables/nimi-ui-themes.yaml
+ *
+ * Only tokens load-bearing for the glass aesthetic are included:
+ *   - surface.*         : the solid fallback behind every glass tier
+ *   - border.*          : subtle & strong borders used with glass
+ *   - elevation.*       : shadows for base/raised/floating/modal
+ *   - radius.*          : soft-corner language (8/12/16/24 + pill)
+ *   - motion.*          : fast/slow transition durations
+ *   - material.glass_*  : the 5-tier material axis (Phase 2 admission)
+ *   - backdrop.blur_*   : 10/18/24/28 px blur radii gradient
+ *   - ambient.mesh.*    : aurora halos + base gradient endpoints
+ *
+ * Accent packs override only the ambient mesh and the primary action;
+ * they MUST NOT override material.* or backdrop.* tokens.
+ */
+
+:root,
+[data-nimi-scheme="light"] {
+  /* ── Surfaces (solid fallback bed for every glass tier) ─────────── */
+  --nimi-surface-canvas: #f5f7fa;
+  --nimi-surface-panel: #f8f9fb;
+  --nimi-surface-card: #ffffff;
+  --nimi-surface-hero: linear-gradient(160deg, rgba(255, 255, 255, 0.96), rgba(236, 247, 242, 0.9));
+  --nimi-surface-overlay: rgba(255, 255, 255, 0.98);
+  --nimi-surface-active: rgba(148, 163, 184, 0.12);
+  --nimi-app-background: var(--nimi-surface-canvas);
+
+  /* ── Borders ────────────────────────────────────────────────────── */
+  --nimi-border-subtle: rgba(226, 232, 240, 0.9);
+  --nimi-border-strong: rgba(148, 163, 184, 0.34);
+  --nimi-border-width-default: 1px;
+  --nimi-border-width-strong: 2px;
+
+  /* ── Elevation ──────────────────────────────────────────────────── */
+  --nimi-elevation-base: 0 6px 18px rgba(15, 23, 42, 0.08);
+  --nimi-elevation-raised: 0 12px 28px rgba(15, 23, 42, 0.12);
+  --nimi-elevation-floating: 0 18px 44px rgba(15, 23, 42, 0.16);
+  --nimi-elevation-modal: 0 28px 72px rgba(15, 23, 42, 0.2);
+
+  /* ── Radius ─────────────────────────────────────────────────────── */
+  --nimi-radius-sm: 8px;
+  --nimi-radius-md: 12px;
+  --nimi-radius-lg: 16px;
+  --nimi-radius-xl: 24px;
+  --nimi-radius-full: 999px;
+
+  /* ── Motion ─────────────────────────────────────────────────────── */
+  --nimi-motion-fast: 160ms;
+  --nimi-motion-slow: 240ms;
+
+  /* ── Material — the 5-tier glass axis ───────────────────────────── */
+  /* Tier 1: solid      → consume surface.* directly, no material token */
+  /* Tier 2: glass-thin → lightest veil, subtlest blur */
+  --nimi-material-glass-thin-bg: rgba(255, 255, 255, 0.25);
+  --nimi-material-glass-thin-border: rgba(226, 232, 240, 0.20);
+  /* Tier 3: glass-regular → default for cards and panels */
+  --nimi-material-glass-regular-bg: rgba(255, 255, 255, 0.45);
+  --nimi-material-glass-regular-border: rgba(226, 232, 240, 0.30);
+  /* Tier 4: glass-thick → modals, hero composer surfaces */
+  --nimi-material-glass-thick-bg: rgba(255, 255, 255, 0.70);
+  --nimi-material-glass-thick-border: rgba(226, 232, 240, 0.40);
+  /* Tier 5: glass-chrome → system chrome (top bar, nav rail, menus) */
+  --nimi-material-glass-chrome-bg: rgba(255, 255, 255, 0.85);
+  --nimi-material-glass-chrome-border: rgba(226, 232, 240, 0.50);
+
+  /* ── Backdrop blur gradient ─────────────────────────────────────── */
+  --nimi-backdrop-blur-thin: 10px;
+  --nimi-backdrop-blur-regular: 18px;
+  --nimi-backdrop-blur-strong: 24px;
+  --nimi-backdrop-blur-chrome: 28px;
+
+  /* ── Ambient aurora mesh ────────────────────────────────────────── */
+  --nimi-ambient-mesh-color-1: rgba(191, 219, 254, 0.45); /* blue */
+  --nimi-ambient-mesh-color-2: rgba(221, 214, 254, 0.30); /* violet */
+  --nimi-ambient-mesh-color-3: rgba(252, 231, 243, 0.35); /* pink */
+  --nimi-ambient-mesh-color-4: rgba(167, 243, 208, 0.20); /* mint */
+  --nimi-ambient-mesh-base-start: #f8fafc;
+  --nimi-ambient-mesh-base-end: #f1f5f9;
+}
+
+.dark,
+[data-nimi-scheme="dark"] {
+  color-scheme: dark;
+
+  --nimi-surface-canvas: #0b1220;
+  --nimi-surface-panel: #111827;
+  --nimi-surface-card: #162033;
+  --nimi-surface-hero: linear-gradient(160deg, rgba(17, 24, 39, 0.96), rgba(15, 23, 42, 0.9));
+  --nimi-surface-overlay: rgba(15, 23, 42, 0.96);
+  --nimi-surface-active: rgba(148, 163, 184, 0.14);
+
+  --nimi-border-subtle: rgba(148, 163, 184, 0.18);
+  --nimi-border-strong: rgba(148, 163, 184, 0.36);
+
+  --nimi-elevation-base: 0 8px 20px rgba(2, 6, 23, 0.28);
+  --nimi-elevation-raised: 0 14px 36px rgba(2, 6, 23, 0.34);
+  --nimi-elevation-floating: 0 18px 48px rgba(2, 6, 23, 0.42);
+  --nimi-elevation-modal: 0 28px 72px rgba(2, 6, 23, 0.56);
+
+  --nimi-material-glass-thin-bg: rgba(15, 23, 42, 0.25);
+  --nimi-material-glass-thin-border: rgba(51, 65, 85, 0.20);
+  --nimi-material-glass-regular-bg: rgba(15, 23, 42, 0.45);
+  --nimi-material-glass-regular-border: rgba(51, 65, 85, 0.30);
+  --nimi-material-glass-thick-bg: rgba(15, 23, 42, 0.70);
+  --nimi-material-glass-thick-border: rgba(51, 65, 85, 0.40);
+  --nimi-material-glass-chrome-bg: rgba(15, 23, 42, 0.85);
+  --nimi-material-glass-chrome-border: rgba(51, 65, 85, 0.50);
+
+  --nimi-ambient-mesh-color-1: rgba(30, 64, 124, 0.35);
+  --nimi-ambient-mesh-color-2: rgba(76, 29, 149, 0.28);
+  --nimi-ambient-mesh-color-3: rgba(131, 24, 67, 0.28);
+  --nimi-ambient-mesh-color-4: rgba(6, 78, 59, 0.24);
+  --nimi-ambient-mesh-base-start: #0f172a;
+  --nimi-ambient-mesh-base-end: #020617;
+}
+
+/*
+ * Graceful-degradation fallbacks: every glass tier collapses to its
+ * tone's solid surface token when (a) the browser lacks backdrop-filter
+ * support, or (b) the user prefers reduced transparency.
+ */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  [data-nimi-material^="glass-"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  [data-nimi-material^="glass-"][data-nimi-tone="canvas"]  { background: var(--nimi-surface-canvas)  !important; border-color: var(--nimi-border-subtle) !important; }
+  [data-nimi-material^="glass-"][data-nimi-tone="panel"]   { background: var(--nimi-surface-panel)   !important; border-color: var(--nimi-border-subtle) !important; }
+  [data-nimi-material^="glass-"][data-nimi-tone="card"]    { background: var(--nimi-surface-card)    !important; border-color: var(--nimi-border-subtle) !important; }
+  [data-nimi-material^="glass-"][data-nimi-tone="overlay"] { background: var(--nimi-surface-overlay) !important; border-color: var(--nimi-border-subtle) !important; }
+  [data-nimi-material^="glass-"][data-nimi-tone="hero"]    { background: var(--nimi-surface-hero)    !important; border-color: var(--nimi-border-strong) !important; }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  [data-nimi-material^="glass-"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  [data-nimi-material^="glass-"][data-nimi-tone="canvas"]  { background: var(--nimi-surface-canvas)  !important; border-color: var(--nimi-border-subtle) !important; }
+  [data-nimi-material^="glass-"][data-nimi-tone="panel"]   { background: var(--nimi-surface-panel)   !important; border-color: var(--nimi-border-subtle) !important; }
+  [data-nimi-material^="glass-"][data-nimi-tone="card"]    { background: var(--nimi-surface-card)    !important; border-color: var(--nimi-border-subtle) !important; }
+  [data-nimi-material^="glass-"][data-nimi-tone="overlay"] { background: var(--nimi-surface-overlay) !important; border-color: var(--nimi-border-subtle) !important; }
+  [data-nimi-material^="glass-"][data-nimi-tone="hero"]    { background: var(--nimi-surface-hero)    !important; border-color: var(--nimi-border-strong) !important; }
+  [data-nimi-ambient-variant="mesh"] [data-nimi-ambient-layer="halo"] { display: none !important; }
+  [data-nimi-ambient-variant="mesh"] [data-nimi-ambient-layer="mesh"] {
+    background: linear-gradient(135deg, var(--nimi-ambient-mesh-base-start) 0%, var(--nimi-ambient-mesh-base-end) 100%) !important;
+  }
+}

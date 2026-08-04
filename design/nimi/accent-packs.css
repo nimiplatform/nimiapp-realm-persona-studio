@@ -1,0 +1,96 @@
+/*
+ * Nimi Glass — Accent packs.
+ *
+ * Source of truth: kit/ui/src/generated/themes/*-accent.css
+ * (generated from .nimi/spec/platform/kernel/tables/nimi-ui-themes.yaml)
+ *
+ * Every Nimi app binds an accent pack via NimiThemeProvider accentPack=…
+ * (see apps/<app>/src/shell/renderer/main.tsx). The pack overrides ONLY:
+ *   - --nimi-accent, --nimi-accent-hover, --nimi-accent-soft,
+ *     --nimi-accent-glow (Overtone/Relay only)
+ *   - --nimi-ambient-mesh-color-1..4 (aurora tint bias)
+ *
+ * It MUST NOT override material.* or backdrop.* tokens.
+ * (Contract: material-contract.md §2.)
+ *
+ *   desktop-accent  → Nimi Desktop, ParentOS, Moment   (mint, light)
+ *   forge-accent    → Nimi Forge                       (mint, light) — shares desktop pack for now
+ *   overtone-accent → Overtone, Lookdev                (violet, dark, neon glow)
+ *   relay-accent    → Realm Drift / Relay              (indigo, soft glow)
+ *   video-food-map-accent → Video Food Map             (orange, light)
+ *   shiji-accent    → ShiJi                            (NOT YET GENERATED — orphan)
+ */
+
+/* ── desktop-accent (default) ───────────────────────────────────── */
+html[data-nimi-accent="desktop"],
+html[data-nimi-accent="forge"] {
+  --nimi-accent:       #4ECCA3;              /* mint */
+  --nimi-accent-hover: #3DBB96;
+  --nimi-accent-soft:  rgba(78, 204, 163, 0.14);
+  --nimi-accent-onAccent: #06281E;
+
+  /* Ambient mesh tint — mint-biased aurora */
+  --nimi-ambient-mesh-color-1: rgba(167, 243, 208, 0.38); /* mint */
+  --nimi-ambient-mesh-color-2: rgba(191, 219, 254, 0.32); /* blue */
+  --nimi-ambient-mesh-color-3: rgba(221, 214, 254, 0.24); /* violet */
+  --nimi-ambient-mesh-color-4: rgba(252, 231, 243, 0.22); /* pink */
+}
+
+html[data-nimi-accent="desktop"][data-nimi-scheme="dark"],
+html[data-nimi-accent="forge"][data-nimi-scheme="dark"] {
+  --nimi-accent:       #4ECCA3;
+  --nimi-accent-hover: #5FD8B2;
+  --nimi-accent-soft:  rgba(78, 204, 163, 0.18);
+  --nimi-accent-onAccent: #062217;
+
+  --nimi-ambient-mesh-color-1: rgba(6, 78, 59, 0.34);
+  --nimi-ambient-mesh-color-2: rgba(30, 64, 124, 0.30);
+  --nimi-ambient-mesh-color-3: rgba(76, 29, 149, 0.22);
+  --nimi-ambient-mesh-color-4: rgba(131, 24, 67, 0.20);
+}
+
+/* ── overtone-accent ────────────────────────────────────────────── */
+/* Ships dark by default. Has a neon halo token (--nimi-accent-glow). */
+html[data-nimi-accent="overtone"],
+html[data-nimi-accent="lookdev"] {
+  --nimi-accent: #8b5cf6;              /* violet */
+  --nimi-accent-hover: #a78bfa;
+  --nimi-accent-soft:  rgba(139, 92, 246, 0.18);
+  --nimi-accent-onAccent: #ffffff;
+  --nimi-accent-glow:  0 0 28px rgba(167, 139, 250, 0.55);
+
+  --nimi-ambient-mesh-color-1: rgba(139, 92, 246, 0.38); /* violet */
+  --nimi-ambient-mesh-color-2: rgba(76, 29, 149, 0.32);  /* deep violet */
+  --nimi-ambient-mesh-color-3: rgba(30, 27, 75, 0.28);   /* indigo bed */
+  --nimi-ambient-mesh-color-4: rgba(217, 70, 239, 0.22); /* magenta edge */
+}
+
+html[data-nimi-accent="overtone"][data-nimi-scheme="light"],
+html[data-nimi-accent="lookdev"][data-nimi-scheme="light"] {
+  --nimi-accent:       #7c3aed;
+  --nimi-accent-hover: #6d28d9;
+  --nimi-accent-soft:  rgba(124, 58, 237, 0.14);
+  --nimi-accent-glow:  0 0 24px rgba(139, 92, 246, 0.32);
+}
+
+/* ── relay-accent (Realm Drift) ─────────────────────────────────── */
+html[data-nimi-accent="relay"] {
+  --nimi-accent:       #7c6fff;              /* indigo */
+  --nimi-accent-hover: #8b7cff;
+  --nimi-accent-soft:  rgba(124, 111, 255, 0.14);
+  --nimi-accent-glow:  0 0 22px rgba(139, 124, 255, 0.36);
+  --nimi-accent-onAccent: #ffffff;
+}
+
+/* ── video-food-map-accent ──────────────────────────────────────── */
+html[data-nimi-accent="video-food-map"] {
+  --nimi-accent:       #f97316;              /* orange */
+  --nimi-accent-hover: #ea580c;
+  --nimi-accent-soft:  rgba(249, 115, 22, 0.14);
+  --nimi-accent-onAccent: #ffffff;
+
+  --nimi-ambient-mesh-color-1: rgba(254, 215, 170, 0.40);
+  --nimi-ambient-mesh-color-2: rgba(252, 211, 77, 0.30);
+  --nimi-ambient-mesh-color-3: rgba(252, 231, 243, 0.22);
+  --nimi-ambient-mesh-color-4: rgba(191, 219, 254, 0.20);
+}

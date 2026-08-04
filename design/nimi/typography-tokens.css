@@ -1,0 +1,109 @@
+/*
+ * Nimi Glass — Typography tokens.
+ *
+ * Brand font stack for the entire nimi-realm platform. ParentOS
+ * (成长底稿) is the Chinese-first reference consumer; Desktop and
+ * the satellite apps inherit the same sans / mono families.
+ *
+ * Source stack (from apps/parentos/src/shell/renderer/styles.css):
+ *   --font-sans    : Inter + Noto Sans SC + PingFang SC fallback
+ *   --font-display : Noto Sans SC first (heavier weight impact)
+ *   --font-serif   : Noto Serif SC + Source Han Serif SC + Songti SC
+ *   --font-mono    : JetBrains Mono + SF Mono + Fira Code
+ *
+ * CDN source: Google Fonts
+ *   <link href="https://fonts.googleapis.com/css2?
+ *         family=Inter:wght@300;400;500;600;700
+ *         &family=Noto+Sans+SC:wght@300;400;500;700
+ *         &display=swap" rel="stylesheet">
+ *
+ * Loaded weights:
+ *   Inter         : 300, 400, 500, 600, 700
+ *   Noto Sans SC  : 300, 400, 500, 700
+ *   JetBrains Mono: system/CDN, any weight available
+ *
+ * CJK-aware body metrics:
+ *   - line-height 1.7   : CJK glyphs need more vertical breathing
+ *   - letter-spacing 0.02em : slight tracking improves CJK readability
+ *   - Title letter-spacing -0.01em : tighter tracking creates density
+ *   - Subpixel antialiasing : sharper on high-DPI screens
+ */
+
+:root,
+[data-nimi-scheme="light"],
+[data-nimi-scheme="dark"] {
+  /* ── Font families ───────────────────────────────────────────────── */
+  --nimi-font-sans:
+    "Inter",
+    "Noto Sans SC",
+    "PingFang SC",
+    "Microsoft YaHei UI",
+    system-ui,
+    sans-serif;
+
+  --nimi-font-display:
+    "Noto Sans SC",
+    "PingFang SC",
+    "Microsoft YaHei UI",
+    system-ui,
+    sans-serif;
+
+  --nimi-font-serif:
+    "Noto Serif SC",
+    "Source Han Serif SC",
+    "Songti SC",
+    "STSong",
+    Georgia,
+    serif;
+
+  --nimi-font-mono:
+    "JetBrains Mono",
+    "SF Mono",
+    "Fira Code",
+    ui-monospace,
+    Menlo,
+    Consolas,
+    monospace;
+
+  /* ── Weight scale ────────────────────────────────────────────────── */
+  --nimi-type-weight-light: 300;     /* timestamps, muted metadata */
+  --nimi-type-weight-regular: 400;   /* body, descriptions, form inputs */
+  --nimi-type-weight-medium: 500;    /* labels, nav items, emphasis */
+  --nimi-type-weight-semibold: 600;  /* section titles, card headers */
+  --nimi-type-weight-bold: 700;      /* page titles, hero, key metrics */
+
+  /* ── CJK-aware body metrics ──────────────────────────────────────── */
+  --nimi-type-body-cjk-line-height: 1.7;
+  --nimi-type-body-cjk-letter-spacing: 0.02em;
+
+  /* ── Title (Latin + CJK) tighter tracking ────────────────────────── */
+  --nimi-type-title-letter-spacing: -0.01em;
+
+  /* ── Rendering hints ─────────────────────────────────────────────── */
+  --nimi-type-font-feature-settings: "kern" 1, "liga" 1;
+}
+
+/*
+ * Recommended root styles. Apply alongside the glass-tokens.css surface
+ * rules on html / body / #root.
+ */
+html,
+body,
+#root {
+  font-family: var(--nimi-font-sans);
+  line-height: var(--nimi-type-body-cjk-line-height);
+  letter-spacing: var(--nimi-type-body-cjk-letter-spacing);
+  font-feature-settings: var(--nimi-type-font-feature-settings);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/*
+ * Heading shorthand — titles use tighter tracking than body. Apply via
+ * a utility class on h1–h3 or on hero text. Body text does NOT inherit
+ * this tracking.
+ */
+.nimi-type-title {
+  letter-spacing: var(--nimi-type-title-letter-spacing);
+}

@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="./nimi/colors_and_type.css">
+  <script src="./image-slot.js"></script>
+  <style>
+    @keyframes nimi-pulse { 0%,100% { opacity:.45 } 50% { opacity:.62 } }
+    @media (prefers-reduced-motion: reduce) { .nimi-halo { animation: none !important; } }
+  </style>
+</helmet>
+
+<div style="--nimi-accent:#00aefc;--nimi-accent-hover:#5abdff;--nimi-accent-soft:#d7f1fc;--nimi-accent-onAccent:#ffffff;position:relative;isolation:isolate;min-height:100vh;font-family:var(--nimi-font-sans);color:var(--nimi-fg-1);background:radial-gradient(ellipse at 0% 0%, var(--nimi-ambient-mesh-color-1) 0%, transparent 50%), radial-gradient(ellipse at 100% 0%, var(--nimi-ambient-mesh-color-2) 0%, transparent 50%), radial-gradient(ellipse at 100% 100%, var(--nimi-ambient-mesh-color-3) 0%, transparent 50%), radial-gradient(ellipse at 0% 100%, var(--nimi-ambient-mesh-color-4) 0%, transparent 50%), linear-gradient(135deg, var(--nimi-ambient-mesh-base-start) 0%, var(--nimi-ambient-mesh-base-end) 100%);">
+
+  <div class="nimi-halo" style="position:absolute;z-index:0;pointer-events:none;width:520px;height:520px;top:-140px;left:-120px;border-radius:50%;filter:blur(120px);opacity:0.5;background:var(--nimi-ambient-mesh-color-1);animation:nimi-pulse 7s ease-in-out infinite;"></div>
+  <div class="nimi-halo" style="position:absolute;z-index:0;pointer-events:none;width:560px;height:560px;bottom:-160px;right:4%;border-radius:50%;filter:blur(120px);opacity:0.5;background:var(--nimi-ambient-mesh-color-2);animation:nimi-pulse 7s ease-in-out infinite;animation-delay:-4s;"></div>
+
+  <div style="position:relative;z-index:1;display:flex;flex-direction:column;height:100vh;overflow:hidden;">
+
+    <div style="display:flex;flex:1;min-height:0;">
+
+      <!-- Left sidebar — glass-chrome, collapsible Persona history rail -->
+      <aside style="height:100%;width:{{ sidebarWidth }};flex-shrink:0;overflow:hidden;display:flex;flex-direction:column;background:var(--nimi-material-glass-chrome-bg);border-right:1px solid var(--nimi-material-glass-chrome-border);backdrop-filter:blur(var(--nimi-backdrop-blur-chrome));-webkit-backdrop-filter:blur(var(--nimi-backdrop-blur-chrome));transition:width var(--nimi-motion-slow);">
+
+        <!-- Collapsed rail -->
+        <sc-if value="{{ collapsed }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:20px 0;width:72px;">
+            <div style="width:32px;height:32px;border-radius:var(--nimi-radius-md);background:linear-gradient(135deg,#00aefc,#a4ddff);"></div>
+            <button onClick="{{ toggleCollapsed }}" style="width:36px;height:36px;border:1px solid var(--nimi-border-subtle);background:var(--nimi-surface-card);color:var(--nimi-fg-2);border-radius:var(--nimi-radius-md);display:grid;place-items:center;cursor:pointer;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg>
+            </button>
+            <button style="width:40px;height:40px;border:0;background:var(--nimi-fg-1);color:var(--nimi-fg-inverse);border-radius:var(--nimi-radius-md);display:grid;place-items:center;cursor:pointer;box-shadow:var(--nimi-elevation-base);">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <div style="width:28px;height:1px;background:var(--nimi-border-subtle);"></div>
+            <sc-for list="{{ historyItems }}" as="item" hint-placeholder-count="5">
+              <div style="width:36px;height:36px;border-radius:var(--nimi-radius-md);background:{{ item.color }};color:#fff;display:grid;place-items:center;font-size:var(--nimi-text-xs);font-weight:var(--nimi-type-weight-bold);flex-shrink:0;">{{ item.initial }}</div>
+            </sc-for>
+            <div style="flex:1;"></div>
+            <div style="position:relative;">
+              <button onClick="{{ toggleUserMenu }}" style="width:36px;height:36px;border:0;border-radius:var(--nimi-radius-full);background:linear-gradient(135deg,#00aefc,#5abdff);color:#ffffff;display:grid;place-items:center;font-size:var(--nimi-text-xs);font-weight:var(--nimi-type-weight-bold);cursor:pointer;">所</button>
+              <sc-if value="{{ userMenuOpen }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;left:52px;bottom:0;width:168px;background:var(--nimi-material-glass-chrome-bg);border:1px solid var(--nimi-material-glass-chrome-border);backdrop-filter:blur(var(--nimi-backdrop-blur-chrome));-webkit-backdrop-filter:blur(var(--nimi-backdrop-blur-chrome));border-radius:var(--nimi-radius-md);box-shadow:var(--nimi-elevation-floating);padding:6px;z-index:50;">
+                  <button style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border:0;background:transparent;border-radius:var(--nimi-radius-sm);font-size:var(--nimi-text-sm);color:var(--nimi-fg-1);cursor:pointer;text-align:left;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 00-.1-1.3l2-1.5-2-3.4-2.3 1a7 7 0 00-2.3-1.3L14 3h-4l-.3 2.5A7 7 0 007.4 6.8l-2.3-1-2 3.4 2 1.5A7 7 0 005 12c0 .4 0 .9.1 1.3l-2 1.5 2 3.4 2.3-1a7 7 0 002.3 1.3L10 21h4l.3-2.5a7 7 0 002.3-1.3l2.3 1 2-3.4-2-1.5c0-.4.1-.9.1-1.3z"/></svg>
+                    设置
+                  </button>
+                  <button style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border:0;background:transparent;border-radius:var(--nimi-radius-sm);font-size:var(--nimi-text-sm);color:var(--nimi-fg-1);cursor:pointer;text-align:left;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2 2-2 3.5M12 17h.01"/></svg>
+                    帮助
+                  </button>
+                  <div style="height:1px;background:var(--nimi-border-subtle);margin:4px 2px;"></div>
+                  <button style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border:0;background:transparent;border-radius:var(--nimi-radius-sm);font-size:var(--nimi-text-sm);color:var(--nimi-danger);cursor:pointer;text-align:left;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+                    退出登录
+                  </button>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- Expanded rail -->
+        <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}">
+          <div style="box-sizing:border-box;display:flex;flex-direction:column;height:100%;width:260px;padding:16px 14px;gap:18px;overflow:hidden;">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div style="width:28px;height:28px;border-radius:var(--nimi-radius-sm);background:linear-gradient(135deg,#00aefc,#a4ddff);"></div>
+                <span style="font-size:var(--nimi-text-sm);font-weight:var(--nimi-type-weight-semibold);color:var(--nimi-fg-1);">Persona Studio</span>
+              </div>
+              <button onClick="{{ toggleCollapsed }}" style="width:30px;height:30px;border:0;background:transparent;color:var(--nimi-fg-3);border-radius:var(--nimi-radius-sm);display:grid;place-items:center;cursor:pointer;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg>
+              </button>
+            </div>
+
+            <button onClick="{{ goToDescribe }}" style="flex-shrink:0;display:flex;align-items:center;gap:8px;font-family:inherit;font-size:var(--nimi-text-sm);font-weight:var(--nimi-type-weight-semibold);padding:10px 12px;border-radius:var(--nimi-radius-md);border:0;background:var(--nimi-fg-1);color:var(--nimi-fg-inverse);cursor:pointer;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+              创建角色
+            </button>
+
+            <button style="flex-shrink:0;display:flex;align-items:center;gap:8px;font-family:inherit;font-size:var(--nimi-text-sm);font-weight:var(--nimi-type-weight-medium);padding:9px 10px;border-radius:var(--nimi-radius-md);border:0;background:var(--nimi-surface-active);color:var(--nimi-fg-1);cursor:pointer;text-align:left;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg>
+              我的角色
+            </button>
+
+            <button onClick="{{ goToAssets }}" style="flex-shrink:0;display:flex;align-items:center;gap:8px;font-family:inherit;font-size:var(--nimi-text-sm);font-weight:var(--nimi-type-weight-medium);padding:9px 10px;border-radius:var(--nimi-radius-md);border:0;background:{{ assetsTabBg }};color:var(--nimi-fg-1);cursor:pointer;text-align:left;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="M21 15l-5-5-9 9"/></svg>
+              资产
+            </button>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+              <span style="font-size:var(--nimi-text-xs);font-weight:var(--nimi-type-weight-semibold);color:var(--nimi-fg-3);letter-spacing:0.02em;">创作历史</span>
+              <span style="font-size:var(--nimi-text-xs);color:#0f172a;cursor:pointer;">查看全部</span>
+            </div>
+
+            <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:18px;">
+              <sc-for list="{{ historyGroups }}" as="group" hint-placeholder-count="2">
+                <div>
+                  <div style="font-size:var(--nimi-text-xs);color:var(--nimi-fg-3);margin-bottom:8px;">{{ group.label }}</div>
+                  <div style="display:flex;flex-direction:column;gap:2px;">
+                    <sc-for list="{{ group.items }}" as="item" hint-placeholder-count="3">
+                      <button style="display:flex;align-items:center;gap:10px;padding:8px;border:0;background:{{ item.active }};border-radius:var(--nimi-radius-md);cursor:pointer;text-align:left;">
+                        <div style="width:32px;height:32px;border-radius:var(--nimi-radius-sm);background:{{ item.color }};color:#fff;display:grid;place-items:center;font-size:var(--nimi-text-xs);font-weight:var(--nimi-type-weight-bold);flex-shrink:0;">{{ item.initial }}</div>
+                        <div style="min-width:0;">
+                          <div style="font-size:var(--nimi-text-sm);color:var(--nimi-fg-1);font-weight:var(--nimi-type-weight-medium);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ item.name }}</div>
+                          <div style="font-size:var(--nimi-text-xs);color:var(--nimi-fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ item.subtitle }}</div>
+                        </div>
+                      </button>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="flex-shrink:0;display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--nimi-border-subtle);padding-top:14px;">
+              <div style="display:flex;align-items:center;background:var(--nimi-material-glass-thin-bg);border:1px solid var(--nimi-border-subtle);border-radius:var(--nimi-radius-full);padding:3px;gap:2px;">
+                <button style="flex:1;border:0;background:transparent;color:var(--nimi-fg-1);font-size:var(--nimi-text-xs);font-weight:var(--nimi-type-weight-medium);padding:6px 0;border-radius:var(--nimi-radius-full);cursor:pointer;">EN</button>
+                <button style="flex:1;border:0;background:var(--nimi-accent);color:var(--nimi-accent-onAccent);font-size:var(--nimi-text-xs);font-weight:var(--nimi-type-weight-semibold);padding:6px 0;border-radius:var(--nimi-radius-full);cursor:pointer;box-shadow:var(--nimi-elevation-base);">中文</button>
+              </div>
+
+              <div style="position:relative;">
+                <button onClick="{{ toggleUserMenu }}" style="display:flex;align-items:center;gap:8px;width:100%;border:1px solid var(--nimi-border-subtle);background:var(--nimi-surface-card);color:var(--nimi-fg-1);font-size:var(--nimi-text-sm);font-weight:var(--nimi-type-weight-medium);padding:7px 10px;border-radius:var(--nimi-radius-md);cursor:pointer;">
+                  <span style="width:26px;height:26px;border-radius:var(--nimi-radius-full);background:linear-gradient(135deg,#00aefc,#5abdff);color:#ffffff;display:grid;place-items:center;font-size:11px;font-weight:700;flex-shrink:0;">所</span>
+                  <span style="flex:1;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">所有者</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--nimi-fg-3);"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+                <sc-if value="{{ userMenuOpen }}" hint-placeholder-val="{{ false }}">
+                  <div style="position:absolute;left:0;right:0;bottom:calc(100% + 8px);background:var(--nimi-material-glass-chrome-bg);border:1px solid var(--nimi-material-glass-chrome-border);backdrop-filter:blur(var(--nimi-backdrop-blur-chrome));-webkit-backdrop-filter:blur(var(--nimi-backdrop-blur-chrome));border-radius:var(--nimi-radius-md);box-shadow:var(--nimi-elevation-floating);padding:6px;z-index:50;">
+                    <button style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border:0;background:transparent;border-radius:var(--nimi-radius-sm);font-size:var(--nimi-text-sm);color:var(--nimi-fg-1);cursor:pointer;text-align:left;">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 00-.1-1.3l2-1.5-2-3.4-2.3 1a7 7 0 00-2.3-1.3L14 3h-4l-.3 2.5A7 7 0 007.4 6.8l-2.3-1-2 3.4 2 1.5A7 7 0 005 12c0 .4 0 .9.1 1.3l-2 1.5 2 3.4 2.3-1a7 7 0 002.3 1.3L10 21h4l.3-2.5a7 7 0 002.3-1.3l2.3 1 2-3.4-2-1.5c0-.4.1-.9.1-1.3z"/></svg>
+                      设置
+                    </button>
+                    <button style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border:0;background:transparent;border-radius:var(--nimi-radius-sm);font-size:var(--nimi-text-sm);color:var(--nimi-fg-1);cursor:pointer;text-align:left;">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2 2-2 3.5M12 17h.01"/></svg>
+                      帮助
+                    </button>
+                    <div style="height:1px;background:var(--nimi-border-subtle);margin:4px 2px;"></div>
+                    <button style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border:0;background:transparent;border-radius:var(--nimi-radius-sm);font-size:var(--nimi-text-sm);color:var(--nimi-danger);cursor:pointer;text-align:left;">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+                      退出登录
+                    </button>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+      </aside>
+
+      <!-- Main -->
+      <sc-if value="{{ isDescribe }}" hint-placeholder-val="{{ true }}">
+        <main style="flex:1;min-width:0;min-height:0;overflow-y:auto;padding:32px;">
+          <div style="max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:18px;">
+
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;">
+              <div>
+                <div style="font-size:var(--nimi-text-lg);font-weight:var(--nimi-type-weight-semibold);color:var(--nimi-fg-1);">创建角色</div>
+                <div style="font-size:var(--nimi-text-xs);color:var(--nimi-fg-3);margin-top:2px;">预计 3-5 分钟</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;font-size:var(--nimi-text-xs);color:var(--nimi-fg-3);white-space:nowrap;padding-top:2px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4 4 0 0 1-1-7.87A5.5 5.5 0 0 1 16.5 8.5 4 4 0 0 1 17 18H7z"/></svg>
+                草稿已自动保存
+              </div>
+            </div>
+
+            <section style="background:var(--nimi-surface-card);border:1px solid var(--nimi-border-subtle);border-radius:var(--nimi-radius-lg);box-shadow:var(--nimi-elevation-base);padding:32px;display:flex;flex-direction:column;gap:20px;position:relative;">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;">
+                <div>
+                  <h1 style="margin:0;font-size:var(--nimi-text-3xl);font-weight:var(--nimi-type-weight-bold);letter-spacing:var(--nimi-type-title-letter-spacing);color:var(--nimi-fg-1);">先描述你想创建的角色</h1>
+                </div>
+                <span style="font-size:var(--nimi-text-xs);font-weight:var(--nimi-type-weight-medium);color:#0f172a;background:var(--nimi-accent-soft);padding:5px 12px;border-radius:var(--nimi-radius-full);white-space:nowrap;flex-shrink:0;">AI 辅助 · 所有者确认</span>
+              </div>
+
+              <div>
+                <label style="font-size:var(--nimi-text-sm);color:var(--nimi-fg-2);display:block;margin-bottom:8px;">一句话描述</label>
+                <textarea rows="5" style="width:100%;font-family:inherit;font-size:var(--nimi-text-md);line-height:var(--nimi-leading-relaxed);padding:14px 16px;border-radius:var(--nimi-radius-md);border:1px solid var(--nimi-border-subtle);background:var(--nimi-surface-panel);color:var(--nimi-fg-1);outline:none;resize:none;">一个20岁冷酷的中国唐代刺客女孩，沉默、敏锐，有自己的正义准则。</textarea>
+                <div style="font-size:var(--nimi-text-xs);color:var(--nimi-fg-3);margin-top:8px;">可以描述年龄、时代、性格、身份和她看待世界的方式。</div>
+              </div>
+
+              <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <button style="display:flex;align-items:center;gap:6px;font-family:inherit;font-size:var(--nimi-text-sm);padding:8px 14px;border-radius:var(--nimi-radius-full);border:1px solid var(--nimi-border-subtle);background:var(--nimi-surface-panel);color:var(--nimi-fg-2);cursor:pointer;">+ 补充说话方式</button>
+                <button style="display:flex;align-items:center;gap:6px;font-family:inherit;font-size:var(--nimi-text-sm);padding:8px 14px;border-radius:var(--nimi-radius-full);border:1px solid var(--nimi-border-subtle);background:var(--nimi-surface-panel);color:var(--nimi-fg-2);cursor:pointer;">+ 补充行为边界</button>
+                <button style="display:flex;align-items:center;gap:6px;font-family:inherit;font-size:var(--nimi-text-sm);padding:8px 14px;border-radius:var(--nimi-radius-full);border:1px solid var(--nimi-border-subtle);background:var(--nimi-surface-panel);color:var(--nimi-fg-2);cursor:pointer;">+ 补充视觉气质</button>
+              </div>
+
+              <button onClick="{{ goToReview }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--nimi-accent-soft);border:1px solid var(--nimi-accent);border-radius:var(--nimi-radius-md);padding:16px;cursor:pointer;text-align:left;">
+                <div style="display:flex;align-items:center;gap:14px;">
+                  <div style="width:36px;height:36px;border-radius:var(--nimi-radius-md);background:linear-gradient(135deg,#00aefc,#a4ddff);color:#fff;display:grid;place-items:center;flex-shrink:0;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5M15.5 8.5L18 6"/></svg>
+                  </div>
+                  <div>
+                    <div style="font-size:var(--nimi-text-sm);font-weight:var(--nimi-type-weight-semibold);color:var(--nimi-fg-1);">AI 生成可编辑草稿</div>
+                    <div style="font-size:var(--nimi-text-xs);color:var(--nimi-fg-3);margin-top:2px;">预计生成身份、概念、Persona 原型、特质和公开资料建议。</div>
+                  </div>
+                </div>
+                <span style="font-size:var(--nimi-text-xs);font-weight:var(--nimi-type-weight-medium);color:#0f172a;background:var(--nimi-surface-card);border:1px solid var(--nimi-border-subtle);padding:4px 10px;border-radius:var(--nimi-radius-full);white-space:nowrap;flex-shrink:0;">推荐</span>
+              </button>
+
+              <button onClick="{{ goToReview }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:transparent;border:1px solid var(--nimi-border-subtle);border-radius:var(--nimi-radius-md);padding:14px 16px;cursor:pointer;text-align:left;">
+                <span style="font-size:var(--nimi-text-sm);font-weight:var(--nimi-type-weight-medium);color:var(--nimi-fg-1);">也可以从空白表单手动创建</span>
+                <span style="display:flex;align-items:center;gap:6px;font-size:var(--nimi-text-sm);font-weight:var(--nimi-type-weight-medium);color:var(--nimi-fg-1);">手动开始
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </span>
+              </button>
+            </section>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
+              <span style="font-size:var(--nimi-text-xs);color:var(--nimi-fg-3);">来源: 所有者描述 · 本地草稿</span>
+              <div style="display:flex;align-items:center;gap:12px;">
+                <button style="font-family:inherit;font-size:var(--nimi-text-sm);font-weight:var(--nimi-type-weight-medium);padding:10px 18px;border-radius:var(--nimi-radius-full);border:1px solid var(--nimi-border-subtle);background:transparent;color:var(--nimi-fg-2);cursor:pointer;">取消</button>
+                <button onClick="{{ goToReview }}" style="display:flex;align-items:center;gap:8px;font-family:inherit;font-size:var(--nimi-text-sm);font-weight:var(--nimi-type-weight-semibold);padding:10px 20px;border-radius:var(--nimi-radius-full);border:1px solid var(--nimi-accent);background:var(--nimi-accent);color:var(--nimi-accent-onAccent);cursor:pointer;box-shadow:var(--nimi-elevation-raised);">
+                  生成 Persona 草稿
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </main>
+      </sc-if>
+
+      <sc-if value="{{ isAssets }}" hint-placeholder-val="{{ false }}">
+        <main style="flex:1;min-width:0;min-height:0;overflow-y:auto;padding:32px;">
+          <div style="max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:24px;">
+
+            <div>
+              <div style="font-size:var(--nimi-text-3xl);font-weight:var(--nimi-type-weight-bold);letter-spacing:var(--nimi-type-title-letter-spacing);color:var(--nimi-fg-1);">资产</div>
+              <p style="margin:8px 0 0;font-size:var(--nimi-text-sm);color:var(--nimi-fg-3);">你生成或上传的图片与音频，可在创建角色时复用。</p>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:8px;background:var(--nimi-material-glass-thin-bg);border:1px solid var(--nimi-border-subtle);border-radius:var(--nimi-radius-full);padding:4px;width:fit-content;">
+              <sc-for list="{{ assetTabs }}" as="tab" hint-placeholder-count="3">
+                <button onClick="{{ tab.select }}" style="border:0;background:{{ tab.bg }};color:{{ tab.color }};font-size:var(--nimi-text-sm);font-weight:var(--nimi-type-weight-medium);padding:8px 18px;border-radius:var(--nimi-radius-full);cursor:pointer;">{{ tab.label }}</button>
+              </sc-for>
+            </div>
+
+            <sc-if value="{{ isImagesTab }}" hint-placeholder-val="{{ true }}">
+              <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;">
+                <sc-for list="{{ imageAssets }}" as="asset" hint-placeholder-count="10">
+                  <div style="position:relative;border-radius:var(--nimi-radius-md);overflow:hidden;aspect-ratio:1;background:var(--nimi-surface-panel);border:1px solid var(--nimi-border-subtle);">
+                    <image-slot id="{{ asset.slotId }}" shape="rect" placeholder="{{ asset.placeholder }}" style="position:absolute;inset:0;width:100%;height:100%;"></image-slot>
+                    <span style="position:absolute;top:6px;left:6px;font-size:10px;font-weight:var(--nimi-type-weight-medium);color:#0f172a;background:var(--nimi-accent-soft);padding:2px 8px;border-radius:var(--nimi-radius-full);">{{ asset.source }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isAudioTab }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <sc-for list="{{ audioAssets }}" as="a" hint-placeholder-count="5">
+                  <div style="display:flex;align-items:center;gap:14px;padding:12px 16px;background:var(--nimi-surface-card);border:1px solid var(--nimi-border-subtle);border-radius:var(--nimi-radius-md);">
+                    <div style="width:36px;height:36px;border-radius:var(--nimi-radius-md);background:var(--nimi-accent-soft);color:#0f172a;display:grid;place-items:center;flex-shrink:0;">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                    </div>
+                    <div style="flex:1;min-width:0;">
+                      <div style="font-size:var(--nimi-text-sm);font-weight:var(--nimi-type-weight-medium);color:var(--nimi-fg-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ a.name }}</div>
+                      <div style="font-size:var(--nimi-text-xs);color:var(--nimi-fg-3);margin-top:2px;">{{ a.subtitle }}</div>
+                    </div>
+                    <span style="font-size:10px;font-weight:var(--nimi-type-weight-medium);color:#0f172a;background:var(--nimi-accent-soft);padding:2px 8px;border-radius:var(--nimi-radius-full);flex-shrink:0;">{{ a.source }}</span>
+                    <button style="width:32px;height:32px;border:0;background:transparent;color:var(--nimi-fg-3);border-radius:var(--nimi-radius-sm);display:grid;place-items:center;cursor:pointer;flex-shrink:0;">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    </button>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+        </main>
+      </sc-if>
+
+      <sc-if value="{{ isReview }}" hint-placeholder-val="{{ false }}">
+      <main style="flex:1;min-width:0;min-height:0;overflow-y:auto;padding:32px;display:grid;grid-template-columns:380px 1fr;gap:24px;align-items:stretch;">
+
+        <!-- Left column — persona portrait, glass-thick -->
+        <section style="display:flex;flex-direction:column;gap:12px;height:100%;">
+          <div style="position:relative;border-radius:var(--nimi-radius-xl);overflow:hidden;flex:1;min-height:0;background:var(--nimi-material-glass-thick-bg);border:1px solid var(--nimi-material-glass-thick-border);backdrop-filter:blur(var(--nimi-backdrop-blur-strong));-webkit-backdrop-filter:blur(var(--nimi-backdrop-blur-strong));box-shadow:var(--nimi-elevation-raised);">
+            <image-slot id="persona-portrait" shape="rect" placeholder="拖入 Persona 形象…" style="position:absolute;inset:0;width:100%;height:100%;"></image-slot>
+            <div style="position:absolute;inset:0;background:linear-gradient(180deg, rgba(15,23,42,0) 40%, rgba(15,23,42,0.78) 100%);pointer-events:none;"></div>
+
+            <div style="position:absolute;top:16px;left:16px;background:rgba(15,23,42,0.55);backdrop-filter:blur(var(--nimi-backdrop-blur-thin));border:1px solid rgba(255,255,255,0.14);color:#fff;font-size:var(--nimi-text-xs);font-weight:var(--nimi-type-weight-medium);letter-spacing:0.04em;text-transform:uppercase;padding:5px 12px;border-radius:var(--nimi-radius-full);">MYSTERIOUS · 神秘型</div>
+
+            <div style="position:absolute;left:20px;right:20px;bottom:20px;color:#fff;">
+              <div style="font-size:var(--nimi-text-2xl);font-weight:var(--nimi-type-weight-bold);letter-spacing:var(--nimi-type-title-letter-spacing);">长安夜莺</div>
+              <div style="font-size:var(--nimi-text-sm);color:rgba(255,255,255,0.72);font-family:var(--nimi-font-mono);margin-top:2px;">@changan-nightwing</div>
+              <button style="margin-top:16px;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.24);backdrop-filter:blur(var(--nimi-backdrop-blur-thin));color:#fff;font-size:var(--nimi-text-sm);font-weight:var(--nimi-type-weight-medium);padding:11px 16px;border-radius:var(--nimi-radius-md);cursor:pointer;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 1 2.6 6.4M3 12v6h6"/></svg>
+                重新生成形象
+              </button>
+            </div>
+          </div>
+
+          <div style="flex-shrink:0;">
+            <div style="font-size:var(--nimi-text-xs);color:var(--nimi-fg-3);margin-bottom:8px;">生成历史 · 点击选择</div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+              <sc-for list="{{ portraitVariants }}" as="variant" hint-placeholder-count="4">
+                <button onClick="{{ variant.select }}" style="position:relative;aspect-ratio:1;border-radius:var(--nimi-radius-md);overflow:hidden;padding:0;cursor:pointer;background:var(--nimi-material-glass-regular-bg);border:{{ variant.border }};">
+                  <image-slot id="{{ variant.slotId }}" shape="rect" placeholder="形象{{ variant.n }}" style="position:absolute;inset:0;width:100%;height:100%;"></image-slot>
+                  <sc-if value="{{ variant.selected }}" hint-placeholder-val="{{ false }}">
+                    <div style="position:absolute;top:4px;right:4px;width:18px;height:18px;border-radius:50%;background:var(--nimi-accent);display:grid;place-items:center;box-shadow:var(--nimi-elevation-base);">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                    </div>
+                  </sc-if>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+        </section>
+
+        <!-- Right column — form, glass-regular -->
+        <section style="background:var(--nimi-surface-card);border:1px solid var(--nimi-border-subtle);border-radius:var(--nimi-radius-lg);box-shadow:var(--nimi-elevation-base);padding:32px;display:flex;flex-direction:column;gap:24px;">
+
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;">
+            <div>
+              <button onClick="{{ goToDescribe }}" style="display:flex;align-items:center;gap:6px;font-family:inherit;font-size:var(--nimi-text-sm);font-weight:var(--nimi-type-weight-medium);padding:7px 12px;margin-bottom:12px;border-radius:var(--nimi-radius-full);border:1px solid var(--nimi-border-subtle);background:var(--nimi-surface-card);color:var(--nimi-fg-2);cursor:pointer;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                返回上一步
+              </button>
+              <h1 style="margin:0;font-size:var(--nimi-text-3xl);font-weight:var(--nimi-type-weight-bold);letter-spacing:var(--nimi-type-title-letter-spacing);color:var(--nimi-fg-1);">检查并创建你的角色</h1>
+              <p style="margin:8px 0 0;font-size:var(--nimi-text-sm);color:var(--nimi-fg-3);">AI 已生成这份草稿。你可以修改任何内容，确认前不会创建。</p>
+            </div>
+            <button style="display:flex;align-items:center;gap:8px;font-family:inherit;font-size:var(--nimi-text-sm);font-weight:var(--nimi-type-weight-semibold);padding:10px 18px;border-radius:var(--nimi-radius-full);border:1px solid var(--nimi-accent);background:var(--nimi-accent);color:var(--nimi-accent-onAccent);cursor:pointer;box-shadow:var(--nimi-elevation-raised);white-space:nowrap;flex-shrink:0;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l3 7-3 7 7-3 7 3-3-7 3-7-7 3z"/></svg>
+              生成预览
+            </button>
+          </div>
+
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+              <span style="font-size:var(--nimi-text-md);font-weight:var(--nimi-type-weight-semibold);color:var(--nimi-fg-1);">基本信息</span>
+              <span style="font-size:var(--nimi-text-xs);font-weight:var(--nimi-type-weight-medium);color:#0f172a;background:var(--nimi-accent-soft);padding:3px 10px;border-radius:var(--nimi-radius-full);">AI 草稿</span>
+            </div>
+
+            <div style="display:grid;grid-template-columns:150px 1fr;row-gap:22px;column-gap:16px;align-items:center;">
+
+              <label style="font-size:var(--nimi-text-sm);color:var(--nimi-fg-2);">显示名称 *</label>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <input value="长安夜莺" style="flex:1;font-family:inherit;font-size:var(--nimi-text-sm);padding:10px 14px;border-radius:var(--nimi-radius-md);border:1px solid var(--nimi-border-subtle);background:var(--nimi-surface-panel);color:var(--nimi-fg-1);outline:none;"/>
+                <span style="font-size:var(--nimi-text-xs);font-weight:var(--nimi-type-weight-medium);color:var(--nimi-success);background:rgba(16,185,129,0.12);padding:5px 10px;border-radius:var(--nimi-radius-full);white-space:nowrap;">已修改</span>
+              </div>
+
+              <label style="font-size:var(--nimi-text-sm);color:var(--nimi-fg-2);">Persona Handle *</label>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <input value="@changan-nightwing" style="flex:1;font-family:var(--nimi-font-mono);font-size:var(--nimi-text-sm);padding:10px 14px;border-radius:var(--nimi-radius-md);border:1px solid var(--nimi-border-subtle);background:var(--nimi-surface-panel);color:var(--nimi-fg-1);outline:none;"/>
+                <span style="display:flex;align-items:center;gap:5px;font-size:var(--nimi-text-xs);font-weight:var(--nimi-type-weight-medium);color:var(--nimi-success);white-space:nowrap;">
+                  <span style="width:6px;height:6px;border-radius:50%;background:var(--nimi-success);"></span>可用
+                </span>
+              </div>
+
+              <label style="font-size:var(--nimi-text-sm);color:var(--nimi-fg-2);align-self:flex-start;padding-top:10px;">核心概念 *</label>
+              <textarea rows="3" style="font-family:inherit;font-size:var(--nimi-text-sm);line-height:var(--nimi-leading-relaxed);padding:10px 14px;border-radius:var(--nimi-radius-md);border:1px solid var(--nimi-border-subtle);background:var(--nimi-surface-panel);color:var(--nimi-fg-1);outline:none;resize:none;">盛唐暗巷中的冷静守望者，在秩序与自由间寻找自己的准则。</textarea>
+
+              <label style="font-size:var(--nimi-text-sm);color:var(--nimi-fg-2);">Persona 原型 *</label>
+              <button style="display:flex;align-items:center;justify-content:space-between;font-family:inherit;font-size:var(--nimi-text-sm);padding:10px 14px;border-radius:var(--nimi-radius-md);border:1px solid var(--nimi-border-subtle);background:var(--nimi-surface-panel);color:var(--nimi-fg-1);cursor:pointer;">
+                MYSTERIOUS · 神秘型
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+
+              <label style="font-size:var(--nimi-text-sm);color:var(--nimi-fg-2);align-self:flex-start;padding-top:10px;">个性特质 *</label>
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+                <div>
+                  <div style="font-size:var(--nimi-text-xs);color:var(--nimi-fg-3);margin-bottom:10px;">选择最能代表该 Persona 的特质（最多 3 个）</div>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <span style="font-size:var(--nimi-text-xs);font-weight:var(--nimi-type-weight-semibold);letter-spacing:0.02em;color:#0f172a;background:var(--nimi-accent-soft);border:1px solid var(--nimi-border-subtle);padding:6px 14px;border-radius:var(--nimi-radius-full);">DIRECT</span>
+                    <span style="font-size:var(--nimi-text-xs);font-weight:var(--nimi-type-weight-semibold);letter-spacing:0.02em;color:#0f172a;background:var(--nimi-accent-soft);border:1px solid var(--nimi-border-subtle);padding:6px 14px;border-radius:var(--nimi-radius-full);">REALISTIC</span>
+                    <span style="font-size:var(--nimi-text-xs);font-weight:var(--nimi-type-weight-semibold);letter-spacing:0.02em;color:#0f172a;background:var(--nimi-accent-soft);border:1px solid var(--nimi-border-subtle);padding:6px 14px;border-radius:var(--nimi-radius-full);">WISE</span>
+                  </div>
+                </div>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--nimi-fg-3);flex-shrink:0;margin-top:4px;"><path d="M6 9l6 6 6-6"/></svg>
+              </div>
+
+              <label style="font-size:var(--nimi-text-sm);color:var(--nimi-fg-2);align-self:flex-start;padding-top:14px;">所属世界 *</label>
+              <div>
+                <div style="font-size:var(--nimi-text-xs);color:var(--nimi-fg-3);margin-bottom:10px;">选择该 Persona 所属的世界（必选）</div>
+                <div style="display:flex;align-items:center;gap:14px;padding:16px;border-radius:var(--nimi-radius-md);border:1px solid var(--nimi-accent);background:var(--nimi-accent-soft);">
+                  <div style="width:40px;height:40px;border-radius:var(--nimi-radius-md);background:var(--nimi-fg-1);color:var(--nimi-fg-inverse);display:grid;place-items:center;font-size:var(--nimi-text-sm);font-weight:var(--nimi-type-weight-bold);flex-shrink:0;">{{ selectedWorld.initial }}</div>
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-size:var(--nimi-text-sm);font-weight:var(--nimi-type-weight-semibold);color:var(--nimi-fg-1);">{{ selectedWorld.name }}</div>
+                    <div style="font-size:var(--nimi-text-xs);color:var(--nimi-fg-3);margin-top:2px;">{{ selectedWorld.subtitle }}</div>
+                  </div>
+                  <button onClick="{{ openWorldModal }}" style="display:flex;align-items:center;gap:6px;flex-shrink:0;border:1px solid var(--nimi-border-subtle);background:var(--nimi-surface-card);color:var(--nimi-fg-1);font-size:var(--nimi-text-xs);font-weight:var(--nimi-type-weight-medium);padding:6px 10px;border-radius:var(--nimi-radius-md);cursor:pointer;">
+                    更换世界
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--nimi-surface-panel);border:1px solid var(--nimi-border-subtle);border-radius:var(--nimi-radius-md);padding:14px 16px;cursor:pointer;text-align:left;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--nimi-fg-3);flex-shrink:0;"><path d="M4 5h16M4 12h16M4 19h10"/><circle cx="18" cy="19" r="2"/></svg>
+              <div>
+                <div style="font-size:var(--nimi-text-sm);font-weight:var(--nimi-type-weight-semibold);color:var(--nimi-fg-1);">生成 Prompt（可选）</div>
+                <div style="font-size:var(--nimi-text-xs);color:var(--nimi-fg-3);margin-top:2px;">查看或复制用于生成此 Persona 的 Prompt</div>
+              </div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--nimi-fg-3);flex-shrink:0;"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+        </section>
+      </main>
+      </sc-if>
+    </div>
+  </div>
+
+  <!-- World picker modal -->
+  <sc-if value="{{ worldModalOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeWorldModal }}" style="position:fixed;inset:0;z-index:100;background:rgba(15,23,42,0.44);display:flex;align-items:center;justify-content:center;">
+      <div onClick="{{ stopPropagation }}" style="width:440px;max-height:78vh;display:flex;flex-direction:column;background:var(--nimi-surface-overlay);border:1px solid var(--nimi-border-subtle);border-radius:var(--nimi-radius-lg);box-shadow:var(--nimi-elevation-modal);overflow:hidden;">
+        <div style="flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--nimi-border-subtle);">
+          <span style="font-size:var(--nimi-text-lg);font-weight:var(--nimi-type-weight-semibold);color:var(--nimi-fg-1);">选择所属世界</span>
+          <button onClick="{{ closeWorldModal }}" style="width:28px;height:28px;border:0;background:transparent;color:var(--nimi-fg-3);border-radius:var(--nimi-radius-sm);display:grid;place-items:center;cursor:pointer;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <div style="flex-shrink:0;padding:14px 20px 4px;">
+          <div style="position:relative;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--nimi-fg-3);"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input placeholder="搜索世界名称" style="width:100%;font-family:inherit;font-size:var(--nimi-text-sm);padding:9px 12px 9px 34px;border-radius:var(--nimi-radius-md);border:1px solid var(--nimi-border-subtle);background:var(--nimi-surface-panel);color:var(--nimi-fg-1);outline:none;"/>
+          </div>
+        </div>
+
+        <div style="flex:1;min-height:0;overflow-y:auto;padding:8px 20px 16px;">
+          <div style="font-size:var(--nimi-text-xs);font-weight:var(--nimi-type-weight-semibold);color:var(--nimi-fg-3);letter-spacing:0.02em;margin:10px 0 6px;">推荐</div>
+          <sc-for list="{{ recommendedWorlds }}" as="w" hint-placeholder-count="1">
+            <button onClick="{{ w.select }}" style="display:flex;align-items:center;gap:12px;width:100%;padding:10px;border:1px solid {{ w.borderColor }};background:{{ w.bg }};border-radius:var(--nimi-radius-md);cursor:pointer;text-align:left;margin-bottom:6px;">
+              <div style="width:36px;height:36px;border-radius:var(--nimi-radius-md);background:{{ w.color }};color:#fff;display:grid;place-items:center;font-size:var(--nimi-text-sm);font-weight:var(--nimi-type-weight-bold);flex-shrink:0;">{{ w.initial }}</div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span style="font-size:var(--nimi-text-sm);font-weight:var(--nimi-type-weight-semibold);color:var(--nimi-fg-1);">{{ w.name }}</span>
+                  <sc-if value="{{ w.isDefault }}" hint-placeholder-val="{{ false }}">
+                    <span style="font-size:10px;font-weight:var(--nimi-type-weight-medium);color:var(--nimi-fg-3);background:var(--nimi-surface-active);padding:2px 7px;border-radius:var(--nimi-radius-full);">默认世界</span>
+                  </sc-if>
+                </div>
+                <div style="font-size:var(--nimi-text-xs);color:var(--nimi-fg-3);margin-top:2px;">{{ w.subtitle }}</div>
+              </div>
+              <div style="width:18px;height:18px;border-radius:50%;border:2px solid {{ w.radioBorder }};display:grid;place-items:center;flex-shrink:0;">
+                <sc-if value="{{ w.selected }}" hint-placeholder-val="{{ false }}">
+                  <div style="width:9px;height:9px;border-radius:50%;background:var(--nimi-accent);"></div>
+                </sc-if>
+              </div>
+            </button>
+          </sc-for>
+
+          <div style="font-size:var(--nimi-text-xs);font-weight:var(--nimi-type-weight-semibold);color:var(--nimi-fg-3);letter-spacing:0.02em;margin:12px 0 6px;">全部世界</div>
+          <sc-for list="{{ otherWorlds }}" as="w" hint-placeholder-count="8">
+            <button onClick="{{ w.select }}" style="display:flex;align-items:center;gap:12px;width:100%;padding:10px;border:1px solid {{ w.borderColor }};background:{{ w.bg }};border-radius:var(--nimi-radius-md);cursor:pointer;text-align:left;margin-bottom:4px;">
+              <div style="width:36px;height:36px;border-radius:var(--nimi-radius-md);background:{{ w.color }};color:#fff;display:grid;place-items:center;font-size:var(--nimi-text-sm);font-weight:var(--nimi-type-weight-bold);flex-shrink:0;">{{ w.initial }}</div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:var(--nimi-text-sm);font-weight:var(--nimi-type-weight-medium);color:var(--nimi-fg-1);">{{ w.name }}</div>
+                <div style="font-size:var(--nimi-text-xs);color:var(--nimi-fg-3);margin-top:2px;">{{ w.subtitle }}</div>
+              </div>
+              <div style="width:18px;height:18px;border-radius:50%;border:2px solid {{ w.radioBorder }};display:grid;place-items:center;flex-shrink:0;">
+                <sc-if value="{{ w.selected }}" hint-placeholder-val="{{ false }}">
+                  <div style="width:9px;height:9px;border-radius:50%;background:var(--nimi-accent);"></div>
+                </sc-if>
+              </div>
+            </button>
+          </sc-for>
+        </div>
+
+        <div style="flex-shrink:0;padding:10px 20px;border-top:1px solid var(--nimi-border-subtle);text-align:center;">
+          <span style="font-size:var(--nimi-text-xs);color:var(--nimi-fg-3);">选择后立即应用，可随时更换</span>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { collapsed: false, userMenuOpen: false, selectedVariant: 0, worldModalOpen: false, selectedWorldId: "oasis", step: "describe", assetTab: "images" };
+
+  renderVals() {
+    const historyGroups = [
+      { label: "今天", items: [
+        { id: "1", name: "长安夜莺", subtitle: "OASIS · 神秘型", color: "#5abdff", initial: "长", active: "var(--nimi-accent-soft)" },
+        { id: "2", name: "未命名 Persona", subtitle: "OASIS · 草稿", color: "#94a3b8", initial: "未", active: "transparent" },
+      ]},
+      { label: "昨天", items: [
+        { id: "3", name: "蜂鸟织梦人", subtitle: "OASIS · 治愈型", color: "#4ECCA3", initial: "蜂", active: "transparent" },
+        { id: "4", name: "琴弦守夜者", subtitle: "OASIS · 忧郁型", color: "#f97316", initial: "琴", active: "transparent" },
+      ]},
+      { label: "更早", items: [
+        { id: "5", name: "钢铁诗人", subtitle: "OASIS · 直率型", color: "#0ea5e9", initial: "钢", active: "transparent" },
+        { id: "6", name: "赛博说书人", subtitle: "OASIS · 幽默型", color: "#ec4899", initial: "赛", active: "transparent" },
+        { id: "7", name: "南墙孤影", subtitle: "OASIS · 冷静型", color: "#8b5cf6", initial: "南", active: "transparent" },
+      ]},
+    ];
+    const historyItems = historyGroups.flatMap(g => g.items);
+    const selectedVariant = this.state.selectedVariant;
+    const portraitVariants = [0, 1, 2, 3].map(i => ({
+      slotId: "persona-variant-" + i,
+      n: i + 1,
+      selected: i === selectedVariant,
+      border: (i === selectedVariant ? "2px solid var(--nimi-accent)" : "1px solid var(--nimi-border-subtle)"),
+      select: () => this.setState({ selectedVariant: i }),
+    }));
+    const worldData = [
+      { id: "oasis", name: "OASIS", subtitle: "Realm 核心世界 · 已加载基本资料", color: "var(--nimi-fg-1)", initial: "O", isDefault: true, recommended: true },
+      { id: "creator-workshop", name: "Creator Workshop", subtitle: "创作者工具与资源中心世界", color: "#64748b", initial: "C", recommended: false },
+      { id: "main-world", name: "Main World", subtitle: "主要舞台世界", color: "#64748b", initial: "M", recommended: false },
+      { id: "twilight-archive", name: "暮光档案馆", subtitle: "悬疑推理与记忆存档世界", color: "#64748b", initial: "暮", recommended: false },
+      { id: "starport-garden", name: "星港花园", subtitle: "科幻城市与生态花园世界", color: "#64748b", initial: "星", recommended: false },
+      { id: "cloud-isle-echo", name: "云墟回声", subtitle: "漂浮岛屿与云海文明世界", color: "#64748b", initial: "云", recommended: false },
+      { id: "abyss-echo", name: "深渊回响", subtitle: "深海遗迹与失落文明世界", color: "#64748b", initial: "深", recommended: false },
+      { id: "time-library", name: "时光图书馆", subtitle: "跨越时代的知识与故事世界", color: "#64748b", initial: "时", recommended: false },
+      { id: "aurora-frontier", name: "极光边境", subtitle: "极地探险与极光秘境世界", color: "#64748b", initial: "极", recommended: false },
+    ];
+    const selectedWorldId = this.state.selectedWorldId;
+    const buildWorld = (w) => {
+      const selected = w.id === selectedWorldId;
+      return {
+        ...w,
+        selected,
+        bg: selected ? "var(--nimi-accent-soft)" : "transparent",
+        borderColor: selected ? "var(--nimi-accent)" : "var(--nimi-border-subtle)",
+        radioBorder: selected ? "var(--nimi-accent)" : "var(--nimi-border-strong)",
+        select: () => this.setState({ selectedWorldId: w.id, worldModalOpen: false }),
+      };
+    };
+    const recommendedWorlds = worldData.filter(w => w.recommended).map(buildWorld);
+    const otherWorlds = worldData.filter(w => !w.recommended).map(buildWorld);
+    const selectedWorldRaw = worldData.find(w => w.id === selectedWorldId) || worldData[0];
+    const selectedWorld = buildWorld(selectedWorldRaw);
+
+    const assetTab = this.state.assetTab;
+    const assetTabDefs = [
+      { id: "images", label: "图片" },
+      { id: "audio", label: "音频" },
+      { id: "uploads", label: "上传" },
+    ];
+    const assetTabs = assetTabDefs.map(t => ({
+      ...t,
+      bg: t.id === assetTab ? "var(--nimi-accent)" : "transparent",
+      color: t.id === assetTab ? "var(--nimi-accent-onAccent)" : "var(--nimi-fg-3)",
+      select: () => this.setState({ assetTab: t.id }),
+    }));
+    const imageAssets = [
+      { slotId: "asset-img-1", placeholder: "长安夜莺 · 形象", source: "生成" },
+      { slotId: "asset-img-2", placeholder: "长安夜莺 · 变体", source: "生成" },
+      { slotId: "asset-img-3", placeholder: "蜂鸟织梦人 · 形象", source: "生成" },
+      { slotId: "asset-img-4", placeholder: "场景参考", source: "上传" },
+      { slotId: "asset-img-5", placeholder: "服装参考", source: "上传" },
+      { slotId: "asset-img-6", placeholder: "钢铁诗人 · 形象", source: "生成" },
+      { slotId: "asset-img-7", placeholder: "南墙孤影 · 形象", source: "生成" },
+      { slotId: "asset-img-8", placeholder: "参考图", source: "上传" },
+      { slotId: "asset-img-9", placeholder: "赛博说书人 · 形象", source: "生成" },
+      { slotId: "asset-img-10", placeholder: "琴弦守夜者 · 形象", source: "生成" },
+    ];
+    const audioAssets = [
+      { name: "长安夜莺 · 语音样本.wav", subtitle: "生成 · 2:14", source: "生成" },
+      { name: "冷静低音色.mp3", subtitle: "生成 · 0:48", source: "生成" },
+      { name: "参考录音.mp3", subtitle: "上传 · 1:32", source: "上传" },
+      { name: "环境音效.wav", subtitle: "上传 · 0:20", source: "上传" },
+    ];
+    return {
+      isDescribe: this.state.step === "describe",
+      isReview: this.state.step === "review",
+      isAssets: this.state.step === "assets",
+      assetsTabBg: this.state.step === "assets" ? "var(--nimi-surface-active)" : "transparent",
+      goToReview: () => this.setState({ step: "review" }),
+      goToDescribe: () => this.setState({ step: "describe" }),
+      goToAssets: () => this.setState({ step: "assets" }),
+      isImagesTab: assetTab === "images",
+      isAudioTab: assetTab === "audio",
+      assetTabs,
+      imageAssets,
+      audioAssets,
+      collapsed: this.state.collapsed,
+      worldModalOpen: this.state.worldModalOpen,
+      openWorldModal: () => this.setState({ worldModalOpen: true }),
+      closeWorldModal: () => this.setState({ worldModalOpen: false }),
+      stopPropagation: (e) => e.stopPropagation(),
+      recommendedWorlds,
+      otherWorlds,
+      selectedWorld,
+      expanded: !this.state.collapsed,
+      sidebarWidth: this.state.collapsed ? "72px" : "260px",
+      toggleCollapsed: () => this.setState(s => ({ collapsed: !s.collapsed })),
+      userMenuOpen: this.state.userMenuOpen,
+      toggleUserMenu: () => this.setState(s => ({ userMenuOpen: !s.userMenuOpen })),
+      historyGroups,
+      historyItems,
+      portraitVariants,
+    };
+  }
+}
+</script>
+</body>
+</html>
