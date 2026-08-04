@@ -578,40 +578,6 @@ function selectedCompanionSlots(params: Readonly<Record<string, unknown>>): Reco
   return out;
 }
 
-function isJsonRecord(value: unknown): value is NimiJsonObject {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
-function configuredImageProfileEntries(params: Readonly<Record<string, unknown>>): StudioImageProfileEntry[] | null {
-  const configuredEntries = Array.isArray(params.profile_entries)
-    ? params.profile_entries
-    : Array.isArray(params.profileEntries) ? params.profileEntries : null;
-  if (!configuredEntries || configuredEntries.length === 0) return null;
-  const entries = configuredEntries.filter(isJsonRecord);
-  if (entries.length !== configuredEntries.length) {
-    throw new Error('image.generate profile_entries must contain only JSON object entries.');
-  }
-  return entries;
-}
-
-function imageEntryAssetId(entry: unknown): string {
-  if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return '';
-  const record = entry as Record<string, unknown>;
-  const slot = optionalStudioParamText(record.engine_slot ?? record.engineSlot);
-  if (slot) return '';
-  const kind = optionalStudioParamText(record.asset_kind ?? record.assetKind).toLowerCase();
-  if (kind && kind !== 'image' && kind !== 'local_asset_kind_image') return '';
-  return optionalStudioParamText(record.asset_id ?? record.assetId);
-}
-
-function imageModelAssetIdFromConfiguredEntries(entries: readonly unknown[]): string {
-  for (const entry of entries) {
-    const assetId = imageEntryAssetId(entry);
-    if (assetId) return assetId;
-  }
-  return '';
-}
-
 function assetMatchesId(asset: NimiRuntimeLocalAssetEntry, id: string): boolean {
   const normalized = optionalStudioParamText(id);
   return Boolean(normalized) && (
@@ -780,41 +746,6 @@ async function resolveStudioImageRuntimeBinding(
   runtime: Runtime,
   binding: StudioResolvedRuntimeRouteBinding,
 ): Promise<StudioImageRuntimeBinding> {
-  const configuredEntries = configuredImageProfileEntries(binding.selectedParams);
-  if (configuredEntries) {
-    const configuredModel = imageModelAssetIdFromConfiguredEntries(configuredEntries);
-    if (configuredModel && !(
-      optionalStudioParamText(configuredModel) === optionalStudioParamText(binding.model)
-      || optionalStudioParamText(configuredModel) === optionalStudioParamText(binding.resolvedLocalAssetId)
-    )) {
-      throw new Error(`image.generate profile_entries main model ${configuredModel} does not match the NimiAIConfig targetRef resolved model ${binding.model}.`);
-    }
-    if (binding.route === 'local') {
-      const assets = await listNimiRuntimeLocalAssetEntries(runtime);
-      const mainAsset = findLocalAssetById(assets, binding.model);
-      if (!mainAsset) {
-        throw new Error(`image.generate active model ${binding.model} is not present in Runtime local assets; reselect the Image active model.`);
-      }
-      if (configuredModel && !assetMatchesId(mainAsset, configuredModel)) {
-        throw new Error(`image.generate profile_entries main model ${configuredModel} is not the Runtime local asset selected by NimiAIConfig targetRef.`);
-      }
-      await prepareStudioLocalImageRuntimeEnvironment(runtime, mainAsset);
-      return {
-        binding: {
-          ...binding,
-          model: mainAsset.assetId || binding.model,
-          resolvedLocalAssetId: mainAsset.localAssetId || binding.resolvedLocalAssetId,
-          provider: mainAsset.engine || binding.provider,
-        },
-        profileEntries: configuredEntries,
-      };
-    }
-    return {
-      binding,
-      profileEntries: configuredEntries,
-    };
-  }
-
   if (binding.route !== 'local') {
     return {
       binding,

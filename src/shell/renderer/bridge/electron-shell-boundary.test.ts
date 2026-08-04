@@ -50,10 +50,12 @@ describe('studio Desktop-supervised Electron boundary', () => {
     expect(existsSync(join(process.cwd(), 'scripts/run-electron-dev.mjs'))).toBe(false);
   });
 
-  it('declares no retired installed-app scope vocabulary', () => {
+  it('declares only the admitted exact AI permission and no retired scope vocabulary', () => {
     const manifestSource = readFileSync(join(process.cwd(), 'nimi.app.yaml'), 'utf8');
 
-    expect(manifestSource).toContain('permissions: []');
+    expect(manifestSource).toContain('  - id: ai.text.generate');
+    expect(manifestSource).toContain('reason: Generate owner-reviewed Realm Persona draft candidates');
+    expect(manifestSource.match(/^\s+- id:/gmu)).toHaveLength(1);
     expect(manifestSource).toContain('renderer_origin: http://127.0.0.1:1450');
     expect(manifestSource).not.toContain('declared_nimi_api_scopes');
     expect(manifestSource).not.toContain('runtime.artifacts');

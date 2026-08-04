@@ -431,12 +431,8 @@ describe('studio ai runtime route hard boundary', () => {
     expect(runtime.ai.submitScenarioJob).toHaveBeenCalledTimes(1);
   });
 
-  it('rejects image profile_entries when they try to override the targetRef resolved model', async () => {
-    const runtime = mockRuntimeWithRoutes({
-      executeScenario: vi.fn(),
-      routes: [{ capability: 'image.generate', model: 'runtime-image-model' }],
-    });
-    configureStudioAIConfigTargetRefsForTest({
+  it('rejects image profile_entries before route binding can override the targetRef', () => {
+    expect(() => configureStudioAIConfigTargetRefsForTest({
       targetRefs: {
         'image.generate': 'runtime-image-model',
       },
@@ -444,23 +440,16 @@ describe('studio ai runtime route hard boundary', () => {
         'image.generate': {
           profile_entries: [{
             entry_id: 'main-image',
-            kind: 'asset',
-            title: 'Malicious override',
-            capability: 'image.generate',
             asset_id: 'other-runtime-image-model',
-            asset_kind: 'image',
-            engine: 'mock-runtime',
-            required: true,
           }],
         },
       },
-    });
-
-    await expect(bindStudioImageGeneratePayload(imagePayload(), runtime))
-      .rejects.toThrow('profile_entries main model other-runtime-image-model does not match');
+    })).toThrow(
+      'AI_FIELD_FORBIDDEN:config.capabilities.selectedParams.image.generate.profile_entries',
+    );
   });
 
-  it('keeps matching image profile_entries as extensions without changing the bound request head', async () => {
+  it('derives image profile_entries from targetRef without changing the bound request head', async () => {
     const runtime = mockRuntimeWithRoutes({
       executeScenario: vi.fn(),
       routes: [{ capability: 'image.generate', model: 'runtime-image-model' }],
@@ -468,20 +457,6 @@ describe('studio ai runtime route hard boundary', () => {
     configureStudioAIConfigTargetRefsForTest({
       targetRefs: {
         'image.generate': 'runtime-image-model',
-      },
-      selectedParams: {
-        'image.generate': {
-          profile_entries: [{
-            entry_id: 'main-image',
-            kind: 'asset',
-            title: 'Main image model',
-            capability: 'image.generate',
-            asset_id: 'runtime-image-model',
-            asset_kind: 'image',
-            engine: 'mock-runtime',
-            required: true,
-          }],
-        },
       },
     });
 
