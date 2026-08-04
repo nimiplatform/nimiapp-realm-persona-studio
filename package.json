@@ -21,7 +21,7 @@
     "typecheck:electron": "tsc -p tsconfig.electron.json --noEmit",
     "build": "pnpm run typecheck && pnpm run build:renderer && (cd src-tauri && cargo check)",
     "lint": "pnpm run typecheck && eslint . --max-warnings 0 && (cd src-tauri && cargo check)",
-    "spec:authority:check": "nimicoding authority check .nimi/spec --require-format nimicoding.authority/v2",
+    "spec:authority:check": "nimicoding authority check .nimi/spec",
     "spec:authority:compile": "nimicoding authority compile .nimi/spec",
     "check:spec-consistency": "pnpm run spec:authority:check",
     "i18n:check": "vitest run src/shell/renderer/i18n/studio-i18n.test.ts",
@@ -38,10 +38,10 @@
     "nimicoding:doctor": "nimicoding doctor"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@nimiplatform/app-tools": "link:../../nimi/app-tools",
     "@nimiplatform/kit-protected-local-win32-x64": "link:../../nimi/kit/shell/protected-local-node/npm/win32-x64",
-    "@eslint/js": "^10.0.1",
-    "@nimiplatform/nimi-coding": "0.4.0",
+    "@nimiplatform/nimi-coding": "0.5.0",
     "@tailwindcss/vite": "^4.3.0",
     "@tauri-apps/cli": "^2.11.2",
     "@testing-library/jest-dom": "^6.9.1",
