@@ -31,7 +31,7 @@ const REVIEW_FIXED_MESSAGE_KEYS: Record<string, StudioCopyKey> = {
   'Runtime settings proposal payload invalid.': 'settings.error.runtimeProposalPayloadInvalid',
   'Runtime runtime.ai.text.generate runtime transport unavailable: Tauri IPC runtime transport is required.': 'settings.error.runtimeProposalTransportUnavailable',
   'Runtime settings proposal output invalid.': 'settings.error.runtimeProposalOutputInvalid',
-  'Runtime settings proposal returned no admitted setting changes.': 'settings.error.proposalNoChanges',
+  'Runtime settings proposal returned no supported setting changes.': 'settings.error.proposalNoChanges',
 };
 
 function translateReviewFixedMessage(message: string, t: StudioTranslator): string {
@@ -72,7 +72,7 @@ function ConsistencyReviewBody({ personaId, onApplied }: { personaId: string; on
   const [result, setResult] = useState<RuntimeOwnerSettingsProposalResult | null>(null);
   const [isReviewing, setIsReviewing] = useState(false);
 
-  async function requestReview() {
+  async function generateReview() {
     if (!settingsQuery.data) return;
     setIsReviewing(true);
     setResult(null);
@@ -105,7 +105,7 @@ function ConsistencyReviewBody({ personaId, onApplied }: { personaId: string; on
         {settingsQuery.isLoading ? (
           <EmptyState title={t('persona.review.loadingTitle')} description={t('persona.review.loadingDescription')} />
         ) : settingsQuery.isError ? (
-          <InlineAlert tone="danger">
+          <InlineAlert tone="info">
             {t('persona.review.unavailablePrefix')} {t('persona.review.readFailed')}
           </InlineAlert>
         ) : (
@@ -120,7 +120,8 @@ function ConsistencyReviewBody({ personaId, onApplied }: { personaId: string; on
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
               <Button
                 tone="primary"
-                onClick={() => void requestReview()}
+                className="text-white"
+                onClick={() => void generateReview()}
                 disabled={!intent.trim() || isReviewing || !settingsQuery.data}
                 loading={isReviewing}
               >
@@ -160,7 +161,7 @@ function ConsistencyReviewBody({ personaId, onApplied }: { personaId: string; on
                   </pre>
                 </details>
                 <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                  <Button tone="primary" onClick={onApplied}>{t('persona.review.goApply')}</Button>
+                  <Button tone="primary" className="text-white" onClick={onApplied}>{t('persona.review.goApply')}</Button>
                 </div>
               </Surface>
             ) : null}

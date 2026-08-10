@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Button, Checkbox, EmptyState, FieldShell, InlineAlert, nimiToast, SelectField, StatusBadge, Surface, TextareaField, TextField } from '@nimiplatform/kit/ui';
 import type { OwnerPortfolioPersonaDetail } from './portfolio-data.js';
 import {
-  PERSONA_PUBLICATION_ADMITTED,
+  PERSONA_PUBLICATION_AVAILABLE,
   PERSONA_PUBLICATION_UNAVAILABLE_MESSAGE,
   REALM_MEDIA_RESOURCE_UPLOAD_SOURCE,
   REALM_TEXT_RESOURCE_SOURCE,
@@ -166,6 +166,8 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
   const validation = validateLocalPostDraft(draft, persona);
   const postTextResourceDraft = validateLocalPostDraft({ ...draft, attachmentEnabled: false, attachmentTargetId: '' }, persona);
   const isScheduleWorkspace = mode === 'schedule';
+  const publishCapabilityUnavailable = publishResult?.ok === false
+    && publishResult.failure === 'persona-post-publication-unavailable';
 
   useEffect(() => {
     setDraft(createEmptyPostDraft());
@@ -225,7 +227,7 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
     setScheduleErrors([]);
   }
 
-  async function requestPostCopyProposal() {
+  async function proposePostCopy() {
     setIsProposingPostCopy(true);
     setPostCopyResult(null);
     try {
@@ -271,7 +273,7 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
         clearLocalPostSchedule(persona.id);
         setSavedSchedule(null);
       } else {
-        nimiToast.danger(translatePostFixedMessage(result.message, t));
+        nimiToast.info(translatePostFixedMessage(result.message, t));
       }
     } finally {
       setIsPublishingSchedule(false);
@@ -324,7 +326,11 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
         setSchedulePreview(null);
         setScheduleErrors([]);
       } else {
-        nimiToast.danger(translatePostFixedMessage(result.message, t));
+        if (result.failure === 'persona-text-resource-publication-unavailable') {
+          nimiToast.info(translatePostFixedMessage(result.message, t));
+        } else {
+          nimiToast.danger(translatePostFixedMessage(result.message, t));
+        }
       }
     } finally {
       setIsCreatingTextResource(false);
@@ -346,7 +352,7 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
       }
     } catch {
       setResourceOptions([]);
-      nimiToast.danger(t('posts.attachment.listFailed'));
+      nimiToast.info(t('posts.publicationUnavailable'));
     } finally {
       setIsLoadingResources(false);
     }
@@ -402,7 +408,11 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
         setSchedulePreview(null);
         setScheduleErrors([]);
       } else {
-        nimiToast.danger(translatePostFixedMessage(result.message, t));
+        if (result.failure === 'persona-media-publication-unavailable') {
+          nimiToast.info(translatePostFixedMessage(result.message, t));
+        } else {
+          nimiToast.danger(translatePostFixedMessage(result.message, t));
+        }
       }
     } finally {
       setIsUploadingMediaResource(false);
@@ -517,7 +527,7 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
                   tone="secondary"
                   disabled={!postCopyIntent.trim() || isProposingPostCopy}
                   loading={isProposingPostCopy}
-                  onClick={() => void requestPostCopyProposal()}
+                  onClick={() => void proposePostCopy()}
                 >
                   {t('posts.askRuntime')}
                 </Button>
@@ -645,7 +655,7 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
                 </div>
                 <StatusBadge tone="info">{t('posts.upload.badge')}</StatusBadge>
               </div>
-              <InlineAlert tone="warning" className="mt-3">
+              <InlineAlert tone="info" className="mt-3">
                 {t('posts.publicationUnavailable')}
               </InlineAlert>
               <div className="mt-3 grid gap-3 md:grid-cols-[180px_1fr]">
@@ -681,7 +691,7 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
               </div>
               <div className="mt-3 flex flex-wrap gap-3">
                 <Button
-                  disabled={!PERSONA_PUBLICATION_ADMITTED || !draft.humanReviewed || !mediaUploadFile || isUploadingMediaResource}
+                  disabled={!PERSONA_PUBLICATION_AVAILABLE || !draft.humanReviewed || !mediaUploadFile || isUploadingMediaResource}
                   loading={isUploadingMediaResource}
                   onClick={() => void uploadMediaResourceAttachment()}
                 >
@@ -706,7 +716,7 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
                 </div>
                 <StatusBadge tone="info">{t('posts.textAttachment.badge')}</StatusBadge>
               </div>
-              <InlineAlert tone="warning" className="mt-3">
+              <InlineAlert tone="info" className="mt-3">
                 {t('posts.publicationUnavailable')}
               </InlineAlert>
               {postTextResourceDraft.publishable ? null : (
@@ -716,7 +726,7 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
               )}
               <div className="mt-3 flex flex-wrap gap-3">
                 <Button
-                  disabled={!PERSONA_PUBLICATION_ADMITTED || !postTextResourceDraft.publishable || isCreatingTextResource}
+                  disabled={!PERSONA_PUBLICATION_AVAILABLE || !postTextResourceDraft.publishable || isCreatingTextResource}
                   loading={isCreatingTextResource}
                   onClick={() => void createTextResourceAttachment()}
                 >
@@ -754,7 +764,7 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
                 {t('posts.previewReviewedPost')}
               </Button>
               <Button
-                disabled={!PERSONA_PUBLICATION_ADMITTED || !validation.publishable || isPublishing}
+                disabled={!PERSONA_PUBLICATION_AVAILABLE || !validation.publishable || isPublishing}
                 onClick={async () => {
                   if (!validation.publishable) {
                     return;
@@ -766,7 +776,11 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
                     const result = await publishReviewedPostDraft(validation.payload);
                     setPublishResult(result);
                     if (!result.ok) {
-                      nimiToast.danger(translatePostFixedMessage(result.message, t));
+                      if (result.failure === 'persona-post-publication-unavailable') {
+                        nimiToast.info(translatePostFixedMessage(result.message, t));
+                      } else {
+                        nimiToast.danger(translatePostFixedMessage(result.message, t));
+                      }
                     }
                   } finally {
                     setIsPublishing(false);
@@ -777,7 +791,7 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
               </Button>
             </div> : null}
             {!isScheduleWorkspace ? (
-              <InlineAlert tone="warning">
+              <InlineAlert tone="info">
                 {t('posts.publicationUnavailable')}
               </InlineAlert>
             ) : null}
@@ -794,11 +808,19 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
                   <div>
                     <div className="font-medium">{t('posts.publishResult.title')}</div>
                     <div className="mt-1 text-[length:var(--nimi-type-body-sm-size)] text-[var(--nimi-text-muted)]">
-                      {publishResult.ok ? t('posts.publishResult.returned') : t('posts.publishResult.failed')}
+                      {publishResult.ok
+                        ? t('posts.publishResult.returned')
+                        : publishCapabilityUnavailable
+                          ? t('posts.publishResult.unavailable')
+                          : t('posts.publishResult.failed')}
                     </div>
                   </div>
-                  <StatusBadge tone={publishResult.ok ? 'success' : 'danger'}>
-                    {publishResult.ok ? t('posts.publishResult.published') : t('posts.publishResult.failedBadge')}
+                  <StatusBadge tone={publishResult.ok ? 'success' : publishCapabilityUnavailable ? 'info' : 'danger'}>
+                    {publishResult.ok
+                      ? t('posts.publishResult.published')
+                      : publishCapabilityUnavailable
+                        ? t('posts.publishResult.unavailableBadge')
+                        : t('posts.publishResult.failedBadge')}
                   </StatusBadge>
                 </div>
                 {publishResult.ok ? (
@@ -873,14 +895,14 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
                   {t('posts.schedule.save')}
                 </Button>
                 <Button
-                  disabled={!PERSONA_PUBLICATION_ADMITTED || !savedSchedule || !isLocalPostScheduleDue(savedSchedule) || isPublishingSchedule}
+                  disabled={!PERSONA_PUBLICATION_AVAILABLE || !savedSchedule || !isLocalPostScheduleDue(savedSchedule) || isPublishingSchedule}
                   loading={isPublishingSchedule}
                   onClick={() => void publishSavedSchedule()}
                 >
                   {t('posts.schedule.publishDue')}
                 </Button>
               </div>
-              <InlineAlert tone="warning" className="mt-3">
+              <InlineAlert tone="info" className="mt-3">
                 {t('posts.publicationUnavailable')}
               </InlineAlert>
               <TechnicalReviewDetails title={t('posts.schedule.payload')}>

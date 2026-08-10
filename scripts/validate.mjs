@@ -1,4 +1,20 @@
 import { readFileSync } from 'node:fs';
+import { parse as parseYaml } from 'yaml';
+
+const EXPECTED_APP_ACCESS = ['realm.data', 'runtime.consume'];
+
+function validateAppAccessDeclaration(manifestText) {
+  const parsed = parseYaml(manifestText);
+  if (!Array.isArray(parsed?.app_access)
+    || JSON.stringify(parsed.app_access) !== JSON.stringify(EXPECTED_APP_ACCESS)) {
+    throw new Error('Realm Persona Studio must declare exactly realm.data and runtime.consume');
+  }
+  for (const retired of ['permissions', 'reason', 'grant_id', 'scope', 'qualifier', 'operation_id', 'resource_ref']) {
+    if (Object.hasOwn(parsed, retired)) {
+      throw new Error(`retired App permission vocabulary remains: ${retired}`);
+    }
+  }
+}
 
 const manifest = readFileSync(new URL('../nimi.app.yaml', import.meta.url), 'utf8');
 const submission = readFileSync(new URL('../.nimi/admission/submission.yaml', import.meta.url), 'utf8');
@@ -7,6 +23,7 @@ const buildProfile = readFileSync(new URL('../.nimi/admission/build-profile.yaml
 if (!manifest.includes('manifest_role: submitted-input')) {
   throw new Error('submitted manifest role marker missing in nimi.app.yaml');
 }
+validateAppAccessDeclaration(manifest);
 if (!manifest.includes('app_id: nimi.realm-persona-studio')) {
   throw new Error('manifest app_id must be nimi.realm-persona-studio');
 }

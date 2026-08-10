@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-describe('persona insights admitted metrics boundary', () => {
+describe('persona insights supported metrics boundary', () => {
   it('does not derive owner-visible freshness metrics locally', () => {
     const source = readFileSync(
       join(process.cwd(), 'src/shell/renderer/features/persona-insights/persona-insights-page.tsx'),

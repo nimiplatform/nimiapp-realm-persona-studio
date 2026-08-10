@@ -1,9 +1,10 @@
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { app, BrowserWindow, ipcMain, Menu } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu, protocol, session, webContents } from 'electron';
 import {
   createNimiElectronStandardApplicationMenuTemplate,
   isAllowedElectronRendererUrl,
+  registerNimiElectronAppAssetProtocolScheme,
   registerNimiElectronAppBridge,
 } from '@nimiplatform/kit/shell/electron/main';
 
@@ -21,6 +22,7 @@ const rendererUrl = readDevelopmentRendererUrl() || rendererDistUrl;
 app.setName(REALM_PERSONA_STUDIO_APP_NAME);
 installRealmPersonaStudioStandardApplicationMenu();
 configureRealmPersonaStudioElectronChromiumRuntime();
+registerNimiElectronAppAssetProtocolScheme(protocol);
 
 void app.whenReady().then(bootstrapElectron).catch(handleElectronStartupFailure);
 
@@ -28,8 +30,8 @@ async function bootstrapElectron(): Promise<void> {
   registerNimiElectronAppBridge({
     appId: REALM_PERSONA_STUDIO_APP_ID,
     allowedRendererUrls: [rendererUrl],
+    assetMediaPlatform: { protocol, webRequest: session.defaultSession.webRequest, webContents },
     ipcMain,
-    onProtectedSessionFailure: () => app.quit(),
   });
 
   await createMainWindow();

@@ -45,13 +45,13 @@ const SETTINGS_FIXED_MESSAGE_KEYS: Record<string, StudioCopyKey> = {
   'Runtime settings proposal output invalid.': 'settings.error.runtimeProposalOutputInvalid',
   'Owner settings payload invalid.': 'settings.error.ownerSettingsPayloadInvalid',
   'Realm owner settings update failed.': 'settings.error.ownerSettingsUpdateFailed',
-  'Runtime source materialization requires a protected Runtime-issued challenge and is not admitted for Persona Studio.': 'runtimeProjection.error.notAdmitted',
+  'Nimi App Access does not provide Runtime source materialization for Persona Studio yet.': 'runtimeProjection.error.unavailable',
   'visibility payload invalid': 'settings.error.visibilityPayloadInvalid',
   'visibility settings have no reviewed changes': 'visibility.noChanges',
   'Realm visibility update failed.': 'settings.error.visibilityUpdateFailed',
   'displayName cannot be empty because RealmPersonaCoreV1 requires presentation.displayName': 'settings.error.displayNameRequired',
   'description cannot be empty because RealmPersonaCoreV1 requires identity.summary and presentation.profileLine': 'settings.error.descriptionRequired',
-  'Runtime settings proposal returned no admitted setting changes.': 'settings.error.proposalNoChanges',
+  'Runtime settings proposal returned no supported setting changes.': 'settings.error.proposalNoChanges',
   'Runtime projection requires worldId evidence from Realm WorldCoreController.getRealmPersona.': 'runtimeProjection.error.worldIdRequired',
   'Runtime projection response did not include RUNTIME_PAYLOAD checksum summary.': 'runtimeProjection.error.checksumMissing',
   'Realm runtime projection failed.': 'runtimeProjection.error.failed',
@@ -159,7 +159,7 @@ export function SettingProposalWorkspace({ persona, onPersonaWrite }: { persona:
     }
   }
 
-  async function requestRuntimeProposal() {
+  async function proposeRuntimeSettings() {
     if (!draft || !settingsQuery.data) {
       return;
     }
@@ -199,7 +199,7 @@ export function SettingProposalWorkspace({ persona, onPersonaWrite }: { persona:
             <EmptyState title={t('settings.loadingTitle')} description={t('settings.loadingDescription')} />
           ) : null}
           {settingsQuery.isError ? (
-            <InlineAlert tone="danger">
+            <InlineAlert tone="info">
               {t('settings.unavailable', {
                 message: t('settings.readFailed'),
               })}
@@ -368,7 +368,7 @@ export function SettingProposalWorkspace({ persona, onPersonaWrite }: { persona:
                   tone="secondary"
                   disabled={!draft.naturalLanguageIntent.trim() || isProposing}
                   loading={isProposing}
-                  onClick={() => void requestRuntimeProposal()}
+                  onClick={() => void proposeRuntimeSettings()}
                 >
                   {t('settings.askRuntime')}
                 </Button>
@@ -560,7 +560,7 @@ export function VisibilitySettingsWorkspace({ persona, onPersonaWrite }: { perso
         <EmptyState title={t('visibility.loadingTitle')} description={t('visibility.loadingDescription')} />
       ) : null}
       {visibilityQuery.isError ? (
-        <InlineAlert tone="danger">
+        <InlineAlert tone="info">
           {t('visibility.unavailable', {
             message: t('visibility.readFailed'),
           })}
@@ -642,7 +642,7 @@ export function RuntimeProjectionWorkspace({ persona }: { persona: OwnerPortfoli
       if (result.ok) {
         nimiToast.success(t('runtimeProjection.generated'));
       } else {
-        nimiToast.danger(translateSettingsFixedMessage(result.message, t));
+        nimiToast.info(translateSettingsFixedMessage(result.message, t));
       }
     } finally {
       setIsProjecting(false);
@@ -658,7 +658,7 @@ export function RuntimeProjectionWorkspace({ persona }: { persona: OwnerPortfoli
       if (result.ok) {
         nimiToast.success(t('runtimeProjection.generated'));
       } else {
-        nimiToast.danger(translateSettingsFixedMessage(result.message, t));
+        nimiToast.info(translateSettingsFixedMessage(result.message, t));
       }
     } finally {
       setIsProjecting(false);
@@ -699,8 +699,13 @@ export function RuntimeProjectionWorkspace({ persona }: { persona: OwnerPortfoli
           ))}
         </dl>
       ) : null}
+      {projectionResult && !projectionResult.ok ? (
+        <InlineAlert tone="info" className="mt-3">
+          {translateSettingsFixedMessage(projectionResult.message, t)}
+        </InlineAlert>
+      ) : null}
       {projectionResult ? (
-        <TechnicalReviewDetails title={t('runtimeProjection.requestDetails')}>
+        <TechnicalReviewDetails title={t('runtimeProjection.inputDetails')}>
           <pre className="ras-json-preview m-0 mt-3 min-h-24 overflow-auto rounded-[var(--nimi-radius-field)] border border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-panel)] p-3 text-xs">
             {JSON.stringify(projectionResult.submitted, null, 2)}
           </pre>

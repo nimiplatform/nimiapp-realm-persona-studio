@@ -1,4 +1,5 @@
 import { type ReactNode } from 'react';
+import { ArrowRight } from 'lucide-react';
 import { FieldShell, StatusBadge, Surface, TextareaField, TextField } from '@nimiplatform/kit/ui';
 import { translateStudioCopy, type StudioTranslateOptions } from '../../i18n/studio-i18n.js';
 import { useStudioI18n } from '../../i18n/use-studio-i18n.js';
@@ -94,40 +95,61 @@ function settingFieldStatusTone(field: SettingField): 'success' | 'neutral' | 'w
   return 'warning';
 }
 
-export function PersonaCard({ persona, active, onSelect }: { persona: OwnerPortfolioPersona; active: boolean; onSelect: () => void }) {
+export function PersonaCard({
+  persona,
+  worldBannerUrl,
+  worldName = persona.worldName,
+  active,
+  onSelect,
+}: {
+  persona: OwnerPortfolioPersona;
+  worldBannerUrl: string | null;
+  worldName?: string | null;
+  active: boolean;
+  onSelect: () => void;
+}) {
   const { t } = useStudioI18n();
   return (
-    <Surface
-      as="button"
-      type="button"
-      padding="md"
-      tone="card"
-      interactive
-      active={active}
-      className="grid w-full min-w-0 grid-cols-[56px_1fr] gap-3 text-left"
-      onClick={onSelect}
-    >
-      <div className="h-14 w-14 overflow-hidden rounded-[var(--nimi-radius-md)] bg-[var(--nimi-surface-active)]">
-        {persona.avatarUrl ? <img src={persona.avatarUrl} alt="" className="h-full w-full object-cover" /> : null}
+    <article className="ras-world-persona-card" data-active={active || undefined}>
+      <div className="ras-world-persona-card__banner">
+        {worldBannerUrl ? (
+          <img src={worldBannerUrl} alt="" />
+        ) : (
+          <span>{t('portfolio.card.bannerUnavailable')}</span>
+        )}
       </div>
-      <div className="min-w-0">
-        <div className="flex min-w-0 items-center gap-2">
-          <div className="ras-break-anywhere truncate text-[length:var(--nimi-type-label-size)] font-[var(--nimi-type-label-weight)]">
-            {persona.displayName}
+      <div className="ras-world-persona-card__panel">
+        <div className="ras-world-persona-card__avatar" aria-hidden="true">
+          {persona.avatarUrl ? (
+            <img src={persona.avatarUrl} alt="" />
+          ) : (
+            <span>{persona.displayName.charAt(0).toLocaleUpperCase()}</span>
+          )}
+        </div>
+        <div className="ras-world-persona-card__identity">
+          <h2>{persona.displayName}</h2>
+          <p>@{persona.handle}</p>
+          <div className="ras-world-persona-card__tags">
+            <StatusBadge tone="neutral">{worldName || t('shared.worldUnavailable')}</StatusBadge>
+            <StatusBadge tone="info">{ownerScopeLabel(persona.ownerScope, t)}</StatusBadge>
           </div>
+        </div>
+        <div className="ras-world-persona-card__footer">
           <StatusBadge tone={persona.friendCount.status === 'available' ? 'success' : 'warning'} shape="dot">
             {friendCountLabel(persona, t)}
           </StatusBadge>
-        </div>
-        <div className="ras-break-anywhere mt-1 text-[length:var(--nimi-type-body-sm-size)] text-[var(--nimi-text-muted)]">
-          @{persona.handle}
-        </div>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <StatusBadge tone="info">{ownerScopeLabel(persona.ownerScope, t)}</StatusBadge>
-          <StatusBadge tone="neutral">{persona.worldName || t('shared.worldUnavailable')}</StatusBadge>
+          <button
+            type="button"
+            className="ras-world-persona-card__enter"
+            aria-label={t('portfolio.card.enter', { persona: persona.displayName })}
+            title={t('portfolio.card.enter', { persona: persona.displayName })}
+            onClick={onSelect}
+          >
+            <ArrowRight size={22} strokeWidth={1.8} aria-hidden="true" />
+          </button>
         </div>
       </div>
-    </Surface>
+    </article>
   );
 }
 

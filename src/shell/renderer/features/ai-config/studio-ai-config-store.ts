@@ -1,291 +1,73 @@
 import type {
-  SharedAIConfigService,
-  SharedAIConfigSubscribeListener,
-  SharedAIConfigUnsubscribe,
-} from '@nimiplatform/kit/features/model-config';
-import {
-  applyNimiAIProfileToConfig,
-  createEmptyNimiAIConfig,
-  createNimiAIConfigSubscriptionRegistry,
-  createNimiAppAIScopeRef,
-  encodeNimiAIScopeRef,
-  formatNimiAIValidationIssues,
-  parseNimiAIProfile,
-  previewNimiAIProfileApply,
-  validateNimiAIConfig,
-  validateNimiAIProfile,
-  versionNimiAIConfig,
-  type NimiAIConfig,
-  type NimiAIConfigTargetRef,
-  type NimiAIProfile,
-  type NimiAIProfileApplyOptions,
-  type NimiAIProfileApplyResult,
-  type NimiAIProfilePreviewOptions,
-  type NimiAIProfilePreviewResult,
-  type NimiAIScopeRef,
-  type NimiAISnapshot,
+  NimiPortableAppAIConfig,
+  NimiPortableAppAIConfigIntent,
 } from '@nimiplatform/sdk/ai';
-import {
-  createStudioProtectedOperationUnavailableError,
-  STUDIO_RUNTIME_APP_ID,
-} from '@renderer/app-shell/studio-platform.js';
+import type { NimiLocalAppClient } from '@nimiplatform/sdk/app';
+import { REALM_PERSONA_STUDIO_APP_ID } from '../../../app-identity.js';
+import { getStudioLocalAppClient } from '@renderer/app-shell/studio-platform.js';
 
-export const STUDIO_AI_CONFIG_SURFACE_ID = 'owner-workbench';
+/**
+ * Studio App AIConfig access on the Nimi App Access contract. Studio submits
+ * capability intent only; the host and Runtime fix the exact App owner and own
+ * implementation selection. Missing App AIConfig is one typed unconfigured
+ * projection, never a pseudo-configured state.
+ */
 
-export type StudioAIProfileImportResult =
-  | {
-    ok: true;
-    profile: NimiAIProfile;
-    profileCount: number;
-    message: string;
-  }
-  | {
-    ok: false;
-    errors: string[];
-    message: string;
-  };
+export const STUDIO_TEXT_GENERATE_CAPABILITY_CONTRACT = 'text.generate' as const;
 
-const configSubscriptions = createNimiAIConfigSubscriptionRegistry();
-const configCache = new Map<string, NimiAIConfig>();
-const snapshotByExecution = new Map<string, NimiAISnapshot>();
-const latestSnapshotByScope = new Map<string, string>();
-let profileLibrary: NimiAIProfile[] = [];
+export type StudioAIConfigClient = Pick<NimiLocalAppClient, 'aiConfig'>;
 
-export function createStudioAIScopeRef(): NimiAIScopeRef {
-  return createNimiAppAIScopeRef(STUDIO_RUNTIME_APP_ID, STUDIO_AI_CONFIG_SURFACE_ID);
-}
-
-export async function hydrateStudioAIConfigFromProtectedBridge(
-  scopeRef: NimiAIScopeRef = createStudioAIScopeRef(),
-): Promise<NimiAIConfig> {
-  throw createStudioProtectedOperationUnavailableError(
-    `AI configuration for ${encodeNimiAIScopeRef(scopeRef)}`,
-  );
-}
-
-export async function persistStudioAIConfigToProtectedBridge(
-  config: NimiAIConfig,
-): Promise<NimiAIConfig> {
-  const validation = validateNimiAIConfig(config);
-  if (!validation.valid) {
-    throw new Error(`NimiAIConfig validation failed: ${formatNimiAIValidationIssues(validation.issues)}`);
-  }
-  throw createStudioProtectedOperationUnavailableError(
-    `AI configuration for ${encodeNimiAIScopeRef(config.scopeRef)}`,
-  );
-}
-
-export function listStudioAIProfiles(): NimiAIProfile[] {
-  return [...profileLibrary];
-}
-
-export function importStudioAIProfileJson(rawJson: string): StudioAIProfileImportResult {
-  let parsed: unknown;
+export async function loadStudioAIConfig(
+  client: StudioAIConfigClient = getStudioLocalAppClient(),
+): Promise<NimiPortableAppAIConfig | null> {
   try {
-    parsed = JSON.parse(rawJson);
+    return await client.aiConfig.get();
   } catch (error) {
-    return {
-      ok: false,
-      errors: [error instanceof Error ? error.message : String(error || 'Invalid JSON.')],
-      message: 'AIProfile JSON could not be parsed.',
-    };
-  }
-
-  let profile: NimiAIProfile;
-  try {
-    profile = parseNimiAIProfile(parsed);
-  } catch (error) {
-    return {
-      ok: false,
-      errors: [error instanceof Error ? error.message : String(error)],
-      message: 'AIProfile validation failed.',
-    };
-  }
-
-  const validation = validateNimiAIProfile(profile);
-  if (!validation.valid) {
-    return {
-      ok: false,
-      errors: validation.issues.map((issue) => `${issue.code}:${issue.path}`),
-      message: 'AIProfile validation failed.',
-    };
-  }
-
-  profileLibrary = [
-    profile,
-    ...profileLibrary.filter((existing) => existing.profileId !== profile.profileId),
-  ];
-  return {
-    ok: true,
-    profile,
-    profileCount: profileLibrary.length,
-    message: `Imported AIProfile ${profile.title || profile.profileId}.`,
-  };
-}
-
-export function loadStudioAIConfig(scopeRef: NimiAIScopeRef = createStudioAIScopeRef()): NimiAIConfig {
-  return configCache.get(encodeNimiAIScopeRef(scopeRef)) ?? createEmptyNimiAIConfig(scopeRef);
-}
-
-export function saveStudioAIConfig(
-  next: NimiAIConfig,
-  scopeRef: NimiAIScopeRef = createStudioAIScopeRef(),
-  options?: { readonly expectedBaseVersion?: string },
-): NimiAIConfig {
-  const normalized = validateNextStudioAIConfig(next, scopeRef, options);
-  cacheStudioAIConfig(normalized);
-  return normalized;
-}
-
-export async function commitStudioAIConfigToProtectedBridge(
-  next: NimiAIConfig,
-  scopeRef: NimiAIScopeRef = createStudioAIScopeRef(),
-  options?: { readonly expectedBaseVersion?: string },
-): Promise<NimiAIConfig> {
-  return persistStudioAIConfigToProtectedBridge(validateNextStudioAIConfig(next, scopeRef, options));
-}
-
-function validateNextStudioAIConfig(
-  next: NimiAIConfig,
-  scopeRef: NimiAIScopeRef,
-  options?: { readonly expectedBaseVersion?: string },
-): NimiAIConfig {
-  const normalized = { ...next, scopeRef };
-  const expectedBaseVersion = options?.expectedBaseVersion?.trim();
-  if (expectedBaseVersion) {
-    const currentVersion = versionNimiAIConfig(loadStudioAIConfig(scopeRef));
-    if (currentVersion !== expectedBaseVersion) {
-      throw new Error('NimiAIConfig CAS conflict: baseVersion is stale');
+    if (isStudioAIConfigNotFound(error)) {
+      return null;
     }
+    throw error;
   }
-  const validation = validateNimiAIConfig(normalized);
-  if (!validation.valid) {
-    throw new Error(`NimiAIConfig validation failed: ${formatNimiAIValidationIssues(validation.issues)}`);
-  }
-  return normalized;
 }
 
-export function readStudioAIConfigTargetRef(
-  capability: string,
-  scopeRef: NimiAIScopeRef = createStudioAIScopeRef(),
-): NimiAIConfigTargetRef | null {
-  return loadStudioAIConfig(scopeRef).capabilities.targetRefs[capability] || null;
-}
-
-export function readStudioAIConfigSelectedParams(
-  capability: string,
-  scopeRef: NimiAIScopeRef = createStudioAIScopeRef(),
-): Readonly<Record<string, unknown>> {
-  const raw = loadStudioAIConfig(scopeRef).capabilities.selectedParams[capability];
-  return raw && typeof raw === 'object' && !Array.isArray(raw)
-    ? raw as Readonly<Record<string, unknown>>
-    : {};
-}
-
-export function recordStudioAISnapshot(snapshot: NimiAISnapshot): NimiAISnapshot {
-  snapshotByExecution.set(snapshot.executionId, snapshot);
-  latestSnapshotByScope.set(encodeNimiAIScopeRef(snapshot.scopeRef), snapshot.executionId);
-  return snapshot;
-}
-
-export function getLatestStudioAISnapshot(
-  scopeRef: NimiAIScopeRef = createStudioAIScopeRef(),
-): NimiAISnapshot | null {
-  const executionId = latestSnapshotByScope.get(encodeNimiAIScopeRef(scopeRef));
-  return executionId ? snapshotByExecution.get(executionId) ?? null : null;
-}
-
-export function createStudioAIConfigService(): SharedAIConfigService {
+export function createStudioLocalCapabilityIntent(
+  capabilityContract: string = STUDIO_TEXT_GENERATE_CAPABILITY_CONTRACT,
+): NimiPortableAppAIConfigIntent {
   return {
-    aiConfig: {
-      get(scopeRef: NimiAIScopeRef) {
-        return loadStudioAIConfig(scopeRef);
-      },
-      async update(scopeRef: NimiAIScopeRef, next: NimiAIConfig) {
-        await commitStudioAIConfigToProtectedBridge(next, scopeRef);
-      },
-      subscribe(scopeRef: NimiAIScopeRef, listener: SharedAIConfigSubscribeListener): SharedAIConfigUnsubscribe {
-        return configSubscriptions.subscribe(scopeRef, listener);
-      },
-    },
-    aiProfile: {
-      async list() {
-        return listStudioAIProfiles();
-      },
-      async previewApply(
-        scopeRef: NimiAIScopeRef,
-        profileId: string,
-        options: NimiAIProfilePreviewOptions,
-      ): Promise<NimiAIProfilePreviewResult> {
-        const profile = profileById(profileId);
-        if (!profile) {
-          throw new Error(`AIProfile not found: ${profileId}`);
-        }
-        return previewNimiAIProfileApply({
-          before: loadStudioAIConfig(scopeRef),
-          scopeRef,
-          profile,
-          requirementDeclarations: options.requirementDeclarations,
-        });
-      },
-      async apply(
-        scopeRef: NimiAIScopeRef,
-        profileId: string,
-        options: NimiAIProfileApplyOptions,
-      ): Promise<NimiAIProfileApplyResult> {
-        const preview = await this.previewApply(scopeRef, profileId, options);
-        if (preview.outcome !== 'ready_to_apply' || !preview.after) {
-          return {
-            success: false,
-            config: null,
-            failureReason: preview.outcome,
-            outcome: preview.outcome,
-            setupProjection: preview.setupProjection,
-            probeWarnings: preview.probeWarnings,
-          };
-        }
-        if (options.expectedBaseVersion && options.expectedBaseVersion !== preview.baseVersion) {
-          return {
-            success: false,
-            config: null,
-            failureReason: 'stale_base',
-            outcome: 'stale_base',
-            setupProjection: preview.setupProjection,
-            probeWarnings: preview.probeWarnings,
-          };
-        }
-        const profile = profileById(profileId);
-        if (!profile) {
-          throw new Error(`AIProfile not found: ${profileId}`);
-        }
-        const next = applyNimiAIProfileToConfig({
-          config: loadStudioAIConfig(scopeRef),
-          profile,
-          requirementDeclarations: options.requirementDeclarations,
-        });
-        const saved = await commitStudioAIConfigToProtectedBridge(next, scopeRef, { expectedBaseVersion: preview.baseVersion });
-        return {
-          success: true,
-          config: saved,
-          failureReason: null,
-          outcome: 'ready_to_apply',
-          setupProjection: null,
-          probeWarnings: preview.probeWarnings,
-        };
-      },
-    },
+    capabilityContract,
+    requiredFeatures: [],
+    route: { oneofKind: 'local', local: {} },
   };
 }
 
-export function studioAIConfigScopeKey(scopeRef: NimiAIScopeRef = createStudioAIScopeRef()): string {
-  return encodeNimiAIScopeRef(scopeRef);
+export async function overwriteStudioCapabilityIntent(
+  intent: NimiPortableAppAIConfigIntent,
+  client: StudioAIConfigClient = getStudioLocalAppClient(),
+): Promise<NimiPortableAppAIConfig> {
+  const current = await loadStudioAIConfig(client);
+  const retained = (current?.capabilities ?? []).filter(
+    (existing) => existing.capabilityContract !== intent.capabilityContract,
+  );
+  return requireStudioAIConfigOwner(await client.aiConfig.overwrite([...retained, intent]));
 }
 
-function profileById(profileId: string): NimiAIProfile | null {
-  return profileLibrary.find((profile) => profile.profileId === profileId) ?? null;
+export function requireStudioAIConfigOwner(config: NimiPortableAppAIConfig): NimiPortableAppAIConfig {
+  const owner = config.owner?.owner;
+  if (!owner || owner.oneofKind !== 'app' || !('app' in owner) || owner.app.appId !== REALM_PERSONA_STUDIO_APP_ID) {
+    throw new Error(`Studio AIConfig owner must be the exact ${REALM_PERSONA_STUDIO_APP_ID} App.`);
+  }
+  return config;
 }
 
-function cacheStudioAIConfig(config: NimiAIConfig): void {
-  configCache.set(encodeNimiAIScopeRef(config.scopeRef), config);
-  configSubscriptions.notify(config);
+function isStudioAIConfigNotFound(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const record = error as Record<string, unknown>;
+  const reason = typeof record.reasonCode === 'string'
+    ? record.reasonCode
+    : typeof record.code === 'string'
+      ? record.code
+      : '';
+  return reason.trim().toUpperCase().replaceAll('-', '_') === 'AI_CONFIG_NOT_FOUND';
 }

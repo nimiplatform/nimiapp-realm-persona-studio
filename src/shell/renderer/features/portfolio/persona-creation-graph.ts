@@ -64,7 +64,7 @@ export type PersonaCreationGraph = {
   sourcePackage: {
     mode: PersonaCreationGraphSourceMode;
     label: string;
-    ownerApprovedForRuntime: boolean;
+    ownerReviewedForRuntime: boolean;
     fields: PersonaCreationGraphSourceField[];
   };
   normalizedGraph: {
@@ -347,7 +347,7 @@ export function buildPersonaCreationGraphFromDraft(
     buildSection({
       key: 'riskNotes',
       title: 'Risk Notes',
-      summary: 'No hidden provider, model, lifecycle, private memory, or raw rule-content fields are admitted.',
+      summary: 'Hidden provider, model, lifecycle, private memory, and raw rule-content fields are excluded.',
       fields: [
         ...field('Runtime rationale', present(options.runtimeRationale || '')),
       ],
@@ -369,7 +369,7 @@ export function buildPersonaCreationGraphFromDraft(
       target: 'owner-settings',
       label: 'Save profile description after create',
       status: draft.description ? 'ready' : 'deferred',
-      reason: draft.description ? 'Description can be saved through admitted owner settings completion.' : 'No profile description candidate was supplied.',
+      reason: draft.description ? 'Description can be saved when owner settings become available.' : 'No profile description candidate was supplied.',
       ruleIds: ['R-RPS-GRAPH-017', 'R-RPS-GRAPH-020'],
     },
     {
@@ -391,7 +391,7 @@ export function buildPersonaCreationGraphFromDraft(
   const writePlanSection = buildSection({
     key: 'writePlan',
     title: 'Write Plan',
-    summary: 'Accepted fields map to admitted Realm write paths; blocked and deferred fields remain explicit.',
+    summary: 'Accepted fields map to supported Realm write paths; unavailable and deferred fields remain explicit.',
     fields: writePlanItems.map((item) => ({
       label: item.label,
       value: `${item.status}: ${item.reason}`,
@@ -409,7 +409,7 @@ export function buildPersonaCreationGraphFromDraft(
     sourcePackage: {
       mode: options.sourceMode,
       label: sourceLabel,
-      ownerApprovedForRuntime: options.sourceMode === 'description',
+      ownerReviewedForRuntime: options.sourceMode === 'description',
       fields: sourceFields,
     },
     normalizedGraph: {

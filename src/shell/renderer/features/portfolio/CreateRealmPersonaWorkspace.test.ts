@@ -40,7 +40,27 @@ describe('Create Realm Persona workspace v2 shell', () => {
     expect(source).toContain('create.supplement.visual');
   });
 
-  it('renders typed autosave state and updates the sidebar history event after persistence', () => {
+  it('keeps the describe screen focused on the primary creation card', () => {
+    const source = workspaceSource();
+
+    expect(source).not.toContain('create.boundaryLabel');
+    expect(source).not.toContain('create.boundaryDescription');
+    expect(source).not.toContain('create.generateFromDescription');
+    expect(source).not.toContain('useNavigate');
+  });
+
+  it('renders the creation choices as stacked primary and secondary buttons', () => {
+    const source = workspaceSource();
+
+    expect(source).toContain("t('create.aiButton.label')");
+    expect(source).toContain("t('create.manualButton.label')");
+    expect(source).toContain('tone="primary"');
+    expect(source).toContain('leadingIcon={<Pencil size={18} aria-hidden="true" />}');
+    expect(source).not.toContain('AppCardSurface');
+    expect(source).not.toContain('create.manualRow.text');
+  });
+
+  it('renders typed autosave state without coupling the persona roster to draft-history events', () => {
     const source = workspaceSource();
     const store = readFileSync(join(process.cwd(), 'src/shell/renderer/features/portfolio/creation-draft-store.ts'), 'utf8');
     const sidebar = readFileSync(join(process.cwd(), 'src/shell/renderer/app-shell/studio-sidebar/studio-sidebar.tsx'), 'utf8');
@@ -50,21 +70,43 @@ describe('Create Realm Persona workspace v2 shell', () => {
     expect(source).toContain('persistCreationDraft(draftKey, draft)');
     expect(source).toContain('upsertCreationDraftHistoryEntry');
     expect(store).toContain("'rps:creation-draft-history-updated'");
-    expect(sidebar).toContain('window.addEventListener(CREATION_DRAFT_HISTORY_UPDATED_EVENT');
+    expect(sidebar).toContain('listOwnerPortfolioPersonas');
+    expect(sidebar).not.toContain('CREATION_DRAFT_HISTORY_UPDATED_EVENT');
   });
 
-  it('keeps reviewed fields editable and gates the final write on graph acceptance', () => {
+  it('keeps reviewed fields editable and accepts the current graph on explicit create', () => {
     const source = workspaceSource();
 
     expect(source).toContain('onChange={(event) => updateDraft({ displayName: event.currentTarget.value })}');
     expect(source).toContain('onChange={(event) => updateDraft({ handle: event.currentTarget.value })}');
-    expect(source).toContain('GraphReviewBoard');
     expect(source).toContain('validatePersonaCreationGraphForRealmCreate(creationGraph, graphAcceptedFingerprint)');
-    expect(source).toContain('setGraphAcceptedFingerprint(acceptPersonaCreationGraphForRealmCreate(creationGraph))');
+    expect(source).toContain('const acceptedFingerprint = acceptPersonaCreationGraphForRealmCreate(creationGraph)');
+    expect(source).toContain('validatePersonaCreationGraphForRealmCreate(creationGraph, acceptedFingerprint)');
+    expect(source).toContain('setGraphAcceptedFingerprint(acceptedFingerprint)');
     expect(source).toContain('const createDisabled = createMutation.isPending');
     expect(source).toContain('!readiness.ready');
-    expect(source).toContain('!creationGraphReview.ready');
+    expect(source).toContain('!creationGraphReview.canAccept');
     expect(source).toContain('handleCheckBlocking');
+  });
+
+  it('uses a required marker instead of helper copy for the basic identity fields', () => {
+    const source = workspaceSource();
+
+    expect(source).not.toContain("t('create.displayNameMessage')");
+    expect(source).not.toContain("t('create.handleMessage')");
+    expect(source).not.toContain("t('create.personaArchetypeMessage')");
+    expect(source).toContain('text-[var(--nimi-status-danger)]');
+    expect(source).toContain('aria-hidden="true">*</span>');
+    expect(source).toMatch(/<SelectField\s+required\s+value=\{draft\.personaArchetype\}/);
+  });
+
+  it('does not render creation technical details or validation preview', () => {
+    const source = workspaceSource();
+
+    expect(source).not.toContain('TechnicalReviewDetails');
+    expect(source).not.toContain('ReadinessPreview');
+    expect(source).not.toContain("t('create.technicalDetails')");
+    expect(source).not.toContain("t('create.readinessDetails')");
   });
 
   it('uses the hard trait cap instead of a warning-only recommendation', () => {
@@ -94,19 +136,22 @@ describe('Create Realm Persona workspace v2 shell', () => {
     expect(source).toContain('groupSelectableRealmWorldsForPicker');
   });
 
-  it('keeps image candidates actual, local, and fail-closed', () => {
+  it('keeps image candidates actual, progressive, local, and fail-closed', () => {
     const source = workspaceSource();
 
     expect(source).toContain('referenceImageCandidates');
-    expect(source).toContain('count: 4');
-    expect(source).toContain('create.reference.insufficient');
+    expect(source).toContain('referenceImagePrompt');
+    expect(source).toContain('count: 1');
+    expect(source).toContain('REFERENCE_IMAGE_CANDIDATE_SLOT_COUNT');
+    expect(source).toContain('create.reference.generateOne');
+    expect(source).toContain('create.reference.regenerateSelected');
     expect(source).toContain('create.reference.capabilityUnavailable');
     expect(source).toContain('generatePersonaReferenceImage');
-    expect(source).not.toContain('placeholder="');
-    expect(source).not.toContain('referenceImagePrompt');
+    expect(source).not.toContain('count: 4');
+    expect(source).not.toContain('create.reference.insufficient');
   });
 
-  it('renders the dedicated world recovery state and keeps the prompt view read-only', () => {
+  it('renders world recovery, keeps the prompt view read-only, and exposes a separate editable image prompt', () => {
     const source = workspaceSource();
 
     expect(source).toContain('WorldRecoveryPanel');
@@ -115,7 +160,8 @@ describe('Create Realm Persona workspace v2 shell', () => {
     expect(source).toContain('create.worldRecovery.submitDisabled');
     expect(source).toContain('PromptReadOnly');
     expect(source).toContain('create.prompt.copy');
-    expect(source).not.toContain('value={referenceImagePrompt}');
+    expect(source).toContain('value={draft.referenceImagePrompt}');
+    expect(source).toContain('create.imagePromptReset');
   });
 
   it('does not expose the retired card import or old hard-cut handle candidate', () => {

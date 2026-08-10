@@ -1,17 +1,17 @@
 import type {
   RealmModel,
 } from '@nimiplatform/sdk/realm/generated';
-import { createStudioRealmClient, type StudioRealmSurface } from '@renderer/data/realm-client.js';
+import { requireStudioProtectedOperation } from '@renderer/app-shell/studio-platform.js';
 import {
-  normalizeOwnerPortfolio,
-  normalizeOwnerPortfolioPersonaDetail,
+  getStudioWorldCoreById,
+  listStudioWorldCores,
+} from '@renderer/data/studio-world-core.js';
+import {
   type OwnerPortfolioPersona,
   type OwnerPortfolioPersonaDetail,
 } from './portfolio-data.js';
 import {
   REALM_PERSONA_CREATE_SOURCE,
-  normalizeCreateRealmPersonaDraft,
-  normalizeRealmPersonaHandleAvailability,
   normalizeSelectableWorlds,
   normalizeSelectedWorldPreview,
   type NormalizedRealmPersonaHandleAvailability,
@@ -22,17 +22,10 @@ import {
   type SelectedWorldPreview,
 } from './create-persona-draft.js';
 import {
-  getOwnerPersonaSettings,
-  updateReviewedOwnerPersonaSettings,
   type RealmOwnerPersonaSettings,
   type RealmOwnerPersonaSettingsUpdateResult,
 } from './portfolio-settings-client.js';
-import {
-  OWNER_SETTINGS_SAVE_SOURCE,
-  createOwnerPersonaSettingsDraft,
-} from './setting-proposal.js';
-
-type StudioRealmClient = StudioRealmSurface;
+import { OWNER_SETTINGS_SAVE_SOURCE } from './setting-proposal.js';
 
 type RealmCreatePersonaResponse = RealmModel<'PersonaCharacterCoreDto'>;
 
@@ -59,7 +52,7 @@ export type RealmPersonaCreateResult =
 
 export type RealmPersonaCreateProfileSettingsCompletion =
   | {
-    status: 'not-requested';
+    status: 'not-applicable';
     truthWrite: false;
     description: '';
   }
@@ -172,190 +165,44 @@ export function normalizeRealmPersonaCreateResult(persona: RealmCreatePersonaRes
     },
   };
 }
-export async function listOwnerPortfolioPersonas(realm: StudioRealmClient = createStudioRealmClient()): Promise<OwnerPortfolioPersona[]> {
-  const personas = await realm.worldCoreControllerListPersonaCharacters({ path: {} });
-  return normalizeOwnerPortfolio(personas);
+export async function listOwnerPortfolioPersonas(): Promise<OwnerPortfolioPersona[]> {
+  requireStudioProtectedOperation('Owner Realm Persona portfolio listing');
 }
 
 export async function getOwnerPortfolioPersonaDetail(
-  personaId: string,
-  realm: StudioRealmClient = createStudioRealmClient(),
+  _personaId: string,
 ): Promise<OwnerPortfolioPersonaDetail> {
-  const persona = await realm.worldCoreControllerGetPersonaCharacter({ path: { personaCharacterId: personaId } });
-  return normalizeOwnerPortfolioPersonaDetail(persona);
+  requireStudioProtectedOperation('Owner Realm Persona detail reading');
 }
 
-export async function listCreateRealmPersonaSelectableWorlds(
-  realm: StudioRealmClient = createStudioRealmClient(),
-): Promise<SelectableRealmWorld[]> {
-  const worlds = await realm.worldCoreControllerListWorldCores({ path: {}, query: { take: 100 } });
-  return normalizeSelectableWorlds(worlds as RealmPersonaCreationWorldDto[]);
+export async function listCreateRealmPersonaSelectableWorlds(): Promise<SelectableRealmWorld[]> {
+  const worlds = await listStudioWorldCores({ take: 100 });
+  return normalizeSelectableWorlds([...worlds] as RealmPersonaCreationWorldDto[]);
 }
 
 export async function getCreateRealmPersonaWorldPreview(
   worldId: string,
-  realm: StudioRealmClient = createStudioRealmClient(),
-): Promise<SelectedWorldPreview> {
-  const world = await realm.worldCoreControllerGetWorldCore({ path: { worldId } });
-  return normalizeSelectedWorldPreview(world);
+): Promise<SelectedWorldPreview | null> {
+  const world = await getStudioWorldCoreById(worldId);
+  return world ? normalizeSelectedWorldPreview(world) : null;
 }
 
 export async function checkCreateRealmPersonaHandleAvailability(
-  handle: string,
-  realm: StudioRealmClient = createStudioRealmClient(),
+  _handle: string,
 ): Promise<RealmPersonaHandleAvailabilityResult> {
-  const normalizedHandle = normalizeCreateRealmPersonaDraft({
-    handle,
-    displayName: '',
-    concept: '',
-    description: '',
-    ruleText: '',
-    selectedWorldId: '',
-    personaArchetype: '',
-    personaTraits: [],
-    referenceImageUrl: '',
-    originalDescription: '',
-  }).handle;
-  if (!normalizedHandle) {
-    return {
-      ok: false,
-      truthWrite: false,
-      failure: 'persona-handle-invalid',
-      message: 'Persona handle check requires a non-empty normalized handle.',
-      availability: null,
-    };
-  }
-
-  try {
-    const personas = await realm.worldCoreControllerListPersonaCharacters({ path: {} });
-    const unavailable = personas.some((persona) => {
-      const core = persona.profile && typeof persona.profile === 'object' ? persona.profile as unknown as Record<string, unknown> : {};
-      const identity = core.identity && typeof core.identity === 'object'
-        ? core.identity as Record<string, unknown>
-        : {};
-      const handle = readOptionalString(identity, 'handle');
-      return handle?.toLocaleLowerCase() === normalizedHandle;
-    });
-    const response = {
-      available: !unavailable,
-      normalized: normalizedHandle,
-      ...(unavailable ? { message: 'A RealmPersona with this handle already exists in the owner portfolio.' } : {}),
-    };
-    return {
-      ok: true,
-      truthWrite: false,
-      availability: normalizeRealmPersonaHandleAvailability(normalizedHandle, response),
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      truthWrite: false,
-      failure: 'realm-persona-handle-check-failed',
-      message: error instanceof Error ? error.message : 'RealmPersona handle availability check failed.',
-      availability: null,
-    };
-  }
+  requireStudioProtectedOperation('Realm Persona handle availability checking');
 }
 
 export async function createReviewedRealmPersona(
-  payload: ReviewedCreateRealmPersonaPayload,
-  realm: StudioRealmClient = createStudioRealmClient(),
+  _payload: ReviewedCreateRealmPersonaPayload,
 ): Promise<RealmPersonaCreateResult> {
-  try {
-    const persona = await realm.worldCoreControllerCreatePersonaCharacter({
-      path: {},
-      body: buildRealmCreatePersonaInput(payload),
-    });
-    return normalizeRealmPersonaCreateResult(persona);
-  } catch (error) {
-    return {
-      ok: false,
-      source: REALM_PERSONA_CREATE_SOURCE,
-      failure: 'realm-create-persona-failed',
-      message: error instanceof Error ? error.message : 'Realm create RealmPersona failed.',
-    };
-  }
+  requireStudioProtectedOperation('Reviewed Realm Persona creation');
 }
 
 export async function createReviewedRealmPersonaWithProfileSettings(
-  payload: ReviewedCreateRealmPersonaPayload,
-  realm: StudioRealmClient = createStudioRealmClient(),
+  _payload: ReviewedCreateRealmPersonaPayload,
 ): Promise<RealmPersonaCreateWithProfileSettingsResult> {
-  const createResult = await createReviewedRealmPersona(payload, realm);
-  if (!createResult.ok) {
-    return createResult;
-  }
-
-  const profileDescription = (payload.publicFields.description || '').trim();
-  if (!profileDescription) {
-    return {
-      ...createResult,
-      profileSettings: {
-        status: 'not-requested',
-        truthWrite: false,
-        description: '',
-      },
-    };
-  }
-
-  let currentSettings: RealmOwnerPersonaSettings;
-  try {
-    currentSettings = await getOwnerPersonaSettings(createResult.canonical.id, realm);
-  } catch (error) {
-    return {
-      ok: false,
-      source: REALM_PERSONA_CREATE_SOURCE,
-      failure: 'realm-create-persona-profile-settings-read-failed',
-      message: error instanceof Error ? error.message : 'Realm owner settings read failed after create.',
-      createdCanonical: createResult.canonical,
-    };
-  }
-
-  if ((currentSettings.description || '').trim() === profileDescription) {
-    return {
-      ...createResult,
-      profileSettings: {
-        status: 'already-current',
-        source: 'Realm WorldCoreController.getRealmPersonaSettings',
-        truthWrite: false,
-        description: profileDescription,
-        settings: currentSettings,
-      },
-    };
-  }
-
-  const settingsDraft = {
-    ...createOwnerPersonaSettingsDraft(currentSettings),
-    description: profileDescription,
-  };
-  const settingsResult = await updateReviewedOwnerPersonaSettings(
-    createResult.canonical.id,
-    settingsDraft,
-    currentSettings,
-    realm,
-  );
-  if (!settingsResult.ok) {
-    return {
-      ok: false,
-      source: REALM_PERSONA_CREATE_SOURCE,
-      failure: 'realm-create-persona-profile-settings-failed',
-      message: settingsResult.message,
-      createdCanonical: createResult.canonical,
-      settingsResult,
-    };
-  }
-
-  return {
-    ...createResult,
-    profileSettings: {
-      status: 'updated',
-      source: OWNER_SETTINGS_SAVE_SOURCE,
-      truthWrite: true,
-      description: profileDescription,
-      submitted: settingsResult.submitted,
-      settings: settingsResult.settings,
-    },
-  };
+  requireStudioProtectedOperation('Reviewed Realm Persona creation with profile settings');
 }
 
 export * from './portfolio-media-client.js';

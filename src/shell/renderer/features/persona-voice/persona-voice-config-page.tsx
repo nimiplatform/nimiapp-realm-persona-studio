@@ -46,7 +46,11 @@ function VoiceConfigBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) 
         });
         if (!persisted.ok) nimiToast.danger(t('assets.history.persistFailed'));
       } else {
-        nimiToast.danger(next.message);
+        if (next.failure === 'runtime-media-candidate-unavailable') {
+          nimiToast.info(t('assets.error.runtimeMediaCandidateUnavailable'));
+        } else {
+          nimiToast.danger(t('voiceConfig.scriptRequired'));
+        }
       }
     } finally {
       setIsSynthesizing(false);
@@ -102,6 +106,7 @@ function VoiceConfigBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) 
           <div className="mt-3 flex flex-wrap gap-3">
             <Button
               tone="primary"
+              className="text-white"
               disabled={!payload.changed || isSynthesizing}
               loading={isSynthesizing}
               onClick={() => void synthesizeVoiceDemo()}
@@ -121,6 +126,13 @@ function VoiceConfigBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) 
               <audio src={previewUrl} controls className="w-full" />
             </div>
           ) : null}
+          {result && !result.ok ? (
+            <InlineAlert tone="info" className="mt-3">
+              {result.failure === 'runtime-media-candidate-unavailable'
+                ? t('assets.error.runtimeMediaCandidateUnavailable')
+                : t('voiceConfig.scriptRequired')}
+            </InlineAlert>
+          ) : null}
         </Surface>
 
         <Surface tone="card" padding="md" className="content-start">
@@ -128,7 +140,7 @@ function VoiceConfigBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) 
           <p className="m-0 mt-2 text-[length:var(--nimi-type-body-sm-size)] text-[var(--nimi-text-muted)]">
             {t('voiceConfig.boundary.description')}
           </p>
-          <InlineAlert tone="warning" className="mt-3">
+          <InlineAlert tone="info" className="mt-3">
             {t('voiceConfig.boundary.alert')}
           </InlineAlert>
         </Surface>

@@ -9,6 +9,7 @@ import {
   type CreateRealmPersonaDraftInput,
   type NormalizedCreateRealmPersonaDraft,
   type ReferenceImageCandidate,
+  isReferenceImageCandidateSlot,
   PERSONA_ARCHETYPES,
   PERSONA_TRAITS,
 } from './create-persona-draft.js';
@@ -83,6 +84,7 @@ function normalizeCandidate(value: unknown, expectedDraftKey: string): Reference
     || typeof value.prompt !== 'string'
     || !value.prompt.trim()
     || !isIsoDateTime(value.createdAt)
+    || !isReferenceImageCandidateSlot(value.slot)
   ) {
     return null;
   }
@@ -95,6 +97,7 @@ function normalizeCandidate(value: unknown, expectedDraftKey: string): Reference
   if (!sourceKind || !reviewState) return null;
   return {
     draftKey: expectedDraftKey,
+    slot: value.slot,
     url: new URL(value.url.trim()).toString(),
     prompt: value.prompt.trim(),
     createdAt: value.createdAt.trim(),
@@ -124,6 +127,7 @@ function normalizeStoredDraft(value: unknown, expectedDraftKey: string): Creatio
     'selectedWorldId',
     'personaArchetype',
     'referenceImageUrl',
+    'referenceImagePrompt',
     'originalDescription',
     'speechSupplement',
     'boundarySupplement',
@@ -138,6 +142,7 @@ function normalizeStoredDraft(value: unknown, expectedDraftKey: string): Creatio
   const candidates = value.referenceImageCandidates.map((candidate) => normalizeCandidate(candidate, expectedDraftKey));
   if (candidates.some((candidate) => candidate === null)) return null;
   const normalizedCandidates = candidates as ReferenceImageCandidate[];
+  if (new Set(normalizedCandidates.map((candidate) => candidate.slot)).size !== normalizedCandidates.length) return null;
   const selectedCandidates = normalizedCandidates.filter((candidate) => candidate.reviewState === 'owner-selected');
   if (selectedCandidates.length > 1) return null;
   if (
@@ -157,6 +162,7 @@ function normalizeStoredDraft(value: unknown, expectedDraftKey: string): Creatio
     personaArchetype: value.personaArchetype as CreateRealmPersonaDraftInput['personaArchetype'],
     personaTraits: value.personaTraits as CreateRealmPersonaDraftInput['personaTraits'],
     referenceImageUrl: value.referenceImageUrl as string,
+    referenceImagePrompt: value.referenceImagePrompt as string,
     originalDescription: value.originalDescription as string,
     speechSupplement: value.speechSupplement as string,
     boundarySupplement: value.boundarySupplement as string,
@@ -249,6 +255,9 @@ export async function persistCreationDraft(
   const candidates = draft.referenceImageCandidates.map((candidate) => normalizeCandidate(candidate, draftKey.trim()));
   if (candidates.some((candidate) => candidate === null)) {
     return persistFailure('Draft contains an invalid reference image candidate.');
+  }
+  if (new Set(candidates.map((candidate) => candidate?.slot)).size !== candidates.length) {
+    return persistFailure('Draft contains more than one reference image candidate in the same slot.');
   }
   const selectedCandidates = candidates.filter((candidate) => candidate?.reviewState === 'owner-selected');
   if (selectedCandidates.length > 1) {

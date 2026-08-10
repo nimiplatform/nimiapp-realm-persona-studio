@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, RefreshCw, AlertTriangle, LayoutGrid } from 'lucide-react';
+import { AlertTriangle, ChevronRight, FilePenLine, Info, LayoutGrid, Plus, RefreshCw } from 'lucide-react';
 import {
+  Avatar,
   Button,
   FieldShell,
   InlineAlert,
@@ -22,9 +23,26 @@ import {
 } from '@renderer/features/portfolio/portfolio-data.js';
 import { listOwnerPortfolioPersonas } from '@renderer/features/portfolio/portfolio-client.js';
 import { PersonaCard } from '@renderer/features/portfolio/OwnerPortfolio.shared.js';
+import {
+  loadCreationDraftHistory,
+  type CreationDraftHistoryEntry,
+} from '@renderer/features/portfolio/creation-draft-history.js';
+import {
+  CREATION_DRAFT_HISTORY_UPDATED_EVENT,
+  loadCreationDraft,
+} from '@renderer/features/portfolio/creation-draft-store.js';
 import { ownerPortfolioListQueryKey } from '@renderer/features/persona-detail/use-persona-detail-query.js';
+import { translatePersonaArchetypeLabel } from '@renderer/i18n/studio-i18n.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
 import type { StudioCopyKey } from '@renderer/i18n/studio-copy.js';
+import {
+  listStudioWorldCores,
+  studioWorldCardPresentation,
+} from '@renderer/data/studio-world-core.js';
+import oasisBannerUrl from '@renderer/assets/persona-preview/oasis-cover.png?url';
+import edenBannerUrl from '@renderer/assets/persona-preview/eden-cover.png?url';
+import xiaomiAvatarUrl from '@renderer/assets/persona-preview/xiaomi-avatar.png?url';
+import nanxingAvatarUrl from '@renderer/assets/persona-preview/nanxing-avatar.png?url';
 
 const PORTFOLIO_FILTER_OPTIONS: { value: OwnerPortfolioFilter; labelKey: StudioCopyKey }[] = [
   { value: 'all', labelKey: 'portfolio.filter.allPersonas' },
@@ -41,20 +59,73 @@ const PORTFOLIO_SORT_OPTIONS: { value: OwnerPortfolioSort; labelKey: StudioCopyK
 ];
 
 const PORTFOLIO_FAILURE_TITLE_KEYS: Record<PortfolioFailureKind, StudioCopyKey> = {
+  'capability-unavailable': 'portfolio.failure.capabilityUnavailable.title',
   'realm-unavailable': 'portfolio.failure.realmUnavailable.title',
-  'permission-missing': 'portfolio.failure.permissionMissing.title',
+  'access-denied': 'portfolio.failure.accessDenied.title',
   'owner-authority-missing': 'portfolio.failure.ownerAuthorityMissing.title',
   'setting-read-unavailable': 'portfolio.failure.settingReadUnavailable.title',
   unknown: 'portfolio.failure.portfolioUnavailable.title',
 };
 
 const PORTFOLIO_FAILURE_DETAIL_KEYS: Record<PortfolioFailureKind, StudioCopyKey> = {
+  'capability-unavailable': 'portfolio.failure.portfolio.capabilityUnavailable',
   'realm-unavailable': 'portfolio.failure.portfolio.realm',
-  'permission-missing': 'portfolio.failure.portfolio.permission',
+  'access-denied': 'portfolio.failure.portfolio.accessDenied',
   'owner-authority-missing': 'portfolio.failure.portfolio.owner',
   'setting-read-unavailable': 'portfolio.failure.portfolio.setting',
   unknown: 'portfolio.failure.portfolio.unknown',
 };
+
+type PortfolioView = 'personas' | 'local-drafts';
+type DraftHistoryStatus = 'loading' | 'ready' | 'unavailable';
+type DesignPreviewPersona = OwnerPortfolioPersona & { worldBannerUrl: string };
+
+const DESIGN_PREVIEW_PERSONAS: readonly DesignPreviewPersona[] = [
+  {
+    id: 'design-preview-xiaomi',
+    displayName: '小米',
+    handle: 'xiaomi',
+    worldName: 'OASIS',
+    worldBannerUrl: oasisBannerUrl,
+    coverUrl: null,
+    avatarUrl: xiaomiAvatarUrl,
+    ownerScope: 'owner-created',
+    source: 'Realm WorldCoreController.listRealmPersonas',
+    realmState: 'PUBLIC',
+    updatedAt: '2026-08-10T09:42:00+08:00',
+    friendCount: { status: 'available', value: 128 },
+  },
+  {
+    id: 'design-preview-nanxing',
+    displayName: '南星',
+    handle: 'nanxing',
+    worldName: 'EDEN',
+    worldBannerUrl: edenBannerUrl,
+    coverUrl: null,
+    avatarUrl: nanxingAvatarUrl,
+    ownerScope: 'owner-created',
+    source: 'Realm WorldCoreController.listRealmPersonas',
+    realmState: 'PUBLIC',
+    updatedAt: '2026-08-09T18:20:00+08:00',
+    friendCount: { status: 'available', value: 76 },
+  },
+];
+
+function localDateKey(value: Date): string {
+  return `${value.getFullYear()}-${value.getMonth()}-${value.getDate()}`;
+}
+
+function draftRecencyLabelKey(updatedAt: string, now = new Date()): StudioCopyKey {
+  const updatedDate = new Date(updatedAt);
+  if (Number.isNaN(updatedDate.getTime())) return 'portfolio.localDrafts.editedEarlier';
+  if (localDateKey(updatedDate) === localDateKey(now)) return 'portfolio.localDrafts.editedToday';
+
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  return localDateKey(updatedDate) === localDateKey(yesterday)
+    ? 'portfolio.localDrafts.editedYesterday'
+    : 'portfolio.localDrafts.editedEarlier';
+}
 
 function FilterCard({
   queryText,
@@ -129,214 +200,396 @@ function PortfolioLoadingState() {
   );
 }
 
-function PortfolioFailureState({
-  title,
-  detail,
+function DesignPreviewPersonaList() {
+  const { t } = useStudioI18n();
+  const navigate = useNavigate();
+
+  return (
+    <div className="ras-persona-preview" aria-label={t('portfolio.preview.ariaLabel')}>
+      <InlineAlert tone="info">{t('portfolio.preview.notice')}</InlineAlert>
+      <div className="ras-persona-grid">
+        {DESIGN_PREVIEW_PERSONAS.map((persona) => (
+          <PersonaCard
+            key={persona.id}
+            persona={persona}
+            worldBannerUrl={persona.worldBannerUrl}
+            worldName={persona.worldName}
+            active={false}
+            onSelect={() => navigate(`/portfolio/${persona.id}`)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PortfolioSourceNotice({
+  failure,
   loading,
   onRetry,
 }: {
-  title: string;
-  detail: string;
+  failure: PortfolioFailureKind;
   loading: boolean;
   onRetry: () => void;
 }) {
   const { t } = useStudioI18n();
+  const informational = failure === 'capability-unavailable';
+  const Icon = informational ? Info : AlertTriangle;
+
   return (
-    <section className="ras-card">
-      <div style={{ display: 'grid', gridTemplateColumns: '64px 1fr auto', gap: 16, alignItems: 'center' }}>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 64,
-            height: 64,
-            borderRadius: 18,
-            background: 'color-mix(in srgb, var(--nimi-status-danger) 12%, transparent)',
-            color: 'var(--nimi-status-danger)',
-          }}
-        >
-          <AlertTriangle size={28} strokeWidth={1.8} />
-        </div>
-        <div style={{ minWidth: 0 }}>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--nimi-text-primary)' }}>{title}</h2>
-          <p style={{ margin: '6px 0 0', color: 'var(--nimi-text-muted)', fontSize: 14, lineHeight: 1.55 }}>{detail}</p>
-        </div>
-        <Button tone="primary" loading={loading} onClick={onRetry}>
-          {t('common.retry')}
-        </Button>
+    <section
+      className="ras-portfolio-source-notice"
+      data-tone={informational ? 'info' : 'danger'}
+      aria-live="polite"
+    >
+      <div className="ras-portfolio-source-notice__icon" aria-hidden="true">
+        <Icon size={22} strokeWidth={1.8} />
       </div>
+      <div className="ras-portfolio-source-notice__copy">
+        <h2>{t(PORTFOLIO_FAILURE_TITLE_KEYS[failure])}</h2>
+        <p>{t(PORTFOLIO_FAILURE_DETAIL_KEYS[failure])}</p>
+      </div>
+      <Button tone="secondary" loading={loading} onClick={onRetry}>
+        {t('common.retry')}
+      </Button>
     </section>
   );
 }
 
-type PersonaListMode = {
-  queryKey: readonly unknown[];
-  queryFn: () => Promise<OwnerPortfolioPersona[]>;
-  eyebrow: string;
-  title: string;
-  description: string;
-  emptyTitle: string;
-  emptyDescription: string;
-  refreshLabel: string;
-  createEnabled: boolean;
-  detailPath: (personaId: string) => string;
-};
-
-function PortfolioListPage({ mode }: { mode: PersonaListMode }) {
+function LocalDraftList({
+  entries,
+  images,
+  status,
+  partial,
+  onContinue,
+  onCreate,
+}: {
+  entries: CreationDraftHistoryEntry[];
+  images: Record<string, string | null>;
+  status: DraftHistoryStatus;
+  partial: boolean;
+  onContinue: (draftKey: string) => void;
+  onCreate: () => void;
+}) {
   const { t } = useStudioI18n();
-  const navigate = useNavigate();
-  const [queryText, setQueryText] = useState('');
-  const [filter, setFilter] = useState<OwnerPortfolioFilter>('all');
-  const [sort, setSort] = useState<OwnerPortfolioSort>('realm-order');
 
-  const portfolioQuery = useQuery({
-    queryKey: mode.queryKey,
-    queryFn: mode.queryFn,
-  });
+  if (status === 'loading') {
+    return (
+      <section className="ras-local-draft-list ras-local-draft-list--loading" aria-label={t('portfolio.localDrafts.loading')}>
+        <LoadingSkeleton lines={3} />
+      </section>
+    );
+  }
 
-  const personas = portfolioQuery.data || [];
-  const visiblePersonas = useMemo(
-    () => applyOwnerPortfolioView(personas, { query: queryText, filter, sort }),
-    [personas, filter, queryText, sort],
-  );
+  if (status === 'unavailable') {
+    return (
+      <section className="ras-local-draft-empty" aria-live="polite">
+        <AlertTriangle size={28} strokeWidth={1.8} aria-hidden="true" />
+        <h2>{t('portfolio.localDrafts.unavailableTitle')}</h2>
+        <p>{t('portfolio.localDrafts.unavailableDescription')}</p>
+      </section>
+    );
+  }
 
-  const sourceWarnings = personas.filter((persona) => persona.friendCount.status === 'source-unavailable');
-  const hasPersonas = personas.length > 0;
+  if (entries.length === 0) {
+    return (
+      <section className="ras-local-draft-empty">
+        <FilePenLine size={30} strokeWidth={1.7} aria-hidden="true" />
+        <h2>{t('portfolio.localDrafts.emptyTitle')}</h2>
+        <p>{t('portfolio.localDrafts.emptyDescription')}</p>
+        <Button tone="primary" className="text-white" leadingIcon={<Plus size={16} />} onClick={onCreate}>
+          {t('portfolio.createButton')}
+        </Button>
+      </section>
+    );
+  }
 
   return (
-    <ScrollArea className="flex-1" viewportClassName="bg-transparent">
-      <div className="ras-page">
-        <header className="ras-page-header">
-          <div style={{ minWidth: 0 }}>
-            <p className="ras-page-header__eyebrow">{mode.eyebrow}</p>
-            <h1 className="ras-page-header__title">{mode.title}</h1>
-            <p className="ras-page-header__description">
-              {mode.description}
-            </p>
-          </div>
-          <div className="ras-page-header__actions">
-            <Button
-              tone="secondary"
-              loading={portfolioQuery.isFetching}
-              leadingIcon={<RefreshCw size={15} strokeWidth={1.8} />}
-              onClick={() => void portfolioQuery.refetch()}
-              aria-label={t('portfolio.refreshAria')}
-            >
-              {mode.refreshLabel}
-            </Button>
-            {mode.createEnabled ? (
-              <Button
-                tone="primary"
-                leadingIcon={<Plus size={15} strokeWidth={2} />}
-                onClick={() => navigate('/portfolio/create')}
-              >
-                {t('portfolio.createButton')}
-              </Button>
-            ) : null}
-          </div>
-        </header>
+    <div className="ras-local-drafts-stack">
+      {partial ? (
+        <InlineAlert tone="warning">{t('portfolio.localDrafts.partialUnavailable')}</InlineAlert>
+      ) : null}
+      <section className="ras-local-draft-list">
+        <div className="ras-local-draft-list__rows">
+          {entries.map((entry) => {
+            const description = [
+              entry.worldName,
+              entry.archetype ? translatePersonaArchetypeLabel(entry.archetype, t) : null,
+            ].filter(Boolean).join(' · ');
 
-        {portfolioQuery.isLoading ? (
-          <PortfolioLoadingState />
-        ) : portfolioQuery.isError ? (
-          (() => {
-            const failure = classifyPortfolioFailure(portfolioQuery.error);
             return (
-              <PortfolioFailureState
-                title={t(PORTFOLIO_FAILURE_TITLE_KEYS[failure.kind])}
-                detail={t(PORTFOLIO_FAILURE_DETAIL_KEYS[failure.kind])}
-                loading={portfolioQuery.isFetching}
-                onRetry={() => void portfolioQuery.refetch()}
-              />
+              <article key={entry.draftKey} className="ras-local-draft-row">
+                <Avatar
+                  alt={entry.displayName}
+                  src={images[entry.draftKey]}
+                  size="lg"
+                  shape="rounded"
+                  tone="accent"
+                  className="ras-local-draft-row__avatar"
+                  fallback={<span className="text-xl font-semibold">{entry.displayName.charAt(0).toUpperCase()}</span>}
+                />
+                <div className="ras-local-draft-row__identity">
+                  <h2>{entry.displayName}</h2>
+                  {description ? <p>{description}</p> : null}
+                </div>
+                <div className="ras-local-draft-row__status">
+                  <StatusBadge tone="info">{t('portfolio.localDrafts.badge')}</StatusBadge>
+                  <StatusBadge tone="neutral">{t(draftRecencyLabelKey(entry.updatedAt))}</StatusBadge>
+                </div>
+                <Button
+                  tone="ghost"
+                  className="ras-local-draft-row__action"
+                  trailingIcon={<ChevronRight size={17} strokeWidth={1.8} />}
+                  onClick={() => onContinue(entry.draftKey)}
+                >
+                  {t('portfolio.localDrafts.continue')}
+                </Button>
+              </article>
             );
-          })()
-        ) : !hasPersonas ? (
-          <div className="ras-hero-empty">
-            <div className="ras-hero-empty__icon">
-              <LayoutGrid size={28} strokeWidth={1.8} />
-            </div>
-            <div className="ras-stack-tight">
-              <h2 className="ras-hero-empty__title">{mode.emptyTitle}</h2>
-              <p className="ras-hero-empty__description">
-                {mode.emptyDescription}
-              </p>
-            </div>
-            {mode.createEnabled ? (
-              <Button
-                tone="primary"
-                size="lg"
-                leadingIcon={<Plus size={16} strokeWidth={2} />}
-                onClick={() => navigate('/portfolio/create')}
-              >
-                {t('portfolio.createButton')}
-              </Button>
-            ) : null}
-          </div>
-        ) : (
-          <>
-            <FilterCard
-              queryText={queryText}
-              filter={filter}
-              sort={sort}
-              visibleCount={visiblePersonas.length}
-              totalCount={personas.length}
-              onQueryChange={setQueryText}
-              onFilterChange={setFilter}
-              onSortChange={setSort}
-            />
-
-            {sourceWarnings.length > 0 ? (
-              <InlineAlert tone="warning">
-                {t('portfolio.friendCountWarning', {
-                  count: sourceWarnings.length,
-                  plural: sourceWarnings.length === 1 ? '' : 's',
-                })}
-              </InlineAlert>
-            ) : null}
-
-            {visiblePersonas.length === 0 ? (
-              <div className="ras-hero-empty">
-                <h2 className="ras-hero-empty__title">{t('portfolio.noLocalMatchTitle')}</h2>
-                <p className="ras-hero-empty__description">
-                  {t('portfolio.noLocalMatchDescription')}
-                </p>
-              </div>
-            ) : (
-              <div className="ras-persona-grid">
-                {visiblePersonas.map((persona) => (
-                  <PersonaCard
-                    key={persona.id}
-                    persona={persona}
-                    active={false}
-                    onSelect={() => navigate(mode.detailPath(persona.id))}
-                  />
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </ScrollArea>
+          })}
+        </div>
+        <button type="button" className="ras-local-draft-create-row" onClick={onCreate}>
+          <span className="ras-local-draft-create-row__icon" aria-hidden="true">
+            <Plus size={20} strokeWidth={1.8} />
+          </span>
+          <span>{t('portfolio.localDrafts.createNew')}</span>
+        </button>
+      </section>
+    </div>
   );
 }
 
 export function PersonaListPage() {
   const { t } = useStudioI18n();
+  const navigate = useNavigate();
+  const [activeView, setActiveView] = useState<PortfolioView>('local-drafts');
+  const [queryText, setQueryText] = useState('');
+  const [filter, setFilter] = useState<OwnerPortfolioFilter>('all');
+  const [sort, setSort] = useState<OwnerPortfolioSort>('realm-order');
+  const [draftEntries, setDraftEntries] = useState<CreationDraftHistoryEntry[]>([]);
+  const [draftImages, setDraftImages] = useState<Record<string, string | null>>({});
+  const [draftHistoryStatus, setDraftHistoryStatus] = useState<DraftHistoryStatus>('loading');
+  const [draftHistoryPartial, setDraftHistoryPartial] = useState(false);
+
+  const portfolioQuery = useQuery({
+    queryKey: ownerPortfolioListQueryKey(),
+    queryFn: () => listOwnerPortfolioPersonas(),
+  });
+
+  const refreshDraftHistory = useCallback(async () => {
+    setDraftHistoryStatus('loading');
+    const result = await loadCreationDraftHistory();
+    if (!result.ok) {
+      setDraftEntries([]);
+      setDraftImages({});
+      setDraftHistoryPartial(false);
+      setDraftHistoryStatus('unavailable');
+      return;
+    }
+
+    const imageEntries = await Promise.all(result.entries.map(async (entry) => {
+      const draft = await loadCreationDraft(entry.draftKey);
+      const referenceImageUrl = draft.ok && draft.record ? draft.record.referenceImageUrl || null : null;
+      return [entry.draftKey, referenceImageUrl] as const;
+    }));
+
+    setDraftEntries(result.entries);
+    setDraftImages(Object.fromEntries(imageEntries));
+    setDraftHistoryPartial(result.unavailableCount > 0);
+    setDraftHistoryStatus('ready');
+  }, []);
+
+  useEffect(() => {
+    const handleHistoryUpdated = () => void refreshDraftHistory();
+    void refreshDraftHistory();
+    window.addEventListener(CREATION_DRAFT_HISTORY_UPDATED_EVENT, handleHistoryUpdated);
+    return () => window.removeEventListener(CREATION_DRAFT_HISTORY_UPDATED_EVENT, handleHistoryUpdated);
+  }, [refreshDraftHistory]);
+
+  const personas = portfolioQuery.data || [];
+  const worldCoresQuery = useQuery({
+    queryKey: ['realm-world-core', 'portfolio-card-banners'],
+    queryFn: () => listStudioWorldCores({ take: 100 }),
+    enabled: activeView === 'personas' && personas.length > 0,
+  });
+  const worldPresentationById = useMemo(() => new Map(
+    (worldCoresQuery.data || []).map((world) => {
+      const presentation = studioWorldCardPresentation(world);
+      return [presentation.worldId, presentation] as const;
+    }),
+  ), [worldCoresQuery.data]);
+  const visiblePersonas = useMemo(
+    () => applyOwnerPortfolioView(personas, { query: queryText, filter, sort }),
+    [personas, filter, queryText, sort],
+  );
+  const sourceWarnings = personas.filter((persona) => persona.friendCount.status === 'source-unavailable');
+  const portfolioFailure = portfolioQuery.isError ? classifyPortfolioFailure(portfolioQuery.error) : null;
+  const showDesignPreview = import.meta.env.DEV && !portfolioQuery.isLoading && personas.length === 0;
+  const refreshing = portfolioQuery.isFetching || worldCoresQuery.isFetching || draftHistoryStatus === 'loading';
+  const refreshAll = () => {
+    void portfolioQuery.refetch();
+    void worldCoresQuery.refetch();
+    void refreshDraftHistory();
+  };
+  const openCreate = () => navigate('/portfolio/create');
+
   return (
-    <PortfolioListPage
-      mode={{
-        queryKey: ownerPortfolioListQueryKey(),
-        queryFn: () => listOwnerPortfolioPersonas(),
-        eyebrow: t('portfolio.eyebrow'),
-        title: t('portfolio.title'),
-        description: t('portfolio.description'),
-        emptyTitle: t('portfolio.emptyTitle'),
-        emptyDescription: t('portfolio.emptyDescription'),
-        refreshLabel: t('common.refresh'),
-        createEnabled: true,
-        detailPath: (personaId) => `/portfolio/${personaId}`,
-      }}
-    />
+    <ScrollArea className="flex-1" viewportClassName="bg-transparent">
+      <div className="ras-page ras-persona-library">
+        <header className="ras-page-header ras-persona-library__header">
+          <h1 className="ras-page-header__title">{t('portfolio.title')}</h1>
+          <div className="ras-page-header__actions">
+            <Button
+              tone="secondary"
+              loading={refreshing}
+              leadingIcon={<RefreshCw size={15} strokeWidth={1.8} />}
+              onClick={refreshAll}
+              aria-label={t('portfolio.refreshAria')}
+            >
+              {t('common.refresh')}
+            </Button>
+            <Button
+              tone="primary"
+              className="text-white"
+              leadingIcon={<Plus size={15} strokeWidth={2} />}
+              onClick={openCreate}
+            >
+              {t('portfolio.createButton')}
+            </Button>
+          </div>
+        </header>
+
+        <div className="ras-portfolio-tabs" role="tablist" aria-label={t('portfolio.tabs.ariaLabel')}>
+          <button
+            type="button"
+            id="portfolio-tab-personas"
+            role="tab"
+            aria-selected={activeView === 'personas'}
+            aria-controls="portfolio-panel-personas"
+            className="ras-portfolio-tabs__item"
+            data-active={activeView === 'personas'}
+            onClick={() => setActiveView('personas')}
+          >
+            {t('portfolio.tabs.personas')}
+          </button>
+          <button
+            type="button"
+            id="portfolio-tab-local-drafts"
+            role="tab"
+            aria-selected={activeView === 'local-drafts'}
+            aria-controls="portfolio-panel-local-drafts"
+            className="ras-portfolio-tabs__item"
+            data-active={activeView === 'local-drafts'}
+            onClick={() => setActiveView('local-drafts')}
+          >
+            {t('portfolio.tabs.localDrafts')}
+          </button>
+        </div>
+
+        {portfolioFailure && portfolioFailure.kind !== 'capability-unavailable' ? (
+          <PortfolioSourceNotice
+            failure={portfolioFailure.kind}
+            loading={portfolioQuery.isFetching}
+            onRetry={() => void portfolioQuery.refetch()}
+          />
+        ) : null}
+
+        {activeView === 'local-drafts' ? (
+          <div
+            id="portfolio-panel-local-drafts"
+            role="tabpanel"
+            aria-labelledby="portfolio-tab-local-drafts"
+          >
+            <LocalDraftList
+              entries={draftEntries}
+              images={draftImages}
+              status={draftHistoryStatus}
+              partial={draftHistoryPartial}
+              onContinue={(draftKey) => navigate(`/portfolio/create?draft=${encodeURIComponent(draftKey)}`)}
+              onCreate={openCreate}
+            />
+          </div>
+        ) : (
+          <div
+            id="portfolio-panel-personas"
+            role="tabpanel"
+            aria-labelledby="portfolio-tab-personas"
+            className="ras-persona-library__persona-panel"
+          >
+            {portfolioQuery.isLoading ? (
+              <PortfolioLoadingState />
+            ) : showDesignPreview ? (
+              <DesignPreviewPersonaList />
+            ) : portfolioFailure ? null : personas.length === 0 ? (
+              <div className="ras-hero-empty">
+                <div className="ras-hero-empty__icon">
+                  <LayoutGrid size={28} strokeWidth={1.8} />
+                </div>
+                <div className="ras-stack-tight">
+                  <h2 className="ras-hero-empty__title">{t('portfolio.emptyTitle')}</h2>
+                  <p className="ras-hero-empty__description">{t('portfolio.emptyDescription')}</p>
+                </div>
+                <Button
+                  tone="primary"
+                  size="lg"
+                  className="text-white"
+                  leadingIcon={<Plus size={16} strokeWidth={2} />}
+                  onClick={openCreate}
+                >
+                  {t('portfolio.createButton')}
+                </Button>
+              </div>
+            ) : (
+              <>
+                <FilterCard
+                  queryText={queryText}
+                  filter={filter}
+                  sort={sort}
+                  visibleCount={visiblePersonas.length}
+                  totalCount={personas.length}
+                  onQueryChange={setQueryText}
+                  onFilterChange={setFilter}
+                  onSortChange={setSort}
+                />
+
+                {sourceWarnings.length > 0 ? (
+                  <InlineAlert tone="warning">
+                    {t('portfolio.friendCountWarning', {
+                      count: sourceWarnings.length,
+                      plural: sourceWarnings.length === 1 ? '' : 's',
+                    })}
+                  </InlineAlert>
+                ) : null}
+
+                {visiblePersonas.length === 0 ? (
+                  <div className="ras-hero-empty">
+                    <h2 className="ras-hero-empty__title">{t('portfolio.noLocalMatchTitle')}</h2>
+                    <p className="ras-hero-empty__description">{t('portfolio.noLocalMatchDescription')}</p>
+                  </div>
+                ) : (
+                  <div className="ras-persona-grid">
+                    {visiblePersonas.map((persona) => {
+                      const worldPresentation = persona.worldName
+                        ? worldPresentationById.get(persona.worldName)
+                        : undefined;
+                      return (
+                        <PersonaCard
+                          key={persona.id}
+                          persona={persona}
+                          worldBannerUrl={worldPresentation?.bannerUrl || null}
+                          worldName={worldPresentation?.worldName || persona.worldName}
+                          active={false}
+                          onSelect={() => navigate(`/portfolio/${persona.id}`)}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </ScrollArea>
   );
 }

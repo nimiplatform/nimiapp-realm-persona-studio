@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent } from 'react';
-import { AudioLines, Copy, FileImage, ImageOff, Music2, Pause, Play, Trash2 } from 'lucide-react';
+import { AudioLines, Copy, ImageOff, Music2, Pause, Play, Trash2 } from 'lucide-react';
 import {
   Button,
   DataList,
@@ -430,7 +430,7 @@ function UploadTab({
   return (
     <div className="grid gap-5">
       {!capability.available ? (
-        <InlineAlert tone="warning">{t('assetsLibrary.upload.capabilityUnavailable')}</InlineAlert>
+        <InlineAlert tone="info">{t('assetsLibrary.upload.capabilityUnavailable')}</InlineAlert>
       ) : null}
       <DashedAddButton
         shape="dropzone"
@@ -470,7 +470,7 @@ export function AssetsLibraryPage() {
   const [sourceUnavailableCount, setSourceUnavailableCount] = useState(0);
   const [sourceStorageUnavailable, setSourceStorageUnavailable] = useState(false);
   const [importedUnavailableCount, setImportedUnavailableCount] = useState(0);
-  const [importFailure, setImportFailure] = useState<string | null>(null);
+  const [importFailure, setImportFailure] = useState<{ message: string; informational: boolean } | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const data = useMemo(() => aggregateAssetLibraryData({
@@ -492,7 +492,12 @@ export function AssetsLibraryPage() {
       if (cancelled) return;
       setImportedRecords(imported.records);
       setImportedUnavailableCount(imported.unavailableCount);
-      if (imported.failure) setImportFailure(t('assetsLibrary.upload.capabilityUnavailable'));
+      if (imported.failure) {
+        setImportFailure({
+          message: t('assetsLibrary.upload.capabilityUnavailable'),
+          informational: true,
+        });
+      }
 
       const draftRecords: CreationDraftAutosaveRecord[] = [];
       let unavailableCount = creative.unavailableCount + history.unavailableCount;
@@ -535,11 +540,11 @@ export function AssetsLibraryPage() {
         setImportedRecords((current) => [result.record, ...current.filter((record) => record.id !== result.record.id)]);
         nimiToast.success(t('assetsLibrary.upload.success', { title: result.record.title }));
       } else if (result.failure === 'unsupported-media-type') {
-        setImportFailure(t('assetsLibrary.upload.fileRejected'));
+        setImportFailure({ message: t('assetsLibrary.upload.fileRejected'), informational: false });
       } else if (result.failure === 'capability-unavailable') {
-        setImportFailure(t('assetsLibrary.upload.capabilityUnavailable'));
+        setImportFailure({ message: t('assetsLibrary.upload.capabilityUnavailable'), informational: true });
       } else {
-        setImportFailure(t('assetsLibrary.upload.failure', { message: result.message }));
+        setImportFailure({ message: t('assetsLibrary.upload.failure'), informational: false });
       }
     } finally {
       setIsImporting(false);
@@ -554,7 +559,7 @@ export function AssetsLibraryPage() {
       setImportedRecords((current) => current.filter((record) => record.id !== importId));
       if (selectedEntry?.id === entry.id) setSelectedEntry(null);
     } else {
-      setImportFailure(t('assetsLibrary.upload.removeFailed'));
+      setImportFailure({ message: t('assetsLibrary.upload.removeFailed'), informational: false });
     }
   }
 
@@ -591,7 +596,11 @@ export function AssetsLibraryPage() {
             </InlineAlert>
           ) : null}
           {sourceStorageUnavailable ? <InlineAlert tone="warning">{t('assetsLibrary.storageUnavailable')}</InlineAlert> : null}
-          {importFailure ? <InlineAlert tone="danger">{importFailure}</InlineAlert> : null}
+          {importFailure ? (
+            <InlineAlert tone={importFailure.informational ? 'info' : 'danger'}>
+              {importFailure.message}
+            </InlineAlert>
+          ) : null}
 
           {activeTab === 'images' ? (
             activeEntries.length > 0
@@ -621,13 +630,6 @@ export function AssetsLibraryPage() {
             onChange={(event) => void handleFileChange(event)}
           />
 
-          <Surface tone="card" padding="md" className="grid gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <StatusBadge tone="warning">{t('assetsLibrary.publicationDisabled.title')}</StatusBadge>
-              <FileImage size={16} strokeWidth={1.7} aria-hidden="true" />
-            </div>
-            <p className="m-0 text-sm text-[var(--nimi-text-muted)]">{t('assetsLibrary.publicationDisabled.description')}</p>
-          </Surface>
         </div>
       </Surface>
       <AssetPreviewOverlay entry={selectedEntry} onClose={() => setSelectedEntry(null)} />

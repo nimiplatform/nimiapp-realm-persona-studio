@@ -22,9 +22,9 @@ export function createStudioProtectedOperationUnavailableError(
   operation = 'Realm Persona Studio account, Realm, AI, and publication operations',
 ): Error {
   return createNimiError({
-    message: `${operation} require an admitted Desktop-supervised protected operation.`,
+    message: `${operation} need a Nimi platform surface that is not available to Realm Persona Studio yet.`,
     reasonCode: STUDIO_CAPABILITY_UNAVAILABLE_REASON,
-    actionHint: 'admit_persona_studio_protected_operation_through_desktop',
+    actionHint: 'retry_when_platform_surface_available',
     source: 'sdk',
   });
 }

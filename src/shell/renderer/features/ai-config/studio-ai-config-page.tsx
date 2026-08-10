@@ -1,245 +1,48 @@
-import { useEffect, useMemo, useState } from 'react';
-import { InlineAlert, StatusBadge, Surface } from '@nimiplatform/kit/ui';
-import {
-  ModelConfigAiModelHub,
-  defaultModelConfigProfileCopy,
-  useModelConfigProfileController,
-  type AppModelConfigSurface,
-  type LocalAssetEntry,
-  type ModelConfigProjectionStatus,
-} from '@nimiplatform/kit/features/model-config';
-import { listNimiRuntimeLocalAssetEntries } from '@nimiplatform/sdk/runtime';
-import type {
-  NimiAICapabilityRequirementDeclaration,
-  NimiAIConfig,
-  NimiAIConfigTargetRef,
-  NimiAIScopeRef,
-} from '@nimiplatform/sdk/ai';
-import { createStudioRuntimeClient } from '@renderer/data/runtime-client.js';
-import { ensureStudioRuntimeClientReady } from '@renderer/infra/studio-bootstrap.js';
-import { createStudioRuntimeModelPickerProviderCache } from './studio-runtime-model-provider.js';
-import {
-  createStudioAIConfigService,
-  createStudioAIScopeRef,
-  hydrateStudioAIConfigFromProtectedBridge,
-} from './studio-ai-config-store.js';
-import { translateStudioModelConfigCopy } from './studio-ai-config-copy.js';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Button, InlineAlert, StatusBadge, Surface } from '@nimiplatform/kit/ui';
+import type { NimiPortableAppAIConfigIntent } from '@nimiplatform/sdk/ai';
+import { TechnicalReviewDetails } from '@renderer/features/portfolio/OwnerPortfolio.shared.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
 import type { StudioCopyKey } from '@renderer/i18n/studio-copy.js';
-import type { StudioTranslateOptions } from '@renderer/i18n/studio-i18n.js';
+import {
+  createStudioLocalCapabilityIntent,
+  loadStudioAIConfig,
+  overwriteStudioCapabilityIntent,
+  STUDIO_TEXT_GENERATE_CAPABILITY_CONTRACT,
+} from './studio-ai-config-store.js';
 
-const STUDIO_ENABLED_AI_CAPABILITIES = [
-  'text.generate',
-  'image.generate',
-  'audio.synthesize',
-] as const;
+const STUDIO_AI_CONFIG_QUERY_KEY = ['realm-persona-studio', 'studio-ai-config'] as const;
 
-type StudioTranslator = (key: StudioCopyKey, options?: StudioTranslateOptions) => string;
+const ROUTE_KIND_LABEL_KEYS: Record<NimiPortableAppAIConfigIntent['route']['oneofKind'], StudioCopyKey> = {
+  local: 'aiConfig.route.local',
+  cloud: 'aiConfig.route.cloud',
+};
 
-function createRequirementDeclaration(scopeRef: NimiAIScopeRef): NimiAICapabilityRequirementDeclaration {
-  return {
-    requirementId: `${scopeRef.ownerId}:${scopeRef.surfaceId || 'default'}:studio-ai`,
-    scopeRef,
-    requiredSlices: STUDIO_ENABLED_AI_CAPABILITIES.map((capability) => ({
-      requirementSliceId: `studio-ai.${capability}`,
-      capability,
-      profileSliceRef: `studio-ai.${capability}`,
-      readinessPolicy: 'required',
-    })),
-    setupProjectionPolicy: 'sdk-ai-config-setup-projection',
-  };
-}
-
-function targetRefDetail(targetRef: NimiAIConfigTargetRef): string | null {
-  if (targetRef.kind === 'cloud-connector') {
-    return [targetRef.provider || targetRef.connectorId, targetRef.providerModelId]
-      .filter(Boolean)
-      .join(' / ');
-  }
-  if (targetRef.kind === 'local-runtime') {
-    return targetRef.profileBindingId || targetRef.readinessRef || null;
-  }
-  return `${targetRef.sourceProfileId}:${targetRef.sliceId}`;
-}
-
-function bindingStatus(
-  config: NimiAIConfig,
-  capabilityId: string,
-  runtimeReady: boolean,
-  runtimeDetail: string | null,
-  t: StudioTranslator,
-): ModelConfigProjectionStatus {
-  if (!runtimeReady) {
-    return {
-      supported: false,
-      tone: 'attention',
-      badgeLabel: t('aiConfig.runtimeUnavailable'),
-      title: t('aiConfig.runtimeUnavailable'),
-      detail: runtimeDetail || t('aiConfig.runtimePending'),
-    };
-  }
-  const targetRef = config.capabilities.targetRefs[capabilityId] || null;
-  if (!targetRef) {
-    return {
-      supported: false,
-      tone: 'attention',
-      badgeLabel: t('aiConfig.needsTarget'),
-      title: t('aiConfig.targetRequired'),
-      detail: t('aiConfig.targetRequiredDetail'),
-    };
-  }
-  return {
-    supported: true,
-    tone: 'ready',
-    badgeLabel: t('aiConfig.bound'),
-    title: t('aiConfig.targetConfigured'),
-    detail: targetRefDetail(targetRef),
-  };
-}
-
-function useLiveAIConfig(
-  service: ReturnType<typeof createStudioAIConfigService>,
-  scopeRef: NimiAIScopeRef,
-): { readonly config: NimiAIConfig; readonly error: string | null } {
-  const [config, setConfig] = useState<NimiAIConfig>(() => service.aiConfig.get(scopeRef));
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    setConfig(service.aiConfig.get(scopeRef));
-    setError(null);
-    void hydrateStudioAIConfigFromProtectedBridge(scopeRef)
-      .then(() => {
-        setError(null);
-      })
-      .catch((caught: unknown) => {
-        setError(caught instanceof Error ? caught.message : String(caught || 'AI config unavailable.'));
-      });
-    return service.aiConfig.subscribe(scopeRef, setConfig);
-  }, [service, scopeRef]);
-  return { config, error };
-}
-
-function useStudioRuntimeReadiness(t: StudioTranslator): { ready: boolean; detail: string | null } {
-  const [state, setState] = useState<{ ready: boolean; detail: string | null }>({
-    ready: false,
-    detail: t('aiConfig.runtimePending'),
-  });
-
-  useEffect(() => {
-    let cancelled = false;
-    void ensureStudioRuntimeClientReady()
-      .then(async () => {
-        const runtime = await createStudioRuntimeClient();
-        if (cancelled) return;
-        setState(runtime
-          ? { ready: true, detail: null }
-          : { ready: false, detail: t('aiConfig.runtimeClientUnavailable') });
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          setState({
-            ready: false,
-            detail: error instanceof Error ? error.message : String(error),
-          });
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [t]);
-
-  return state;
-}
-
-function useStudioRuntimeLocalAssetSource(runtimeReady: boolean): AppModelConfigSurface['localAssetSource'] {
-  const [assets, setAssets] = useState<LocalAssetEntry[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!runtimeReady) {
-      setAssets([]);
-      setLoading(false);
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    setLoading(true);
-    void ensureStudioRuntimeClientReady()
-      .then(() => createStudioRuntimeClient())
-      .then(async (runtime) => {
-        if (!runtime) {
-          return [];
-        }
-        return listNimiRuntimeLocalAssetEntries(runtime);
-      })
-      .then((next) => {
-        if (cancelled) return;
-        setAssets(next.map((asset) => ({
-          localAssetId: asset.localAssetId,
-          assetId: asset.assetId,
-          kind: asset.kind,
-          engine: asset.engine,
-          status: asset.status,
-        })));
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setAssets([]);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [runtimeReady]);
-
-  return useMemo(() => ({
-    list: () => assets,
-    loading,
-  }), [assets, loading]);
+function routeKindLabelKey(intent: NimiPortableAppAIConfigIntent): StudioCopyKey {
+  return ROUTE_KIND_LABEL_KEYS[intent.route.oneofKind];
 }
 
 export function StudioAIConfigPage() {
-  const { locale, t } = useStudioI18n();
-  const scopeRef = useMemo(() => createStudioAIScopeRef(), []);
-  const service = useMemo(() => createStudioAIConfigService(), []);
-  const liveConfig = useLiveAIConfig(service, scopeRef);
-  const { config } = liveConfig;
-  const runtime = useStudioRuntimeReadiness(t);
-  const localAssetSource = useStudioRuntimeLocalAssetSource(runtime.ready);
-  const providerResolver = useMemo(() => createStudioRuntimeModelPickerProviderCache(), []);
-
-  const surface: AppModelConfigSurface = useMemo(() => ({
-    scopeRef,
-    aiConfigService: service,
-    requirementDeclaration: createRequirementDeclaration(scopeRef),
-    providerResolver: (capabilityId: string) => (runtime.ready ? providerResolver(capabilityId) : null),
-    projectionResolver: (capabilityId: string) => bindingStatus(config, capabilityId, runtime.ready, runtime.detail, t),
-    localAssetSource,
-    runtimeNotReadyLabel: runtime.detail || t('aiConfig.runtimeUnavailable'),
-    i18n: { t: translateStudioModelConfigCopy },
-  }), [config, localAssetSource, locale, providerResolver, runtime.detail, runtime.ready, scopeRef, service, t]);
-
-  const profileCopy = useMemo(() => defaultModelConfigProfileCopy(translateStudioModelConfigCopy), [locale]);
-  const currentOrigin = useMemo(
-    () => (config.profileOrigin
-      ? { profileId: config.profileOrigin.profileId, title: config.profileOrigin.title }
-      : null),
-    [config.profileOrigin],
-  );
-  const profile = useModelConfigProfileController({
-    scopeRef,
-    aiConfigService: service,
-    requirementDeclaration: surface.requirementDeclaration,
-    copy: profileCopy,
-    currentOrigin,
+  const { t } = useStudioI18n();
+  const queryClient = useQueryClient();
+  const configQuery = useQuery({
+    queryKey: STUDIO_AI_CONFIG_QUERY_KEY,
+    queryFn: () => loadStudioAIConfig(),
+    retry: false,
   });
+  const overwriteMutation = useMutation({
+    mutationFn: () => overwriteStudioCapabilityIntent(createStudioLocalCapabilityIntent()),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: STUDIO_AI_CONFIG_QUERY_KEY });
+    },
+  });
+
+  const config = configQuery.data ?? null;
+  const textGenerateIntent = config?.capabilities.find(
+    (intent) => intent.capabilityContract === STUDIO_TEXT_GENERATE_CAPABILITY_CONTRACT,
+  ) ?? null;
+  const rawError = configQuery.error ?? overwriteMutation.error;
+  const rawErrorText = rawError instanceof Error ? rawError.message : rawError ? String(rawError) : '';
 
   return (
     <div className="ras-page">
@@ -251,21 +54,71 @@ export function StudioAIConfigPage() {
               {t('aiConfig.description')}
             </p>
           </div>
-          <StatusBadge tone={runtime.ready ? 'success' : 'warning'} shape="dot">
-            {runtime.ready ? t('aiConfig.runtimeReady') : t('aiConfig.runtimeUnavailable')}
+          <StatusBadge
+            tone={configQuery.isPending ? 'neutral' : configQuery.isError ? 'warning' : config ? 'success' : 'info'}
+            shape="dot"
+          >
+            {configQuery.isPending
+              ? t('common.loading')
+              : configQuery.isError
+                ? t('aiConfig.state.unavailable')
+                : config
+                  ? t('aiConfig.state.configured')
+                  : t('aiConfig.state.notConfigured')}
           </StatusBadge>
         </div>
-        {runtime.ready ? null : (
-          <InlineAlert tone="warning" className="mb-4">
-            {runtime.detail || t('aiConfig.runtimeUnavailable')}
-          </InlineAlert>
-        )}
-        {liveConfig.error ? (
-          <InlineAlert tone="danger" className="mb-4">
-            {liveConfig.error}
+
+        {configQuery.isError ? (
+          <InlineAlert tone="info" className="mb-4">
+            {t('aiConfig.unavailableDetail')}
           </InlineAlert>
         ) : null}
-        <ModelConfigAiModelHub surface={surface} profile={profile} />
+        {configQuery.isSuccess && !config ? (
+          <InlineAlert tone="info" className="mb-4">
+            {t('aiConfig.notConfiguredDetail')}
+          </InlineAlert>
+        ) : null}
+        {config ? (
+          <div className="mb-4 grid gap-2">
+            {config.capabilities.map((intent) => (
+              <Surface key={intent.capabilityContract} tone="card" padding="md">
+                <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+                  <div className="ras-break-anywhere font-medium">{intent.capabilityContract}</div>
+                  <StatusBadge tone="info">{t(routeKindLabelKey(intent))}</StatusBadge>
+                </div>
+              </Surface>
+            ))}
+          </div>
+        ) : null}
+
+        <div className="flex flex-wrap gap-3">
+          {configQuery.isError ? (
+            <Button tone="secondary" onClick={() => void configQuery.refetch()}>
+              {t('common.retry')}
+            </Button>
+          ) : null}
+          <Button
+            tone="primary"
+            className="text-white"
+            disabled={configQuery.isPending || overwriteMutation.isPending}
+            loading={overwriteMutation.isPending}
+            onClick={() => overwriteMutation.mutate()}
+          >
+            {textGenerateIntent ? t('aiConfig.action.resetLocalIntent') : t('aiConfig.action.writeLocalIntent')}
+          </Button>
+        </div>
+        {overwriteMutation.isSuccess ? (
+          <InlineAlert tone="success" className="mt-3">
+            {t('aiConfig.action.saved')}
+          </InlineAlert>
+        ) : null}
+        {rawErrorText ? (
+          <TechnicalReviewDetails title={t('aiConfig.errorDetails')}>
+            <pre className="ras-json-preview m-0 min-h-16 overflow-auto rounded-[var(--nimi-radius-field)] border border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-panel)] p-3 text-xs">
+              {rawErrorText}
+            </pre>
+          </TechnicalReviewDetails>
+        ) : null}
       </Surface>
     </div>
   );

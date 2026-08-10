@@ -2,10 +2,8 @@ import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Surface } from '@nimiplatform/kit/ui';
 import { useStudioI18n } from '../i18n/use-studio-i18n.js';
+import { PersonaListPage } from '../features/persona-list/persona-list-page.js';
 
-const PersonaListPage = lazy(() =>
-  import('../features/persona-list/persona-list-page.js').then((m) => ({ default: m.PersonaListPage })),
-);
 const PersonaCreatePage = lazy(() =>
   import('../features/persona-create/persona-create-page.js').then((m) => ({ default: m.PersonaCreatePage })),
 );

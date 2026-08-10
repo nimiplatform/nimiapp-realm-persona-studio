@@ -47,14 +47,15 @@ describe('identity pack', () => {
     ]);
     expect(pack.candidates.every((candidate) => candidate.reviewState === 'candidate-only')).toBe(true);
     expect(pack.candidates.find((candidate) => candidate.key === 'profile-cover')).toMatchObject({
-      publicWrite: 'profile-cover-publication-blocked',
-      blockedReason: 'Owner-scoped profile cover write path is not admitted.',
+      publicWrite: 'profile-cover-publication-unavailable',
+      blockedReason: 'Nimi App Access does not provide owner-scoped profile cover publication yet.',
     });
     expect(pack.candidates.find((candidate) => candidate.key === 'portrait-reference')).toMatchObject({
-      publicWrite: 'resource-persona-binding-blocked',
+      publicWrite: 'resource-persona-binding-unavailable',
     });
     expect(pack.candidates.find((candidate) => candidate.key === 'avatar')).toMatchObject({
-      publicWrite: 'avatar-url-selection-admitted-after-owner-url-review',
+      publicWrite: 'avatar-url-selection-unavailable',
+      blockedReason: 'Nimi App Access does not provide Persona avatar selection yet.',
     });
   });
 

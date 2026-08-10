@@ -1,28 +1,14 @@
 import type {
   RealmModel,
 } from '@nimiplatform/sdk/realm/generated';
-import type { Runtime } from '@nimiplatform/sdk/runtime';
-import type { ExecuteScenarioResponse, ScenarioArtifact } from '@nimiplatform/sdk/runtime/generated';
-import { createStudioRealmClient, type StudioRealmSurface } from '@renderer/data/realm-client.js';
-import { createStudioRuntimeClient } from '@renderer/data/runtime-client.js';
-import {
-  bindStudioImageGeneratePayload,
-  bindStudioSpeechSynthesizePayload,
-  executeStudioImageGenerate,
-  executeStudioSpeechSynthesize,
-  isStudioAIRouteBindingFailure,
-  normalizeStudioImageGenerateFailureMessage,
-} from './studio-ai-runtime.js';
+import { requireStudioProtectedOperation } from '@renderer/app-shell/studio-platform.js';
 import type { OwnerPortfolioPersonaDetail } from './portfolio-data.js';
 import {
   VISUAL_IMAGE_GENERATION_SOURCE,
   VOICE_DEMO_SYNTHESIS_SOURCE,
   buildReviewedAvatarPackageCandidatePayload,
-  buildReviewedAvatarPackageImageGenerationPayload,
   buildReviewedVisualImageCandidatePayload,
-  buildReviewedVisualImageGenerationPayload,
   buildReviewedVoiceDemoCandidatePayload,
-  buildReviewedVoiceSynthesisPayload,
   type AvatarPackageCandidateInput,
   type ReviewedAvatarPackageCandidatePayload,
   type ReviewedVisualImageCandidatePayload,
@@ -30,20 +16,27 @@ import {
   type VisualImageGenerationInput,
   type VoiceDemoCandidateInput,
 } from './media-voice-candidate.js';
-import {
-  projectStudioRuntimeArtifacts,
-  type StudioRuntimeArtifactProjection,
-} from './runtime-artifact-projection.js';
-
-type StudioRealmClient = StudioRealmSurface;
 
 type RealmSelectAvatarInput = { avatarUrl: string };
 type RealmSelectAvatarResponse = RealmModel<'PersonaCharacterCoreDto'>;
 
 export const REALM_PERSONA_AVATAR_SELECT_SOURCE = 'Realm WorldCoreController.replaceRealmPersona';
 
-type RuntimeVoiceClient = Runtime;
-type RuntimeImageClient = Runtime;
+/**
+ * The Nimi local App surface does not expose media candidate generation yet,
+ * so Studio media candidates fail closed with a typed unavailability result
+ * instead of a Runtime scenario dispatch.
+ */
+export const RUNTIME_MEDIA_CANDIDATE_UNAVAILABLE_MESSAGE = 'The Nimi local app surface does not provide this candidate generation capability yet.';
+export const PERSONA_AVATAR_SELECTION_AVAILABLE = false;
+
+export type StudioMediaCandidateArtifact = {
+  artifactId?: string;
+  mimeType?: string;
+  publicUri?: string;
+  previewUrl?: string;
+  sizeBytes?: string;
+};
 
 export type RealmPersonaAvatarSelectResult =
   | {
@@ -76,7 +69,7 @@ export type RuntimeVisualImageGenerationResult =
       artifactIds: string[];
       artifactUris: string[];
       previewUrls: string[];
-      artifacts: StudioRuntimeArtifactProjection[];
+      artifacts: StudioMediaCandidateArtifact[];
       traceId?: string;
       modelResolved?: string;
     };
@@ -86,10 +79,7 @@ export type RuntimeVisualImageGenerationResult =
     source: typeof VISUAL_IMAGE_GENERATION_SOURCE;
     failure:
       | 'runtime-payload-invalid'
-      | 'runtime-transport-unavailable'
-      | 'runtime-route-unbound'
-      | 'runtime-generate-failed'
-      | 'runtime-output-missing';
+      | 'runtime-media-candidate-unavailable';
     message: string;
     draft: ReviewedVisualImageCandidatePayload | ReviewedAvatarPackageCandidatePayload | null;
   };
@@ -105,7 +95,7 @@ export type RuntimeVoiceDemoSynthesisResult =
       jobId?: string;
       artifactIds: string[];
       previewUrls: string[];
-      artifacts: StudioRuntimeArtifactProjection[];
+      artifacts: StudioMediaCandidateArtifact[];
       traceId?: string;
       modelResolved?: string;
     };
@@ -115,10 +105,7 @@ export type RuntimeVoiceDemoSynthesisResult =
     source: typeof VOICE_DEMO_SYNTHESIS_SOURCE;
     failure:
       | 'runtime-payload-invalid'
-      | 'runtime-transport-unavailable'
-      | 'runtime-route-unbound'
-      | 'runtime-synthesize-failed'
-      | 'runtime-output-missing';
+      | 'runtime-media-candidate-unavailable';
     message: string;
     draft: ReviewedVoiceDemoCandidatePayload | null;
   };
@@ -140,95 +127,6 @@ function normalizeAvatarUrl(value: string): string | null {
   }
 }
 
-async function normalizeRuntimeVoiceDemoSynthesisOutput(
-  runtime: Runtime,
-  output: ExecuteScenarioResponse,
-  draft: ReviewedVoiceDemoCandidatePayload,
-): Promise<RuntimeVoiceDemoSynthesisResult> {
-  const scenarioOutput = output.output?.output;
-  const artifacts: readonly ScenarioArtifact[] = scenarioOutput?.oneofKind === 'speechSynthesize'
-    ? scenarioOutput.speechSynthesize.artifacts
-    : [];
-  const projectedArtifacts = await projectStudioRuntimeArtifacts(runtime, artifacts);
-  const artifactIds = projectedArtifacts
-    .map((artifact) => artifact.artifactId)
-    .filter((artifactId): artifactId is string => Boolean(artifactId));
-  const previewUrls = projectedArtifacts
-    .map((artifact) => artifact.previewUrl)
-    .filter((previewUrl): previewUrl is string => Boolean(previewUrl));
-
-  if (artifactIds.length === 0) {
-    return {
-      ok: false,
-      source: VOICE_DEMO_SYNTHESIS_SOURCE,
-      failure: 'runtime-output-missing',
-      message: 'Runtime speechSynthesize scenario output missing artifact id.',
-      draft,
-    };
-  }
-
-  return {
-    ok: true,
-    source: VOICE_DEMO_SYNTHESIS_SOURCE,
-    candidate: true,
-    publicTruth: false,
-    draft,
-    runtime: {
-      artifactIds,
-      previewUrls,
-      artifacts: projectedArtifacts,
-      ...(output.traceId ? { traceId: output.traceId } : {}),
-      ...(output.modelResolved ? { modelResolved: output.modelResolved } : {}),
-    },
-  };
-}
-
-async function normalizeRuntimeVisualImageGenerationOutput(
-  runtime: Runtime,
-  output: ExecuteScenarioResponse,
-  draft: ReviewedVisualImageCandidatePayload | ReviewedAvatarPackageCandidatePayload,
-): Promise<RuntimeVisualImageGenerationResult> {
-  const scenarioOutput = output.output?.output;
-  const artifacts: readonly ScenarioArtifact[] = scenarioOutput?.oneofKind === 'imageGenerate'
-    ? scenarioOutput.imageGenerate.artifacts
-    : [];
-  const projectedArtifacts = await projectStudioRuntimeArtifacts(runtime, artifacts);
-  const artifactIds = projectedArtifacts
-    .map((artifact) => artifact.artifactId)
-    .filter((artifactId): artifactId is string => Boolean(artifactId));
-  const artifactUris = projectedArtifacts
-    .map((artifact) => artifact.publicUri)
-    .filter((uri): uri is string => Boolean(uri));
-  const previewUrls = projectedArtifacts
-    .map((artifact) => artifact.previewUrl)
-    .filter((previewUrl): previewUrl is string => Boolean(previewUrl));
-
-  if (projectedArtifacts.length === 0) {
-    return {
-      ok: false,
-      source: VISUAL_IMAGE_GENERATION_SOURCE,
-      failure: 'runtime-output-missing',
-      message: 'Runtime imageGenerate scenario output missing readable artifact.',
-      draft,
-    };
-  }
-
-  return {
-    ok: true,
-    source: VISUAL_IMAGE_GENERATION_SOURCE,
-    candidate: true,
-    publicTruth: false,
-    draft,
-    runtime: {
-      artifactIds,
-      artifactUris,
-      previewUrls,
-      artifacts: projectedArtifacts,
-      ...(output.traceId ? { traceId: output.traceId } : {}),
-      ...(output.modelResolved ? { modelResolved: output.modelResolved } : {}),
-    },
-  };
-}
 export function buildRealmSelectAvatarInput(avatarUrl: string): RealmSelectAvatarInput | null {
   const normalizedAvatarUrl = normalizeAvatarUrl(avatarUrl);
   if (!normalizedAvatarUrl) {
@@ -282,7 +180,7 @@ function coreHasExternalRef(core: Record<string, unknown>, kind: string, uri: st
   });
 }
 
-function withSelectedAvatarExternalRef(
+export function withSelectedAvatarExternalRef(
   profile: RealmModel<'PersonaCharacterCoreDto'>['profile'],
   avatarUrl: string,
 ): RealmModel<'CharacterProfileCoreInputDto'> {
@@ -320,202 +218,83 @@ function withSelectedAvatarExternalRef(
 }
 
 export async function selectReviewedPersonaAvatarUrl(
-  personaId: string,
-  avatarUrl: string,
-  realm: StudioRealmClient = createStudioRealmClient(),
+  _personaId: string,
+  _avatarUrl: string,
 ): Promise<RealmPersonaAvatarSelectResult> {
-  const submitted = buildRealmSelectAvatarInput(avatarUrl);
-  if (!submitted) {
-    return {
-      ok: false,
-      source: REALM_PERSONA_AVATAR_SELECT_SOURCE,
-      publicTruth: false,
-      failure: 'avatar-url-invalid',
-      message: 'Avatar URL selection requires a valid http(s) URL.',
-      submitted: null,
-    };
-  }
-
-  try {
-    const current = await realm.worldCoreControllerGetPersonaCharacter({ path: { personaCharacterId: personaId } });
-    const response = await realm.worldCoreControllerReplacePersonaCharacter({
-      path: { personaCharacterId: personaId },
-      body: {
-        baseContentHash: current.contentHash,
-        worldId: current.worldId,
-        origin: current.origin,
-        profile: withSelectedAvatarExternalRef(current.profile, submitted.avatarUrl),
-      },
-    });
-    return normalizeRealmPersonaAvatarSelectResult(response, submitted);
-  } catch (error) {
-    return {
-      ok: false,
-      source: REALM_PERSONA_AVATAR_SELECT_SOURCE,
-      publicTruth: false,
-      failure: 'realm-select-avatar-failed',
-      message: error instanceof Error ? error.message : 'Realm avatar selection failed.',
-      submitted,
-    };
-  }
+  requireStudioProtectedOperation('Reviewed Realm Persona avatar selection');
 }
+
 export async function synthesizeReviewedVoiceDemo(
   input: VoiceDemoCandidateInput,
   persona: OwnerPortfolioPersonaDetail,
-  runtime?: RuntimeVoiceClient | null,
 ): Promise<RuntimeVoiceDemoSynthesisResult> {
   const draft = buildReviewedVoiceDemoCandidatePayload(input, persona);
-  const synthesisPayload = buildReviewedVoiceSynthesisPayload(input);
 
-  if (!draft.payload || !synthesisPayload.payload) {
+  if (!draft.payload) {
     return {
       ok: false,
       source: VOICE_DEMO_SYNTHESIS_SOURCE,
       failure: 'runtime-payload-invalid',
-      message: synthesisPayload.errors.join('; ') || 'Runtime speechSynthesize scenario payload invalid.',
-      draft: draft.payload,
+      message: draft.errors.join('; ') || 'Runtime speechSynthesize scenario payload invalid.',
+      draft: null,
     };
   }
 
-  const runtimeClient = runtime === undefined ? await createStudioRuntimeClient() : runtime;
-
-  if (!runtimeClient) {
-    return {
-      ok: false,
-      source: VOICE_DEMO_SYNTHESIS_SOURCE,
-      failure: 'runtime-transport-unavailable',
-      message: 'Runtime speechSynthesize scenario transport unavailable: Tauri IPC runtime transport is required.',
-      draft: draft.payload,
-    };
-  }
-
-  try {
-    const boundPayload = await bindStudioSpeechSynthesizePayload(synthesisPayload.payload, runtimeClient);
-    const boundDraft = {
-      ...draft.payload,
-      runtime: {
-        ...draft.payload.runtime,
-        request: boundPayload,
-      },
-    };
-    const output = await executeStudioSpeechSynthesize(boundPayload, runtimeClient);
-    return await normalizeRuntimeVoiceDemoSynthesisOutput(runtimeClient, output, boundDraft);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'runtime transport call failed.';
-    const routeUnbound = isStudioAIRouteBindingFailure(error);
-    return {
-      ok: false,
-      source: VOICE_DEMO_SYNTHESIS_SOURCE,
-      failure: routeUnbound ? 'runtime-route-unbound' : 'runtime-synthesize-failed',
-      message: routeUnbound ? message : `Runtime speechSynthesize scenario failed: ${message}`,
-      draft: draft.payload,
-    };
-  }
+  return {
+    ok: false,
+    source: VOICE_DEMO_SYNTHESIS_SOURCE,
+    failure: 'runtime-media-candidate-unavailable',
+    message: RUNTIME_MEDIA_CANDIDATE_UNAVAILABLE_MESSAGE,
+    draft: draft.payload,
+  };
 }
+
 export async function generateReviewedVisualImageCandidate(
   input: VisualImageGenerationInput,
   persona: OwnerPortfolioPersonaDetail,
-  runtime?: RuntimeImageClient | null,
 ): Promise<RuntimeVisualImageGenerationResult> {
   const draft = buildReviewedVisualImageCandidatePayload(input, persona);
-  const imagePayload = buildReviewedVisualImageGenerationPayload(input, persona);
 
-  if (!draft.payload || !imagePayload.payload) {
+  if (!draft.payload) {
     return {
       ok: false,
       source: VISUAL_IMAGE_GENERATION_SOURCE,
       failure: 'runtime-payload-invalid',
-      message: imagePayload.errors.join('; ') || 'Runtime imageGenerate scenario payload invalid.',
-      draft: draft.payload,
+      message: draft.errors.join('; ') || 'Runtime imageGenerate scenario payload invalid.',
+      draft: null,
     };
   }
 
-  const runtimeClient = runtime === undefined ? await createStudioRuntimeClient() : runtime;
-
-  if (!runtimeClient) {
-    return {
-      ok: false,
-      source: VISUAL_IMAGE_GENERATION_SOURCE,
-      failure: 'runtime-transport-unavailable',
-      message: 'Runtime imageGenerate scenario transport unavailable: Tauri IPC runtime transport is required.',
-      draft: draft.payload,
-    };
-  }
-
-  try {
-    const boundPayload = await bindStudioImageGeneratePayload(imagePayload.payload, runtimeClient);
-    const boundDraft = {
-      ...draft.payload,
-      runtime: {
-        ...draft.payload.runtime,
-        request: boundPayload,
-      },
-    };
-    const output = await executeStudioImageGenerate(boundPayload, runtimeClient);
-    return await normalizeRuntimeVisualImageGenerationOutput(runtimeClient, output, boundDraft);
-  } catch (error) {
-    const message = normalizeStudioImageGenerateFailureMessage(error);
-    const routeUnbound = isStudioAIRouteBindingFailure(error);
-    return {
-      ok: false,
-      source: VISUAL_IMAGE_GENERATION_SOURCE,
-      failure: routeUnbound ? 'runtime-route-unbound' : 'runtime-generate-failed',
-      message: routeUnbound ? message : `Runtime imageGenerate scenario failed: ${message}`,
-      draft: draft.payload,
-    };
-  }
+  return {
+    ok: false,
+    source: VISUAL_IMAGE_GENERATION_SOURCE,
+    failure: 'runtime-media-candidate-unavailable',
+    message: RUNTIME_MEDIA_CANDIDATE_UNAVAILABLE_MESSAGE,
+    draft: draft.payload,
+  };
 }
 
 export async function generateReviewedAvatarPackageCandidate(
   input: AvatarPackageCandidateInput,
   persona: OwnerPortfolioPersonaDetail,
-  runtime?: RuntimeImageClient | null,
 ): Promise<RuntimeVisualImageGenerationResult> {
   const draft = buildReviewedAvatarPackageCandidatePayload(input, persona);
-  const imagePayload = buildReviewedAvatarPackageImageGenerationPayload(input, persona);
 
-  if (!draft.payload || !imagePayload.payload) {
+  if (!draft.payload) {
     return {
       ok: false,
       source: VISUAL_IMAGE_GENERATION_SOURCE,
       failure: 'runtime-payload-invalid',
-      message: imagePayload.errors.join('; ') || 'Runtime avatar package imageGenerate scenario payload invalid.',
-      draft: draft.payload,
+      message: draft.errors.join('; ') || 'Runtime avatar package imageGenerate scenario payload invalid.',
+      draft: null,
     };
   }
 
-  const runtimeClient = runtime === undefined ? await createStudioRuntimeClient() : runtime;
-
-  if (!runtimeClient) {
-    return {
-      ok: false,
-      source: VISUAL_IMAGE_GENERATION_SOURCE,
-      failure: 'runtime-transport-unavailable',
-      message: 'Runtime avatar package imageGenerate scenario transport unavailable: Tauri IPC runtime transport is required.',
-      draft: draft.payload,
-    };
-  }
-
-  try {
-    const boundPayload = await bindStudioImageGeneratePayload(imagePayload.payload, runtimeClient);
-    const boundDraft = {
-      ...draft.payload,
-      runtime: {
-        ...draft.payload.runtime,
-        request: boundPayload,
-      },
-    };
-    const output = await executeStudioImageGenerate(boundPayload, runtimeClient);
-    return await normalizeRuntimeVisualImageGenerationOutput(runtimeClient, output, boundDraft);
-  } catch (error) {
-    const message = normalizeStudioImageGenerateFailureMessage(error);
-    const routeUnbound = isStudioAIRouteBindingFailure(error);
-    return {
-      ok: false,
-      source: VISUAL_IMAGE_GENERATION_SOURCE,
-      failure: routeUnbound ? 'runtime-route-unbound' : 'runtime-generate-failed',
-      message: routeUnbound ? message : `Runtime avatar package imageGenerate scenario failed: ${message}`,
-      draft: draft.payload,
-    };
-  }
+  return {
+    ok: false,
+    source: VISUAL_IMAGE_GENERATION_SOURCE,
+    failure: 'runtime-media-candidate-unavailable',
+    message: RUNTIME_MEDIA_CANDIDATE_UNAVAILABLE_MESSAGE,
+    draft: draft.payload,
+  };
 }

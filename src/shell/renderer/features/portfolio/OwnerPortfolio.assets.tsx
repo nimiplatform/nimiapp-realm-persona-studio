@@ -4,6 +4,8 @@ import type { OwnerPortfolioPersonaDetail } from './portfolio-data.js';
 import {
   generateReviewedAvatarPackageCandidate,
   generateReviewedVisualImageCandidate,
+  PERSONA_AVATAR_SELECTION_AVAILABLE,
+  RUNTIME_MEDIA_CANDIDATE_UNAVAILABLE_MESSAGE,
   selectReviewedPersonaAvatarUrl,
   synthesizeReviewedVoiceDemo,
   type RealmPersonaAvatarSelectResult,
@@ -11,7 +13,7 @@ import {
   type RuntimeVoiceDemoSynthesisResult,
 } from './portfolio-client.js';
 import {
-  PERSONA_PUBLICATION_ADMITTED,
+  PERSONA_PUBLICATION_AVAILABLE,
   REALM_MEDIA_RESOURCE_UPLOAD_SOURCE,
   uploadReviewedIdentityMediaResource,
   type DirectMediaResourceUploadResult,
@@ -95,17 +97,18 @@ const IDENTITY_PACK_CANDIDATE_TITLE_KEYS: Record<IdentityPackCandidate['key'], S
 };
 
 const IDENTITY_PACK_PUBLIC_WRITE_KEYS: Record<IdentityPackCandidate['publicWrite'], StudioCopyKey> = {
-  'avatar-url-selection-admitted-after-owner-url-review': 'assets.identityPack.publicWrite.avatarUrlSelection',
-  'profile-cover-publication-blocked': 'assets.identityPack.publicWrite.profileCoverBlocked',
-  'resource-persona-binding-blocked': 'assets.identityPack.publicWrite.resourceBindingBlocked',
-  'voice-publication-blocked': 'assets.identityPack.publicWrite.voicePublicationBlocked',
+  'avatar-url-selection-unavailable': 'assets.identityPack.publicWrite.avatarUrlSelection',
+  'profile-cover-publication-unavailable': 'assets.identityPack.publicWrite.profileCoverBlocked',
+  'resource-persona-binding-unavailable': 'assets.identityPack.publicWrite.resourceBindingBlocked',
+  'voice-publication-unavailable': 'assets.identityPack.publicWrite.voicePublicationBlocked',
   'post-attachment-candidate-only': 'assets.identityPack.publicWrite.postAttachmentCandidateOnly',
 };
 
 const FIXED_ASSET_MESSAGE_KEYS: Record<string, StudioCopyKey> = {
-  'Owner-scoped profile cover write path is not admitted.': 'assets.identityPack.blocked.profileCover',
-  'Resource-to-Persona Binding publication is not admitted for this app.': 'assets.identityPack.blocked.resourceBinding',
-  'Voice sample publication as public profile asset is not admitted.': 'assets.identityPack.blocked.voicePublication',
+  'Nimi App Access does not provide Persona avatar selection yet.': 'assets.avatarUrl.unavailable',
+  'Nimi App Access does not provide owner-scoped profile cover publication yet.': 'assets.identityPack.blocked.profileCover',
+  'Nimi App Access does not provide Resource-to-Persona binding publication yet.': 'assets.identityPack.blocked.resourceBinding',
+  'Nimi App Access does not provide voice sample publication yet.': 'assets.identityPack.blocked.voicePublication',
   'display name source unavailable or empty': 'assets.identityPack.error.displayNameMissing',
   'profile description or greeting required for identity pack': 'assets.identityPack.error.profileVoiceMissing',
   'visual prompt missing for image candidate generation': 'assets.error.visualPromptMissing',
@@ -118,12 +121,7 @@ const FIXED_ASSET_MESSAGE_KEYS: Record<string, StudioCopyKey> = {
   'Realm avatar selection failed.': 'assets.error.avatarSelectFailed',
   'Runtime imageGenerate scenario output missing readable artifact.': 'assets.error.runtimeImageMissingArtifact',
   'Runtime speechSynthesize scenario output missing artifact id.': 'assets.error.runtimeVoiceMissingArtifact',
-  'Runtime speechSynthesize scenario payload invalid.': 'assets.error.runtimeVoicePayloadInvalid',
-  'Runtime speechSynthesize scenario transport unavailable: Tauri IPC runtime transport is required.': 'assets.error.runtimeVoiceTransportUnavailable',
-  'Runtime imageGenerate scenario payload invalid.': 'assets.error.runtimeImagePayloadInvalid',
-  'Runtime imageGenerate scenario transport unavailable: Tauri IPC runtime transport is required.': 'assets.error.runtimeImageTransportUnavailable',
-  'Runtime avatar package imageGenerate scenario payload invalid.': 'assets.error.runtimeAvatarPackagePayloadInvalid',
-  'Runtime avatar package imageGenerate scenario transport unavailable: Tauri IPC runtime transport is required.': 'assets.error.runtimeAvatarPackageTransportUnavailable',
+  [RUNTIME_MEDIA_CANDIDATE_UNAVAILABLE_MESSAGE]: 'assets.error.runtimeMediaCandidateUnavailable',
   'image artifact generated': 'assets.history.detail.imageArtifactGenerated',
   'avatar package design sheet generated': 'assets.history.detail.avatarPackageGenerated',
   'voice artifact generated': 'assets.history.detail.voiceArtifactGenerated',
@@ -304,6 +302,8 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
       } else {
         nimiToast.danger(translateFixedAssetMessage(result.message, t));
       }
+    } catch {
+      nimiToast.info(t('assets.avatarUrl.unavailable'));
     } finally {
       setIsSelectingAvatar(false);
     }
@@ -330,7 +330,11 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
           ...(result.runtime.traceId ? { traceId: result.runtime.traceId } : {}),
         });
       } else {
-        nimiToast.danger(translateFixedAssetMessage(result.message, t));
+        if (result.failure === 'runtime-media-candidate-unavailable') {
+          nimiToast.info(translateFixedAssetMessage(result.message, t));
+        } else {
+          nimiToast.danger(translateFixedAssetMessage(result.message, t));
+        }
       }
     } finally {
       setIsGeneratingVisualImage(false);
@@ -364,7 +368,11 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
           ...(result.runtime.traceId ? { traceId: result.runtime.traceId } : {}),
         });
       } else {
-        nimiToast.danger(translateFixedAssetMessage(result.message, t));
+        if (result.failure === 'runtime-media-candidate-unavailable') {
+          nimiToast.info(translateFixedAssetMessage(result.message, t));
+        } else {
+          nimiToast.danger(translateFixedAssetMessage(result.message, t));
+        }
       }
     } finally {
       setIsGeneratingAvatarPackage(false);
@@ -410,7 +418,11 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
           resourceId: result.canonical.id,
         });
       } else {
-        nimiToast.danger(translateFixedAssetMessage(result.message, t));
+        if (result.failure === 'persona-media-publication-unavailable') {
+          nimiToast.info(translateFixedAssetMessage(result.message, t));
+        } else {
+          nimiToast.danger(translateFixedAssetMessage(result.message, t));
+        }
       }
     } finally {
       setIsUploadingIdentityResource(false);
@@ -438,7 +450,11 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
           ...(result.runtime.traceId ? { traceId: result.runtime.traceId } : {}),
         });
       } else {
-        nimiToast.danger(translateFixedAssetMessage(result.message, t));
+        if (result.failure === 'runtime-media-candidate-unavailable') {
+          nimiToast.info(translateFixedAssetMessage(result.message, t));
+        } else {
+          nimiToast.danger(translateFixedAssetMessage(result.message, t));
+        }
       }
     } finally {
       setIsSynthesizingVoice(false);
@@ -553,7 +569,7 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
                   />
                   <div className="flex flex-wrap gap-3">
                     <Button
-                      disabled={!profileMediaChanged || !avatarReviewed || isSelectingAvatar}
+                      disabled={!PERSONA_AVATAR_SELECTION_AVAILABLE || !profileMediaChanged || !avatarReviewed || isSelectingAvatar}
                       loading={isSelectingAvatar}
                       onClick={() => void selectAvatarUrl()}
                     >
@@ -562,6 +578,9 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
                   </div>
                 </div>
               </div>
+              <InlineAlert tone="info" className="mt-3">
+                {t('assets.avatarUrl.unavailable')}
+              </InlineAlert>
               {avatarResult ? (
                 <TechnicalReviewDetails title={t('assets.avatarUrl.response')}>
                   <pre className="ras-json-preview m-0 min-h-24 overflow-auto rounded-[var(--nimi-radius-field)] border border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-panel)] p-3 text-xs">
@@ -667,10 +686,15 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
                   />
                 </div>
               ) : null}
+              {visualImageResult && !visualImageResult.ok ? (
+                <InlineAlert tone="info" className="mt-3">
+                  {translateFixedAssetMessage(visualImageResult.message, t)}
+                </InlineAlert>
+              ) : null}
               <TechnicalReviewDetails title={t('assets.imageTechnicalDetails')}>
                 <pre className="ras-json-preview m-0 min-h-32 overflow-auto rounded-[var(--nimi-radius-field)] border border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-panel)] p-3 text-xs">
                   {visualImagePayload.payload ? JSON.stringify({
-                    request: visualImagePayload.payload.runtime.request,
+                    input: visualImagePayload.payload.runtime.input,
                     result: visualImageResult,
                   }, null, 2) : visualImagePayload.errors.join('; ')}
                 </pre>
@@ -760,6 +784,11 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
                   />
                 </div>
               ) : null}
+              {avatarPackageResult && !avatarPackageResult.ok ? (
+                <InlineAlert tone="info" className="mt-3">
+                  {translateFixedAssetMessage(avatarPackageResult.message, t)}
+                </InlineAlert>
+              ) : null}
               <TechnicalReviewDetails title={t('assets.avatarPackageTechnicalDetails')}>
                 <pre className="ras-json-preview m-0 min-h-32 overflow-auto rounded-[var(--nimi-radius-field)] border border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-panel)] p-3 text-xs">
                   {avatarPackagePayload.payload ? JSON.stringify({
@@ -804,14 +833,14 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
               </div>
               <div className="mt-3 flex flex-wrap gap-3">
                 <Button
-                  disabled={!PERSONA_PUBLICATION_ADMITTED || !identityUploadReviewed || !identityUploadFile || isUploadingIdentityResource}
+                  disabled={!PERSONA_PUBLICATION_AVAILABLE || !identityUploadReviewed || !identityUploadFile || isUploadingIdentityResource}
                   loading={isUploadingIdentityResource}
                   onClick={() => void uploadIdentityResource()}
                 >
                   {t('assets.uploadIdentity.button')}
                 </Button>
               </div>
-              <InlineAlert tone="warning" className="mt-3">
+              <InlineAlert tone="info" className="mt-3">
                 {t('assets.publicationUnavailable')}
               </InlineAlert>
               {identityUploadResult ? (
@@ -832,7 +861,7 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
                 </div>
                 <StatusBadge tone="warning">{t('common.localOnly')}</StatusBadge>
               </div>
-              <InlineAlert tone="warning" className="mt-3">
+              <InlineAlert tone="info" className="mt-3">
                 {t('assets.publicPublishingDisabled.alert')}
               </InlineAlert>
             </Surface>
@@ -909,10 +938,15 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
                 />
               </div>
             ) : null}
+            {voiceResult && !voiceResult.ok ? (
+              <InlineAlert tone="info">
+                {translateFixedAssetMessage(voiceResult.message, t)}
+              </InlineAlert>
+            ) : null}
             <TechnicalReviewDetails title={t('assets.voiceTechnicalDetails')}>
               <pre className="ras-json-preview m-0 min-h-72 overflow-auto rounded-[var(--nimi-radius-field)] border border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-card)] p-3 text-xs">
                 {voicePayload.payload ? JSON.stringify({
-                  request: voicePayload.payload,
+                  input: voicePayload.payload,
                   result: voiceResult,
                 }, null, 2) : voicePayload.errors.join('; ')}
               </pre>

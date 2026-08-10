@@ -31,9 +31,9 @@ describe('studio Desktop-supervised auth boundary', () => {
     ].map((path) => readOptionalSource(join(process.cwd(), path))).join('\n');
 
     expect(removedAuthSources).not.toMatch(/DesktopShellAuthPage|createRuntimeAccountBrowserBroker|oauthLogin/);
-    expect(authProviderSource).toContain("t('shell.protectedSession.requiredTitle')");
-    expect(authProviderSource).toContain("t('shell.protectedSession.requiredReason')");
-    expect(authProviderSource).toContain("t('shell.protectedSession.operationsUnavailable')");
+    expect(authProviderSource).toContain("t('shell.nimiAccess.requiredTitle')");
+    expect(authProviderSource).toContain("t('shell.nimiAccess.requiredReason')");
+    expect(authProviderSource).toContain("t('shell.nimiAccess.operationsUnavailable')");
     expect(authProviderSource).toContain('disabled');
     expect(authProviderSource).toContain("t('common.retry')");
   });
@@ -41,7 +41,9 @@ describe('studio Desktop-supervised auth boundary', () => {
   it('keeps bootstrap fail closed without app-owned Runtime defaults', () => {
     expect(bootstrapSource).not.toMatch(/RuntimeDefaults|VITE_NIMI_REALM_BASE_URL|getStudioRuntimeDefaults/);
     expect(bootstrapSource).toContain('getStudioLocalAppClient().auth.status()');
-    expect(bootstrapSource).toContain('createStudioProtectedOperationUnavailableError');
+    // CP3: the Runtime client gate was removed with the scenario execution
+    // layer; bootstrap now only verifies the Desktop-supervised session
+    // through the local App client.
     expect(bootstrapSource).toContain('store.setBootstrapReady(true)');
   });
 });

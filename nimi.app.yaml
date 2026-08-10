@@ -7,9 +7,9 @@ summary: >-
   Realm Personas. Builds persona identity, manages public settings, cultivates
   visual identity candidates, publishes persona-authored posts, and surfaces
   source-backed friendCount adoption signals.
-permissions:
-  - id: ai.text.generate
-    reason: Generate owner-reviewed Realm Persona draft candidates from the owner's description.
+app_access:
+  - realm.data
+  - runtime.consume
 local_development:
   electron:
     renderer_origin: http://127.0.0.1:1450

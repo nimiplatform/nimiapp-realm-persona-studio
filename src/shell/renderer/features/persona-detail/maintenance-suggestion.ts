@@ -162,7 +162,7 @@ export function deriveMaintenanceSuggestions(context: MaintenanceSuggestionConte
       status: 'ready',
       priority: 'medium',
       title: 'Review local creative candidate',
-      rationale: 'Studio has a local candidate that is not public truth and needs owner review before any admitted profile action.',
+      rationale: 'Studio has a local candidate that is not public truth and needs owner review before any supported profile action.',
       evidence: [
         `${latestCreativeCandidate.label}: ${latestCreativeCandidate.kind}`,
         `Created: ${latestCreativeCandidate.createdAt}`,

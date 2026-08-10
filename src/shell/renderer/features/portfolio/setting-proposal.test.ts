@@ -1,5 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { resetStudioAIConfigForTest } from './portfolio-client.test-helpers.js';
+import { describe, expect, it } from 'vitest';
 import {
   RAW_RULE_REVIEW_DEFERRED_REASON,
   assertNoForbiddenOwnerSettingsFields,
@@ -42,10 +41,6 @@ const settings: OwnerPersonaSettingsSnapshot = {
     positioning: 'operational guide',
   },
 };
-
-beforeEach(() => {
-  resetStudioAIConfigForTest();
-});
 
 describe('owner settings proposal normalization', () => {
   it('creates an editable draft from owner settings DTO shape', () => {
@@ -149,7 +144,7 @@ describe('owner settings proposal normalization', () => {
     })).toBeNull();
   });
 
-  it('builds a Runtime text proposal request from owner intent without hardcoded provider fields', () => {
+  it('builds a text candidate prompt from owner intent without hardcoded provider fields', () => {
     const draft = {
       ...createOwnerPersonaSettingsDraft(settings),
       naturalLanguageIntent: 'Make Mira warmer and clearer for builders.',
@@ -162,23 +157,19 @@ describe('owner settings proposal normalization', () => {
 
     expect(result.ok).toBe(true);
     expect(result.payload).toMatchObject({
-      request: {
-        model: { modelId: 'auto' },
-        parameters: {
-          metadata: {
-            domain: 'realm-persona-studio.settings-proposal',
-          },
-        },
+      surfaceId: 'realm-persona-studio.settings-proposal',
+      params: {
+        maxTokens: 900,
+        temperature: 0.2,
+        topP: 1,
       },
     });
-    const userText = result.payload?.request.messages
-      .find((message) => message.role === 'user')
-      ?.content.find((part) => part.type === 'text')?.text || '';
+    const userText = result.payload?.userText || '';
     expect(userText).not.toContain('provider');
     expect(userText).not.toContain('LocalAgent');
   });
 
-  it('normalizes Runtime proposal JSON into admitted draft fields only', () => {
+  it('normalizes Runtime proposal JSON into supported draft fields only', () => {
     const baseDraft = createOwnerPersonaSettingsDraft(settings);
     const proposal = normalizeRuntimeOwnerSettingsProposal(JSON.stringify({
       description: 'Warmer public strategist.',
@@ -186,7 +177,7 @@ describe('owner settings proposal normalization', () => {
       contentStyle: 'Warm, clear, and concise.',
       allowedThemesText: ['adventure', 'friendship'],
       responseLength: 'short',
-      rationale: 'Matches the owner request.',
+      rationale: 'Matches the owner intent.',
     }), baseDraft);
 
     expect(proposal).toMatchObject({
@@ -224,7 +215,7 @@ describe('owner settings proposal normalization', () => {
     })}\n\`\`\``, baseDraft)).toThrow('single JSON object');
     expect(() => normalizeRuntimeOwnerSettingsProposal(JSON.stringify({
       description: 'Allowed text.',
-      personaRule: 'not admitted',
+      personaRule: 'unsupported',
     }), baseDraft)).toThrow('unknown field personaRule');
   });
 });

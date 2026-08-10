@@ -158,7 +158,7 @@ export function derivePersonaCockpitModel(persona: OwnerPortfolioPersonaDetail):
       key: 'ai-readiness',
       title: 'AI Readiness',
       status: statusFor(profileUnavailable, [...profileMissing, ...(hasVoiceConfig ? [] : ['voice config'])]),
-      summary: 'Runtime actions can use only visible owner-approved profile fields and explicit owner prompts.',
+      summary: 'Runtime actions can use only visible owner-reviewed profile fields and explicit owner prompts.',
       evidence: [
         fieldEvidence('Profile description', persona.bio),
         fieldEvidence('Greeting', persona.greeting),

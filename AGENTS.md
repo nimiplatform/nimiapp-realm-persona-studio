@@ -21,7 +21,9 @@
 | UI components | `@nimiplatform/kit` (npm) | renderer-wide |
 | Platform client | `@nimiplatform/sdk` (npm) | `app-shell/studio-platform.ts` |
 | State | Zustand | `app-shell/app-store.ts` |
+| Workspace surface preparation | Build linked SDK/Kit dist before typed gates | `prepare:workspace-surfaces` in `package.json` |
 | Dev port | 1450 | `vite.config.ts` |
+| Dev port cleanup | Manual stale-listener cleanup; never wired into the exact doctor-controlled renderer command | `scripts/ensure-dev-renderer-port.mjs` |
 
 ## Spec Authority & Sync
 
@@ -35,12 +37,14 @@ containers or bounded authority context; do not create parallel authority roots
 guide; refresh with `pnpm exec nimicoding sync --apply` after bumping the
 package.
 
-Studio canonical owner portfolio surfaces are
-`Realm WorldCoreController.listRealmPersonas` and
-`Realm WorldCoreController.getRealmPersona`. Create and update use
-`createRealmPersona` and `replaceRealmPersona`; home-world reads use
-`listWorldCores` / `getWorldCore`; runtime materialization uses
-`createSourceMaterializationPacket`. `/portfolio` must not call Forge-imported system,
+The closed product spec still names `listRealmPersonas`, `getRealmPersona`,
+`createRealmPersona`, `replaceRealmPersona`, and
+`createSourceMaterializationPacket`. Those names have no corresponding
+spec-4 Nimi App Access operations and are pending an explicit spec evolution;
+they are not callable implementation authority. The current App Access surface
+supports home-world reads through `realm.worldCore.list` only. Persona
+portfolio, create/update, settings, publication, and materialization gaps must
+fail closed until an authoritative operation exists. `/portfolio` must not call Forge-imported system,
 creator, world-maintainer, or dev surfaces. `/api/creator/agents`,
 `/api/agent/dev/my-agents`, and `/api/agent/forge-imported-system/**` are
 explicitly non-current legacy anti-targets.
@@ -78,7 +82,7 @@ unavailable — render an explicit "source unavailable" state.
 
 ### Fail-close
 - Missing platform client → fail-close, show capability unavailable in product copy.
-- Realm API failure → show typed failure category (`realm-unavailable`, `permission-missing`, etc.), not silent retry.
+- Realm API failure → show typed failure category (`realm-unavailable`, `access-denied`, etc.), not silent retry.
 - AI generation failure → preserve owner draft, never invent placeholder text.
 - Schedule due time arrives but post draft missing → fail, do not publish stale draft.
 
@@ -113,6 +117,7 @@ When editing admission inputs:
 
 ```bash
 # Code layer
+pnpm run doctor
 pnpm typecheck
 pnpm test
 pnpm lint
@@ -128,7 +133,7 @@ pnpm check:spec-consistency
 pnpm run validate       # manifest/submission/build-profile role markers
 pnpm run local-audit    # admission inputs must defer truth to platform
 pnpm run pack           # builds renderer + produces dist/nimi-app-submission.json
-pnpm run check          # aggregate: validate + local-audit + spec-consistency + typecheck + lint + test
+pnpm run check          # aggregate: doctor + validate + local-audit + spec-consistency + i18n + typecheck + lint + test
 ```
 
 ## CI

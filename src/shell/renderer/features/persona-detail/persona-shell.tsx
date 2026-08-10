@@ -1,26 +1,25 @@
 import { type ReactNode } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Eye, PenLine } from 'lucide-react';
 import {
   Avatar,
-  BackLink,
   Button,
   EmptyState,
   InlineAlert,
-  PillTabs,
   ScrollArea,
-  StatusBadge,
   Surface,
 } from '@nimiplatform/kit/ui';
 import type { OwnerPortfolioPersonaDetail } from '@renderer/features/portfolio/portfolio-data.js';
 import { classifyPersonaDetailFailure } from '@renderer/features/portfolio/portfolio-data.js';
-import {
-  detailFriendCountLabel,
-  settingFieldDisplayValue,
-} from '@renderer/features/portfolio/OwnerPortfolio.shared.js';
+import { settingFieldDisplayValue } from '@renderer/features/portfolio/OwnerPortfolio.shared.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
 import type { StudioCopyKey } from '@renderer/i18n/studio-copy.js';
 import { type PersonaDetailReadScope, usePersonaDetailQuery } from './use-persona-detail-query.js';
+import type { PersonaWorkspaceVisualData } from './persona-workspace-visual-data.js';
+import {
+  PERSONA_WORKSPACE_VISUAL_FIXTURE_DATA,
+  PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS,
+} from './persona-workspace.visual-fixture.js';
 
 export type PersonaShellTabKey = 'detail' | 'settings' | 'assets' | 'posts' | 'insights';
 export type PersonaShellMode = PersonaDetailReadScope;
@@ -40,10 +39,10 @@ const TABS: PersonaTabDef[] = [
     basePath: (personaId) => `/portfolio/${personaId}`,
   },
   {
-    key: 'settings',
-    labelKey: 'persona.tabs.settings',
+    key: 'posts',
+    labelKey: 'persona.tabs.posts',
     modes: ['owner'],
-    basePath: (personaId) => `/portfolio/${personaId}/settings`,
+    basePath: (personaId) => `/portfolio/${personaId}/posts`,
   },
   {
     key: 'assets',
@@ -52,16 +51,10 @@ const TABS: PersonaTabDef[] = [
     basePath: (personaId) => `/portfolio/${personaId}/assets`,
   },
   {
-    key: 'posts',
-    labelKey: 'persona.tabs.posts',
+    key: 'settings',
+    labelKey: 'persona.tabs.settings',
     modes: ['owner'],
-    basePath: (personaId) => `/portfolio/${personaId}/posts`,
-  },
-  {
-    key: 'insights',
-    labelKey: 'persona.tabs.insights',
-    modes: ['owner'],
-    basePath: (personaId) => `/portfolio/${personaId}/insights`,
+    basePath: (personaId) => `/portfolio/${personaId}/settings`,
   },
 ];
 
@@ -78,65 +71,92 @@ export function PersonaTabBar({
   const navigate = useNavigate();
   const tabs = TABS.filter((tab) => tab.modes.includes(mode));
   return (
-    <PillTabs
-      ariaLabel={t('persona.tabs.ariaLabel')}
-      size="md"
-      value={current}
-      onValueChange={(value) => {
-        const next = tabs.find((tab) => tab.key === value);
-        if (next) navigate(next.basePath(personaId, mode));
-      }}
-      items={tabs.map((tab) => ({ value: tab.key, label: t(tab.labelKey) }))}
-    />
+    <nav className="ras-persona-tabs" aria-label={t('persona.tabs.ariaLabel')}>
+      {tabs.map((tab) => (
+        <button
+          key={tab.key}
+          type="button"
+          data-active={current === tab.key}
+          aria-current={current === tab.key ? 'page' : undefined}
+          onClick={() => navigate(tab.basePath(personaId, mode))}
+        >
+          {t(tab.labelKey)}
+        </button>
+      ))}
+    </nav>
   );
+}
+
+function personaVisibilityLabel(persona: OwnerPortfolioPersonaDetail, t: ReturnType<typeof useStudioI18n>['t']): string {
+  const state = persona.state.status === 'available' ? persona.state.value.toUpperCase() : '';
+  if (state === 'PUBLIC') return t('persona.workspace.public');
+  if (state === 'FRIENDS') return t('persona.workspace.friends');
+  if (state === 'PRIVATE') return t('persona.workspace.private');
+  return t('common.sourceUnavailable');
 }
 
 export function PersonaHeader({
   persona,
-  back = '/portfolio',
-  backLabel,
 }: {
   persona: OwnerPortfolioPersonaDetail;
-  back?: string;
-  backLabel?: string;
 }) {
   const { t } = useStudioI18n();
-  const resolvedBackLabel = backLabel ?? t('persona.header.portfolio');
+  const navigate = useNavigate();
+  const name = settingFieldDisplayValue(persona.displayName, t('shared.displayNameNotSet'), t);
+  const handle = persona.handle.value ? `@${persona.handle.value}` : settingFieldDisplayValue(persona.handle, t('shared.handleNotSet'), t);
+  const world = settingFieldDisplayValue(persona.world, t('shared.worldNotSet'), t);
+  const coverAvailable = persona.profileCoverUrl.status === 'available' && persona.profileCoverUrl.value;
   return (
-    <section className="ras-card">
-      <div className="ras-persona-header">
-        <BackLink asChild>
-          <NavLink to={back} aria-label={t('persona.header.backTo', { label: resolvedBackLabel })}>
-            <ArrowLeft size={15} strokeWidth={1.8} style={{ marginRight: 4 }} />
-            {resolvedBackLabel}
-          </NavLink>
-        </BackLink>
-        <div className="ras-persona-header__identity">
+    <section className="ras-persona-profile-header">
+      <div className="ras-persona-profile-header__cover">
+        {coverAvailable ? (
+          <img src={persona.profileCoverUrl.value} alt={t('persona.workspace.coverAlt', { name })} />
+        ) : (
+          <div className="ras-persona-profile-header__cover-unavailable">{t('persona.workspace.coverUnavailable')}</div>
+        )}
+      </div>
+      <div className="ras-persona-profile-header__identity-row">
+        <div className="ras-persona-profile-header__identity">
           <Avatar
             src={persona.avatarUrl ?? null}
             alt={persona.displayName.value || t('persona.header.realmPersonaAlt')}
-            size="md"
+            size="lg"
             shape="circle"
-            fallback={
-              <span style={{ fontSize: 16, fontWeight: 600 }}>
-                {(persona.displayName.value || 'A').charAt(0).toUpperCase()}
-              </span>
-            }
+            tone="accent"
+            className="ras-persona-profile-header__avatar"
+            fallback={<span className="text-2xl font-semibold">{name.charAt(0).toUpperCase()}</span>}
           />
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <h2 className="ras-persona-header__name">
-              {settingFieldDisplayValue(persona.displayName, t('shared.displayNameNotSet'), t)}
-            </h2>
-            <span className="ras-persona-header__handle">
-              {persona.handle.value ? `@${persona.handle.value}` : settingFieldDisplayValue(persona.handle, t('shared.handleNotSet'), t)}
+          <div className="ras-persona-profile-header__copy">
+            <h1>{name}</h1>
+            <p>{handle} <span aria-hidden="true">·</span> {world}</p>
+            <span className="ras-persona-profile-header__visibility">
+              <i aria-hidden="true" />
+              {personaVisibilityLabel(persona, t)}
             </span>
           </div>
         </div>
-        <div className="ras-persona-header__meta">
-          <StatusBadge tone={persona.friendCount.status === 'available' ? 'success' : 'warning'}>
-            {detailFriendCountLabel(persona, t)}
-          </StatusBadge>
-          <StatusBadge tone="neutral">{settingFieldDisplayValue(persona.world, t('shared.worldNotSet'), t)}</StatusBadge>
+        <div className="ras-persona-profile-header__actions">
+          <Button
+            tone="primary"
+            className="text-white"
+            onClick={() => navigate(`/portfolio/${persona.id}/assets`)}
+          >
+            {t('persona.workspace.completeIdentity')}
+          </Button>
+          <Button
+            tone="secondary"
+            leadingIcon={<Eye size={16} />}
+            onClick={() => navigate(`/portfolio/${persona.id}/preview`)}
+          >
+            {t('persona.workspace.previewProfile')}
+          </Button>
+          <Button
+            tone="ghost"
+            leadingIcon={<PenLine size={16} />}
+            onClick={() => navigate(`/portfolio/${persona.id}/posts`)}
+          >
+            {t('persona.workspace.writePost')}
+          </Button>
         </div>
       </div>
     </section>
@@ -179,8 +199,27 @@ function deriveCurrentTab(pathname: string, personaId: string): PersonaShellTabK
   if (pathname.startsWith(`/portfolio/${personaId}/settings`)) return 'settings';
   if (pathname.startsWith(`/portfolio/${personaId}/assets`)) return 'assets';
   if (pathname.startsWith(`/portfolio/${personaId}/posts`)) return 'posts';
-  if (pathname.startsWith(`/portfolio/${personaId}/insights`)) return 'insights';
   return 'detail';
+}
+
+export function PersonaWorkspaceFrame({
+  persona,
+  current,
+  mode = 'owner',
+  children,
+}: {
+  persona: OwnerPortfolioPersonaDetail;
+  current: PersonaShellTabKey;
+  mode?: PersonaShellMode;
+  children: ReactNode;
+}) {
+  return (
+    <div className="ras-persona-workspace" data-view={current}>
+      <PersonaHeader persona={persona} />
+      <PersonaTabBar personaId={persona.id} current={current} mode={mode} />
+      {children}
+    </div>
+  );
 }
 
 export function PersonaShell({
@@ -192,14 +231,22 @@ export function PersonaShell({
   personaId: string;
   current?: PersonaShellTabKey;
   mode?: PersonaShellMode;
-  children: (persona: OwnerPortfolioPersonaDetail) => ReactNode;
+  children: (persona: OwnerPortfolioPersonaDetail, visualData?: PersonaWorkspaceVisualData) => ReactNode;
 }) {
   const { t } = useStudioI18n();
   const location = useLocation();
   const activeTab = current ?? deriveCurrentTab(location.pathname, personaId);
-  const detailQuery = usePersonaDetailQuery(personaId, mode);
+  const developmentFixturePersona = import.meta.env.DEV
+    ? PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS[personaId]
+    : undefined;
+  const developmentVisualData = developmentFixturePersona
+    ? PERSONA_WORKSPACE_VISUAL_FIXTURE_DATA[personaId]
+    : undefined;
+  const detailQuery = usePersonaDetailQuery(personaId, mode, {
+    enabled: developmentFixturePersona === undefined,
+  });
 
-  if (detailQuery.isLoading) {
+  if (!developmentFixturePersona && detailQuery.isLoading) {
     return (
       <ScrollArea className="flex-1" viewportClassName="bg-transparent">
         <div className="ras-page">
@@ -214,18 +261,20 @@ export function PersonaShell({
     );
   }
 
-  if (detailQuery.isError) {
+  if (!developmentFixturePersona && detailQuery.isError) {
     const failure = classifyPersonaDetailFailure(detailQuery.error);
     const titleKeyByKind = {
+      'capability-unavailable': 'portfolio.failure.capabilityUnavailable.title',
       'realm-unavailable': 'portfolio.failure.realmUnavailable.title',
-      'permission-missing': 'portfolio.failure.permissionMissing.title',
+      'access-denied': 'portfolio.failure.accessDenied.title',
       'owner-authority-missing': 'portfolio.failure.ownerAuthorityMissing.title',
       'setting-read-unavailable': 'portfolio.failure.settingReadUnavailable.title',
       unknown: 'portfolio.failure.portfolioUnavailable.title',
     } as const satisfies Record<typeof failure.kind, StudioCopyKey>;
     const detailKeyByKind = {
+      'capability-unavailable': 'portfolio.failure.detail.capabilityUnavailable',
       'realm-unavailable': 'portfolio.failure.detail.realm',
-      'permission-missing': 'portfolio.failure.detail.permission',
+      'access-denied': 'portfolio.failure.detail.accessDenied',
       'owner-authority-missing': 'portfolio.failure.detail.owner',
       'setting-read-unavailable': 'portfolio.failure.detail.setting',
       unknown: 'portfolio.failure.detail.unknown',
@@ -234,13 +283,14 @@ export function PersonaShell({
       <ScrollArea className="flex-1" viewportClassName="bg-transparent">
         <div className="ras-page">
           <section className="ras-card">
-            <InlineAlert tone="danger">
+            <InlineAlert tone={failure.kind === 'capability-unavailable' ? 'info' : 'danger'}>
               <strong>{t(titleKeyByKind[failure.kind])}</strong>
               <div>{t(detailKeyByKind[failure.kind])}</div>
             </InlineAlert>
             <div>
               <Button
                 tone="primary"
+                className="text-white"
                 onClick={() => void detailQuery.refetch()}
                 loading={detailQuery.isFetching}
               >
@@ -253,15 +303,15 @@ export function PersonaShell({
     );
   }
 
-  const persona = detailQuery.data;
+  const persona = developmentFixturePersona ?? detailQuery.data;
   if (!persona) return null;
 
   return (
     <ScrollArea className="flex-1" viewportClassName="bg-transparent">
-      <div className="ras-page">
-        <PersonaHeader persona={persona} />
-        <PersonaTabBar personaId={personaId} current={activeTab} mode={mode} />
-        {children(persona)}
+      <div className="ras-page ras-persona-workspace-page">
+        <PersonaWorkspaceFrame persona={persona} current={activeTab} mode={mode}>
+          {children(persona, developmentVisualData)}
+        </PersonaWorkspaceFrame>
       </div>
     </ScrollArea>
   );

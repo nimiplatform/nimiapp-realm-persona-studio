@@ -1,27 +1,12 @@
-import type { Runtime } from '@nimiplatform/sdk/runtime';
-import type { ExecuteScenarioResponse, ScenarioArtifact } from '@nimiplatform/sdk/runtime/generated';
-import { createStudioRuntimeClient } from '@renderer/data/runtime-client.js';
-import {
-  bindStudioImageGeneratePayload,
-  createStudioImageGeneratePayload,
-  executeStudioImageGenerate,
-  normalizeStudioImageGenerateFailureMessage,
-  resolveStudioImageCallParams,
-  type StudioImageGeneratePayload,
-} from './studio-ai-runtime.js';
-import {
-  projectStudioRuntimeArtifacts,
-  type StudioRuntimeArtifactProjection,
-} from './runtime-artifact-projection.js';
+import type { StudioImageCandidatePreview } from './media-voice-candidate.js';
+import { RUNTIME_MEDIA_CANDIDATE_UNAVAILABLE_MESSAGE } from './portfolio-media-client.js';
 
 export const PERSONA_REFERENCE_IMAGE_SOURCE = 'Runtime ScenarioService.submitScenarioJob image.generate' as const;
-
-type RuntimeImageClient = Runtime;
 
 export type PersonaReferenceImageInput = {
   prompt: string;
   aspectRatio?: string;
-  /** Requested variant count; callers must render the actual returned URL count. */
+  /** Selected variant count; callers must render the actual returned URL count. */
   count?: number;
 };
 
@@ -33,12 +18,9 @@ export type PersonaReferenceImageResult =
     previewUrl: string;
     artifactIds: string[];
     artifactUris: string[];
-    artifacts: StudioRuntimeArtifactProjection[];
-    submitted: StudioImageGeneratePayload;
+    submitted: StudioImageCandidatePreview;
     runtime: {
-      jobId?: string;
       traceId?: string;
-      modelResolved?: string;
     };
   }
   | {
@@ -46,63 +28,45 @@ export type PersonaReferenceImageResult =
     source: typeof PERSONA_REFERENCE_IMAGE_SOURCE;
     failure:
       | 'persona-reference-image-payload-invalid'
-      | 'persona-reference-image-transport-unavailable'
-      | 'persona-reference-image-generate-failed'
-      | 'persona-reference-image-no-artifact'
-      | 'persona-reference-image-public-url-unavailable';
+      | 'persona-reference-image-candidate-unavailable';
     message: string;
-    submitted: StudioImageGeneratePayload | null;
+    submitted: StudioImageCandidatePreview | null;
   };
 
 export function buildPersonaReferenceImagePayload(input: PersonaReferenceImageInput): {
   ok: boolean;
   errors: string[];
-  payload: StudioImageGeneratePayload | null;
+  payload: StudioImageCandidatePreview | null;
 } {
   const prompt = input.prompt.trim();
+  const count = input.count ?? 1;
   const errors: string[] = [];
   if (!prompt) errors.push('reference image prompt empty');
+  if (count !== 1) errors.push('reference image generation count must be 1');
   if (errors.length > 0) {
     return { ok: false, errors, payload: null };
   }
-  const callParams = resolveStudioImageCallParams('realm-persona-studio.persona-reference-image', {
-    ...(input.aspectRatio ? { aspectRatio: input.aspectRatio } : {}),
-  });
+  const aspectRatio = input.aspectRatio?.trim() || '1:1';
   return {
     ok: true,
     errors: [],
-    payload: createStudioImageGeneratePayload({
+    payload: {
       surfaceId: 'realm-persona-studio.persona-reference-image',
-      params: {
-        ...callParams,
-      },
-      spec: {
-        prompt,
-        negativePrompt: '',
-        n: Math.max(1, Math.min(4, Math.floor(input.count ?? 1))),
-        size: callParams.size || '',
-        aspectRatio: callParams.aspectRatio ?? '',
-        quality: '',
-        style: '',
-        seed: callParams.seed || '',
-        referenceImages: [],
-        mask: '',
-        responseFormat: callParams.responseFormat || 'url',
-      },
-    }),
+      capability: 'image.generate',
+      prompt,
+      aspectRatio,
+      count: 1,
+    },
   };
 }
 
-function readImageArtifacts(output: ExecuteScenarioResponse): readonly ScenarioArtifact[] {
-  const scenarioOutput = output.output?.output;
-  return scenarioOutput?.oneofKind === 'imageGenerate'
-    ? scenarioOutput.imageGenerate.artifacts
-    : [];
-}
-
+/**
+ * Reference image generation stays fail-closed: the Nimi local App surface
+ * does not expose image candidate generation yet, so the reviewed draft is
+ * preserved and returned with a typed unavailability failure.
+ */
 export async function generatePersonaReferenceImage(
   input: PersonaReferenceImageInput,
-  runtime?: RuntimeImageClient | null,
 ): Promise<PersonaReferenceImageResult> {
   const built = buildPersonaReferenceImagePayload(input);
   if (!built.ok || !built.payload) {
@@ -114,73 +78,13 @@ export async function generatePersonaReferenceImage(
       submitted: null,
     };
   }
-  const runtimeClient = runtime === undefined ? await createStudioRuntimeClient() : runtime;
-  if (!runtimeClient) {
-    return {
-      ok: false,
-      source: PERSONA_REFERENCE_IMAGE_SOURCE,
-      failure: 'persona-reference-image-transport-unavailable',
-      message: 'Runtime imageGenerate scenario transport unavailable: Tauri IPC runtime transport is required.',
-      submitted: built.payload,
-    };
-  }
-  let submitted = built.payload;
-  try {
-    const boundPayload = await bindStudioImageGeneratePayload(built.payload, runtimeClient);
-    submitted = boundPayload;
-    const output = await executeStudioImageGenerate(boundPayload, runtimeClient);
-    const artifacts = readImageArtifacts(output);
-    const projectedArtifacts = await projectStudioRuntimeArtifacts(runtimeClient, artifacts);
-    const artifactIds = projectedArtifacts
-      .map((artifact) => artifact.artifactId)
-      .filter((artifactId): artifactId is string => Boolean(artifactId));
-    const artifactUris = projectedArtifacts
-      .map((artifact) => artifact.publicUri)
-      .filter((uri): uri is string => Boolean(uri));
-    const previewUrl = projectedArtifacts.find((artifact) => artifact.previewUrl)?.previewUrl || artifactUris[0] || '';
-    if (projectedArtifacts.length === 0) {
-      return {
-        ok: false,
-        source: PERSONA_REFERENCE_IMAGE_SOURCE,
-        failure: 'persona-reference-image-no-artifact',
-        message: 'Runtime imageGenerate scenario returned no readable artifact.',
-        submitted,
-      };
-    }
-    const referenceImageUrl = artifactUris[0] || '';
-    if (!referenceImageUrl) {
-      return {
-        ok: false,
-        source: PERSONA_REFERENCE_IMAGE_SOURCE,
-        failure: 'persona-reference-image-public-url-unavailable',
-        message: 'Runtime imageGenerate produced a local artifact but no http(s) URL that Realm can store as a public reference image.',
-        submitted,
-      };
-    }
-    return {
-      ok: true,
-      source: PERSONA_REFERENCE_IMAGE_SOURCE,
-      referenceImageUrl,
-      previewUrl,
-      artifactIds,
-      artifactUris,
-      artifacts: projectedArtifacts,
-      submitted,
-      runtime: {
-        ...(output.traceId ? { traceId: output.traceId } : {}),
-        ...(output.modelResolved ? { modelResolved: output.modelResolved } : {}),
-      },
-    };
-  } catch (error) {
-    const message = normalizeStudioImageGenerateFailureMessage(error);
-    return {
-      ok: false,
-      source: PERSONA_REFERENCE_IMAGE_SOURCE,
-      failure: 'persona-reference-image-generate-failed',
-      message: `Runtime imageGenerate scenario failed: ${message}`,
-      submitted,
-    };
-  }
+  return {
+    ok: false,
+    source: PERSONA_REFERENCE_IMAGE_SOURCE,
+    failure: 'persona-reference-image-candidate-unavailable',
+    message: RUNTIME_MEDIA_CANDIDATE_UNAVAILABLE_MESSAGE,
+    submitted: built.payload,
+  };
 }
 
 /**

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
-  CREATIVE_ASSET_HISTORY_STORAGE_PATH,
+  CREATIVE_ASSET_HISTORY_STORAGE_PREFIX,
   appendLocalCreativeAssetHistory,
   loadAllLocalCreativeAssetHistory,
   loadLocalCreativeAssetHistory,
@@ -11,18 +11,18 @@ function createStorage(): CreativeAssetHistoryStorage & { values: Map<string, un
   const values = new Map<string, unknown>();
   return {
     values,
-    readJson: vi.fn(async (path: string) => {
-      if (!values.has(path)) throw { code: 'not-found' };
-      return { value: values.get(path) as never, sizeBytes: 1 };
-    }),
-    writeJson: vi.fn(async (path: string, value: Parameters<CreativeAssetHistoryStorage['writeJson']>[1]) => {
-      values.set(path, value);
-      return { value, sizeBytes: 1 };
+    get length() {
+      return values.size;
+    },
+    key: vi.fn((index: number) => [...values.keys()][index] ?? null),
+    getItem: vi.fn((key: string) => values.has(key) ? JSON.stringify(values.get(key)) : null),
+    setItem: vi.fn((key: string, value: string) => {
+      values.set(key, JSON.parse(value));
     }),
   };
 }
 
-describe('protected local creative asset history', () => {
+describe('app-local creative asset history', () => {
   it('persists persona provenance and keeps histories isolated by persona', async () => {
     const storage = createStorage();
     const next = await appendLocalCreativeAssetHistory('persona-1', {
@@ -54,7 +54,7 @@ describe('protected local creative asset history', () => {
 
   it('drops malformed records while reporting their source unavailability', async () => {
     const storage = createStorage();
-    storage.values.set(CREATIVE_ASSET_HISTORY_STORAGE_PATH, [
+    storage.values.set(`${CREATIVE_ASSET_HISTORY_STORAGE_PREFIX}persona-1`, [
       {
         id: 'bad-local',
         personaId: 'persona-1',

@@ -88,15 +88,16 @@ export type OwnerPortfolioPersonaDetail = {
 };
 
 export type PortfolioFailureKind =
+  | 'capability-unavailable'
   | 'realm-unavailable'
-  | 'permission-missing'
+  | 'access-denied'
   | 'owner-authority-missing'
   | 'setting-read-unavailable'
   | 'unknown';
 
 export type PortfolioFailure = {
   kind: PortfolioFailureKind;
-  title: 'Realm unavailable' | 'Permission missing' | 'owner authority missing' | 'Setting read unavailable' | 'Portfolio unavailable';
+  title: 'Capability unavailable' | 'Realm unavailable' | 'Access unavailable' | 'owner authority missing' | 'Setting read unavailable' | 'Portfolio unavailable';
   detail: string;
 };
 
@@ -380,14 +381,27 @@ export function normalizeOwnerPortfolioPersonaDetail(
 }
 
 export function classifyRealmPersonaReadFailure(error: unknown, read: 'portfolio' | 'detail'): PortfolioFailure {
+  const errorRecord = readOptionalRecord(error);
+  const errorDetails = readOptionalRecord(errorRecord?.details);
+  const reasonCode = readString(errorRecord?.reasonCode) || readString(errorDetails?.reasonCode);
+  if (reasonCode === 'capability-unavailable') {
+    return {
+      kind: 'capability-unavailable',
+      title: 'Capability unavailable',
+      detail: read === 'detail'
+        ? 'This Persona detail is unavailable because Nimi App Access does not expose its source yet.'
+        : 'The owner Persona portfolio is unavailable because Nimi App Access does not expose its source yet.',
+    };
+  }
+
   const status = readHttpStatus(error);
   if (status === 401 || status === 403) {
     return {
-      kind: 'permission-missing',
-      title: 'Permission missing',
+      kind: 'access-denied',
+      title: 'Access unavailable',
       detail: read === 'detail'
-        ? 'This Runtime account session is not authorized to read that Realm Persona.'
-        : 'This Runtime account session is not authorized to read your Realm Persona portfolio.',
+        ? 'This Runtime account session cannot read that Realm Persona.'
+        : 'This Runtime account session cannot read your Realm Persona portfolio.',
     };
   }
 

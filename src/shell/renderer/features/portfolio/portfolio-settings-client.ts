@@ -1,19 +1,16 @@
 import type {
   RealmModel,
 } from '@nimiplatform/sdk/realm/generated';
-import { createStudioRealmClient, type StudioRealmSurface } from '@renderer/data/realm-client.js';
-import { createStudioRuntimeClient } from '@renderer/data/runtime-client.js';
+import { requireStudioProtectedOperation } from '@renderer/app-shell/studio-platform.js';
 import {
-  isStudioAIRouteBindingFailure,
-  runStudioTextGenerate,
-  type StudioRuntimeAIClient,
-  type StudioTextGeneratePayload,
-} from './studio-ai-runtime.js';
+  runStudioTextCandidate,
+  type StudioTextCandidatePrompt,
+  type StudioTextCandidateRunner,
+} from './studio-text-candidate.js';
 import type { OwnerPortfolioPersonaDetail, SettingField } from './portfolio-data.js';
 import {
   OWNER_SETTINGS_SAVE_SOURCE,
   SETTINGS_AI_PROPOSAL_SOURCE,
-  buildRealmOwnerPersonaSettingsUpdateInput,
   buildRuntimeOwnerSettingsProposalPrompt,
   normalizeRuntimeOwnerSettingsProposal,
   type OwnerPersonaSettingsProposalContext,
@@ -23,12 +20,8 @@ import {
   type RuntimeOwnerSettingsProposal,
 } from './setting-proposal.js';
 
-type StudioRealmClient = StudioRealmSurface;
-
 type RealmPersonaCharacterDto = RealmModel<'PersonaCharacterCoreDto'>;
 type ReplacePersonaCharacterInput = RealmModel<'ReplacePersonaCharacterCoreDto'>;
-
-type RuntimeTextClient = StudioRuntimeAIClient;
 
 export type RealmPersonaVisibilitySettings = Record<PersonaVisibilityField, PersonaVisibilityValue>;
 type RealmPersonaVisibilityUpdateInput = Partial<Record<PersonaVisibilityField, PersonaVisibilityValue>>;
@@ -94,7 +87,7 @@ export type RuntimeProjectionSummaryResult =
     truthWrite: false;
     failure:
       | 'runtime-projection-world-unavailable'
-      | 'runtime-projection-not-admitted'
+      | 'runtime-projection-unavailable'
       | 'runtime-projection-failed'
       | 'runtime-projection-invalid-response';
     message: string;
@@ -115,7 +108,7 @@ export type PersonaChatReadinessSummaryResult =
     truthWrite: false;
     failure:
       | 'runtime-projection-world-unavailable'
-      | 'runtime-projection-not-admitted'
+      | 'runtime-projection-unavailable'
       | 'runtime-projection-failed'
       | 'runtime-projection-invalid-response';
     message: string;
@@ -168,10 +161,9 @@ export type RuntimeOwnerSettingsProposalResult =
     candidate: true;
     truthWrite: false;
     proposal: RuntimeOwnerSettingsProposal;
-    submitted: StudioTextGeneratePayload;
+    submitted: StudioTextCandidatePrompt;
     runtime: {
       traceId?: string;
-      modelResolved?: string;
       finishReason?: string;
     };
   }
@@ -182,12 +174,10 @@ export type RuntimeOwnerSettingsProposalResult =
     truthWrite: false;
     failure:
       | 'runtime-settings-proposal-payload-invalid'
-      | 'runtime-settings-proposal-transport-unavailable'
-      | 'runtime-settings-proposal-route-unbound'
       | 'runtime-settings-proposal-failed'
       | 'runtime-settings-proposal-invalid-output';
     message: string;
-    submitted: StudioTextGeneratePayload | null;
+    submitted: StudioTextCandidatePrompt | null;
   };
 
 function proposalContextText(field: SettingField): string | null {
@@ -271,7 +261,7 @@ function writeAuthoringExtension(
   };
 }
 
-function readPersonaSocialVisibility(persona: RealmPersonaCharacterDto): RealmPersonaVisibilitySettings {
+export function readPersonaSocialVisibility(persona: RealmPersonaCharacterDto): RealmPersonaVisibilitySettings {
   const core = readRecord(persona.profile);
   const socialVisibility = readRecord(readAuthoringExtensions(core).socialVisibility);
   return {
@@ -287,7 +277,7 @@ function readPersonaSocialVisibility(persona: RealmPersonaCharacterDto): RealmPe
   };
 }
 
-function readPersonaSettings(persona: RealmPersonaCharacterDto): RealmOwnerPersonaSettings {
+export function readPersonaSettings(persona: RealmPersonaCharacterDto): RealmOwnerPersonaSettings {
   const core = readRecord(persona.profile);
   const identity = readRecord(core.identity);
   const presentation = readRecord(core.presentation);
@@ -315,7 +305,7 @@ function readPersonaSettings(persona: RealmPersonaCharacterDto): RealmOwnerPerso
   };
 }
 
-function mergeOwnerSettingsCore(
+export function mergeOwnerSettingsCore(
   current: RealmOwnerPersonaSettings,
   patch: OwnerPersonaSettingsUpdateInput,
 ): Record<string, unknown> {
@@ -358,7 +348,7 @@ function mergeOwnerSettingsCore(
   return writeAuthoringExtension(next, 'ownerSettings', ownerSettings);
 }
 
-function buildReplaceRealmPersonaInput(
+export function buildReplaceRealmPersonaInput(
   current: RealmOwnerPersonaSettings,
   core: Record<string, unknown>,
   visibility: RealmPersonaCharacterDto['visibility'] = current.visibility,
@@ -374,7 +364,7 @@ function buildReplaceRealmPersonaInput(
   };
 }
 
-function personaVisibilityToCoreVisibility(value: PersonaVisibilityValue): RealmPersonaCharacterDto['visibility'] {
+export function personaVisibilityToCoreVisibility(value: PersonaVisibilityValue): RealmPersonaCharacterDto['visibility'] {
   if (value === 'PUBLIC') return 'public';
   if (value === 'FRIENDS') return 'unlisted';
   return 'private';
@@ -516,92 +506,38 @@ export function normalizePersonaChatReadinessProjectionSummary(
 }
 
 export async function getPersonaVisibilitySettings(
-  personaId: string,
-  realm: StudioRealmClient = createStudioRealmClient(),
+  _personaId: string,
 ): Promise<RealmPersonaVisibilitySettings> {
-  const persona = await realm.worldCoreControllerGetPersonaCharacter({ path: { personaCharacterId: personaId } });
-  return readPersonaSocialVisibility(persona);
+  requireStudioProtectedOperation('Realm Persona visibility reading');
 }
 
 export async function getOwnerPersonaSettings(
-  personaId: string,
-  realm: StudioRealmClient = createStudioRealmClient(),
+  _personaId: string,
 ): Promise<RealmOwnerPersonaSettings> {
-  const persona = await realm.worldCoreControllerGetPersonaCharacter({ path: { personaCharacterId: personaId } });
-  return readPersonaSettings(persona);
+  requireStudioProtectedOperation('Owner Realm Persona settings reading');
 }
 
 export async function getPortfolioPersonaSettings(
-  persona: OwnerPortfolioPersonaDetail,
-  realm: StudioRealmClient = createStudioRealmClient(),
+  _persona: OwnerPortfolioPersonaDetail,
 ): Promise<RealmOwnerPersonaSettings> {
-  return getOwnerPersonaSettings(persona.id, realm);
+  requireStudioProtectedOperation('Portfolio Realm Persona settings reading');
 }
 
 export async function updateReviewedPersonaVisibility(
-  personaId: string,
-  draft: PersonaVisibilityDraft,
-  current: RealmPersonaVisibilitySettings,
-  realm: StudioRealmClient = createStudioRealmClient(),
+  _personaId: string,
+  _draft: PersonaVisibilityDraft,
+  _current: RealmPersonaVisibilitySettings,
 ): Promise<RealmPersonaVisibilityUpdateResult> {
-  const { input, errors } = buildRealmUpdateVisibilityInput(draft, current);
-  if (!input) {
-    return {
-      ok: false,
-      source: REALM_PERSONA_VISIBILITY_SOURCE,
-      lifecycleTruth: false,
-      failure: errors.some((error) => error.includes('no reviewed changes'))
-        ? 'visibility-no-changes'
-        : 'visibility-payload-invalid',
-      message: errors.join('; ') || 'visibility payload invalid',
-      submitted: null,
-      draft,
-    };
-  }
-
-  try {
-    const ownerSettings = await getOwnerPersonaSettings(personaId, realm);
-    const nextProfileVisibility = input.profileVisibility ?? current.profileVisibility;
-    const settings = await realm.worldCoreControllerReplacePersonaCharacter({
-      path: { personaCharacterId: personaId },
-      body: buildReplaceRealmPersonaInput(
-        ownerSettings,
-        writeAuthoringExtension(ownerSettings.core, 'socialVisibility', {
-          ...readRecord(readAuthoringExtensions(ownerSettings.core).socialVisibility),
-          ...input,
-        }),
-        personaVisibilityToCoreVisibility(nextProfileVisibility),
-      ),
-    });
-    return {
-      ok: true,
-      source: REALM_PERSONA_VISIBILITY_SOURCE,
-      lifecycleTruth: false,
-      submitted: input,
-      settings: readPersonaSocialVisibility(settings),
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      source: REALM_PERSONA_VISIBILITY_SOURCE,
-      lifecycleTruth: false,
-      failure: 'realm-update-visibility-failed',
-      message: error instanceof Error ? error.message : 'Realm visibility update failed.',
-      submitted: input,
-      draft,
-    };
-  }
+  requireStudioProtectedOperation('Reviewed Realm Persona visibility updating');
 }
 
 export async function proposeReviewedOwnerPersonaSettings(
   personaId: string,
   draft: OwnerPersonaSettingsDraft,
   current: RealmOwnerPersonaSettings,
-  runtime?: RuntimeTextClient | null,
+  runner: StudioTextCandidateRunner = runStudioTextCandidate,
   personaContext?: OwnerPersonaSettingsProposalContext,
 ): Promise<RuntimeOwnerSettingsProposalResult> {
-  // The prompt starts with the unresolved marker; studio-ai-runtime must bind a
-  // concrete text.generate route before dispatch.
   const built = buildRuntimeOwnerSettingsProposalPrompt({
     personaId,
     draft,
@@ -620,21 +556,8 @@ export async function proposeReviewedOwnerPersonaSettings(
     };
   }
 
-  const runtimeClient = runtime === undefined ? await createStudioRuntimeClient() : runtime;
-  if (!runtimeClient) {
-    return {
-      ok: false,
-      source: SETTINGS_AI_PROPOSAL_SOURCE,
-      candidate: false,
-      truthWrite: false,
-      failure: 'runtime-settings-proposal-transport-unavailable',
-      message: 'Runtime runtime.ai.text.generate runtime transport unavailable: Tauri IPC runtime transport is required.',
-      submitted: built.payload,
-    };
-  }
-
   try {
-    const output = await runStudioTextGenerate(built.payload, runtimeClient);
+    const output = await runner(built.payload);
     try {
       const proposal = normalizeRuntimeOwnerSettingsProposal(output.text, draft);
       return {
@@ -645,9 +568,8 @@ export async function proposeReviewedOwnerPersonaSettings(
         proposal,
         submitted: output.submitted,
         runtime: {
-          ...(output.trace?.traceId ? { traceId: output.trace.traceId } : {}),
-          ...(output.trace?.modelResolved ? { modelResolved: output.trace.modelResolved } : {}),
-          ...(output.finishReason ? { finishReason: String(output.finishReason) } : {}),
+          ...(output.traceId ? { traceId: output.traceId } : {}),
+          ...(output.finishReason ? { finishReason: output.finishReason } : {}),
         },
       };
     } catch (error) {
@@ -663,14 +585,13 @@ export async function proposeReviewedOwnerPersonaSettings(
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'runtime transport call failed.';
-    const routeUnbound = isStudioAIRouteBindingFailure(error);
     return {
       ok: false,
       source: SETTINGS_AI_PROPOSAL_SOURCE,
       candidate: false,
       truthWrite: false,
-      failure: routeUnbound ? 'runtime-settings-proposal-route-unbound' : 'runtime-settings-proposal-failed',
-      message: routeUnbound ? message : `Runtime runtime.ai.text.generate failed: ${message}`,
+      failure: 'runtime-settings-proposal-failed',
+      message: `Runtime runtime.ai.text.generate failed: ${message}`,
       submitted: null,
     };
   }
@@ -680,73 +601,33 @@ export async function proposeReviewedPortfolioPersonaSettings(
   persona: OwnerPortfolioPersonaDetail,
   draft: OwnerPersonaSettingsDraft,
   current: RealmOwnerPersonaSettings,
-  runtime?: RuntimeTextClient | null,
+  runner?: StudioTextCandidateRunner,
 ): Promise<RuntimeOwnerSettingsProposalResult> {
   return proposeReviewedOwnerPersonaSettings(
     persona.id,
     draft,
     current,
-    runtime,
+    runner,
     buildPortfolioSettingsProposalContext(persona),
   );
 }
 export async function updateReviewedOwnerPersonaSettings(
-  personaId: string,
-  draft: OwnerPersonaSettingsDraft,
-  current: RealmOwnerPersonaSettings,
-  realm: StudioRealmClient = createStudioRealmClient(),
+  _personaId: string,
+  _draft: OwnerPersonaSettingsDraft,
+  _current: RealmOwnerPersonaSettings,
 ): Promise<RealmOwnerPersonaSettingsUpdateResult> {
-  const built = buildRealmOwnerPersonaSettingsUpdateInput(draft, current);
-  if (!built.ok) {
-    return {
-      ok: false,
-      source: OWNER_SETTINGS_SAVE_SOURCE,
-      truthWrite: false,
-      failure: built.failure === 'owner-settings-invalid' ? 'owner-settings-payload-invalid' : 'owner-settings-no-changes',
-      message: built.errors.join('; ') || 'Owner settings payload invalid.',
-      submitted: null,
-      draft,
-    };
-  }
-
-  const nextCore = mergeOwnerSettingsCore(current, built.input);
-  const submitted = buildReplaceRealmPersonaInput(current, nextCore);
-  try {
-    const settings = await realm.worldCoreControllerReplacePersonaCharacter({
-      path: { personaCharacterId: personaId },
-      body: submitted,
-    });
-    return {
-      ok: true,
-      source: OWNER_SETTINGS_SAVE_SOURCE,
-      truthWrite: true,
-      submitted,
-      settings: readPersonaSettings(settings),
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      source: OWNER_SETTINGS_SAVE_SOURCE,
-      truthWrite: false,
-      failure: 'realm-update-owner-settings-failed',
-      message: error instanceof Error ? error.message : 'Realm owner settings update failed.',
-      submitted,
-      draft,
-    };
-  }
+  requireStudioProtectedOperation('Reviewed owner Realm Persona settings updating');
 }
 
 export async function updateReviewedPortfolioPersonaSettings(
-  persona: OwnerPortfolioPersonaDetail,
-  draft: OwnerPersonaSettingsDraft,
-  current: RealmOwnerPersonaSettings,
-  realm: StudioRealmClient = createStudioRealmClient(),
+  _persona: OwnerPortfolioPersonaDetail,
+  _draft: OwnerPersonaSettingsDraft,
+  _current: RealmOwnerPersonaSettings,
 ): Promise<RealmOwnerPersonaSettingsUpdateResult> {
-  return updateReviewedOwnerPersonaSettings(persona.id, draft, current, realm);
+  requireStudioProtectedOperation('Reviewed portfolio Realm Persona settings updating');
 }
 export async function projectPersonaRuntimeContextSummary(
   persona: OwnerPortfolioPersonaDetail,
-  _realm?: StudioRealmClient,
 ): Promise<RuntimeProjectionSummaryResult> {
   const submitted = buildRuntimeProjectionInput(persona);
   if (!submitted) {
@@ -764,15 +645,14 @@ export async function projectPersonaRuntimeContextSummary(
     ok: false,
     source: REALM_RUNTIME_PROJECTION_SOURCE,
     truthWrite: false,
-    failure: 'runtime-projection-not-admitted',
-    message: 'Runtime source materialization requires a protected Runtime-issued challenge and is not admitted for Persona Studio.',
+    failure: 'runtime-projection-unavailable',
+    message: 'Nimi App Access does not provide Runtime source materialization for Persona Studio yet.',
     submitted,
   };
 }
 
 export async function projectPersonaChatReadinessContextSummary(
   persona: OwnerPortfolioPersonaDetail,
-  _realm?: StudioRealmClient,
 ): Promise<PersonaChatReadinessSummaryResult> {
   const submitted = buildPersonaChatReadinessProjectionInput(persona);
   if (!submitted) {
@@ -790,8 +670,8 @@ export async function projectPersonaChatReadinessContextSummary(
     ok: false,
     source: REALM_RUNTIME_PROJECTION_SOURCE,
     truthWrite: false,
-    failure: 'runtime-projection-not-admitted',
-    message: 'Runtime source materialization requires a protected Runtime-issued challenge and is not admitted for Persona Studio.',
+    failure: 'runtime-projection-unavailable',
+    message: 'Nimi App Access does not provide Runtime source materialization for Persona Studio yet.',
     submitted,
   };
 }

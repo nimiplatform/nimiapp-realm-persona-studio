@@ -13,10 +13,10 @@ export type IdentityPackCandidate = {
   prompt: string;
   reviewState: 'candidate-only';
   publicWrite:
-    | 'avatar-url-selection-admitted-after-owner-url-review'
-    | 'profile-cover-publication-blocked'
-    | 'resource-persona-binding-blocked'
-    | 'voice-publication-blocked'
+    | 'avatar-url-selection-unavailable'
+    | 'profile-cover-publication-unavailable'
+    | 'resource-persona-binding-unavailable'
+    | 'voice-publication-unavailable'
     | 'post-attachment-candidate-only';
   sourceFields: string[];
   blockedReason?: string;
@@ -93,8 +93,9 @@ export function buildIdentityPackFromPersona(persona: OwnerPortfolioPersonaDetai
           'Create a clear square avatar portrait. Emphasize recognizable face, strong silhouette, and readable profile identity.',
         ]),
         reviewState: 'candidate-only',
-        publicWrite: 'avatar-url-selection-admitted-after-owner-url-review',
+        publicWrite: 'avatar-url-selection-unavailable',
         sourceFields: fields,
+        blockedReason: 'Nimi App Access does not provide Persona avatar selection yet.',
       },
       {
         key: 'profile-cover',
@@ -104,9 +105,9 @@ export function buildIdentityPackFromPersona(persona: OwnerPortfolioPersonaDetai
           'Create a wide profile cover composition with environment, mood, and identity cues. Do not include text.',
         ]),
         reviewState: 'candidate-only',
-        publicWrite: 'profile-cover-publication-blocked',
+        publicWrite: 'profile-cover-publication-unavailable',
         sourceFields: fields,
-        blockedReason: 'Owner-scoped profile cover write path is not admitted.',
+        blockedReason: 'Nimi App Access does not provide owner-scoped profile cover publication yet.',
       },
       {
         key: 'portrait-reference',
@@ -116,9 +117,9 @@ export function buildIdentityPackFromPersona(persona: OwnerPortfolioPersonaDetai
           'Create a portrait/reference image for future visual consistency. Keep it inspectable and neutral.',
         ]),
         reviewState: 'candidate-only',
-        publicWrite: 'resource-persona-binding-blocked',
+        publicWrite: 'resource-persona-binding-unavailable',
         sourceFields: fields,
-        blockedReason: 'Resource-to-Persona Binding publication is not admitted for this app.',
+        blockedReason: 'Nimi App Access does not provide Resource-to-Persona binding publication yet.',
       },
       {
         key: 'post-image-style',
@@ -136,9 +137,9 @@ export function buildIdentityPackFromPersona(persona: OwnerPortfolioPersonaDetai
         title: 'Voice Demo',
         prompt: greeting || `I am ${displayName}. ${bio}`,
         reviewState: 'candidate-only',
-        publicWrite: 'voice-publication-blocked',
+        publicWrite: 'voice-publication-unavailable',
         sourceFields: fields,
-        blockedReason: 'Voice sample publication as public profile asset is not admitted.',
+        blockedReason: 'Nimi App Access does not provide voice sample publication yet.',
       },
     ],
   };

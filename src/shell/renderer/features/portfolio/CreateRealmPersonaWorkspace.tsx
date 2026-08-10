@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  AppCardSurface,
   Button,
   EmptyState,
   FieldShell,
@@ -17,11 +16,12 @@ import {
   TextField,
   nimiToast,
 } from '@nimiplatform/kit/ui';
-import { ArrowLeft, ArrowRight, Check, ChevronDown, Copy, RefreshCw, Sparkles } from 'lucide-react';
+import { ArrowLeft, Check, ChevronDown, Copy, Pencil, Plus, RefreshCw, Sparkles } from 'lucide-react';
 import {
   PERSONA_ARCHETYPES,
   PERSONA_TRAITS,
   PERSONA_TRAIT_MAX,
+  REFERENCE_IMAGE_CANDIDATE_SLOT_COUNT,
   groupSelectableRealmWorldsForPicker,
   normalizeCreateRealmPersonaDraft,
   selectOasisDefaultWorld,
@@ -31,6 +31,8 @@ import {
   type PersonaArchetype,
   type PersonaTrait,
   type ReviewedCreateRealmPersonaPayload,
+  type ReferenceImageCandidate,
+  type ReferenceImageCandidateSlot,
   type SelectableRealmWorld,
 } from './create-persona-draft.js';
 import {
@@ -40,6 +42,7 @@ import {
   type RealmPersonaCreateWithProfileSettingsResult,
   type RealmPersonaHandleAvailabilityResult,
 } from './portfolio-client.js';
+import { RUNTIME_MEDIA_CANDIDATE_UNAVAILABLE_MESSAGE } from './portfolio-media-client.js';
 import {
   generatePersonaSeedFromDescription,
   type PersonaSeedGenerationResult,
@@ -50,12 +53,11 @@ import {
   personaCreationGraphSourceModeLabel,
   buildPersonaCreationGraphFromDraft,
   validatePersonaCreationGraphForRealmCreate,
-  type PersonaCreationGraph,
-  type PersonaCreationGraphCreateReview,
   type PersonaCreationGraphSectionKey,
   type PersonaCreationGraphSourceMode,
 } from './persona-creation-graph.js';
 import {
+  defaultReferenceImagePromptFromDraft,
   generatePersonaReferenceImage,
 } from './persona-reference-image.js';
 import {
@@ -97,33 +99,12 @@ type AutosaveState = 'saved' | 'saving' | 'failed';
 type DraftLoadState = 'loading' | 'ready' | 'failed';
 type SupplementKey = 'speechSupplement' | 'boundarySupplement' | 'visualSupplement';
 type PromptCopyTarget = 'seed' | 'image';
-
-const GRAPH_SOURCE_MODE_KEYS: Record<PersonaCreationGraphSourceMode, StudioCopyKey> = {
-  description: 'create.graph.sourceMode.description',
-  manual: 'create.graph.sourceMode.manual',
+type CreateRealmPersonaDraftPatch = {
+  [Key in keyof CreateRealmPersonaDraftInput]?: CreateRealmPersonaDraftInput[Key];
 };
-
-const GRAPH_FIELD_STATUS_KEYS: Record<PersonaCreationGraph['sourcePackage']['fields'][number]['status'], StudioCopyKey> = {
-  mapped: 'create.graph.fieldStatus.mapped',
-  candidateOnly: 'create.graph.fieldStatus.candidateOnly',
-  unmapped: 'create.graph.fieldStatus.unmapped',
-  rejected: 'create.graph.fieldStatus.rejected',
-};
-
-const GRAPH_SOURCE_FIELD_KEYS: Record<string, StudioCopyKey> = {
-  ownerDescription: 'create.graph.sourceField.ownerDescription',
-  displayName: 'create.graph.sourceField.displayName',
-  handle: 'create.graph.sourceField.handle',
-  concept: 'create.graph.sourceField.concept',
-  description: 'create.graph.sourceField.description',
-  personaArchetype: 'create.graph.sourceField.personaArchetype',
-  personaTraits: 'create.graph.sourceField.personaTraits',
-  speechSupplement: 'create.graph.sourceField.speechSupplement',
-  boundarySupplement: 'create.graph.sourceField.boundarySupplement',
-  visualSupplement: 'create.graph.sourceField.visualSupplement',
-  ruleText: 'create.graph.sourceField.ruleText',
-  referenceImageUrl: 'create.graph.sourceField.referenceImageUrl',
-  runtimeRationale: 'create.graph.sourceField.runtimeRationale',
+type ReferenceImageGenerationTarget = {
+  mode: 'fill' | 'replace';
+  slot: ReferenceImageCandidateSlot;
 };
 
 const GRAPH_SECTION_TITLE_KEYS: Record<PersonaCreationGraphSectionKey, StudioCopyKey> = {
@@ -141,46 +122,6 @@ const GRAPH_SECTION_TITLE_KEYS: Record<PersonaCreationGraphSectionKey, StudioCop
   missingDecisions: 'create.graph.section.missingDecisions.title',
   riskNotes: 'create.graph.section.riskNotes.title',
   writePlan: 'create.graph.section.writePlan.title',
-};
-
-const GRAPH_SECTION_SUMMARY_KEYS: Record<string, StudioCopyKey> = {
-  'Public identity fields are ready for owner review.': 'create.graph.section.identity.ready',
-  'Public identity fields are not ready.': 'create.graph.section.identity.missing',
-  'Persona style archetype is selected.': 'create.graph.section.personaStyle.ready',
-  'Persona style archetype is missing.': 'create.graph.section.personaStyle.missing',
-  'Visible behavior notes will stay owner-reviewed.': 'create.graph.section.behavior.ready',
-  'No behavior notes were supplied.': 'create.graph.section.behavior.missing',
-  'Concept can anchor the public persona worldview.': 'create.graph.section.worldview.ready',
-  'Concept is missing.': 'create.graph.section.worldview.missing',
-  'Greeting remains a follow-up owner settings candidate after create.': 'create.graph.section.greeting.summary',
-  'Voice can be inferred for review from concept and behavior notes.': 'create.graph.section.communicationVoice.ready',
-  'Voice needs owner input.': 'create.graph.section.communicationVoice.missing',
-  'Content voice is retained as a post-studio candidate, not a create write.': 'create.graph.section.contentVoice.summary',
-  'A reviewed reference image URL is ready as create input.': 'create.graph.section.visualBrief.ready',
-  'Visual brief remains optional candidate material.': 'create.graph.section.visualBrief.missing',
-  'Voice demo belongs to Identity Studio and remains candidate-only in create.': 'create.graph.section.voiceBrief.summary',
-  'Post ideas belong to Content Studio and remain candidate-only in create.': 'create.graph.section.postBrief.summary',
-  'Unresolved decisions are explicit and do not block create unless they are required Realm create fields.': 'create.graph.section.missingDecisions.summary',
-  'No hidden provider, model, lifecycle, private memory, or raw rule-content fields are admitted.': 'create.graph.section.riskNotes.summary',
-  'Accepted fields map to admitted Realm write paths; blocked and deferred fields remain explicit.': 'create.graph.section.writePlan.summary',
-};
-
-const GRAPH_MISSING_KEYS: Record<string, StudioCopyKey> = {
-  'display name': 'create.graph.missing.displayName',
-  handle: 'create.graph.missing.handle',
-  'Persona archetype': 'create.graph.missing.personaArchetype',
-  'behavior boundaries': 'create.graph.missing.behaviorBoundaries',
-  concept: 'create.graph.missing.concept',
-  'greeting candidate': 'create.graph.missing.greetingCandidate',
-  'communication voice': 'create.graph.missing.communicationVoice',
-  'content voice examples': 'create.graph.missing.contentVoiceExamples',
-  'avatar/profile cover visual brief': 'create.graph.missing.avatarProfileCoverVisualBrief',
-  'voice brief': 'create.graph.missing.voiceBrief',
-  'first post brief': 'create.graph.missing.firstPostBrief',
-  'profile description': 'create.graph.missing.profileDescription',
-  'visual reference': 'create.graph.missing.visualReference',
-  greeting: 'create.graph.missing.greeting',
-  'Realm create required fields': 'create.graph.missing.realmCreateRequiredFields',
 };
 
 const CREATE_FIXED_MESSAGE_KEYS: Record<string, StudioCopyKey> = {
@@ -207,11 +148,11 @@ const CREATE_FIXED_MESSAGE_KEYS: Record<string, StudioCopyKey> = {
   'Draft reference image is not an owner-selected candidate.': 'create.error.referenceSelectionInvalid',
   'Draft contains more than 3 persona traits.': 'create.error.personaTraitsTooMany',
   'Draft contains a persona trait outside the closed value set.': 'create.error.personaTraitsOutsideClosedSet',
-  'LLM output personaTraits must contain at most 3 values from the admitted trait vocabulary.': 'create.error.seedTraitsInvalid',
+  'LLM output personaTraits must contain at most 3 values from the supported trait vocabulary.': 'create.error.seedTraitsInvalid',
   'persona description empty': 'create.error.seedDescriptionEmpty',
   'Persona seed payload invalid.': 'create.error.seedPayloadInvalid',
   'LLM output missing required `displayName` or `concept`.': 'create.error.seedRequiredOutputMissing',
-  'LLM output personaArchetype missing or not one of the 6 admitted archetypes.': 'create.error.seedArchetypeInvalid',
+  'LLM output personaArchetype missing or outside the supported archetypes.': 'create.error.seedArchetypeInvalid',
   'Persona seed output invalid.': 'create.error.seedOutputInvalid',
   'selected world not source-backed by WorldCoreController.listWorldCores': 'create.error.selectedWorldNotSourceBacked',
   'handle availability not checked by WorldCoreController.listRealmPersonas': 'create.error.handleAvailabilityMissing',
@@ -228,8 +169,10 @@ const CREATE_FIXED_MESSAGE_KEYS: Record<string, StudioCopyKey> = {
   'Realm owner settings read failed after create.': 'create.error.ownerSettingsReadFailed',
   'Realm owner settings update failed.': 'settings.error.ownerSettingsUpdateFailed',
   'reference image prompt empty': 'create.error.referencePromptEmpty',
+  'reference image generation count must be 1': 'create.error.referenceCountInvalid',
   'Reference image payload invalid.': 'create.error.referencePayloadInvalid',
   'Runtime imageGenerate scenario transport unavailable: Tauri IPC runtime transport is required.': 'create.error.referenceTransportUnavailable',
+  [RUNTIME_MEDIA_CANDIDATE_UNAVAILABLE_MESSAGE]: 'create.error.referenceCandidateUnavailable',
   'Runtime imageGenerate scenario returned no readable artifact.': 'create.error.referenceNoArtifact',
   'Runtime imageGenerate produced a local artifact but no http(s) URL that Realm can store as a public reference image.': 'create.error.referenceLocalArtifactNoUrl',
   'A RealmPersona with this handle already exists in the owner portfolio.': 'create.error.handleAlreadyExists',
@@ -259,49 +202,9 @@ const PERSONA_TRAIT_DESCRIPTION_KEYS: Record<PersonaTrait, StudioCopyKey> = {
   ECCENTRIC: 'create.personaStyle.trait.ECCENTRIC',
 };
 
-function translateGraphSourceMode(mode: PersonaCreationGraphSourceMode, t: StudioTranslator): string {
-  return t(GRAPH_SOURCE_MODE_KEYS[mode]);
-}
-
-function translateGraphSourceLabel(label: string, t: StudioTranslator): string {
-  const rawSourceLabels: Record<string, StudioCopyKey> = {
-    'Owner description': 'create.graph.sourceMode.description',
-    'Manual advanced entry': 'create.graph.sourceMode.manual',
-  };
-  const key = rawSourceLabels[label];
-  return key ? t(key) : label;
-}
-
-function translateGraphSourceField(
-  field: PersonaCreationGraph['sourcePackage']['fields'][number],
-  t: StudioTranslator,
-): string {
-  const key = GRAPH_SOURCE_FIELD_KEYS[field.key];
-  return key ? t(key) : field.label;
-}
-
 function translateGraphSectionTitle(sectionKey: string, t: StudioTranslator): string {
   const key = GRAPH_SECTION_TITLE_KEYS[sectionKey as PersonaCreationGraphSectionKey];
   return key ? t(key) : t('create.graph.section.unknown');
-}
-
-function translateGraphSectionSummary(
-  section: PersonaCreationGraph['normalizedGraph']['sections'][number],
-  graph: PersonaCreationGraph,
-  t: StudioTranslator,
-): string {
-  if (section.key === 'sourceProvenance') {
-    return t('create.graph.section.sourceProvenance.summary', {
-      source: translateGraphSourceLabel(graph.sourcePackage.label, t),
-    });
-  }
-  const key = GRAPH_SECTION_SUMMARY_KEYS[section.summary];
-  return key ? t(key) : section.summary;
-}
-
-function translateGraphMissingItem(item: string, t: StudioTranslator): string {
-  const key = GRAPH_MISSING_KEYS[item];
-  return key ? t(key) : t('create.graph.missing.unknown');
 }
 
 function translateGraphReviewError(error: string, t: StudioTranslator): string {
@@ -334,8 +237,7 @@ function translateCreateFixedMessage(message: string, t: StudioTranslator): stri
       : t('create.error.handleUnavailable', { message: reason });
   }
   if (message.startsWith('Runtime imageGenerate scenario failed:')) return t('create.error.referenceGenerateFailed');
-  if (message.startsWith('Local App AI permission check failed:')) return t('create.error.seedPermissionCheckFailed');
-  if (message.startsWith('Runtime Local App text candidate generation failed:')) return t('create.error.seedGenerationTransportFailed');
+  if (message.startsWith('Nimi text candidate generation failed:')) return t('create.error.seedGenerationTransportFailed');
   const key = CREATE_FIXED_MESSAGE_KEYS[message];
   return key ? t(key) : t('common.operationFailed');
 }
@@ -355,6 +257,7 @@ function createEmptyDraft(): CreateRealmPersonaDraftInput {
     personaArchetype: '',
     personaTraits: [],
     referenceImageUrl: '',
+    referenceImagePrompt: '',
     originalDescription: '',
     speechSupplement: '',
     boundarySupplement: '',
@@ -363,7 +266,7 @@ function createEmptyDraft(): CreateRealmPersonaDraftInput {
   };
 }
 
-function requestedDraftKey(search: string): string | null {
+function selectedDraftKey(search: string): string | null {
   const value = new URLSearchParams(search).get('draft');
   return isCreationDraftKey(value) ? value.trim() : null;
 }
@@ -387,6 +290,7 @@ export function countCompletedCreationDraftFields(input: CreateRealmPersonaDraft
     draft.speechSupplement,
     draft.boundarySupplement,
     draft.visualSupplement,
+    draft.referenceImagePrompt,
     draft.referenceImageUrl,
   ];
   return scalarFields.filter(Boolean).length
@@ -404,136 +308,16 @@ function ownerPromptFromDraft(input: CreateRealmPersonaDraftInput): string {
   ].filter(Boolean).join('\n\n');
 }
 
-function imagePromptFromDraft(input: CreateRealmPersonaDraftInput): string {
+function initialReferenceImagePromptFromDraft(input: CreateRealmPersonaDraftInput): string {
+  const ownerPrompt = ownerPromptFromDraft(input);
+  if (ownerPrompt) return ownerPrompt;
   const draft = normalizeCreateRealmPersonaDraft(input);
-  return [
-    draft.originalDescription,
-    draft.displayName,
-    draft.concept,
-    draft.personaArchetype,
-    draft.visualSupplement,
-  ].filter(Boolean).join(' — ');
-}
-
-function TechnicalReviewDetails({ children }: { children: ReactNode }) {
-  const { t } = useStudioI18n();
-  return (
-    <details className="grid gap-3 rounded-[var(--nimi-radius-lg)] border border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-panel)] p-4">
-      <summary className="cursor-pointer font-medium text-[var(--nimi-text-primary)]">{t('create.technicalDetails')}</summary>
-      <div>{children}</div>
-    </details>
-  );
-}
-
-function ReadinessPreview({
-  draft,
-  selectableWorldIds,
-  handleAvailability,
-}: {
-  draft: CreateRealmPersonaDraftInput;
-  selectableWorldIds: string[];
-  handleAvailability: NormalizedRealmPersonaHandleAvailability | null;
-}) {
-  const { t } = useStudioI18n();
-  const normalizedDraft = normalizeCreateRealmPersonaDraft(draft);
-  const readiness = validateCreateRealmPersonaReadiness(draft, { selectableWorldIds, handleAvailability });
-
-  return (
-    <details className="grid gap-3 rounded-[var(--nimi-radius-lg)] border border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-panel)] p-4">
-      <summary className="cursor-pointer font-medium text-[var(--nimi-text-primary)]">{t('create.readinessDetails')}</summary>
-      <div className="grid gap-4">
-        <Surface tone="card" padding="md">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="font-medium">{t('create.visiblePublicFields')}</div>
-            <StatusBadge tone="info">{t('create.localDraft')}</StatusBadge>
-          </div>
-          <dl className="mt-3 grid gap-2 text-[length:var(--nimi-type-body-sm-size)]">
-            <div className="grid gap-1 sm:grid-cols-[140px_1fr]"><dt className="text-[var(--nimi-text-muted)]">{t('create.handleField')}</dt><dd className="ras-break-anywhere m-0">@{normalizedDraft.handle || t('common.notSet')}</dd></div>
-            <div className="grid gap-1 sm:grid-cols-[140px_1fr]"><dt className="text-[var(--nimi-text-muted)]">{t('create.displayNameLabel')}</dt><dd className="ras-break-anywhere m-0">{normalizedDraft.displayName || t('common.notSet')}</dd></div>
-            <div className="grid gap-1 sm:grid-cols-[140px_1fr]"><dt className="text-[var(--nimi-text-muted)]">{t('create.profileDescriptionLabel')}</dt><dd className="ras-break-anywhere m-0">{normalizedDraft.description || t('common.notSet')}</dd></div>
-            <div className="grid gap-1 sm:grid-cols-[140px_1fr]"><dt className="text-[var(--nimi-text-muted)]">{t('create.worldIdField')}</dt><dd className="ras-break-anywhere m-0">{normalizedDraft.selectedWorldId || t('common.notSet')}</dd></div>
-          </dl>
-        </Surface>
-        {readiness.ready ? <InlineAlert tone="success">{t('create.graph.acceptedAlert')}</InlineAlert> : <InlineAlert tone="warning">{translateCreateFixedMessages(readiness.errors, t)}</InlineAlert>}
-        <pre className="ras-json-preview m-0 max-h-72 overflow-auto rounded-[var(--nimi-radius-field)] border border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-card)] p-3 text-xs">
-          {readiness.payload ? JSON.stringify(readiness.payload, null, 2) : t('create.completeForPreview')}
-        </pre>
-      </div>
-    </details>
-  );
-}
-
-function GraphStatusBadge({ status }: { status: PersonaCreationGraph['normalizedGraph']['sections'][number]['status'] }) {
-  const { t } = useStudioI18n();
-  if (status === 'ready') return <StatusBadge tone="success">{t('create.graph.status.ready')}</StatusBadge>;
-  if (status === 'blocked') return <StatusBadge tone="warning">{t('create.graph.status.blocked')}</StatusBadge>;
-  return <StatusBadge tone="neutral">{t('create.graph.status.needsDecision')}</StatusBadge>;
-}
-
-function GraphReviewBoard({
-  graph,
-  review,
-  onAccept,
-}: {
-  graph: PersonaCreationGraph;
-  review: PersonaCreationGraphCreateReview;
-  onAccept: () => void;
-}) {
-  const { t } = useStudioI18n();
-  return (
-    <div className="grid gap-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="font-medium">{t('create.graph.title')}</div>
-            <StatusBadge tone={review.ready ? 'success' : review.canAccept ? 'info' : 'warning'}>
-              {review.ready ? t('create.graph.accepted') : review.canAccept ? t('create.graph.reviewRequired') : t('create.graph.blocked')}
-            </StatusBadge>
-          </div>
-          <p className="m-0 mt-1 text-[length:var(--nimi-type-body-sm-size)] text-[var(--nimi-text-muted)]">
-            {translateGraphSourceMode(graph.sourcePackage.mode, t)} · {translateGraphSourceLabel(graph.sourcePackage.label, t)}
-          </p>
-        </div>
-        <Button tone="secondary" size="sm" disabled={!review.canAccept || review.ready} onClick={onAccept}>
-          {review.ready ? t('create.graph.graphAccepted') : t('create.graph.acceptGraph')}
-        </Button>
-      </div>
-
-      {review.shapeErrors.length > 0 ? <InlineAlert tone="danger">{translateGraphReviewErrors(review.shapeErrors, t)}</InlineAlert>
-        : review.reviewErrors.length > 0 ? <InlineAlert tone="warning">{translateGraphReviewErrors(review.reviewErrors, t)}</InlineAlert>
-          : <InlineAlert tone="success">{t('create.graph.acceptedAlert')}</InlineAlert>}
-
-      <div className="grid gap-2">
-        <div className="font-medium">{t('create.graph.sourceMapping')}</div>
-        {graph.sourcePackage.fields.length > 0 ? (
-          <div className="grid gap-2">
-            {graph.sourcePackage.fields.slice(0, 8).map((item) => (
-              <div key={item.key} className="grid gap-1 rounded-[var(--nimi-radius-field)] border border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-raised)] p-2 text-[length:var(--nimi-type-body-sm-size)]">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-medium">{translateGraphSourceField(item, t)}</span>
-                  <StatusBadge tone={item.status === 'mapped' ? 'success' : 'neutral'}>{t(GRAPH_FIELD_STATUS_KEYS[item.status])}</StatusBadge>
-                </div>
-                <div className="ras-break-anywhere text-[var(--nimi-text-muted)]">{item.value}</div>
-              </div>
-            ))}
-          </div>
-        ) : <InlineAlert tone="warning">{t('create.graph.noSourceFields')}</InlineAlert>}
-      </div>
-
-      <div className="grid gap-2">
-        <div className="font-medium">{t('create.graph.reviewSections')}</div>
-        <div className="grid gap-2">
-          {graph.normalizedGraph.sections.map((section) => (
-            <div key={section.key} className="rounded-[var(--nimi-radius-field)] border border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-raised)] p-2">
-              <div className="flex flex-wrap items-center justify-between gap-2"><span className="font-medium">{translateGraphSectionTitle(section.key, t)}</span><GraphStatusBadge status={section.status} /></div>
-              <p className="m-0 mt-1 text-[length:var(--nimi-type-body-sm-size)] text-[var(--nimi-text-muted)]">{translateGraphSectionSummary(section, graph, t)}</p>
-              {section.missing.length > 0 ? <div className="mt-2 flex flex-wrap gap-2">{section.missing.slice(0, 4).map((item) => <StatusBadge key={item} tone="neutral">{translateGraphMissingItem(item, t)}</StatusBadge>)}</div> : null}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+  return defaultReferenceImagePromptFromDraft({
+    description: draft.description,
+    displayName: draft.displayName,
+    concept: draft.concept,
+    personaArchetype: draft.personaArchetype,
+  });
 }
 
 function AutosaveIndicator({ state, failureMessage }: { state: AutosaveState; failureMessage: string | null }) {
@@ -558,8 +342,9 @@ function HandleAvailabilityBadge({
   availability: NormalizedRealmPersonaHandleAvailability | null;
 }) {
   const { t } = useStudioI18n();
-  if (!handle || query.isFetching || !query.data) return <StatusBadge tone="neutral">{t('create.handleStatus.pending')}</StatusBadge>;
-  if (query.isError || !query.data.ok) return <StatusBadge tone="danger">{t('create.handleStatus.failed')}</StatusBadge>;
+  if (!handle || query.isFetching) return <StatusBadge tone="neutral">{t('create.handleStatus.pending')}</StatusBadge>;
+  if (query.isError || (query.data && !query.data.ok)) return <StatusBadge tone="info">{t('create.handleStatus.unavailable')}</StatusBadge>;
+  if (!query.data) return <StatusBadge tone="neutral">{t('create.handleStatus.pending')}</StatusBadge>;
   return availability?.available
     ? <StatusBadge tone="success">{t('create.handleStatus.available')}</StatusBadge>
     : <StatusBadge tone="danger">{t('create.handleStatus.occupied')}</StatusBadge>;
@@ -690,7 +475,7 @@ function WorldRecoveryPanel({
         <Button tone="secondary" loading={retrying} onClick={onRetry} leadingIcon={<RefreshCw size={16} aria-hidden="true" />}>
           {t('create.worldRecovery.retry')}
         </Button>
-        <Button tone="primary" disabled={createDisabled}>{t('create.submit')}</Button>
+        <Button tone="primary" className="text-white" disabled={createDisabled}>{t('create.submit')}</Button>
       </div>
     </Surface>
   );
@@ -704,9 +489,8 @@ function WorldLoadingPanel() {
 export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }: CreateRealmPersonaWorkspaceProps) {
   const { t } = useStudioI18n();
   const location = useLocation();
-  const navigate = useNavigate();
   const initialDraftKey = useRef<string | null>(null);
-  initialDraftKey.current ??= requestedDraftKey(location.search) || createCreationDraftKey();
+  initialDraftKey.current ??= selectedDraftKey(location.search) || createCreationDraftKey();
   const [draftKey, setDraftKey] = useState(initialDraftKey.current);
   const [draft, setDraft] = useState<CreateRealmPersonaDraftInput>(createEmptyDraft);
   const [draftLoadState, setDraftLoadState] = useState<DraftLoadState>('loading');
@@ -716,7 +500,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
   const [seedResult, setSeedResult] = useState<PersonaSeedGenerationResult | null>(null);
   const [seedOriginalDisplayName, setSeedOriginalDisplayName] = useState('');
   const [isGeneratingSeed, setIsGeneratingSeed] = useState(false);
-  const [isGeneratingReferenceImage, setIsGeneratingReferenceImage] = useState(false);
+  const [referenceImageGenerationTarget, setReferenceImageGenerationTarget] = useState<ReferenceImageGenerationTarget | null>(null);
   const [referenceImageFailure, setReferenceImageFailure] = useState<string | null>(null);
   const [referenceImageLoadFailed, setReferenceImageLoadFailed] = useState(false);
   const [referenceCandidateLoadFailures, setReferenceCandidateLoadFailures] = useState<Set<string>>(() => new Set());
@@ -738,12 +522,12 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
   const autosaveSequence = useRef(0);
   const autosaveQueue = useRef<Promise<void>>(Promise.resolve());
 
-  const requestedKey = requestedDraftKey(location.search);
+  const selectedKey = selectedDraftKey(location.search);
   const lastLocationSearch = useRef(location.search);
   useEffect(() => {
     if (lastLocationSearch.current === location.search) return;
     lastLocationSearch.current = location.search;
-    const nextKey = requestedKey || createCreationDraftKey();
+    const nextKey = selectedKey || createCreationDraftKey();
     if (nextKey === draftKey) return;
     setDraftKey(nextKey);
     setDraft(createEmptyDraft());
@@ -757,7 +541,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
     setGraphAcceptedFingerprint(null);
     setLocalSubmitErrors([]);
     setCreatedContext(null);
-  }, [draftKey, location.search, requestedKey]);
+  }, [draftKey, location.search, selectedKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -869,8 +653,13 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
     setCreatedContext(null);
   }
 
-  function updateDraft(patch: Partial<CreateRealmPersonaDraftInput>) {
-    setDraft((current) => ({ ...current, ...patch }));
+  function updateDraft(
+    patch: CreateRealmPersonaDraftPatch | ((current: CreateRealmPersonaDraftInput) => CreateRealmPersonaDraftPatch),
+  ) {
+    setDraft((current) => ({
+      ...current,
+      ...(typeof patch === 'function' ? patch(current) : patch),
+    }));
     setGraphAcceptedFingerprint(null);
     resetCreateOutcome();
     setReferenceImageLoadFailed(false);
@@ -900,7 +689,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
       }
       if (result.ok) {
         nimiToast.success(t('create.createdSuccess', { id: result.canonical.id }));
-        if (result.profileSettings.status !== 'not-requested') {
+        if (result.profileSettings.status !== 'not-applicable') {
           nimiToast.success(t('create.profileDescriptionSaved', {
             status: result.profileSettings.status === 'updated'
               ? t('create.profileDescriptionSavedUpdated')
@@ -929,8 +718,10 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
   });
 
   function submitCreate() {
-    if (!creationGraphReview.ready) {
-      setLocalSubmitErrors(creationGraphReview.errors);
+    const acceptedFingerprint = acceptPersonaCreationGraphForRealmCreate(creationGraph);
+    const acceptedGraphReview = validatePersonaCreationGraphForRealmCreate(creationGraph, acceptedFingerprint);
+    if (!acceptedGraphReview.ready) {
+      setLocalSubmitErrors(acceptedGraphReview.errors);
       return;
     }
     const readiness = validateCreateRealmPersonaReadiness(draft, { selectableWorldIds, handleAvailability });
@@ -938,6 +729,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
       setLocalSubmitErrors(readiness.errors);
       return;
     }
+    setGraphAcceptedFingerprint(acceptedFingerprint);
     setLocalSubmitErrors([]);
     createMutation.mutate(readiness.payload);
   }
@@ -960,20 +752,25 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
       setSeedResult(result);
       if (result.ok) {
         setSeedOriginalDisplayName(result.seed.displayName);
-        setDraft((current) => ({
-          ...current,
-          handle: result.seed.handle || current.handle,
-          displayName: result.seed.displayName || current.displayName,
-          concept: result.seed.concept || current.concept,
-          description: result.seed.description || current.description,
-          ruleText: result.seed.ruleText || current.ruleText,
-          personaArchetype: result.seed.personaArchetype || current.personaArchetype,
-          personaTraits: result.seed.personaTraits.length > 0 ? result.seed.personaTraits : current.personaTraits,
-          originalDescription: seedDescription,
-        }));
+        setDraft((current) => {
+          const nextDraft: CreateRealmPersonaDraftInput = {
+            ...current,
+            handle: result.seed.handle || current.handle,
+            displayName: result.seed.displayName || current.displayName,
+            concept: result.seed.concept || current.concept,
+            description: result.seed.description || current.description,
+            ruleText: result.seed.ruleText || current.ruleText,
+            personaArchetype: result.seed.personaArchetype || current.personaArchetype,
+            personaTraits: result.seed.personaTraits.length > 0 ? result.seed.personaTraits : current.personaTraits,
+            originalDescription: seedDescription,
+          };
+          return {
+            ...nextDraft,
+            referenceImagePrompt: current.referenceImagePrompt.trim()
+              || initialReferenceImagePromptFromDraft(nextDraft),
+          };
+        });
         setStage('review');
-      } else if (result.failure === 'persona-seed-permission-required') {
-        nimiToast.info(t('create.seedPermissionRequired'));
       } else {
         nimiToast.danger(t('create.seedGenerationFailed', { message: translateCreateFixedMessage(result.message, t) }));
       }
@@ -987,6 +784,10 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
     setGraphAcceptedFingerprint(null);
     setSeedResult(null);
     setSeedOriginalDisplayName('');
+    updateDraft((current) => ({
+      referenceImagePrompt: current.referenceImagePrompt.trim()
+        || initialReferenceImagePromptFromDraft(current),
+    }));
     resetCreateOutcome();
     setStage('review');
   }
@@ -997,39 +798,75 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
     resetCreateOutcome();
   }
 
-  async function runReferenceImageGeneration() {
-    setIsGeneratingReferenceImage(true);
+  async function runReferenceImageGeneration(target: ReferenceImageGenerationTarget) {
+    if (referenceImageGenerationTarget) return;
+    const currentDraft = normalizeCreateRealmPersonaDraft(draft);
+    const occupiedTarget = currentDraft.referenceImageCandidates.find((candidate) => candidate.slot === target.slot);
+    if (target.mode === 'fill' && occupiedTarget) return;
+    if (
+      target.mode === 'replace'
+      && (!occupiedTarget || occupiedTarget.url !== currentDraft.referenceImageUrl)
+    ) {
+      return;
+    }
+
+    setReferenceImageGenerationTarget(target);
     setReferenceImageFailure(null);
-    const prompt = imagePromptFromDraft(draft);
+    const prompt = currentDraft.referenceImagePrompt;
     try {
-      const result = await generatePersonaReferenceImage({ prompt, count: 4 });
+      const result = await generatePersonaReferenceImage({ prompt, count: 1 });
       if (!result.ok) {
         const message = translateCreateFixedMessage(result.message, t);
         setReferenceImageFailure(message);
-        nimiToast.danger(t('create.referenceFailed', { message }));
+        const toastMessage = t('create.referenceFailed', { message });
+        if (result.failure === 'persona-reference-image-candidate-unavailable') {
+          nimiToast.info(toastMessage);
+        } else {
+          nimiToast.danger(toastMessage);
+        }
         return;
       }
       const createdAt = new Date().toISOString();
       const urls = [...new Set([...(result.artifactUris || []), result.referenceImageUrl].filter(Boolean))];
-      const candidates = urls.map((url) => ({
+      const url = urls[0];
+      if (!url) {
+        const message = t('create.reference.capabilityUnavailable');
+        setReferenceImageFailure(message);
+        nimiToast.info(message);
+        return;
+      }
+      const candidate: ReferenceImageCandidate = {
         draftKey,
+        slot: target.slot,
         url,
         prompt,
         createdAt,
-        sourceKind: 'generated' as const,
-        reviewState: 'candidate-only' as const,
-      }));
-      if (candidates.length === 0) {
-        const message = t('create.reference.capabilityUnavailable');
-        setReferenceImageFailure(message);
-        nimiToast.danger(message);
-        return;
-      }
-      setReferenceCandidateLoadFailures(new Set());
-      updateDraft({ referenceImageCandidates: candidates, referenceImageUrl: '' });
+        sourceKind: 'generated',
+        reviewState: 'candidate-only',
+      };
+      setReferenceCandidateLoadFailures((current) => {
+        const next = new Set(current);
+        if (occupiedTarget) next.delete(occupiedTarget.url);
+        next.delete(url);
+        return next;
+      });
+      updateDraft((latest) => {
+        const normalizedLatest = normalizeCreateRealmPersonaDraft(latest);
+        const replaced = normalizedLatest.referenceImageCandidates.find((item) => item.slot === target.slot);
+        const nextCandidates = normalizedLatest.referenceImageCandidates
+          .filter((item) => item.slot !== target.slot)
+          .concat(candidate)
+          .sort((left, right) => left.slot - right.slot);
+        return {
+          referenceImageCandidates: nextCandidates,
+          referenceImageUrl: replaced?.url === normalizedLatest.referenceImageUrl
+            ? ''
+            : normalizedLatest.referenceImageUrl,
+        };
+      });
       setReferenceImageFailure(null);
     } finally {
-      setIsGeneratingReferenceImage(false);
+      setReferenceImageGenerationTarget(null);
     }
   }
 
@@ -1042,6 +879,10 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
       })),
     });
     setReferenceImageFailure(null);
+  }
+
+  function resetReferenceImagePrompt() {
+    updateDraft({ referenceImagePrompt: initialReferenceImagePromptFromDraft(draft) });
   }
 
   function selectReferenceImageCandidate(url: string) {
@@ -1082,11 +923,31 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
   const readiness = validateCreateRealmPersonaReadiness(draft, { selectableWorldIds, handleAvailability });
   const handleCheckBlocking = Boolean(normalizedDraft.handle)
     && (handleAvailabilityQuery.isLoading || handleAvailabilityQuery.isError || !handleAvailability?.available);
-  const createDisabled = createMutation.isPending || worldsQuery.isLoading || worldsQuery.isError || worlds.length === 0 || !selectedWorld || !readiness.ready || !creationGraphReview.ready || handleCheckBlocking;
+  const createDisabled = createMutation.isPending || worldsQuery.isLoading || worldsQuery.isError || worlds.length === 0 || !selectedWorld || !readiness.ready || !creationGraphReview.canAccept || handleCheckBlocking;
   const worldsUnavailable = worldsQuery.isError || (!worldsQuery.isLoading && worlds.length === 0);
   const seedPrompt = ownerPromptFromDraft(draft);
-  const imagePrompt = imagePromptFromDraft(draft);
+  const imagePrompt = normalizedDraft.referenceImagePrompt;
   const candidateCount = normalizedDraft.referenceImageCandidates.length;
+  const candidateSlots = Array.from(
+    { length: REFERENCE_IMAGE_CANDIDATE_SLOT_COUNT },
+    (_, slot) => slot as ReferenceImageCandidateSlot,
+  );
+  const candidatesBySlot = new Map(
+    normalizedDraft.referenceImageCandidates.map((candidate) => [candidate.slot, candidate]),
+  );
+  const selectedReferenceCandidate = normalizedDraft.referenceImageCandidates.find(
+    (candidate) => candidate.url === normalizedDraft.referenceImageUrl,
+  ) || null;
+  const previewReferenceCandidate = selectedReferenceCandidate
+    || normalizedDraft.referenceImageCandidates.find(
+      (candidate) => !referenceCandidateLoadFailures.has(candidate.url),
+    )
+    || null;
+  const isGeneratingReferenceImage = referenceImageGenerationTarget !== null;
+  const referenceImagePromptChanged = Boolean(
+    previewReferenceCandidate
+    && imagePrompt !== previewReferenceCandidate.prompt,
+  );
   const archetypeLabel = normalizedDraft.personaArchetype
     ? translatePersonaArchetypeLabel(normalizedDraft.personaArchetype, t)
     : t('create.personaArchetypePlaceholder');
@@ -1154,10 +1015,8 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
             ))}
           </div>
           {seedResult && !seedResult.ok ? (
-            <InlineAlert tone={seedResult.failure === 'persona-seed-permission-required' ? 'info' : 'danger'}>
-              {seedResult.failure === 'persona-seed-permission-required'
-                ? t('create.seedPermissionRequired')
-                : t('create.seedGenerationFailed', { message: translateCreateFixedMessage(seedResult.message, t) })}
+            <InlineAlert tone="info">
+              {t('create.seedGenerationFailed', { message: translateCreateFixedMessage(seedResult.message, t) })}
             </InlineAlert>
           ) : null}
           {supplementButtons.map(({ key }) => expandedSupplements[key] ? (
@@ -1171,37 +1030,31 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
             </FieldShell>
           ) : null)}
 
-          <AppCardSurface
-            as="button"
-            kind="promoted-glass"
-            interactive
-            aria-disabled={!normalizedDraft.originalDescription || isGeneratingSeed}
-            className={`flex w-full items-center justify-between gap-4 p-4 text-left ${!normalizedDraft.originalDescription || isGeneratingSeed ? 'cursor-not-allowed opacity-[var(--nimi-opacity-disabled)]' : ''}`}
-            onClick={() => {
-              if (normalizedDraft.originalDescription && !isGeneratingSeed) void runSeedGeneration();
-            }}
-          >
-            <div className="flex min-w-0 items-center gap-3">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--nimi-radius-md)] bg-[var(--nimi-action-primary-bg)] text-[var(--nimi-action-primary-text)]"><Sparkles size={18} aria-hidden="true" /></span>
-              <span className="min-w-0"><span className="block font-medium text-[var(--nimi-text-primary)]">{t('create.aiCard.title')}</span><span className="mt-1 block text-sm text-[var(--nimi-text-muted)]">{t('create.aiCard.description')}</span></span>
-            </div>
-            <StatusBadge tone="info">{isGeneratingSeed ? t('create.aiCard.generating') : t('create.aiCard.recommended')}</StatusBadge>
-          </AppCardSurface>
-
-          <Button tone="secondary" fullWidth className="justify-between rounded-xl text-left" onClick={skipSeedAndCreateManually} trailingIcon={<ArrowRight size={16} aria-hidden="true" />}>
-            <span>{t('create.manualRow.text')}</span><span>{t('create.manualRow.action')}</span>
-          </Button>
-        </Surface>
-        <InlineAlert tone="neutral"><strong>{t('create.boundaryLabel')}</strong> {t('create.boundaryDescription')}</InlineAlert>
-        <footer className="flex flex-wrap items-center justify-between gap-4">
-          <span className="text-xs text-[var(--nimi-text-muted)]">{t('create.source.ownerLocal')}</span>
-          <div className="flex flex-wrap items-center gap-3">
-            <Button tone="ghost" onClick={() => navigate('/portfolio')}>{t('create.cancel')}</Button>
-            <Button tone="primary" disabled={!normalizedDraft.originalDescription || isGeneratingSeed} loading={isGeneratingSeed} onClick={() => void runSeedGeneration()} trailingIcon={<ArrowRight size={16} aria-hidden="true" />}>
-              {t('create.generateFromDescription')}
+          <div className="grid gap-3">
+            <Button
+              tone="primary"
+              size="lg"
+              fullWidth
+              className="min-h-14 rounded-xl text-white"
+              disabled={!normalizedDraft.originalDescription}
+              loading={isGeneratingSeed}
+              leadingIcon={isGeneratingSeed ? undefined : <Sparkles size={18} aria-hidden="true" />}
+              onClick={() => void runSeedGeneration()}
+            >
+              {isGeneratingSeed ? t('create.aiButton.generating') : t('create.aiButton.label')}
+            </Button>
+            <Button
+              tone="secondary"
+              size="lg"
+              fullWidth
+              className="min-h-14 rounded-xl"
+              leadingIcon={<Pencil size={18} aria-hidden="true" />}
+              onClick={skipSeedAndCreateManually}
+            >
+              {t('create.manualButton.label')}
             </Button>
           </div>
-        </footer>
+        </Surface>
       </div>
     );
   }
@@ -1211,80 +1064,145 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
       {renderHeader()}
       <div className="grid min-w-0 gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
         <section className="grid min-w-0 gap-3 content-start">
-          <Surface tone="card" material="glass-thick" padding="none" className="relative min-h-[560px] overflow-hidden rounded-[var(--nimi-radius-xl)]">
-            {normalizedDraft.referenceImageUrl && !referenceImageLoadFailed ? (
-              <>
+          <Surface tone="card" material="glass-thick" padding="none" className="overflow-hidden rounded-[var(--nimi-radius-xl)]">
+            <div className="relative h-[360px] overflow-hidden bg-[var(--nimi-surface-panel)]">
+              {previewReferenceCandidate && !referenceImageLoadFailed ? (
+                <>
                 <img
-                  src={normalizedDraft.referenceImageUrl}
+                  src={previewReferenceCandidate.url}
                   alt={t('create.referenceAlt')}
                   className="absolute inset-0 h-full w-full object-cover"
-                  onError={() => markReferenceImageUnavailable(normalizedDraft.referenceImageUrl)}
+                  onError={() => markReferenceImageUnavailable(previewReferenceCandidate.url)}
                 />
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[color-mix(in_srgb,var(--nimi-text-primary)_82%,transparent)] via-transparent to-transparent" />
                 <div className="absolute inset-x-5 bottom-5 text-[var(--nimi-text-inverse)]">
                   <StatusBadge tone="info" className="mb-3 bg-[color-mix(in_srgb,var(--nimi-text-primary)_60%,transparent)] text-[var(--nimi-text-inverse)]">{archetypeLabel}</StatusBadge>
                   <h2 className="m-0 text-2xl font-semibold">{normalizedDraft.displayName || t('create.displayNamePlaceholder')}</h2>
-                  <div className="mt-1 font-mono text-sm opacity-80">@{normalizedDraft.handle || t('create.handlePlaceholder')}</div>
+                  <div className="mt-1 font-mono text-sm opacity-80">@{normalizedDraft.handle || t('create.handlePlaceholder').replace(/^@/, '')}</div>
+                </div>
+                </>
+              ) : (
+                <div className="flex h-full items-center justify-center p-6">
+                  <EmptyState title={t('create.reference.emptyTitle')} description={t('create.reference.emptyDescription')} />
+                </div>
+              )}
+            </div>
+
+            <div className="grid gap-3 border-t border-[var(--nimi-border-subtle)] p-4">
+              <FieldShell label={t('create.imagePromptLabel')} message={t('create.imagePromptMessage')}>
+                <TextareaField
+                  rows={4}
+                  value={draft.referenceImagePrompt}
+                  placeholder={t('create.imagePromptPlaceholder')}
+                  onChange={(event) => updateDraft({ referenceImagePrompt: event.currentTarget.value })}
+                />
+              </FieldShell>
+              <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+                {referenceImagePromptChanged ? (
+                  <StatusBadge tone="warning">{t('create.imagePromptChanged')}</StatusBadge>
+                ) : <span />}
+                <Button tone="ghost" size="sm" onClick={resetReferenceImagePrompt}>
+                  {t('create.imagePromptReset')}
+                </Button>
+              </div>
+
+              <div className="border-t border-[var(--nimi-border-subtle)] pt-3">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--nimi-text-muted)]">
+                  <span>{t('create.reference.selectCandidate')}</span>
+                  <span>{t('create.reference.slotCount', { count: candidateCount, max: REFERENCE_IMAGE_CANDIDATE_SLOT_COUNT })}</span>
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  {candidateSlots.map((slot) => {
+                    const candidate = candidatesBySlot.get(slot);
+                    if (candidate) {
+                      const unavailable = referenceCandidateLoadFailures.has(candidate.url);
+                      return (
+                        <Surface
+                          key={`${slot}-${candidate.url}-${candidate.createdAt}`}
+                          as="button"
+                          type="button"
+                          tone="card"
+                          padding="none"
+                          interactive={!unavailable}
+                          disabled={unavailable || isGeneratingReferenceImage}
+                          active={candidate.reviewState === 'owner-selected'}
+                          aria-label={t('create.reference.selectCandidateSlot', { slot: slot + 1 })}
+                          onClick={() => selectReferenceImageCandidate(candidate.url)}
+                          className="relative aspect-square overflow-hidden rounded-[var(--nimi-radius-md)]"
+                        >
+                          {unavailable ? (
+                            <span className="flex h-full items-center justify-center p-2 text-center text-xs text-[var(--nimi-text-muted)]">{t('common.sourceUnavailable')}</span>
+                          ) : (
+                            <img
+                              src={candidate.url}
+                              alt=""
+                              className="h-full w-full object-cover"
+                              onError={() => markReferenceImageUnavailable(candidate.url)}
+                            />
+                          )}
+                          {candidate.reviewState === 'owner-selected' ? <span className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-[var(--nimi-action-primary-bg)] text-[var(--nimi-action-primary-text)]"><Check size={12} aria-hidden="true" /></span> : null}
+                        </Surface>
+                      );
+                    }
+                    const generating = referenceImageGenerationTarget?.mode === 'fill'
+                      && referenceImageGenerationTarget.slot === slot;
+                    return (
+                      <button
+                        key={slot}
+                        type="button"
+                        disabled={isGeneratingReferenceImage || !imagePrompt || candidateCount === 0}
+                        aria-label={t('create.reference.generateSlot', { slot: slot + 1 })}
+                        onClick={() => void runReferenceImageGeneration({ mode: 'fill', slot })}
+                        className="grid aspect-square min-w-0 place-content-center justify-items-center gap-1 rounded-[var(--nimi-radius-md)] border border-dashed border-[var(--nimi-border-strong)] bg-[var(--nimi-surface-panel)] p-2 text-center text-xs text-[var(--nimi-text-secondary)] transition-colors hover:border-[var(--nimi-action-primary-bg)] hover:bg-[var(--nimi-surface-active)] disabled:cursor-not-allowed disabled:opacity-[var(--nimi-opacity-disabled)]"
+                      >
+                        {generating
+                          ? <RefreshCw size={17} aria-hidden="true" className="animate-spin" />
+                          : <Plus size={18} aria-hidden="true" />}
+                        <span>{generating ? t('create.reference.generatingOne') : t('create.reference.generateOne')}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="m-0 mt-2 text-xs text-[var(--nimi-text-muted)]">{t('create.reference.generateOneHelp')}</p>
+              </div>
+
+              {candidateCount === 0 ? (
+                <Button
+                  tone="primary"
+                  fullWidth
+                  className="text-white"
+                  disabled={!imagePrompt}
+                  loading={referenceImageGenerationTarget?.mode === 'fill' && referenceImageGenerationTarget.slot === 0}
+                  onClick={() => void runReferenceImageGeneration({ mode: 'fill', slot: 0 })}
+                  leadingIcon={<Sparkles size={15} aria-hidden="true" />}
+                >
+                  {t('create.generateReference')}
+                </Button>
+              ) : (
+                <>
                   <Button
                     tone="secondary"
                     fullWidth
-                    className="mt-4 border-[color-mix(in_srgb,var(--nimi-text-inverse)_36%,transparent)] bg-[color-mix(in_srgb,var(--nimi-text-primary)_30%,transparent)] text-[var(--nimi-text-inverse)]"
-                    loading={isGeneratingReferenceImage}
-                    onClick={() => void runReferenceImageGeneration()}
+                    disabled={!selectedReferenceCandidate || !imagePrompt}
+                    loading={referenceImageGenerationTarget?.mode === 'replace'}
+                    onClick={() => selectedReferenceCandidate
+                      ? void runReferenceImageGeneration({ mode: 'replace', slot: selectedReferenceCandidate.slot })
+                      : undefined}
+                    leadingIcon={<RefreshCw size={15} aria-hidden="true" />}
                   >
-                    <RefreshCw size={15} aria-hidden="true" /> {t('create.regenerateReference')}
+                    {t('create.reference.regenerateSelected')}
                   </Button>
-                </div>
-              </>
-            ) : (
-              <div className="flex h-full min-h-[560px] items-center justify-center p-6">
-                <EmptyState title={t('create.reference.emptyTitle')} description={referenceImageFailure || `${t('create.reference.capabilityUnavailable')} ${t('create.reference.emptyDescription')}`} />
-              </div>
-            )}
-          </Surface>
-          {referenceImageFailure ? <InlineAlert tone="danger">{referenceImageFailure}</InlineAlert> : null}
-          <div className="grid gap-2">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--nimi-text-muted)]">
-              <span>{t('create.reference.selectCandidate')}</span>
-              <span>{t('create.reference.candidateCount', { count: candidateCount, plural: candidateCount === 1 ? '' : 's' })}</span>
+                  <p className="m-0 text-xs text-[var(--nimi-text-muted)]">
+                    {selectedReferenceCandidate
+                      ? t('create.reference.regenerateSelectedHelp')
+                      : t('create.reference.selectToRegenerate')}
+                  </p>
+                </>
+              )}
+              {normalizedDraft.referenceImageUrl ? <Button tone="ghost" size="sm" onClick={clearReferenceImage}>{t('create.clearReference')}</Button> : null}
             </div>
-            {candidateCount > 0 ? (
-              <div className="grid grid-cols-4 gap-2">
-                {normalizedDraft.referenceImageCandidates.map((candidate) => (
-                  <Surface
-                    key={`${candidate.url}-${candidate.createdAt}`}
-                    as="button"
-                    type="button"
-                    tone="card"
-                    padding="none"
-                    interactive={!referenceCandidateLoadFailures.has(candidate.url)}
-                    disabled={referenceCandidateLoadFailures.has(candidate.url)}
-                    active={candidate.reviewState === 'owner-selected'}
-                    aria-label={t('create.reference.selectCandidate')}
-                    onClick={() => selectReferenceImageCandidate(candidate.url)}
-                    className="relative aspect-square overflow-hidden rounded-[var(--nimi-radius-md)]"
-                  >
-                    {referenceCandidateLoadFailures.has(candidate.url) ? (
-                      <span className="flex h-full items-center justify-center p-2 text-center text-xs text-[var(--nimi-text-muted)]">{t('common.sourceUnavailable')}</span>
-                    ) : (
-                      <img
-                        src={candidate.url}
-                        alt=""
-                        className="h-full w-full object-cover"
-                        onError={() => markReferenceImageUnavailable(candidate.url)}
-                      />
-                    )}
-                    {candidate.reviewState === 'owner-selected' ? <span className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-[var(--nimi-action-primary-bg)] text-[var(--nimi-action-primary-text)]"><Check size={12} aria-hidden="true" /></span> : null}
-                  </Surface>
-                ))}
-              </div>
-            ) : null}
-            {candidateCount < 4 ? <InlineAlert tone="warning">{t('create.reference.insufficient', { count: candidateCount, plural: candidateCount === 1 ? '' : 's' })}</InlineAlert> : null}
-            <Button tone="secondary" loading={isGeneratingReferenceImage} onClick={() => void runReferenceImageGeneration()} leadingIcon={<RefreshCw size={15} aria-hidden="true" />}>
-              {t('create.regenerateReference')}
-            </Button>
-            {normalizedDraft.referenceImageUrl ? <Button tone="ghost" onClick={clearReferenceImage}>{t('create.clearReference')}</Button> : null}
-          </div>
+          </Surface>
+          {referenceImageFailure ? <InlineAlert tone="info">{referenceImageFailure}</InlineAlert> : null}
         </section>
 
         <section className="min-w-0">
@@ -1310,23 +1228,22 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
                 <div className="grid gap-4 md:grid-cols-2">
                   <FieldShell
                     label={<span className="flex flex-wrap items-center gap-2">{t('create.displayNameLabel')}{seedOriginalDisplayName && normalizedDraft.displayName !== seedOriginalDisplayName ? <StatusBadge tone="success">{t('create.review.modified')}</StatusBadge> : null}</span>}
-                    message={t('create.displayNameMessage')}
                   >
                     <TextField value={draft.displayName} placeholder={t('create.displayNamePlaceholder')} onChange={(event) => updateDraft({ displayName: event.currentTarget.value })} />
                   </FieldShell>
                   <FieldShell
                     label={<span className="flex flex-wrap items-center gap-2">{t('create.handleLabel')}<HandleAvailabilityBadge handle={normalizedDraft.handle} query={handleAvailabilityQuery} availability={handleAvailability} /></span>}
-                    message={t('create.handleMessage')}
                   >
                     <TextField value={draft.handle} placeholder={t('create.handlePlaceholder')} onChange={(event) => updateDraft({ handle: event.currentTarget.value })} />
                   </FieldShell>
                 </div>
-                {handleAvailabilityQuery.isError ? <InlineAlert tone="danger">{t('create.handleCheckFailed')}</InlineAlert> : null}
+                {handleAvailabilityQuery.isError ? <InlineAlert tone="info">{t('create.handleCheckFailed')}</InlineAlert> : null}
                 <FieldShell label={t('create.conceptLabel')} message={t('create.conceptMessage')}>
                   <TextareaField rows={3} value={draft.concept} placeholder={t('create.conceptPlaceholder')} onChange={(event) => updateDraft({ concept: event.currentTarget.value })} />
                 </FieldShell>
-                <FieldShell label={t('create.personaArchetypeLabel')} message={t('create.personaArchetypeMessage')} messageTone={draft.personaArchetype ? 'neutral' : 'danger'}>
+                <FieldShell label={<span>{t('create.personaArchetypeLabel')}<span className="ml-1 align-super text-[var(--nimi-status-danger)]" aria-hidden="true">*</span></span>}>
                   <SelectField
+                    required
                     value={draft.personaArchetype}
                     options={[{ value: '', label: t('create.personaArchetypePlaceholder') }, ...PERSONA_ARCHETYPES.map((archetype) => ({ value: archetype, label: `${translatePersonaArchetypeLabel(archetype, t)} — ${t(PERSONA_ARCHETYPE_DESCRIPTION_KEYS[archetype])}` }))]}
                     onValueChange={(value) => updateDraft({ personaArchetype: value as PersonaArchetype | '' })}
@@ -1371,7 +1288,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
               </details>
 
               {!readiness.ready ? <InlineAlert tone="warning">{translateCreateFixedMessages(readiness.errors, t)}</InlineAlert> : null}
-              {!creationGraphReview.ready ? <InlineAlert tone={creationGraphReview.canAccept ? 'warning' : 'danger'}>{translateGraphReviewErrors(creationGraphReview.errors, t)}</InlineAlert> : null}
+              {creationGraphReview.shapeErrors.length > 0 ? <InlineAlert tone="danger">{translateGraphReviewErrors(creationGraphReview.shapeErrors, t)}</InlineAlert> : null}
               {localSubmitErrors.length > 0 ? <InlineAlert tone="danger">{t('create.validationFailed', { errors: translateCreateFixedMessages(localSubmitErrors, t) })}</InlineAlert> : null}
               {createdContext ? (
                 <Surface tone="card" padding="md">
@@ -1381,16 +1298,12 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
               ) : null}
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--nimi-border-subtle)] pt-4">
                 <span className="text-xs text-[var(--nimi-text-muted)]">{t('create.source.ownerLocal')}</span>
-                <Button tone="primary" disabled={createDisabled} loading={createMutation.isPending} onClick={submitCreate}>{t('create.submit')}</Button>
+                <Button tone="primary" className="text-white" disabled={createDisabled} loading={createMutation.isPending} onClick={submitCreate}>{t('create.submit')}</Button>
               </div>
             </Surface>
           )}
         </section>
       </div>
-      <TechnicalReviewDetails>
-        <GraphReviewBoard graph={creationGraph} review={creationGraphReview} onAccept={() => setGraphAcceptedFingerprint(acceptPersonaCreationGraphForRealmCreate(creationGraph))} />
-      </TechnicalReviewDetails>
-      <ReadinessPreview draft={draft} selectableWorldIds={selectableWorldIds} handleAvailability={handleAvailability} />
       <WorldPicker open={worldModalOpen} worlds={worlds} selectedWorldId={draft.selectedWorldId} onSelect={(worldId) => { updateDraft({ selectedWorldId: worldId }); setWorldModalOpen(false); }} onClose={() => setWorldModalOpen(false)} />
     </div>
   );

@@ -73,7 +73,7 @@ export type LocalImportedAssetLoadResult = {
 const ISO_DATE_TIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/u;
 
 export const LOCAL_IMPORT_CAPABILITY_EVIDENCE =
-  'Kit shell/capabilities/local-assets currently exposes resolveUrl only; getStudioLocalAppClient() exposes auth, permissions, ai, storage, realm, conversation, and artifacts, with no protected localAssets import/list/remove operation.';
+  'Kit shell/capabilities/local-assets currently exposes resolveUrl only; the local App client has no protected localAssets import/list/remove operation.';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);

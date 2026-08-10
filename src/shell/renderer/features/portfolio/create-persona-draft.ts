@@ -1,11 +1,9 @@
 import type {
   RealmModel,
-  RealmWorldCoreControllerGetWorldCoreOperationResponse,
-  RealmWorldCoreControllerListWorldCoresOperationResponse,
 } from '@nimiplatform/sdk/realm/generated';
 
-export type RealmPersonaCreationWorldDto = RealmWorldCoreControllerListWorldCoresOperationResponse[number];
-export type RealmPersonaCreationWorldDetailDto = RealmWorldCoreControllerGetWorldCoreOperationResponse;
+export type RealmPersonaCreationWorldDto = RealmModel<'WorldCoreDto'>;
+export type RealmPersonaCreationWorldDetailDto = RealmModel<'WorldCoreDto'>;
 export type RealmCreatePersonaInput = RealmModel<'CreatePersonaCharacterCoreDto'>;
 export type RealmPersonaHandleAvailabilityDto = {
   available: boolean;
@@ -66,8 +64,18 @@ export const PERSONA_TRAITS: readonly PersonaTrait[] = [
 
 export const PERSONA_TRAIT_MAX = 3;
 
+export const REFERENCE_IMAGE_CANDIDATE_SLOT_COUNT = 4;
+export type ReferenceImageCandidateSlot = 0 | 1 | 2 | 3;
+
+export function isReferenceImageCandidateSlot(value: unknown): value is ReferenceImageCandidateSlot {
+  return Number.isInteger(value)
+    && Number(value) >= 0
+    && Number(value) < REFERENCE_IMAGE_CANDIDATE_SLOT_COUNT;
+}
+
 export type ReferenceImageCandidate = {
   draftKey: string;
+  slot: ReferenceImageCandidateSlot;
   url: string;
   prompt: string;
   createdAt: string;
@@ -86,6 +94,8 @@ export type CreateRealmPersonaDraftInput = {
   personaTraits: PersonaTrait[];
   /** Optional reference image URL produced by Runtime image generation in the AI-seeded create flow. */
   referenceImageUrl: string;
+  /** Owner-editable local image-generation input, initialized from the describe-stage prompt. */
+  referenceImagePrompt: string;
   /** Client-only: the one-liner the owner typed in the describe phase. Not submitted to Realm. */
   originalDescription: string;
   /** Owner-written local prompt supplements. These are candidate input only. */
@@ -106,6 +116,7 @@ export type NormalizedCreateRealmPersonaDraft = {
   personaArchetype: PersonaArchetype | '';
   personaTraits: PersonaTrait[];
   referenceImageUrl: string;
+  referenceImagePrompt: string;
   originalDescription: string;
   speechSupplement: string;
   boundarySupplement: string;
@@ -243,7 +254,7 @@ function normalizeSupplement(value: unknown): string {
 
 function normalizeReferenceImageCandidates(values: unknown): ReferenceImageCandidate[] {
   if (!Array.isArray(values)) return [];
-  return values.flatMap((value) => {
+  const candidates = values.flatMap((value) => {
     const record = readRecord(value);
     if (
       !record
@@ -252,6 +263,7 @@ function normalizeReferenceImageCandidates(values: unknown): ReferenceImageCandi
       || typeof record.url !== 'string'
       || typeof record.prompt !== 'string'
       || typeof record.createdAt !== 'string'
+      || !isReferenceImageCandidateSlot(record.slot)
     ) {
       return [];
     }
@@ -266,8 +278,25 @@ function normalizeReferenceImageCandidates(values: unknown): ReferenceImageCandi
       ? record.reviewState
       : null;
     if (!url || !prompt || Number.isNaN(Date.parse(createdAt)) || !sourceKind || !reviewState) return [];
-    return [{ draftKey, url, prompt, createdAt, sourceKind, reviewState }];
+    const candidate: ReferenceImageCandidate = {
+      draftKey,
+      slot: record.slot,
+      url,
+      prompt,
+      createdAt,
+      sourceKind,
+      reviewState,
+    };
+    return [candidate];
   });
+  const seenSlots = new Set<ReferenceImageCandidateSlot>();
+  return candidates
+    .filter((candidate) => {
+      if (seenSlots.has(candidate.slot)) return false;
+      seenSlots.add(candidate.slot);
+      return true;
+    })
+    .sort((left, right) => left.slot - right.slot);
 }
 
 function normalizeDraftText(value: unknown): string {
@@ -289,6 +318,7 @@ export function normalizeCreateRealmPersonaDraft(input: CreateRealmPersonaDraftI
     personaArchetype,
     personaTraits: normalizePersonaTraits(Array.isArray(input.personaTraits) ? input.personaTraits : []),
     referenceImageUrl: normalizeReferenceImageUrl(input.referenceImageUrl),
+    referenceImagePrompt: normalizeDraftText(input.referenceImagePrompt),
     originalDescription: normalizeDraftText(input.originalDescription),
     speechSupplement: normalizeSupplement(input.speechSupplement),
     boundarySupplement: normalizeSupplement(input.boundarySupplement),

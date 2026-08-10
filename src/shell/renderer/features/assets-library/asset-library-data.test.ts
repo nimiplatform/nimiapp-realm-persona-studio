@@ -114,7 +114,7 @@ describe('asset library aggregation', () => {
     expect(data.unavailableCount).toBe(3);
   });
 
-  it('filters image, audio, and upload tabs without making a network request', () => {
+  it('filters image, audio, and upload tabs without making a network call', () => {
     const fetch = vi.spyOn(globalThis, 'fetch');
     const data = aggregateAssetLibraryData({
       importedRecords: [{

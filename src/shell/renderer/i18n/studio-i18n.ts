@@ -43,6 +43,21 @@ const PERSONA_TRAIT_DESCRIPTION_KEYS: Record<string, StudioCopyKey> = {
   ECCENTRIC: 'create.personaStyle.trait.ECCENTRIC',
 };
 
+const PERSONA_TRAIT_LABEL_KEYS: Record<string, StudioCopyKey> = {
+  HUMOROUS: 'create.personaStyle.traitLabel.HUMOROUS',
+  SARCASTIC: 'create.personaStyle.traitLabel.SARCASTIC',
+  GENTLE: 'create.personaStyle.traitLabel.GENTLE',
+  DIRECT: 'create.personaStyle.traitLabel.DIRECT',
+  OPTIMISTIC: 'create.personaStyle.traitLabel.OPTIMISTIC',
+  REALISTIC: 'create.personaStyle.traitLabel.REALISTIC',
+  DRAMATIC: 'create.personaStyle.traitLabel.DRAMATIC',
+  PASSIONATE: 'create.personaStyle.traitLabel.PASSIONATE',
+  REBELLIOUS: 'create.personaStyle.traitLabel.REBELLIOUS',
+  INNOCENT: 'create.personaStyle.traitLabel.INNOCENT',
+  WISE: 'create.personaStyle.traitLabel.WISE',
+  ECCENTRIC: 'create.personaStyle.traitLabel.ECCENTRIC',
+};
+
 function normalizePersonaEnum(value: string | null | undefined): string {
   return typeof value === 'string' ? value.trim().toUpperCase() : '';
 }
@@ -61,8 +76,11 @@ export function translatePersonaTraitLabel(
   t: StudioCopyTranslator = translateStudioCopy,
 ): string {
   const normalized = normalizePersonaEnum(value);
-  const key = PERSONA_TRAIT_DESCRIPTION_KEYS[normalized];
-  return key ? `${normalized} · ${t(key)}` : t('common.sourceUnavailable');
+  const labelKey = PERSONA_TRAIT_LABEL_KEYS[normalized];
+  const descriptionKey = PERSONA_TRAIT_DESCRIPTION_KEYS[normalized];
+  return labelKey && descriptionKey
+    ? `${t(labelKey)} · ${t(descriptionKey)}`
+    : t('common.sourceUnavailable');
 }
 
 export function isStudioCopyKey(key: string): key is StudioCopyKey {

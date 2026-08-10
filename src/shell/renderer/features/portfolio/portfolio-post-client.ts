@@ -2,14 +2,11 @@ import type {
   PostDto,
   RealmModel,
 } from '@nimiplatform/sdk/realm/generated';
-import type { StudioRealmSurface } from '@renderer/data/realm-client.js';
-import { createStudioRuntimeClient } from '@renderer/data/runtime-client.js';
 import {
-  isStudioAIRouteBindingFailure,
-  runStudioTextGenerate,
-  type StudioRuntimeAIClient,
-  type StudioTextGeneratePayload,
-} from './studio-ai-runtime.js';
+  runStudioTextCandidate,
+  type StudioTextCandidatePrompt,
+  type StudioTextCandidateRunner,
+} from './studio-text-candidate.js';
 import type { OwnerPortfolioPersonaDetail } from './portfolio-data.js';
 import {
   POST_COPY_ASSISTANCE_SOURCE,
@@ -20,8 +17,6 @@ import {
   type RuntimePostCopyProposal,
 } from './post-draft.js';
 
-type StudioRealmClient = StudioRealmSurface;
-
 type RealmCreatePostInput = RealmModel<'CreatePostDto'>;
 type RealmCreatePostResponse = PostDto;
 type RealmCreateTextResourceInput = RealmModel<'CreateTextResourceDto'>;
@@ -30,12 +25,12 @@ type RealmResourceListResponse = RealmModel<'ResourceListDto'>;
 type RealmFinalizeResourceInput = RealmModel<'FinalizeResourceDto'>;
 type RealmFinalizeResourceResponse = RealmModel<'ResourceDetailDto'>;
 
-export const REALM_POST_PUBLISH_SOURCE = 'Runtime-mediated Realm post publication (not admitted)';
-export const REALM_TEXT_RESOURCE_SOURCE = 'Runtime-mediated Realm text resource publication (not admitted)';
+export const REALM_POST_PUBLISH_SOURCE = 'Nimi App Access Persona post publication (unavailable)';
+export const REALM_TEXT_RESOURCE_SOURCE = 'Nimi App Access Persona text resource publication (unavailable)';
 export const REALM_RESOURCE_LIST_SOURCE = 'Realm ResourcesService.listResources';
-export const REALM_MEDIA_RESOURCE_UPLOAD_SOURCE = 'Runtime-owned media ingress (not admitted)';
-export const PERSONA_PUBLICATION_UNAVAILABLE_MESSAGE = 'Publication is unavailable until Nimi Runtime admits the protected Persona post and media operation set.';
-export const PERSONA_PUBLICATION_ADMITTED = false;
+export const REALM_MEDIA_RESOURCE_UPLOAD_SOURCE = 'Nimi App Access Persona media publication (unavailable)';
+export const PERSONA_PUBLICATION_UNAVAILABLE_MESSAGE = 'Nimi App Access does not provide Persona post or media publication yet.';
+export const PERSONA_PUBLICATION_AVAILABLE = false;
 
 export type RealmPostPublishCanonicalFields = {
   id: string;
@@ -56,7 +51,7 @@ export type RealmPostPublishResult =
   | {
     ok: false;
     source: typeof REALM_POST_PUBLISH_SOURCE;
-    failure: 'persona-post-publication-not-admitted' | 'realm-create-post-failed' | 'realm-create-post-missing-canonical-id';
+    failure: 'persona-post-publication-unavailable' | 'realm-create-post-failed' | 'realm-create-post-missing-canonical-id';
     message: string;
   };
 
@@ -81,7 +76,7 @@ export type RealmTextResourceCreateResult =
     attachmentTruth: false;
     failure:
       | 'post-text-resource-payload-invalid'
-      | 'persona-text-resource-publication-not-admitted'
+      | 'persona-text-resource-publication-unavailable'
       | 'realm-create-text-resource-failed'
       | 'realm-create-text-resource-missing-id'
       | 'realm-create-text-resource-not-ready';
@@ -143,7 +138,7 @@ export type DirectMediaResourceUploadResult =
     failure:
       | 'media-upload-file-invalid'
       | 'media-upload-type-invalid'
-      | 'persona-media-publication-not-admitted'
+      | 'persona-media-publication-unavailable'
       | 'realm-direct-upload-session-failed'
       | 'realm-direct-upload-session-invalid'
       | 'storage-direct-upload-failed'
@@ -159,10 +154,9 @@ export type RuntimePostCopyProposalResult =
     candidate: true;
     truthWrite: false;
     proposal: RuntimePostCopyProposal;
-    submitted: StudioTextGeneratePayload;
+    submitted: StudioTextCandidatePrompt;
     runtime: {
       traceId?: string;
-      modelResolved?: string;
       finishReason?: string;
     };
   }
@@ -173,12 +167,10 @@ export type RuntimePostCopyProposalResult =
     truthWrite: false;
     failure:
       | 'runtime-post-copy-payload-invalid'
-      | 'runtime-post-copy-transport-unavailable'
-      | 'runtime-post-copy-route-unbound'
       | 'runtime-post-copy-failed'
       | 'runtime-post-copy-invalid-output';
     message: string;
-    submitted: StudioTextGeneratePayload | null;
+    submitted: StudioTextCandidatePrompt | null;
   };
 
 function readOptionalString(record: Record<string, unknown>, key: string): string | undefined {
@@ -447,10 +439,8 @@ export async function proposeReviewedPostCopy(
   persona: OwnerPortfolioPersonaDetail,
   draft: LocalPostDraftInput,
   intent: string,
-  runtime?: StudioRuntimeAIClient | null,
+  runner: StudioTextCandidateRunner = runStudioTextCandidate,
 ): Promise<RuntimePostCopyProposalResult> {
-  // The prompt starts with the unresolved marker; studio-ai-runtime must bind a
-  // concrete text.generate route before dispatch.
   const built = buildRuntimePostCopyPrompt({
     persona,
     draft,
@@ -468,21 +458,8 @@ export async function proposeReviewedPostCopy(
     };
   }
 
-  const runtimeClient = runtime === undefined ? await createStudioRuntimeClient() : runtime;
-  if (!runtimeClient) {
-    return {
-      ok: false,
-      source: POST_COPY_ASSISTANCE_SOURCE,
-      candidate: false,
-      truthWrite: false,
-      failure: 'runtime-post-copy-transport-unavailable',
-      message: 'Runtime runtime.ai.text.generate runtime transport unavailable: Tauri IPC runtime transport is required.',
-      submitted: built.payload,
-    };
-  }
-
   try {
-    const output = await runStudioTextGenerate(built.payload, runtimeClient);
+    const output = await runner(built.payload);
     try {
       const proposal = normalizeRuntimePostCopyProposal(output.text, draft);
       return {
@@ -493,9 +470,8 @@ export async function proposeReviewedPostCopy(
         proposal,
         submitted: output.submitted,
         runtime: {
-          ...(output.trace?.traceId ? { traceId: output.trace.traceId } : {}),
-          ...(output.trace?.modelResolved ? { modelResolved: output.trace.modelResolved } : {}),
-          ...(output.finishReason ? { finishReason: String(output.finishReason) } : {}),
+          ...(output.traceId ? { traceId: output.traceId } : {}),
+          ...(output.finishReason ? { finishReason: output.finishReason } : {}),
         },
       };
     } catch (error) {
@@ -511,40 +487,34 @@ export async function proposeReviewedPostCopy(
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'runtime transport call failed.';
-    const routeUnbound = isStudioAIRouteBindingFailure(error);
     return {
       ok: false,
       source: POST_COPY_ASSISTANCE_SOURCE,
       candidate: false,
       truthWrite: false,
-      failure: routeUnbound ? 'runtime-post-copy-route-unbound' : 'runtime-post-copy-failed',
-      message: routeUnbound ? message : `Runtime runtime.ai.text.generate failed: ${message}`,
+      failure: 'runtime-post-copy-failed',
+      message: `Runtime runtime.ai.text.generate failed: ${message}`,
       submitted: null,
     };
   }
 }
 export async function publishReviewedPostDraft(
   _payload: CandidatePostPayload,
-  _realm?: StudioRealmClient,
 ): Promise<RealmPostPublishResult> {
   return {
     ok: false,
     source: REALM_POST_PUBLISH_SOURCE,
-    failure: 'persona-post-publication-not-admitted',
+    failure: 'persona-post-publication-unavailable',
     message: PERSONA_PUBLICATION_UNAVAILABLE_MESSAGE,
   };
 }
 
-export async function listReadyPostAttachmentResources(
-  _realm?: StudioRealmClient,
-): Promise<PostAttachmentResourceOption[]> {
+export async function listReadyPostAttachmentResources(): Promise<PostAttachmentResourceOption[]> {
   throw new Error(PERSONA_PUBLICATION_UNAVAILABLE_MESSAGE);
 }
 
 export async function uploadReviewedPostMediaResource(
   input: DirectMediaResourceUploadInput,
-  _realm?: StudioRealmClient,
-  _storageUpload?: unknown,
 ): Promise<DirectMediaResourceUploadResult> {
   const finalizeInput = buildFinalizeDirectMediaResourceInput(input);
   if (!finalizeInput) {
@@ -563,7 +533,7 @@ export async function uploadReviewedPostMediaResource(
     source: REALM_MEDIA_RESOURCE_UPLOAD_SOURCE,
     attachmentTruth: false,
     publicTruth: false,
-    failure: 'persona-media-publication-not-admitted',
+    failure: 'persona-media-publication-unavailable',
     message: PERSONA_PUBLICATION_UNAVAILABLE_MESSAGE,
     submitted: finalizeInput,
   };
@@ -571,15 +541,12 @@ export async function uploadReviewedPostMediaResource(
 
 export async function uploadReviewedIdentityMediaResource(
   input: Omit<DirectMediaResourceUploadInput, 'purpose'>,
-  realm?: StudioRealmClient,
-  storageUpload?: unknown,
 ): Promise<DirectMediaResourceUploadResult> {
-  return uploadReviewedPostMediaResource({ ...input, purpose: 'identity' }, realm, storageUpload);
+  return uploadReviewedPostMediaResource({ ...input, purpose: 'identity' });
 }
 
 export async function createReviewedPostTextResource(
   payload: CandidatePostPayload,
-  _realm?: StudioRealmClient,
 ): Promise<RealmTextResourceCreateResult> {
   const submitted = buildRealmPostTextResourceInput(payload);
   if (!submitted) {
@@ -597,7 +564,7 @@ export async function createReviewedPostTextResource(
     ok: false,
     source: REALM_TEXT_RESOURCE_SOURCE,
     attachmentTruth: false,
-    failure: 'persona-text-resource-publication-not-admitted',
+    failure: 'persona-text-resource-publication-unavailable',
     message: PERSONA_PUBLICATION_UNAVAILABLE_MESSAGE,
     submitted,
   };

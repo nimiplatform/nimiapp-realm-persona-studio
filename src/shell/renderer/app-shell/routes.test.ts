@@ -6,6 +6,13 @@ const routesSource = () =>
   readFileSync(join(process.cwd(), 'src/shell/renderer/app-shell/routes.tsx'), 'utf8');
 
 describe('Studio route boundaries', () => {
+  it('loads the default portfolio route with the app shell', () => {
+    const source = routesSource();
+
+    expect(source).toContain("import { PersonaListPage } from '../features/persona-list/persona-list-page.js';");
+    expect(source).not.toContain("import('../features/persona-list/persona-list-page.js')");
+  });
+
   it('keeps Realm Persona Studio routes owner-only', () => {
     const source = routesSource();
 

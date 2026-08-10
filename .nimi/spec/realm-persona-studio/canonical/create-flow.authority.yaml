@@ -25,11 +25,15 @@ units:
   - id: definition.realm-persona-studio.create-flow.portrait-variant-set
     kind: definition
     title: Portrait variant set
-    meaning: A set of local generated image candidates bound to the current draft, with 4 requested variants, from which the owner may select at most one.
+    meaning: Four ordered local candidate slots bound to the current draft; each manual generation action targets one slot and produces at most one actual candidate, while the owner may select at most one generated candidate.
   - id: definition.realm-persona-studio.create-flow.generation-prompt-view
     kind: definition
     title: Generation prompt view
     meaning: Owner-visible prompt content consisting only of owner-written description or supplemental text and admitted candidate prompt text.
+  - id: definition.realm-persona-studio.create-flow.reference-image-prompt-input
+    kind: definition
+    title: Reference image prompt input
+    meaning: An owner-editable local image-generation input initialized from the prior describe-stage owner prompt, persisted with the local creation draft, and snapshotted into each generated image candidate.
   - id: rule.realm-persona-studio.create-flow.r001
     kind: rule
     title: Closed persona archetype validation
@@ -92,11 +96,11 @@ units:
         target: definition.realm-persona-studio.create-flow.creation-draft-history
   - id: rule.realm-persona-studio.create-flow.r007
     kind: rule
-    title: Actual portrait variant count
+    title: Progressive portrait candidate slots
     modality: must
-    statement: Variant generation renders the actual returned count and explicitly marks an insufficient count.
-    condition: After generation completes.
-    failure: Placeholder tiles or fabricated variants are a defect.
+    statement: The surface renders exactly four ordered local slots, each manual generation action requests and admits at most one actual candidate into its targeted empty slot, and every unfilled slot remains an explicit generate-one control rather than an image.
+    condition: Whenever portrait candidates or empty candidate slots are rendered or generated.
+    failure: A single action filling multiple slots, a fabricated candidate image, an unbound returned candidate, or a rendered count different from actual admitted candidates is a defect.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.create-flow.portrait-variant-set
@@ -104,7 +108,7 @@ units:
     kind: rule
     title: Local portrait candidate operations
     modality: must
-    statement: Variant selection and regeneration remain local candidate operations until an owner-reviewed Realm core write.
+    statement: Variant selection and regeneration remain local candidate operations until an owner-reviewed Realm core write, and regeneration replaces only the selected slot with an unselected candidate while preserving every other slot.
     condition: Always.
     failure: Reject a Realm write triggered solely by selection.
     relations:
@@ -130,3 +134,13 @@ units:
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.core.world-core
+  - id: rule.realm-persona-studio.create-flow.r011
+    kind: rule
+    title: Owner-controlled reference image prompt
+    modality: must
+    statement: The reference image prompt is initialized from the prior owner prompt only when it is empty, remains independently editable and local, and is submitted only after an explicit owner generate or regenerate action.
+    condition: During the reviewed create stage and every reference image generation action.
+    failure: Automatic generation, overwriting an owner edit through live synchronization, submitting an empty prompt, or using a prompt different from the visible submitted snapshot is a defect.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.create-flow.reference-image-prompt-input

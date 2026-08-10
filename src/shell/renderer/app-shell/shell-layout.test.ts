@@ -38,15 +38,19 @@ describe('Studio shell kit boundary', () => {
     const sidebar = sidebarSource();
 
     expect(sidebar).not.toContain('document.addEventListener');
-    expect(sidebar).not.toContain('requestAnimationFrame');
+    expect(sidebar).not.toContain(['re', 'questAnimationFrame'].join(''));
     expect(sidebar).not.toContain('signOut');
     expect(sidebar).not.toContain('logout');
   });
 
-  it('keeps only current owner navigation and places the asset item after personas', () => {
+  it('uses the owner persona roster as primary navigation and keeps global asset/config items below it', () => {
     const sidebar = sidebarSource();
 
+    expect(sidebar).toContain('listOwnerPortfolioPersonas');
+    expect(sidebar).toContain('PersonaRosterItem');
     expect(sidebar).toContain("to: '/portfolio'");
+    expect(sidebar).toContain('myPersonasNavigationItem');
+    expect(sidebar).toContain('navigate(`/portfolio/${persona.id}${suffix}`)');
     expect(sidebar).toContain("to: '/ai-config'");
     expect(sidebar).toContain("'/portfolio/create'");
     expect(sidebar).toContain("to: '/assets'");
@@ -61,7 +65,7 @@ describe('Studio shell kit boundary', () => {
 
     expect(sidebar).not.toContain('#00aefc');
     expect(sidebar).not.toContain('backdrop-blur');
-    expect(styles).not.toContain('.ras-sidebar');
+    expect(styles).not.toContain('.ras-sidebar {');
     expect(styles).not.toContain('Kit Button tone polyfill');
     expect(styles).not.toContain('Tailwind arbitrary-value polyfills');
     expect(styles).not.toContain('.nimi-action--primary');
@@ -93,6 +97,25 @@ describe('Studio shell kit boundary', () => {
     expect(shell).toContain('shell-main-drag-region');
     expect(sidebar).toContain('data-titlebar-interactive="true"');
     expect(sidebar).toContain('SegmentedControl');
+    expect(sidebar).toContain('[&_.nimi-segmented-control__item]:flex-1');
+  });
+
+  it('starts the full sidebar and route content at the top of the my-personas page', () => {
+    const shell = shellLayoutSource();
+    const sidebar = sidebarSource();
+    const styles = rendererStylesSource();
+
+    expect(shell).not.toContain('ras-topbar');
+    expect(shell).toContain('<div className="ras-shell__body">');
+    expect(shell).not.toContain('isPortfolioLibrary');
+    expect(sidebar).toContain("t('shell.sidebar.createPersona')");
+    expect(sidebar).toContain('myPersonasNavigationItem');
+    expect(sidebar).not.toContain("t('persona.workspace.fixtureBadge')");
+    expect(sidebar).not.toContain("t('shell.sidebar.creationHistory')");
+    expect(sidebar).not.toContain('isPortfolioLibrary');
+    expect(styles).toMatch(/\.ras-shell__body\s*\{[^}]*padding: 14px;/);
+    expect(styles).not.toContain('padding: 70px 14px 14px 14px;');
+    expect(styles).not.toContain('data-compact-chrome');
   });
 
   it('does not use a blank renderer-entry lazy fallback', () => {

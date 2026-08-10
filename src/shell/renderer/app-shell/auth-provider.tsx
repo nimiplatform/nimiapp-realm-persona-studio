@@ -27,7 +27,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         >
           <div className="ras-bootstrap-copy">
             <strong>{t('shell.bootstrap.failed')}</strong>
-            <span>{bootstrapError}</span>
+            <details className="ras-bootstrap-technical-details">
+              <summary>{t('shell.bootstrap.technicalDetails')}</summary>
+              <span>{bootstrapError}</span>
+            </details>
           </div>
         </InlineAlert>
       </BootstrapFrame>
@@ -46,13 +49,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   if (authStatus === 'unauthenticated') {
     return (
       <BootstrapFrame>
-        <InlineAlert tone="warning">
+        <InlineAlert tone="info">
           <div className="ras-bootstrap-copy">
-            <strong>{t('shell.protectedSession.requiredTitle')}</strong>
-            <span>{t('shell.protectedSession.requiredReason')}</span>
+            <strong>{t('shell.nimiAccess.requiredTitle')}</strong>
+            <span>{t('shell.nimiAccess.requiredReason')}</span>
             <div className="ras-bootstrap-actions">
               <Button tone="secondary" size="sm" disabled>
-                {t('shell.protectedSession.operationsUnavailable')}
+                {t('shell.nimiAccess.operationsUnavailable')}
               </Button>
               <Button tone="secondary" size="sm" onClick={retryBootstrap}>{t('common.retry')}</Button>
             </div>

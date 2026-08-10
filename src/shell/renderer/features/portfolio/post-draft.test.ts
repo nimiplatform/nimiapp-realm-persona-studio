@@ -1,5 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { resetStudioAIConfigForTest } from './portfolio-client.test-helpers.js';
+import { describe, expect, it } from 'vitest';
 import type { OwnerPortfolioPersonaDetail } from './portfolio-data.js';
 import {
   applyRuntimePostCopyProposal,
@@ -111,10 +110,6 @@ function collectKeys(value: unknown, keys = new Set<string>()) {
   return keys;
 }
 
-beforeEach(() => {
-  resetStudioAIConfigForTest();
-});
-
 describe('local post draft normalization', () => {
   it('trims caption and normalizes distinct tags', () => {
     expect(normalizeLocalPostDraft(baseInput)).toMatchObject({
@@ -201,7 +196,7 @@ describe('local post draft validation', () => {
 });
 
 describe('app-local post schedule candidate', () => {
-  it('builds Runtime post copy prompt from owner intent without private state', () => {
+  it('builds a text candidate prompt from owner intent without private state', () => {
     const result = buildRuntimePostCopyPrompt({
       persona,
       draft: baseInput,
@@ -210,18 +205,14 @@ describe('app-local post schedule candidate', () => {
 
     expect(result.ok).toBe(true);
     expect(result.payload).toMatchObject({
-      request: {
-        model: { modelId: 'auto' },
-        parameters: {
-          metadata: {
-            domain: 'realm-persona-studio.post-copy',
-          },
-        },
+      surfaceId: 'realm-persona-studio.post-copy',
+      params: {
+        maxTokens: 700,
+        temperature: 0.5,
+        topP: 1,
       },
     });
-    const userText = result.payload?.request.messages
-      .find((message) => message.role === 'user')
-      ?.content.find((part) => part.type === 'text')?.text || '';
+    const userText = result.payload?.userText || '';
     expect(userText).not.toContain('LocalAgent');
     expect(userText).not.toContain('worldId');
   });
@@ -230,7 +221,7 @@ describe('app-local post schedule candidate', () => {
     const proposal = normalizeRuntimePostCopyProposal(JSON.stringify({
       caption: 'Mira opens a new artifact pass for builders.',
       tagsText: ['artifact', 'studio'],
-      rationale: 'Matches the requested announcement.',
+      rationale: 'Matches the selected announcement.',
     }), baseInput);
 
     expect(proposal).toMatchObject({
@@ -264,7 +255,7 @@ describe('app-local post schedule candidate', () => {
     expect(() => normalizeRuntimePostCopyProposal(JSON.stringify({
       caption: 'publish me',
       tagsText: 'studio',
-      extra: 'not admitted',
+      extra: 'unsupported',
     }), baseInput)).toThrow('unknown field extra');
   });
 

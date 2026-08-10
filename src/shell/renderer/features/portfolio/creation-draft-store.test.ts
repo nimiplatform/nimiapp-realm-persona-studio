@@ -37,12 +37,14 @@ const draft: CreateRealmPersonaDraftInput = {
   personaArchetype: 'INTELLECTUAL',
   personaTraits: ['WISE', 'DIRECT'],
   referenceImageUrl: 'https://cdn.example.test/mira.png',
+  referenceImagePrompt: 'A precise persona portrait.',
   originalDescription: 'A precise persona for artifact review.',
   speechSupplement: 'Use calm, direct sentences.',
   boundarySupplement: 'Do not claim private memory.',
   visualSupplement: 'Cool night palette.',
   referenceImageCandidates: [{
     draftKey,
+    slot: 0,
     url: 'https://cdn.example.test/mira.png',
     prompt: 'A precise persona portrait.',
     createdAt: '2026-08-04T12:00:00.000Z',
@@ -67,6 +69,7 @@ describe('creation draft protected persistence', () => {
       draftKey,
       updatedAt: '2026-08-04T13:00:00.000Z',
       handle: 'mira-prime',
+      referenceImagePrompt: 'A precise persona portrait.',
       speechSupplement: 'Use calm, direct sentences.',
       referenceImageCandidates: draft.referenceImageCandidates,
     });
@@ -117,6 +120,26 @@ describe('creation draft protected persistence', () => {
     }, storage)).toMatchObject({
       ok: false,
       message: 'Draft reference image is not an owner-selected candidate.',
+    });
+  });
+
+  it('rejects more than one candidate in the same ordered slot', async () => {
+    const storage = createStorage();
+    const duplicateSlotDraft: CreateRealmPersonaDraftInput = {
+      ...draft,
+      referenceImageCandidates: [
+        ...(draft.referenceImageCandidates || []),
+        {
+          ...(draft.referenceImageCandidates?.[0] as NonNullable<CreateRealmPersonaDraftInput['referenceImageCandidates']>[number]),
+          url: 'https://cdn.example.test/mira-duplicate.png',
+          reviewState: 'candidate-only',
+        },
+      ],
+    };
+
+    expect(await persistCreationDraft(draftKey, duplicateSlotDraft, storage)).toMatchObject({
+      ok: false,
+      message: 'Draft contains more than one reference image candidate in the same slot.',
     });
   });
 });

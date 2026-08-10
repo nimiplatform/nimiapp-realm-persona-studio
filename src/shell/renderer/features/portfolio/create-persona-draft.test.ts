@@ -89,6 +89,7 @@ const baseInput: CreateRealmPersonaDraftInput = {
   personaArchetype: 'CARING',
   personaTraits: ['GENTLE', 'WISE'],
   referenceImageUrl: '',
+  referenceImagePrompt: 'A precise Persona portrait.',
   originalDescription: '',
 };
 
@@ -104,12 +105,36 @@ describe('create Realm Persona draft normalization', () => {
       personaArchetype: 'CARING',
       personaTraits: ['GENTLE', 'WISE'],
       referenceImageUrl: '',
+      referenceImagePrompt: 'A precise Persona portrait.',
       originalDescription: '',
       speechSupplement: '',
       boundarySupplement: '',
       visualSupplement: '',
       referenceImageCandidates: [],
     });
+  });
+
+  it('keeps at most one actual candidate per ordered image slot', () => {
+    const sharedCandidate = {
+      draftKey: '01J00000000000000000000001',
+      prompt: 'Owner visible image prompt',
+      createdAt: '2026-08-04T12:00:00.000Z',
+      sourceKind: 'generated' as const,
+      reviewState: 'candidate-only' as const,
+    };
+    const normalized = normalizeCreateRealmPersonaDraft({
+      ...baseInput,
+      referenceImageCandidates: [
+        { ...sharedCandidate, slot: 2, url: 'https://cdn.example.test/slot-3.png' },
+        { ...sharedCandidate, slot: 0, url: 'https://cdn.example.test/slot-1.png' },
+        { ...sharedCandidate, slot: 2, url: 'https://cdn.example.test/duplicate-slot-3.png' },
+      ],
+    });
+
+    expect(normalized.referenceImageCandidates.map(({ slot, url }) => ({ slot, url }))).toEqual([
+      { slot: 0, url: 'https://cdn.example.test/slot-1.png' },
+      { slot: 2, url: 'https://cdn.example.test/slot-3.png' },
+    ]);
   });
 
   it('selects OASIS from the source-backed Realm world list', () => {
@@ -183,7 +208,7 @@ describe('selected world preview normalization', () => {
 });
 
 describe('create Realm Persona readiness', () => {
-  it('returns a reviewed owner-scoped CreatePersonaDto request payload', () => {
+  it('returns a reviewed owner-scoped CreatePersonaDto input payload', () => {
     const result = validateCreateRealmPersonaReadiness(baseInput, {
       handleAvailability: normalizeRealmPersonaHandleAvailability('mira.persona', {
         available: true,
@@ -266,6 +291,7 @@ describe('create Realm Persona readiness', () => {
       referenceImageUrl: ' https://cdn.example.test/reference.png ',
       referenceImageCandidates: [{
         draftKey: '01J00000000000000000000001',
+        slot: 0,
         url: 'https://cdn.example.test/reference.png',
         prompt: 'Owner reviewed reference image',
         createdAt: '2026-08-04T12:00:00.000Z',
@@ -309,6 +335,7 @@ describe('create Realm Persona readiness', () => {
       referenceImageUrl: 'https://cdn.example.test/reference.png',
       referenceImageCandidates: [{
         draftKey: '01J00000000000000000000001',
+        slot: 0,
         url: 'https://cdn.example.test/reference.png',
         prompt: 'Unreviewed generated reference image',
         createdAt: '2026-08-04T12:00:00.000Z',

@@ -87,8 +87,18 @@ describe('owner portfolio normalization', () => {
     expect(classifyPortfolioFailure(new Error('MASTER_OWNED owner authority rejected')).title).toBe('owner authority missing');
   });
 
-  it('classifies SDK httpStatus permission failures', () => {
-    expect(classifyPortfolioFailure({ details: { httpStatus: 403 } }).title).toBe('Permission missing');
+  it('classifies SDK httpStatus access failures without retired vocabulary', () => {
+    expect(classifyPortfolioFailure({ details: { httpStatus: 403 } })).toMatchObject({
+      kind: 'access-denied',
+      title: 'Access unavailable',
+    });
+  });
+
+  it('classifies missing App Access Persona surfaces as informational unavailability', () => {
+    expect(classifyPortfolioFailure({ reasonCode: 'capability-unavailable' })).toMatchObject({
+      kind: 'capability-unavailable',
+      title: 'Capability unavailable',
+    });
   });
 });
 

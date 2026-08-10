@@ -17,6 +17,7 @@ const readyDraft: CreateRealmPersonaDraftInput = {
   personaArchetype: 'INTELLECTUAL',
   personaTraits: ['WISE', 'DIRECT'],
   referenceImageUrl: 'https://cdn.example.test/mira.png',
+  referenceImagePrompt: 'An artifact review Persona portrait.',
   originalDescription: 'An artifact review persona with calm operational judgment.',
 };
 

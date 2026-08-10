@@ -1,10 +1,3 @@
-import type {
-  NimiAppPermissionStatus,
-  NimiLocalAppClient,
-  NimiLocalAppTextCandidateInput,
-  NimiLocalAppTextCandidateResult,
-} from '@nimiplatform/sdk/app';
-import { getStudioLocalAppClient } from '@renderer/app-shell/studio-platform.js';
 import {
   PERSONA_ARCHETYPES,
   PERSONA_TRAITS,
@@ -12,18 +5,14 @@ import {
   type PersonaArchetype,
   type PersonaTrait,
 } from './create-persona-draft.js';
+import {
+  runStudioTextCandidate,
+  type StudioTextCandidatePrompt,
+  type StudioTextCandidateRunner,
+} from './studio-text-candidate.js';
 import { parseStrictRuntimeJsonObject } from './strict-runtime-json.js';
 
-export const PERSONA_SEED_SOURCE = 'Runtime localApp.ai.text.generateCandidate' as const;
-const PERSONA_SEED_PERMISSION = 'ai.text.generate' as const;
-const PERSONA_SEED_PERMISSION_REASON = 'Generate an owner-reviewed Realm Persona draft from the owner description.';
-
-export type PersonaSeedLocalAppClient = {
-  readonly permissions: Pick<NimiLocalAppClient['permissions'], 'status' | 'request'>;
-  readonly ai: {
-    readonly text: Pick<NimiLocalAppClient['ai']['text'], 'generateCandidate'>;
-  };
-};
+export const PERSONA_SEED_SOURCE = 'Nimi App Access ai.text.generateCandidate' as const;
 
 export type PersonaSeedPromptSupplements = {
   speechSupplement?: string;
@@ -32,10 +21,9 @@ export type PersonaSeedPromptSupplements = {
 };
 
 /**
- * Subset of CreateRealmPersonaDraftInput populated by the LLM. World selection
- * and the post-create handle availability check stay manual — the LLM only
- * provides a handle SUGGESTION, the user must still verify it via the existing
- * `personaControllerCheckHandle` flow.
+ * Subset of CreateRealmPersonaDraftInput populated by the candidate. World
+ * selection and handle availability stay manual; the generated handle remains
+ * an owner-reviewed suggestion.
  */
 export type GeneratedPersonaSeed = Pick<
   CreateRealmPersonaDraftInput,
@@ -48,7 +36,7 @@ export type PersonaSeedGenerationResult =
     source: typeof PERSONA_SEED_SOURCE;
     seed: GeneratedPersonaSeed;
     rationale: string;
-    submitted: NimiLocalAppTextCandidateInput;
+    submitted: StudioTextCandidatePrompt;
     runtime: {
       traceId?: string;
       finishReason?: string;
@@ -59,11 +47,10 @@ export type PersonaSeedGenerationResult =
     source: typeof PERSONA_SEED_SOURCE;
     failure:
       | 'persona-seed-description-empty'
-      | 'persona-seed-permission-required'
       | 'persona-seed-generate-failed'
       | 'persona-seed-invalid-output';
     message: string;
-    submitted: NimiLocalAppTextCandidateInput | null;
+    submitted: StudioTextCandidatePrompt | null;
   };
 
 const PERSONA_SEED_OUTPUT_KEYS = [
@@ -83,7 +70,7 @@ function buildPersonaSeedPayload(
 ): {
   ok: boolean;
   errors: string[];
-  payload: NimiLocalAppTextCandidateInput | null;
+  payload: StudioTextCandidatePrompt | null;
 } {
   const trimmed = description.trim();
   const errors: string[] = [];
@@ -102,71 +89,38 @@ function buildPersonaSeedPayload(
     ok: true,
     errors: [],
     payload: {
-      messages: [
-        {
-          role: 'system',
-          text: [
-            'You generate an owner-reviewed Realm Persona draft from a one-line user description.',
-            'Return ONE JSON object. No prose before or after. No code fences.',
-            'Required keys: handle, displayName, concept, description, ruleText, personaArchetype, personaTraits, rationale.',
-            '',
-            '— Field rules —',
-            'handle: short kebab-case latin suggestion (3-20 chars), no leading @, lowercase letters/digits/hyphens only.',
-            'displayName: 2-32 chars; match the user\'s described language (Chinese, English, etc).',
-            'concept: 1-2 sentences naming the core creative concept.',
-            'description: 1 short public profile description (≤500 chars).',
-            'ruleText: optional behavior/boundary lines, one per line; empty string if nothing meaningful.',
-            `personaArchetype: EXACTLY ONE of ${PERSONA_ARCHETYPES.join(' | ')}`,
-            `personaTraits: array of 1-3 traits from ${PERSONA_TRAITS.join(' | ')}`,
-            'rationale: 1-2 sentences explaining the design choice (English).',
-            '',
-            '— Hard prohibitions —',
-            'Never include: handle prefix @, provider, model, lifecycle, state, worldId, ownerId, dna (full JSON), avatarUrl, profileCoverUrl, personaRule, personaRules, LocalAgent.',
-            'Never include code fences, comments, or trailing text outside the JSON object.',
-          ].join('\n'),
-        },
-        {
-          role: 'user',
-          text: JSON.stringify({
-            userDescription: ownerPromptParts,
-            personaArchetypeAllowed: PERSONA_ARCHETYPES,
-            personaTraitsAllowed: PERSONA_TRAITS,
-          }),
-        },
-      ],
-      temperature: 0.7,
-      topP: 0.95,
-      maxTokens: 1200,
+      surfaceId: 'realm-persona-studio.persona-seed',
+      params: {
+        maxTokens: 1200,
+        temperature: 0.7,
+        topP: 1,
+      },
+      systemText: [
+        'You generate an owner-reviewed Realm Persona draft from a one-line user description.',
+        'Return ONE JSON object. No prose before or after. No code fences.',
+        'Required keys: handle, displayName, concept, description, ruleText, personaArchetype, personaTraits, rationale.',
+        '',
+        '— Field rules —',
+        'handle: short kebab-case latin suggestion (3-20 chars), no leading @, lowercase letters/digits/hyphens only.',
+        'displayName: 2-32 chars; match the user\'s described language (Chinese, English, etc).',
+        'concept: 1-2 sentences naming the core creative concept.',
+        'description: 1 short public profile description (≤500 chars).',
+        'ruleText: optional behavior/boundary lines, one per line; empty string if nothing meaningful.',
+        `personaArchetype: EXACTLY ONE of ${PERSONA_ARCHETYPES.join(' | ')}`,
+        `personaTraits: array of 1-3 traits from ${PERSONA_TRAITS.join(' | ')}`,
+        'rationale: 1-2 sentences explaining the design choice (English).',
+        '',
+        '— Hard prohibitions —',
+        'Never include: handle prefix @, provider, model, lifecycle, state, worldId, ownerId, dna (full JSON), avatarUrl, profileCoverUrl, personaRule, personaRules, LocalAgent.',
+        'Never include code fences, comments, or trailing text outside the JSON object.',
+      ].join('\n'),
+      userText: JSON.stringify({
+        userDescription: ownerPromptParts,
+        personaArchetypeAllowed: PERSONA_ARCHETYPES,
+        personaTraitsAllowed: PERSONA_TRAITS,
+      }),
     },
   };
-}
-
-function permissionRequiredMessage(status: NimiAppPermissionStatus): string {
-  if (status.posture === 'pending') {
-    return 'AI text generation permission is awaiting approval in Nimi Desktop. Approve it, then retry.';
-  }
-  if (status.posture === 'denied') {
-    return 'AI text generation permission was denied. Approve it in Nimi Desktop app permissions, then retry.';
-  }
-  if (status.posture === 'unavailable') {
-    return status.detail
-      ? `AI text generation permission is unavailable: ${status.detail}`
-      : 'AI text generation permission is currently unavailable in Nimi Desktop.';
-  }
-  return 'AI text generation permission must be approved in Nimi Desktop before generating a draft.';
-}
-
-async function requirePersonaSeedPermission(
-  client: PersonaSeedLocalAppClient,
-): Promise<NimiAppPermissionStatus> {
-  let status = await client.permissions.status(PERSONA_SEED_PERMISSION);
-  if (status.posture === 'prompt' && status.canRequest) {
-    status = await client.permissions.request({
-      permissionId: PERSONA_SEED_PERMISSION,
-      reason: PERSONA_SEED_PERMISSION_REASON,
-    });
-  }
-  return status;
 }
 
 function readString(value: unknown, fallback = ''): string {
@@ -224,10 +178,10 @@ export function parsePersonaSeedOutput(raw: string): { seed: GeneratedPersonaSee
     throw new Error('LLM output missing required `displayName` or `concept`.');
   }
   if (!seed.personaArchetype) {
-    throw new Error('LLM output personaArchetype missing or not one of the 6 admitted archetypes.');
+    throw new Error('LLM output personaArchetype missing or outside the supported archetypes.');
   }
   if (!Array.isArray(obj.personaTraits) || obj.personaTraits.length > 3 || seed.personaTraits.length !== obj.personaTraits.length) {
-    throw new Error('LLM output personaTraits must contain at most 3 values from the admitted trait vocabulary.');
+    throw new Error('LLM output personaTraits must contain at most 3 values from the supported trait vocabulary.');
   }
   const rationale = readString(obj.rationale);
   return { seed, rationale };
@@ -235,7 +189,7 @@ export function parsePersonaSeedOutput(raw: string): { seed: GeneratedPersonaSee
 
 export async function generatePersonaSeedFromDescription(
   description: string,
-  localAppClient?: PersonaSeedLocalAppClient,
+  runner: StudioTextCandidateRunner = runStudioTextCandidate,
   supplements: PersonaSeedPromptSupplements = {},
 ): Promise<PersonaSeedGenerationResult> {
   const built = buildPersonaSeedPayload(description, supplements);
@@ -248,30 +202,8 @@ export async function generatePersonaSeedFromDescription(
       submitted: null,
     };
   }
-  const client = localAppClient ?? getStudioLocalAppClient();
-  let permissionStatus: NimiAppPermissionStatus;
   try {
-    permissionStatus = await requirePersonaSeedPermission(client);
-  } catch (error) {
-    return {
-      ok: false,
-      source: PERSONA_SEED_SOURCE,
-      failure: 'persona-seed-generate-failed',
-      message: `Local App AI permission check failed: ${error instanceof Error ? error.message : 'permission transport call failed.'}`,
-      submitted: built.payload,
-    };
-  }
-  if (permissionStatus.posture !== 'granted') {
-    return {
-      ok: false,
-      source: PERSONA_SEED_SOURCE,
-      failure: 'persona-seed-permission-required',
-      message: permissionRequiredMessage(permissionStatus),
-      submitted: null,
-    };
-  }
-  try {
-    const output: NimiLocalAppTextCandidateResult = await client.ai.text.generateCandidate(built.payload);
+    const output = await runner(built.payload);
     try {
       const parsed = parsePersonaSeedOutput(output.text);
       return {
@@ -279,10 +211,10 @@ export async function generatePersonaSeedFromDescription(
         source: PERSONA_SEED_SOURCE,
         seed: parsed.seed,
         rationale: parsed.rationale,
-        submitted: built.payload,
+        submitted: output.submitted,
         runtime: {
           ...(output.traceId ? { traceId: output.traceId } : {}),
-          ...(output.finishReason ? { finishReason: String(output.finishReason) } : {}),
+          ...(output.finishReason ? { finishReason: output.finishReason } : {}),
         },
       };
     } catch (error) {
@@ -291,7 +223,7 @@ export async function generatePersonaSeedFromDescription(
         source: PERSONA_SEED_SOURCE,
         failure: 'persona-seed-invalid-output',
         message: error instanceof Error ? error.message : 'Persona seed output invalid.',
-        submitted: built.payload,
+        submitted: output.submitted,
       };
     }
   } catch (error) {
@@ -299,7 +231,7 @@ export async function generatePersonaSeedFromDescription(
       ok: false,
       source: PERSONA_SEED_SOURCE,
       failure: 'persona-seed-generate-failed',
-      message: `Runtime Local App text candidate generation failed: ${error instanceof Error ? error.message : 'protected operation failed.'}`,
+      message: `Nimi text candidate generation failed: ${error instanceof Error ? error.message : 'operation failed.'}`,
       submitted: built.payload,
     };
   }

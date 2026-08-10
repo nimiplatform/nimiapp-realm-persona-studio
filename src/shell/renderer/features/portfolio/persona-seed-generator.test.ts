@@ -1,13 +1,9 @@
-import type {
-  NimiAppPermissionStatus,
-  NimiLocalAppTextCandidateInput,
-} from '@nimiplatform/sdk/app';
 import { describe, expect, it, vi } from 'vitest';
 import {
   generatePersonaSeedFromDescription,
   parsePersonaSeedOutput,
-  type PersonaSeedLocalAppClient,
 } from './persona-seed-generator.js';
+import type { StudioTextCandidateRunner } from './studio-text-candidate.js';
 
 const validSeed = {
   handle: 'mira-prime',
@@ -19,6 +15,15 @@ const validSeed = {
   personaTraits: ['WISE', 'DIRECT'],
   rationale: 'Matches the owner brief.',
 };
+
+function fakeTextCandidateRunner(text: string): StudioTextCandidateRunner {
+  return async (prompt) => ({
+    text,
+    finishReason: 'stop',
+    traceId: 'trace-seed-1',
+    submitted: prompt,
+  });
+}
 
 describe('persona seed Runtime output parser', () => {
   it('parses a strict single JSON object into owner-reviewed draft fields', () => {
@@ -33,7 +38,7 @@ describe('persona seed Runtime output parser', () => {
     });
   });
 
-  it('rejects wrapper text, code fences, and unknown fields', () => {
+  it('rejects wrapper text, code fences, unknown fields, and invalid traits', () => {
     expect(() => parsePersonaSeedOutput(`Here is a draft:\n${JSON.stringify(validSeed)}`))
       .toThrow('single JSON object');
     expect(() => parsePersonaSeedOutput(`\`\`\`json\n${JSON.stringify(validSeed)}\n\`\`\``))
@@ -44,93 +49,86 @@ describe('persona seed Runtime output parser', () => {
     }))).toThrow('unknown field model');
     expect(() => parsePersonaSeedOutput(JSON.stringify({
       ...validSeed,
-      publicBio: 'unsupported alias',
-    }))).toThrow('unknown field publicBio');
+      personaTraits: ['WISE', 'UNKNOWN'],
+    }))).toThrow('supported trait vocabulary');
   });
 });
 
-const grantedStatus = {
-  permissionId: 'ai.text.generate',
-  posture: 'granted',
-  canRequest: false,
-  agents: [],
-} satisfies NimiAppPermissionStatus;
+describe('persona seed generation through the injected text candidate runner', () => {
+  it('submits the owner-reviewed prompt and supplements to the injected runner', async () => {
+    const runner = vi.fn(fakeTextCandidateRunner(JSON.stringify(validSeed)));
 
-describe('persona seed Local App generation', () => {
-  it('uses the exact protected text-candidate operation without caller-selected route fields', async () => {
-    const generateCandidate = vi.fn(async (_input: NimiLocalAppTextCandidateInput) => ({
-      text: JSON.stringify(validSeed),
-      finishReason: 'stop' as const,
-      traceId: 'trace-persona-seed',
-    }));
-    const request = vi.fn(async () => grantedStatus);
-    const client: PersonaSeedLocalAppClient = {
-      permissions: {
-        status: vi.fn(async () => grantedStatus),
-        request,
+    const result = await generatePersonaSeedFromDescription(
+      'A calm artifact review guide.',
+      runner,
+      {
+        speechSupplement: 'Speak in calm, direct sentences.',
+        boundarySupplement: 'Do not claim private memory.',
+        visualSupplement: 'Use a cool night palette.',
       },
-      ai: { text: { generateCandidate } },
-    };
+    );
 
-    const result = await generatePersonaSeedFromDescription('A practical persona designer', client, {
-      speechSupplement: 'Speak in calm, direct sentences.',
-      boundarySupplement: 'Do not claim private memory.',
-      visualSupplement: 'Use a cool night palette.',
+    expect(runner).toHaveBeenCalledTimes(1);
+    const submitted = runner.mock.calls[0]?.[0];
+    expect(submitted).toMatchObject({
+      surfaceId: 'realm-persona-studio.persona-seed',
+      params: { maxTokens: 1200, temperature: 0.7, topP: 1 },
     });
-
-    expect(result.ok).toBe(true);
-    expect(request).not.toHaveBeenCalled();
-    expect(generateCandidate).toHaveBeenCalledOnce();
-    const submitted = generateCandidate.mock.calls[0]?.[0];
-    expect(Object.keys(submitted ?? {})).toEqual(['messages', 'temperature', 'topP', 'maxTokens']);
-    expect(submitted?.messages.map((message) => Object.keys(message))).toEqual([
-      ['role', 'text'],
-      ['role', 'text'],
-    ]);
-    expect(submitted?.messages[1]?.text).toContain('Speak in calm, direct sentences.');
-    expect(submitted?.messages[1]?.text).toContain('Do not claim private memory.');
-    expect(submitted?.messages[1]?.text).toContain('Use a cool night palette.');
+    expect(submitted?.systemText).toContain('owner-reviewed Realm Persona draft');
+    expect(submitted?.userText).toContain('A calm artifact review guide.');
+    expect(submitted?.userText).toContain('Speak in calm, direct sentences.');
+    expect(submitted?.userText).toContain('Do not claim private memory.');
+    expect(submitted?.userText).toContain('Use a cool night palette.');
     expect(result).toMatchObject({
       ok: true,
-      seed: { handle: 'mira-prime', displayName: 'Mira Prime' },
-      runtime: { traceId: 'trace-persona-seed', finishReason: 'stop' },
+      seed: {
+        handle: 'mira-prime',
+        displayName: 'Mira Prime',
+        personaArchetype: 'INTELLECTUAL',
+      },
+      rationale: 'Matches the owner brief.',
+      runtime: {
+        traceId: 'trace-seed-1',
+        finishReason: 'stop',
+      },
     });
   });
 
-  it('requests permission once and does not generate while Desktop approval is pending', async () => {
-    const promptStatus = {
-      permissionId: 'ai.text.generate',
-      posture: 'prompt',
-      canRequest: true,
-      agents: [],
-    } satisfies NimiAppPermissionStatus;
-    const pendingStatus = {
-      permissionId: 'ai.text.generate',
-      posture: 'pending',
-      canRequest: false,
-      agents: [],
-    } satisfies NimiAppPermissionStatus;
-    const request = vi.fn(async () => pendingStatus);
-    const generateCandidate = vi.fn();
-    const client: PersonaSeedLocalAppClient = {
-      permissions: {
-        status: vi.fn(async () => promptStatus),
-        request,
-      },
-      ai: { text: { generateCandidate } },
-    };
+  it('fails closed before calling the runner when the description is empty', async () => {
+    const runner = vi.fn(fakeTextCandidateRunner(JSON.stringify(validSeed)));
 
-    const result = await generatePersonaSeedFromDescription('A practical persona designer', client);
+    const result = await generatePersonaSeedFromDescription('   ', runner);
 
-    expect(request).toHaveBeenCalledWith({
-      permissionId: 'ai.text.generate',
-      reason: 'Generate an owner-reviewed Realm Persona draft from the owner description.',
-    });
-    expect(generateCandidate).not.toHaveBeenCalled();
+    expect(runner).not.toHaveBeenCalled();
     expect(result).toMatchObject({
       ok: false,
-      failure: 'persona-seed-permission-required',
+      failure: 'persona-seed-description-empty',
       submitted: null,
+    });
+  });
+
+  it('maps runner failures without inventing a seed', async () => {
+    const runner: StudioTextCandidateRunner = async () => {
+      throw new Error('local app surface unavailable');
+    };
+
+    const result = await generatePersonaSeedFromDescription('A calm artifact review guide.', runner);
+
+    expect(result).toMatchObject({
+      ok: false,
+      failure: 'persona-seed-generate-failed',
+    });
+  });
+
+  it('maps unparseable candidate text to persona-seed-invalid-output', async () => {
+    const result = await generatePersonaSeedFromDescription(
+      'A calm artifact review guide.',
+      fakeTextCandidateRunner('not json at all'),
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      failure: 'persona-seed-invalid-output',
     });
   });
 });

@@ -125,7 +125,7 @@ function LaunchBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) {
         description={t('launch.description')}
         actions={
           <>
-            <Button tone="primary" onClick={() => navigate(nextStep.path)}>
+            <Button tone="primary" className="text-white" onClick={() => navigate(nextStep.path)}>
               {t(nextStep.actionKey)}
             </Button>
             <Button tone="ghost" onClick={() => navigate(`/portfolio/${persona.id}`)}>
@@ -155,7 +155,11 @@ function LaunchBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) {
                     {t(step.descriptionKey)}
                   </p>
                 </div>
-                <Button tone={step.status === 'next' ? 'primary' : 'secondary'} onClick={() => navigate(step.path)}>
+                <Button
+                  tone={step.status === 'next' ? 'primary' : 'secondary'}
+                  className={step.status === 'next' ? 'text-white' : undefined}
+                  onClick={() => navigate(step.path)}
+                >
                   {t(step.actionKey)}
                 </Button>
               </div>

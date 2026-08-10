@@ -1,8 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { StudioRealmSurface } from '@renderer/data/realm-client.js';
-import { FinishReason, RoutePolicy } from '@nimiplatform/sdk/runtime/generated';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   buildRealmCreatePostInput,
   createReviewedPostTextResource,
@@ -15,67 +13,37 @@ import {
 import {
   candidatePayload,
   collectKeys,
-  configureStudioAIConfigTargetRefsForTest,
-  mockRuntimeWithRoutes,
   ownerPersonaDetail,
   ownerPersonaDetailWithWorldId,
-  resetStudioAIConfigForTest,
 } from './portfolio-client.test-helpers.js';
-
-function forbiddenPublicationRealm() {
-  return {
-    createPost: vi.fn(),
-    listResources: vi.fn(),
-    createImageDirectUpload: vi.fn(),
-    createVideoDirectUpload: vi.fn(),
-    createAudioDirectUpload: vi.fn(),
-    finalizeResource: vi.fn(),
-    createTextResource: vi.fn(),
-  };
-}
-
-beforeEach(() => {
-  resetStudioAIConfigForTest();
-});
+import type { StudioTextCandidateRunner } from './studio-text-candidate.js';
 
 describe('owner portfolio publication hardcut', () => {
-  it('fails closed before post publication touches Realm', async () => {
-    const forbiddenRealm = forbiddenPublicationRealm();
-    const result = await publishReviewedPostDraft(
-      candidatePayload,
-      forbiddenRealm as unknown as StudioRealmSurface,
-    );
+  it('fails closed for post publication without a Realm injection seam', async () => {
+    const result = await publishReviewedPostDraft(candidatePayload);
 
     expect(result).toMatchObject({
       ok: false,
-      source: 'Runtime-mediated Realm post publication (not admitted)',
-      failure: 'persona-post-publication-not-admitted',
+      source: 'Nimi App Access Persona post publication (unavailable)',
+      failure: 'persona-post-publication-unavailable',
     });
-    expect(forbiddenRealm.createPost).not.toHaveBeenCalled();
   });
 
   it('fails closed before renderer-side Resource listing', async () => {
-    const forbiddenRealm = forbiddenPublicationRealm();
-
-    await expect(listReadyPostAttachmentResources(
-      forbiddenRealm as unknown as StudioRealmSurface,
-    )).rejects.toThrow('Publication is unavailable');
-    expect(forbiddenRealm.listResources).not.toHaveBeenCalled();
+    await expect(listReadyPostAttachmentResources()).rejects.toThrow('Nimi App Access does not provide Persona post or media publication yet.');
   });
 
   it('keeps reviewed media as a local ingress candidate without upload credentials or network', async () => {
-    const forbiddenRealm = forbiddenPublicationRealm();
-    const storageUpload = vi.fn();
     const result = await uploadReviewedPostMediaResource({
       resourceType: 'IMAGE',
       file: { name: 'portrait.png', type: 'image/png', size: 2048 },
       persona: ownerPersonaDetailWithWorldId(),
-    }, forbiddenRealm as unknown as StudioRealmSurface, storageUpload);
+    });
 
     expect(result).toMatchObject({
       ok: false,
-      source: 'Runtime-owned media ingress (not admitted)',
-      failure: 'persona-media-publication-not-admitted',
+      source: 'Nimi App Access Persona media publication (unavailable)',
+      failure: 'persona-media-publication-unavailable',
       attachmentTruth: false,
       publicTruth: false,
       submitted: {
@@ -84,67 +52,54 @@ describe('owner portfolio publication hardcut', () => {
         sourceRef: 'realmPersona:world-oasis:persona-1:hash-persona-1:reviewed-post-media-resource',
       },
     });
-    expect(storageUpload).not.toHaveBeenCalled();
-    expect(forbiddenRealm.createImageDirectUpload).not.toHaveBeenCalled();
-    expect(forbiddenRealm.finalizeResource).not.toHaveBeenCalled();
   });
 
-  it('preserves local media validation before the not-admitted result', async () => {
-    const forbiddenRealm = forbiddenPublicationRealm();
+  it('preserves local media validation before the unavailable result', async () => {
     const result = await uploadReviewedPostMediaResource({
       resourceType: 'VIDEO',
       file: { name: 'not-video.png', type: 'image/png', size: 10 },
       persona: ownerPersonaDetail(),
-    }, forbiddenRealm as unknown as StudioRealmSurface, vi.fn());
+    });
 
     expect(result).toMatchObject({
       ok: false,
       failure: 'media-upload-file-invalid',
       submitted: null,
     });
-    expect(forbiddenRealm.createVideoDirectUpload).not.toHaveBeenCalled();
   });
 
   it('fails closed for reviewed identity media without claiming binding truth', async () => {
-    const forbiddenRealm = forbiddenPublicationRealm();
     const result = await uploadReviewedIdentityMediaResource({
       resourceType: 'IMAGE',
       file: { name: 'identity.png', type: 'image/png', size: 3072 },
       persona: ownerPersonaDetailWithWorldId(),
       tags: ['realm-persona-studio', 'identity-candidate'],
-    }, forbiddenRealm as unknown as StudioRealmSurface, vi.fn());
+    });
 
     expect(result).toMatchObject({
       ok: false,
-      failure: 'persona-media-publication-not-admitted',
+      failure: 'persona-media-publication-unavailable',
       attachmentTruth: false,
       publicTruth: false,
       submitted: {
         sourceRef: 'realmPersona:world-oasis:persona-1:hash-persona-1:reviewed-identity-media-resource',
       },
     });
-    expect(forbiddenRealm.createImageDirectUpload).not.toHaveBeenCalled();
-    expect(forbiddenRealm.finalizeResource).not.toHaveBeenCalled();
   });
 
   it('fails closed before reviewed text attachment publication', async () => {
-    const forbiddenRealm = forbiddenPublicationRealm();
-    const result = await createReviewedPostTextResource(
-      candidatePayload,
-      forbiddenRealm as unknown as StudioRealmSurface,
-    );
+    const result = await createReviewedPostTextResource(candidatePayload);
 
     expect(result).toMatchObject({
       ok: false,
-      source: 'Runtime-mediated Realm text resource publication (not admitted)',
-      failure: 'persona-text-resource-publication-not-admitted',
+      source: 'Nimi App Access Persona text resource publication (unavailable)',
+      failure: 'persona-text-resource-publication-unavailable',
       attachmentTruth: false,
       submitted: {
         content: 'Published caption',
         sourceRef: 'realmPersona:world-oasis:persona-1:hash-persona-1',
       },
     });
-    expect(forbiddenRealm.createTextResource).not.toHaveBeenCalled();
   });
 
   it('keeps reviewed post payload construction free of caller-owned authority', () => {
@@ -174,33 +129,17 @@ describe('owner portfolio publication hardcut', () => {
     expect(source).not.toContain('fetch(');
   });
 
-  it('uses Runtime text generation only for local candidate copy', async () => {
-    const executeScenario = vi.fn(async () => ({
-      output: {
-        output: {
-          oneofKind: 'textGenerate' as const,
-          textGenerate: {
-            text: JSON.stringify({
-              caption: 'Mira shares a concise artifact update.',
-              tagsText: ['artifact', 'studio'],
-              rationale: 'Owner asked for a concise update.',
-            }),
-          },
-        },
-      },
-      finishReason: FinishReason.STOP,
-      routeDecision: RoutePolicy.UNSPECIFIED,
-      modelResolved: 'runtime-default-text',
+  it('uses the injected text candidate runner only for local candidate copy', async () => {
+    const runner = vi.fn(async (prompt: Parameters<StudioTextCandidateRunner>[0]) => ({
+      text: JSON.stringify({
+        caption: 'Mira shares a concise artifact update.',
+        tagsText: ['artifact', 'studio'],
+        rationale: 'Owner asked for a concise update.',
+      }),
+      finishReason: 'stop' as const,
       traceId: 'trace-post-copy',
-      ignoredExtensions: [],
+      submitted: prompt,
     }));
-    const runtime = mockRuntimeWithRoutes({
-      executeScenario,
-      routes: [{ capability: 'text.generate', model: 'runtime-default-text' }],
-    });
-    configureStudioAIConfigTargetRefsForTest({
-      targetRefs: { 'text.generate': 'runtime-default-text' },
-    });
 
     const result = await proposeReviewedPostCopy(ownerPersonaDetail(), {
       caption: '',
@@ -209,9 +148,15 @@ describe('owner portfolio publication hardcut', () => {
       attachmentEnabled: false,
       attachmentTargetType: 'RESOURCE',
       attachmentTargetId: '',
-    }, 'Draft a short launch post.', runtime);
+    }, 'Draft a short launch post.', runner);
 
-    expect(executeScenario).toHaveBeenCalledTimes(1);
+    expect(runner).toHaveBeenCalledTimes(1);
+    const submitted = runner.mock.calls[0]?.[0];
+    expect(submitted).toMatchObject({
+      surfaceId: 'realm-persona-studio.post-copy',
+      params: { maxTokens: 700, temperature: 0.5, topP: 1 },
+    });
+    expect(submitted?.userText).not.toContain('LocalAgent');
     expect(result).toMatchObject({
       ok: true,
       candidate: true,
@@ -222,6 +167,81 @@ describe('owner portfolio publication hardcut', () => {
           tagsText: 'artifact, studio',
         },
       },
+      runtime: {
+        traceId: 'trace-post-copy',
+        finishReason: 'stop',
+      },
+    });
+  });
+
+  it('fails closed before calling the runner when the post copy intent is missing', async () => {
+    const runner = vi.fn(async (prompt: Parameters<StudioTextCandidateRunner>[0]) => ({
+      text: '{}',
+      finishReason: 'stop' as const,
+      traceId: '',
+      submitted: prompt,
+    }));
+
+    const result = await proposeReviewedPostCopy(ownerPersonaDetail(), {
+      caption: '',
+      tagsText: '',
+      humanReviewed: false,
+      attachmentEnabled: false,
+      attachmentTargetType: 'RESOURCE',
+      attachmentTargetId: '',
+    }, '   ', runner);
+
+    expect(runner).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      ok: false,
+      failure: 'runtime-post-copy-payload-invalid',
+      submitted: null,
+    });
+  });
+
+  it('maps runner failures to runtime-post-copy-failed without a submitted prompt', async () => {
+    const runner: StudioTextCandidateRunner = async () => {
+      throw new Error('local app surface unavailable');
+    };
+
+    const result = await proposeReviewedPostCopy(ownerPersonaDetail(), {
+      caption: '',
+      tagsText: '',
+      humanReviewed: false,
+      attachmentEnabled: false,
+      attachmentTargetType: 'RESOURCE',
+      attachmentTargetId: '',
+    }, 'Draft a short launch post.', runner);
+
+    expect(result).toMatchObject({
+      ok: false,
+      candidate: false,
+      truthWrite: false,
+      failure: 'runtime-post-copy-failed',
+      submitted: null,
+    });
+  });
+
+  it('maps unparseable candidate text to runtime-post-copy-invalid-output', async () => {
+    const runner: StudioTextCandidateRunner = async (prompt) => ({
+      text: 'not json at all',
+      finishReason: 'stop',
+      traceId: 'trace-post-copy',
+      submitted: prompt,
+    });
+
+    const result = await proposeReviewedPostCopy(ownerPersonaDetail(), {
+      caption: '',
+      tagsText: '',
+      humanReviewed: false,
+      attachmentEnabled: false,
+      attachmentTargetType: 'RESOURCE',
+      attachmentTargetId: '',
+    }, 'Draft a short launch post.', runner);
+
+    expect(result).toMatchObject({
+      ok: false,
+      failure: 'runtime-post-copy-invalid-output',
     });
   });
 });

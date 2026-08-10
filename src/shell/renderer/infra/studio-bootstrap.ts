@@ -1,8 +1,5 @@
 import { useAppStore } from '../app-shell/app-store.js';
-import {
-  createStudioProtectedOperationUnavailableError,
-  getStudioLocalAppClient,
-} from '../app-shell/studio-platform.js';
+import { getStudioLocalAppClient } from '../app-shell/studio-platform.js';
 import { describeError, logRendererEvent } from './telemetry/renderer-log.js';
 
 let bootstrapPromise: Promise<void> | null = null;
@@ -32,11 +29,6 @@ export async function ensureStudioBootstrapReady(): Promise<void> {
   if (!next.bootstrapReady) {
     throw new Error(next.bootstrapError || 'Realm Persona Studio bootstrap did not complete');
   }
-}
-
-export async function ensureStudioRuntimeClientReady(): Promise<void> {
-  await ensureStudioBootstrapReady();
-  throw createStudioProtectedOperationUnavailableError('Runtime client access');
 }
 
 async function doRunStudioBootstrap(): Promise<void> {

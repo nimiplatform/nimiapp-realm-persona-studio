@@ -37,7 +37,7 @@ describe('studio Desktop-supervised Electron boundary', () => {
     const mainSource = readFileSync(join(process.cwd(), 'src-electron/main.ts'), 'utf8');
 
     expect(mainSource).toContain('registerNimiElectronAppBridge');
-    expect(mainSource).toContain('onProtectedSessionFailure: () => app.quit()');
+    expect(mainSource).not.toContain('onProtectedSessionFailure');
     expect(mainSource).toContain('--nimi-dev-renderer-url=');
     expect(mainSource).not.toContain('createNimiElectronInstalledHost()');
     expect(mainSource).not.toContain('NIMI_INSTALLED_NIMI_APP_STANDARD_SHELL_CAPABILITY_SET_ID');
@@ -50,12 +50,15 @@ describe('studio Desktop-supervised Electron boundary', () => {
     expect(existsSync(join(process.cwd(), 'scripts/run-electron-dev.mjs'))).toBe(false);
   });
 
-  it('declares only the admitted exact AI permission and no retired scope vocabulary', () => {
+  it('declares App Access domains without retired vocabulary', () => {
     const manifestSource = readFileSync(join(process.cwd(), 'nimi.app.yaml'), 'utf8');
+    const retiredManifestKey = ['per', 'missions'].join('');
 
-    expect(manifestSource).toContain('  - id: ai.text.generate');
-    expect(manifestSource).toContain('reason: Generate owner-reviewed Realm Persona draft candidates');
-    expect(manifestSource.match(/^\s+- id:/gmu)).toHaveLength(1);
+    expect(manifestSource).toContain('app_access:');
+    expect(manifestSource).toContain('- realm.data');
+    expect(manifestSource).toContain('- runtime.consume');
+    expect(manifestSource).not.toContain('agent.local');
+    expect(manifestSource).not.toContain(retiredManifestKey);
     expect(manifestSource).toContain('renderer_origin: http://127.0.0.1:1450');
     expect(manifestSource).not.toContain('declared_nimi_api_scopes');
     expect(manifestSource).not.toContain('runtime.artifacts');

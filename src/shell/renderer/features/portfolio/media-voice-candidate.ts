@@ -1,13 +1,4 @@
 import type { OwnerPortfolioPersonaDetail, PortfolioPersonaDetailSource } from './portfolio-data.js';
-import {
-  createStudioImageGeneratePayload,
-  createStudioSpeechSynthesizePayload,
-  resolveStudioImageCallParams,
-  resolveStudioSpeechCallParams,
-  STUDIO_DEFAULT_SPEECH_TIMING_MODE,
-  type StudioImageGeneratePayload,
-  type StudioSpeechSynthesizePayload,
-} from './studio-ai-runtime.js';
 
 export const MEDIA_CANDIDATE_RESOURCE_TYPES = ['IMAGE', 'VIDEO', 'AUDIO'] as const;
 export const MEDIA_CANDIDATE_BINDING_POINTS = [
@@ -20,7 +11,7 @@ export const AVATAR_PACKAGE_TARGETS = ['SPRITE2D', 'LIVE2D', 'VRM'] as const;
 
 export const VISUAL_IMAGE_CANDIDATE_NOTICE = 'Image candidates stay local for owner review until a reviewed profile publishing path is available.';
 export const AVATAR_PACKAGE_CANDIDATE_NOTICE = 'Avatar package candidates stay local for owner review; generated output is a design sheet and rigging brief, not a published Live2D/VRM package.';
-export const VOICE_DEMO_CANDIDATE_NOTICE = 'Voice demo audio stays local for owner review; reviewed voice profile config is promoted separately where admitted.';
+export const VOICE_DEMO_CANDIDATE_NOTICE = 'Voice demo audio stays local for owner review; public voice profile publication is unavailable.';
 export const VISUAL_IMAGE_GENERATION_SOURCE = 'Runtime ScenarioService.submitScenarioJob image.generate';
 export const VOICE_DEMO_SYNTHESIS_SOURCE = 'Runtime ScenarioService.executeScenario audio.synthesize';
 
@@ -74,6 +65,25 @@ export type CandidatePersonaContext = {
   profileCoverUrl?: string;
 };
 
+/**
+ * Local-only preview of the candidate input an owner reviewed. The Nimi
+ * local App surface does not expose media candidate generation yet, so this
+ * stays a review artifact and is never dispatched to a Runtime scenario.
+ */
+export type StudioImageCandidatePreview = {
+  surfaceId: string;
+  capability: 'image.generate';
+  prompt: string;
+  aspectRatio: string;
+  count?: number;
+};
+
+export type StudioVoiceCandidatePreview = {
+  surfaceId: string;
+  capability: 'audio.synthesize';
+  text: string;
+};
+
 export type ReviewedVoiceDemoCandidatePayload = {
   candidate: true;
   publicTruth: false;
@@ -83,7 +93,7 @@ export type ReviewedVoiceDemoCandidatePayload = {
     capabilityToken: 'audio.synthesize';
     runtimeScenario: 'speechSynthesize';
     source: typeof VOICE_DEMO_SYNTHESIS_SOURCE;
-    request: StudioSpeechSynthesizePayload;
+    input: StudioVoiceCandidatePreview;
     status: 'candidate-ready';
   };
   futureEvidencePath: {
@@ -111,7 +121,7 @@ export type ReviewedVisualImageCandidatePayload = {
     capabilityToken: 'image.generate';
     runtimeScenario: 'imageGenerate';
     source: typeof VISUAL_IMAGE_GENERATION_SOURCE;
-    request: StudioImageGeneratePayload;
+    input: StudioImageCandidatePreview;
     status: 'candidate-ready';
   };
   futureEvidencePath: {
@@ -146,7 +156,7 @@ export type ReviewedAvatarPackageCandidatePayload = {
     capabilityToken: 'image.generate';
     runtimeScenario: 'imageGenerate';
     source: typeof VISUAL_IMAGE_GENERATION_SOURCE;
-    request: StudioImageGeneratePayload;
+    input: StudioImageCandidatePreview;
     status: 'candidate-ready';
   };
   futureEvidencePath: {
@@ -206,8 +216,8 @@ const FORBIDDEN_MEDIA_CANDIDATE_FIELDS = new Set([
   'resourceReady',
 ]);
 const MODEL_ALLOWED_PATHS = new Set([
-  'runtimePreview.requestCandidate.model',
-  'runtime.request.params.model',
+  'runtimePreview.candidateInput.model',
+  'runtime.input.params.model',
 ]);
 
 function normalizeLineText(value: string): string {
@@ -299,12 +309,9 @@ export function normalizeAvatarPackageTarget(value: string): AvatarPackageTarget
 export function buildReviewedVisualImageGenerationPayload(
   input: VisualImageGenerationInput,
   persona: OwnerPortfolioPersonaDetail,
-): VisualImageCandidateBuildResult<StudioImageGeneratePayload> {
+): VisualImageCandidateBuildResult<StudioImageCandidatePreview> {
   const normalized = normalizeVisualMediaCandidateInput(input);
   const aspectRatio = normalizeSingleLine(input.aspectRatio) || '1:1';
-  const callParams = resolveStudioImageCallParams('realm-persona-studio.visual-image-candidate', {
-    aspectRatio,
-  });
   const errors: string[] = [];
 
   if (!normalized.prompt) {
@@ -325,32 +332,19 @@ export function buildReviewedVisualImageGenerationPayload(
   return {
     changed: true,
     errors: [],
-    payload: createStudioImageGeneratePayload({
+    payload: {
       surfaceId: 'realm-persona-studio.visual-image-candidate',
-      params: {
-        ...callParams,
-      },
-      spec: {
-        prompt: promptParts.join('\n'),
-        negativePrompt: '',
-        n: 1,
-        size: callParams.size || '',
-        aspectRatio,
-        quality: '',
-        style: '',
-        seed: callParams.seed || '',
-        referenceImages: [],
-        mask: '',
-        responseFormat: callParams.responseFormat || 'url',
-      },
-    }),
+      capability: 'image.generate',
+      prompt: promptParts.join('\n'),
+      aspectRatio,
+    },
   };
 }
 
 export function buildReviewedAvatarPackageImageGenerationPayload(
   input: AvatarPackageCandidateInput,
   persona: OwnerPortfolioPersonaDetail,
-): VisualImageCandidateBuildResult<StudioImageGeneratePayload> {
+): VisualImageCandidateBuildResult<StudioImageCandidatePreview> {
   const visual = normalizeVisualMediaCandidateInput({
     ...input,
     bindingPoint: 'PERSONA_AVATAR',
@@ -359,9 +353,6 @@ export function buildReviewedAvatarPackageImageGenerationPayload(
   const aspectRatio = normalizeSingleLine(input.aspectRatio) || '1:1';
   const motionNotes = normalizeLineText(input.motionNotes);
   const interactionNotes = normalizeLineText(input.interactionNotes);
-  const callParams = resolveStudioImageCallParams('realm-persona-studio.avatar-package-candidate', {
-    aspectRatio,
-  });
   const errors: string[] = [];
 
   if (!visual.prompt) {
@@ -387,25 +378,12 @@ export function buildReviewedAvatarPackageImageGenerationPayload(
   return {
     changed: true,
     errors: [],
-    payload: createStudioImageGeneratePayload({
+    payload: {
       surfaceId: 'realm-persona-studio.avatar-package-candidate',
-      params: {
-        ...callParams,
-      },
-      spec: {
-        prompt: promptParts.join('\n'),
-        negativePrompt: '',
-        n: 1,
-        size: callParams.size || '',
-        aspectRatio,
-        quality: '',
-        style: '',
-        seed: callParams.seed || '',
-        referenceImages: [],
-        mask: '',
-        responseFormat: callParams.responseFormat || 'url',
-      },
-    }),
+      capability: 'image.generate',
+      prompt: promptParts.join('\n'),
+      aspectRatio,
+    },
   };
 }
 
@@ -432,7 +410,7 @@ export function buildReviewedVisualImageCandidatePayload(
         capabilityToken: 'image.generate',
         runtimeScenario: 'imageGenerate',
         source: VISUAL_IMAGE_GENERATION_SOURCE,
-        request: imagePayload.payload,
+        input: imagePayload.payload,
         status: 'candidate-ready',
       },
       futureEvidencePath: {
@@ -483,7 +461,7 @@ export function buildReviewedAvatarPackageCandidatePayload(
         capabilityToken: 'image.generate',
         runtimeScenario: 'imageGenerate',
         source: VISUAL_IMAGE_GENERATION_SOURCE,
-        request: imagePayload.payload,
+        input: imagePayload.payload,
         status: 'candidate-ready',
       },
       futureEvidencePath: {
@@ -511,9 +489,8 @@ export function buildReviewedAvatarPackageCandidatePayload(
 
 export function buildReviewedVoiceSynthesisPayload(
   input: VoiceDemoCandidateInput,
-): VoiceDemoCandidateBuildResult<StudioSpeechSynthesizePayload> {
+): VoiceDemoCandidateBuildResult<StudioVoiceCandidatePreview> {
   const normalized = normalizeVoiceDemoCandidateInput(input);
-  const callParams = resolveStudioSpeechCallParams('realm-persona-studio.voice-demo-candidate');
   const errors: string[] = [];
 
   if (!normalized.scriptText) {
@@ -524,25 +501,15 @@ export function buildReviewedVoiceSynthesisPayload(
     return { changed: false, errors, payload: null };
   }
 
-  const payload = createStudioSpeechSynthesizePayload({
-    surfaceId: 'realm-persona-studio.voice-demo-candidate',
-    params: {
-      ...callParams,
-    },
-    spec: {
+  return {
+    changed: true,
+    errors: [],
+    payload: {
+      surfaceId: 'realm-persona-studio.voice-demo-candidate',
+      capability: 'audio.synthesize',
       text: normalizeSingleLine(normalized.scriptText),
-      language: callParams.language || '',
-      audioFormat: callParams.audioFormat || '',
-      sampleRateHz: 0,
-      speed: callParams.speed ?? 0,
-      pitch: callParams.pitch ?? 0,
-      volume: callParams.volume ?? 0,
-      emotion: '',
-      timingMode: STUDIO_DEFAULT_SPEECH_TIMING_MODE,
     },
-  });
-
-  return { changed: true, errors: [], payload };
+  };
 }
 
 export function buildReviewedVoiceDemoCandidatePayload(
@@ -568,7 +535,7 @@ export function buildReviewedVoiceDemoCandidatePayload(
         capabilityToken: 'audio.synthesize',
         runtimeScenario: 'speechSynthesize',
         source: VOICE_DEMO_SYNTHESIS_SOURCE,
-        request: synthesisPayload.payload,
+        input: synthesisPayload.payload,
         status: 'candidate-ready',
       },
       futureEvidencePath: {

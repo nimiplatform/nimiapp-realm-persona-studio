@@ -1,11 +1,5 @@
 import type { OwnerPortfolioPersonaDetail, PortfolioPersonaDetailSource } from './portfolio-data.js';
-import {
-  buildStudioTextRequestParameters,
-  buildStudioRuntimeMetadata,
-  resolveStudioTextCallParams,
-  studioTextMessage,
-  type StudioTextGeneratePayload,
-} from './studio-ai-runtime.js';
+import type { StudioTextCandidatePrompt } from './studio-text-candidate.js';
 import { parseStrictRuntimeJsonObject } from './strict-runtime-json.js';
 
 export const ATTACHMENT_TARGET_TYPES = ['RESOURCE', 'ASSET', 'BUNDLE'] as const;
@@ -387,11 +381,7 @@ export function buildRuntimePostCopyPrompt(input: {
   persona: OwnerPortfolioPersonaDetail;
   draft: LocalPostDraftInput;
   intent: string;
-}): { ok: true; errors: []; payload: StudioTextGeneratePayload } | { ok: false; errors: string[]; payload: null } {
-  const callParams = resolveStudioTextCallParams('realm-persona-studio.post-copy', {
-    maxTokens: 700,
-    temperature: 0.5,
-  });
+}): { ok: true; errors: []; payload: StudioTextCandidatePrompt } | { ok: false; errors: string[]; payload: null } {
   const intent = input.intent.trim();
   const normalizedDraft = normalizeLocalPostDraft(input.draft);
   const errors: string[] = [];
@@ -410,41 +400,31 @@ export function buildRuntimePostCopyPrompt(input: {
     payload: {
       surfaceId: 'realm-persona-studio.post-copy',
       params: {
-        ...callParams,
+        maxTokens: 700,
+        temperature: 0.5,
+        topP: 1,
       },
-      request: {
-        model: { modelId: callParams.model },
-        messages: [
-          studioTextMessage('system', [
-            'You draft candidate RealmPersona post copy for owner review.',
-            'Return one JSON object with caption, tagsText, and rationale only.',
-            'Do not include provider, model, LocalAgent, worldId, authorId, id, scheduledAt, scheduleId, queue, campaign, recurrence, moderation, or publish success fields.',
-            'The owner must review the result before Realm publish.',
-          ].join('\n')),
-          studioTextMessage('user', JSON.stringify({
-            ownerIntent: intent,
-            currentDraft: normalizedDraft,
-            personaPublicContext: {
-              source: input.persona.source,
-              sourceKind: 'realmPersona',
-              sourceId: input.persona.id,
-              sourceWorldId: input.persona.homeWorldId,
-              sourceContentHash: input.persona.contentHash,
-              handle: input.persona.handle.value,
-              displayName: input.persona.displayName.value,
-              bio: input.persona.bio.value,
-              greeting: input.persona.greeting.value,
-            },
-          })),
-        ],
-        parameters: buildStudioTextRequestParameters(
-          callParams,
-          {
-            ...buildStudioRuntimeMetadata('realm-persona-studio.post-copy'),
-            domain: 'realm-persona-studio.post-copy',
-          },
-        ),
-      },
+      systemText: [
+        'You draft candidate RealmPersona post copy for owner review.',
+        'Return one JSON object with caption, tagsText, and rationale only.',
+        'Do not include provider, model, LocalAgent, worldId, authorId, id, scheduledAt, scheduleId, queue, campaign, recurrence, moderation, or publish success fields.',
+        'The owner must review the result before Realm publish.',
+      ].join('\n'),
+      userText: JSON.stringify({
+        ownerIntent: intent,
+        currentDraft: normalizedDraft,
+        personaPublicContext: {
+          source: input.persona.source,
+          sourceKind: 'realmPersona',
+          sourceId: input.persona.id,
+          sourceWorldId: input.persona.homeWorldId,
+          sourceContentHash: input.persona.contentHash,
+          handle: input.persona.handle.value,
+          displayName: input.persona.displayName.value,
+          bio: input.persona.bio.value,
+          greeting: input.persona.greeting.value,
+        },
+      }),
     },
   };
 }
@@ -476,7 +456,7 @@ export function normalizeRuntimePostCopyProposal(
   }
 
   if (changedPostKeys.length === 0) {
-    throw new Error('Runtime post copy proposal returned no admitted post changes.');
+    throw new Error('Runtime post copy proposal returned no supported post changes.');
   }
 
   return {

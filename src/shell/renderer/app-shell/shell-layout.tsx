@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { AmbientBackground, InlineAlert } from '@nimiplatform/kit/ui';
 import { StudioSidebar, STUDIO_SIDEBAR_PREFERENCE_STORAGE_PATH } from './studio-sidebar/index.js';
 import { getStudioProtectedJsonStorage, isStudioStorageNotFoundError } from './studio-storage.js';
@@ -69,23 +69,8 @@ export function ShellLayout({ children }: { children: ReactNode }) {
     });
   };
 
-  const handleTitlebarMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
-    if (event.detail > 1) return;
-    if (event.clientX < MACOS_TRAFFIC_LIGHT_SAFE_ZONE_PX) return;
-    if (isTitlebarInteractiveTarget(event.target)) return;
-    void startStudioWindowDrag();
-  };
-
   return (
     <AmbientBackground variant="mesh" className="ras-shell">
-      <div className="ras-topbar" onMouseDown={handleTitlebarMouseDown}>
-        <div className="ras-topbar__inner">
-          <h1 className="ras-topbar__title">{t('app.name')}</h1>
-          <span className="ras-topbar__chip">{t('app.owner')}</span>
-        </div>
-      </div>
-
       <div className="ras-shell__body">
         <StudioSidebar collapsed={sidebarCollapsed} onCollapsedChange={handleSidebarCollapsedChange} />
 

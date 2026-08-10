@@ -18,8 +18,8 @@ function PersonaDetailPageForScope() {
 
   return (
     <PersonaShell personaId={personaId} current="detail">
-      {(persona) => (
-        <PersonaCockpit persona={persona} />
+      {(persona, visualData) => (
+        <PersonaCockpit persona={persona} visualData={visualData} />
       )}
     </PersonaShell>
   );

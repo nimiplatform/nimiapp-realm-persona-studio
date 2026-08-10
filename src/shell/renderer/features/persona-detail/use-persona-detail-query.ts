@@ -15,11 +15,15 @@ export function personaDetailQueryKey(personaId: string, _scope: PersonaDetailRe
   return ownerPersonaDetailQueryKey(personaId);
 }
 
-export function usePersonaDetailQuery(personaId: string, scope: PersonaDetailReadScope = 'owner') {
+export function usePersonaDetailQuery(
+  personaId: string,
+  scope: PersonaDetailReadScope = 'owner',
+  options: { enabled?: boolean } = {},
+) {
   return useQuery({
     queryKey: personaDetailQueryKey(personaId, scope),
     queryFn: () => getOwnerPortfolioPersonaDetail(personaId),
-    enabled: personaId.length > 0,
+    enabled: personaId.length > 0 && options.enabled !== false,
   });
 }
 

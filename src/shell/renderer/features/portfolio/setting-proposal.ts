@@ -1,10 +1,4 @@
-import {
-  buildStudioTextRequestParameters,
-  buildStudioRuntimeMetadata,
-  resolveStudioTextCallParams,
-  studioTextMessage,
-  type StudioTextGeneratePayload,
-} from './studio-ai-runtime.js';
+import type { StudioTextCandidatePrompt } from './studio-text-candidate.js';
 import { parseStrictRuntimeJsonObject } from './strict-runtime-json.js';
 
 export const OWNER_SETTINGS_SAVE_SOURCE = 'Realm WorldCoreController.replaceRealmPersona';
@@ -384,13 +378,9 @@ export function buildRuntimeOwnerSettingsProposalPrompt(input: {
   current: OwnerPersonaSettingsSnapshot;
   draft: OwnerPersonaSettingsDraft;
   personaContext?: OwnerPersonaSettingsProposalContext;
-}): { ok: true; errors: []; payload: StudioTextGeneratePayload } | { ok: false; errors: string[]; payload: null } {
+}): { ok: true; errors: []; payload: StudioTextCandidatePrompt } | { ok: false; errors: string[]; payload: null } {
   const normalizedDraft = normalizeOwnerPersonaSettingsDraft(input.draft);
   const personaContext = input.personaContext;
-  const callParams = resolveStudioTextCallParams('realm-persona-studio.settings-proposal', {
-    maxTokens: 900,
-    temperature: 0.2,
-  });
   const intent = normalizedDraft.naturalLanguageIntent;
   const errors: string[] = [];
 
@@ -408,42 +398,32 @@ export function buildRuntimeOwnerSettingsProposalPrompt(input: {
     payload: {
       surfaceId: 'realm-persona-studio.settings-proposal',
       params: {
-        ...callParams,
+        maxTokens: 900,
+        temperature: 0.2,
+        topP: 1,
       },
-      request: {
-        model: { modelId: callParams.model },
-        messages: [
-          studioTextMessage('system', [
-            'You propose owner-reviewed RealmPersona core settings only.',
-            'Return one JSON object with admitted draft field names only.',
-            'Allowed fields: displayName, description, greeting, naturalLanguageIntent, publicRole, worldview, personalitySummary, relationshipMode, interestsText, goalsText, contentStyle, formality, responseLength, sentiment, allowedThemesText, disallowedThemesText, targetAudience, positioning, rawRuleTextCandidate, rationale.',
-            'Do not include provider, model, LocalAgent, lifecycle, state, worldId, handle, avatarUrl, profileCoverUrl, dna, personaRule, or personaRules.',
-            'The owner must review the result before any Realm save.',
-          ].join('\n')),
-          studioTextMessage('user', JSON.stringify({
-            personaId: input.personaId,
-            ...(personaContext ? {
-              personaContext: {
-                ownerScope: personaContext.ownerScope ?? 'owner-created',
-                displayName: personaContext.displayName ?? null,
-                handle: personaContext.handle ?? null,
-                worldId: personaContext.worldId ?? null,
-                worldName: personaContext.worldName ?? null,
-              },
-            } : {}),
-            ownerIntent: intent,
-            currentSettings: input.current,
-            currentDraft: normalizedDraft,
-          })),
-        ],
-        parameters: buildStudioTextRequestParameters(
-          callParams,
-          {
-            ...buildStudioRuntimeMetadata('realm-persona-studio.settings-proposal'),
-            domain: 'realm-persona-studio.settings-proposal',
+      systemText: [
+        'You propose owner-reviewed RealmPersona core settings only.',
+        'Return one JSON object with supported draft field names only.',
+        'Allowed fields: displayName, description, greeting, naturalLanguageIntent, publicRole, worldview, personalitySummary, relationshipMode, interestsText, goalsText, contentStyle, formality, responseLength, sentiment, allowedThemesText, disallowedThemesText, targetAudience, positioning, rawRuleTextCandidate, rationale.',
+        'Do not include provider, model, LocalAgent, lifecycle, state, worldId, handle, avatarUrl, profileCoverUrl, dna, personaRule, or personaRules.',
+        'The owner must review the result before any Realm save.',
+      ].join('\n'),
+      userText: JSON.stringify({
+        personaId: input.personaId,
+        ...(personaContext ? {
+          personaContext: {
+            ownerScope: personaContext.ownerScope ?? 'owner-created',
+            displayName: personaContext.displayName ?? null,
+            handle: personaContext.handle ?? null,
+            worldId: personaContext.worldId ?? null,
+            worldName: personaContext.worldName ?? null,
           },
-        ),
-      },
+        } : {}),
+        ownerIntent: intent,
+        currentSettings: input.current,
+        currentDraft: normalizedDraft,
+      }),
     },
   };
 }
@@ -490,7 +470,7 @@ export function normalizeRuntimeOwnerSettingsProposal(
   }
 
   if (changedSettingKeys.length === 0) {
-    throw new Error('Runtime settings proposal returned no admitted setting changes.');
+    throw new Error('Runtime settings proposal returned no supported setting changes.');
   }
 
   return {

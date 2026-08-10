@@ -1,6 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { OwnerPortfolioPersonaDetail, SettingField } from './portfolio-data.js';
-import { resetStudioAIConfigForTest } from './portfolio-client.test-helpers.js';
 import {
   assertNoForbiddenMediaCandidateFields,
   buildReviewedAvatarPackageCandidatePayload,
@@ -60,12 +59,8 @@ function collectKeys(value: unknown, keys = new Set<string>()) {
   return keys;
 }
 
-beforeEach(() => {
-  resetStudioAIConfigForTest();
-});
-
 describe('media and voice candidate normalization', () => {
-  it('validates admitted resource types and binding points', () => {
+  it('validates supported resource types and binding points', () => {
     expect(isAllowedMediaCandidateResourceType('IMAGE')).toBe(true);
     expect(isAllowedMediaCandidateResourceType('VIDEO')).toBe(true);
     expect(isAllowedMediaCandidateResourceType('AUDIO')).toBe(true);
@@ -99,7 +94,7 @@ describe('media and voice candidate normalization', () => {
     });
   });
 
-  it('normalizes avatar package targets to admitted presentation families', () => {
+  it('normalizes avatar package targets to supported presentation families', () => {
     expect(normalizeAvatarPackageTarget('LIVE2D')).toBe('LIVE2D');
     expect(normalizeAvatarPackageTarget('VRM')).toBe('VRM');
     expect(normalizeAvatarPackageTarget('unknown')).toBe('LIVE2D');
@@ -107,7 +102,7 @@ describe('media and voice candidate normalization', () => {
 });
 
 describe('reviewed media and voice candidate payloads', () => {
-  it('builds an allowlisted Runtime image generation candidate', () => {
+  it('builds an allowlisted image generation candidate input preview', () => {
     const result = buildReviewedVisualImageGenerationPayload({
       resourceType: 'IMAGE',
       bindingPoint: 'PERSONA_CANDIDATE',
@@ -121,27 +116,9 @@ describe('reviewed media and voice candidate payloads', () => {
       errors: [],
       payload: {
         surfaceId: 'realm-persona-studio.visual-image-candidate',
-        params: {
-          model: 'auto',
-          aspectRatio: '4:5',
-        },
-        request: {
-          head: {
-            appId: 'nimi.realm-persona-studio',
-            modelId: 'auto',
-          },
-          spec: {
-            spec: {
-              oneofKind: 'imageGenerate',
-              imageGenerate: {
-                prompt: 'warm public portrait\nOwner notes: blue accent\nRealm Persona display name: Mira\nProfile description context: Public strategist bio',
-                n: 1,
-                aspectRatio: '4:5',
-                responseFormat: 'url',
-              },
-            },
-          },
-        },
+        capability: 'image.generate',
+        prompt: 'warm public portrait\nOwner notes: blue accent\nRealm Persona display name: Mira\nProfile description context: Public strategist bio',
+        aspectRatio: '4:5',
       },
     });
     expect(collectKeys(result.payload).has('provider')).toBe(false);
@@ -184,7 +161,7 @@ describe('reviewed media and voice candidate payloads', () => {
     });
   });
 
-  it('builds a Live2D avatar package candidate as a design-sheet request only', () => {
+  it('builds a Live2D avatar package candidate as a design-sheet input only', () => {
     const result = buildReviewedAvatarPackageImageGenerationPayload({
       resourceType: 'IMAGE',
       bindingPoint: 'PERSONA_AVATAR',
@@ -201,24 +178,11 @@ describe('reviewed media and voice candidate payloads', () => {
       errors: [],
       payload: {
         surfaceId: 'realm-persona-studio.avatar-package-candidate',
-        request: {
-          head: {
-            appId: 'nimi.realm-persona-studio',
-            modelId: 'auto',
-          },
-          spec: {
-            spec: {
-              oneofKind: 'imageGenerate',
-              imageGenerate: {
-                prompt: expect.stringContaining('Avatar package target: LIVE2D.'),
-                responseFormat: 'url',
-              },
-            },
-          },
-        },
+        capability: 'image.generate',
+        prompt: expect.stringContaining('Avatar package target: LIVE2D.'),
+        aspectRatio: '1:1',
       },
     });
-    expect(result.payload?.request.spec?.spec.oneofKind).toBe('imageGenerate');
     expect(collectKeys(result.payload).has('provider')).toBe(false);
     expect(collectKeys(result.payload).has('localAgent')).toBe(false);
   });
@@ -289,7 +253,7 @@ describe('reviewed media and voice candidate payloads', () => {
     });
   });
 
-  it('builds an allowlisted speechSynthesize scenario request', () => {
+  it('builds an allowlisted speechSynthesize candidate input preview', () => {
     const result = buildReviewedVoiceSynthesisPayload({
       scriptText: '  Welcome in.  ',
     });
@@ -299,23 +263,8 @@ describe('reviewed media and voice candidate payloads', () => {
       errors: [],
       payload: {
         surfaceId: 'realm-persona-studio.voice-demo-candidate',
-        params: {
-          model: 'auto',
-        },
-        request: {
-          head: {
-            appId: 'nimi.realm-persona-studio',
-            modelId: 'auto',
-          },
-          spec: {
-            spec: {
-              oneofKind: 'speechSynthesize',
-              speechSynthesize: {
-                text: 'Welcome in.',
-              },
-            },
-          },
-        },
+        capability: 'audio.synthesize',
+        text: 'Welcome in.',
       },
     });
     expect(collectKeys(result.payload).has('provider')).toBe(false);
@@ -357,25 +306,10 @@ describe('reviewed media and voice candidate payloads', () => {
         capabilityToken: 'audio.synthesize',
         runtimeScenario: 'speechSynthesize',
         source: 'Runtime ScenarioService.executeScenario audio.synthesize',
-        request: {
+        input: {
           surfaceId: 'realm-persona-studio.voice-demo-candidate',
-          params: {
-            model: 'auto',
-          },
-          request: {
-            head: {
-              appId: 'nimi.realm-persona-studio',
-              modelId: 'auto',
-            },
-            spec: {
-              spec: {
-                oneofKind: 'speechSynthesize',
-                speechSynthesize: {
-                  text: 'Welcome in.',
-                },
-              },
-            },
-          },
+          capability: 'audio.synthesize',
+          text: 'Welcome in.',
         },
         status: 'candidate-ready',
       },
@@ -410,14 +344,14 @@ describe('reviewed media and voice candidate payloads', () => {
     })).toBe('provider');
     expect(assertNoForbiddenMediaCandidateFields({
       runtimePreview: {
-        requestCandidate: {
+        candidateInput: {
           model: 'runtime-tts-model',
         },
       },
     })).toBeNull();
     expect(assertNoForbiddenMediaCandidateFields({
       runtime: {
-        request: {
+        input: {
           params: {
             model: 'runtime-tts-model',
           },
