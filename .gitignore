@@ -24,4 +24,8 @@ src-tauri/gen/schemas/
 # Local-only Claude Code harness preview config (per-developer)
 .claude/
 
+# Local browser and design-QA artifacts
+.playwright-cli/
+output/
+
 docs/superpowers/
