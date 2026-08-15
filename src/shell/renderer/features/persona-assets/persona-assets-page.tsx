@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom';
-import { InlineAlert, StatusBadge, Surface } from '@nimiplatform/kit/ui';
-import { PersonaShell, WorkspaceIntro } from '@renderer/features/persona-detail/persona-shell.js';
+import { InlineAlert, Surface } from '@nimiplatform/kit/ui';
+import { PersonaShell } from '@renderer/features/persona-detail/persona-shell.js';
 import { useRefreshPersonaReads } from '@renderer/features/persona-detail/use-persona-detail-query.js';
 import { MediaVoiceCandidateWorkspace } from '@renderer/features/portfolio/OwnerPortfolio.assets.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
@@ -20,16 +20,12 @@ function PersonaAssetsPageForScope() {
 
   return (
     <PersonaShell personaId={personaId} current="assets">
-      {(persona) => (
-        <>
-          <WorkspaceIntro
-            title={t('persona.assets.title')}
-            badges={<StatusBadge tone="info">{t('common.workspace')}</StatusBadge>}
-            description={t('persona.assets.description')}
-          />
-
-          <MediaVoiceCandidateWorkspace persona={persona} onPersonaWrite={refreshPersonaReads} />
-        </>
+      {(persona, visualData) => (
+        <MediaVoiceCandidateWorkspace
+          persona={persona}
+          onPersonaWrite={refreshPersonaReads}
+          developmentVisualData={visualData}
+        />
       )}
     </PersonaShell>
   );

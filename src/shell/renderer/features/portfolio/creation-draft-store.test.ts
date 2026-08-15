@@ -79,6 +79,32 @@ describe('creation draft protected persistence', () => {
     }));
   });
 
+  it('persists an owner-selected imported image without inventing a generation prompt', async () => {
+    const storage = createStorage();
+    const importedDraft: CreateRealmPersonaDraftInput = {
+      ...draft,
+      referenceImageUrl: 'https://cdn.example.test/imported.png',
+      referenceImageCandidates: [{
+        draftKey,
+        slot: 1,
+        url: 'https://cdn.example.test/imported.png',
+        prompt: '',
+        createdAt: '2026-08-04T12:30:00.000Z',
+        sourceKind: 'imported',
+        reviewState: 'owner-selected',
+      }],
+    };
+
+    expect(await persistCreationDraft(draftKey, importedDraft, storage)).toMatchObject({ ok: true });
+    expect(await loadCreationDraft(draftKey, storage)).toMatchObject({
+      ok: true,
+      record: {
+        referenceImageUrl: 'https://cdn.example.test/imported.png',
+        referenceImageCandidates: [{ sourceKind: 'imported', prompt: '' }],
+      },
+    });
+  });
+
   it('treats a missing document as no draft and rejects malformed source records', async () => {
     const storage = createStorage();
     expect(await loadCreationDraft(draftKey, storage)).toEqual({ ok: true, record: null });

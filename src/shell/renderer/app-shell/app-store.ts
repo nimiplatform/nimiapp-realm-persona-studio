@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { StudioProtectedSessionFailure } from './protected-session-state.js';
 
 export type AuthUser = {
   id: string;
@@ -18,11 +19,13 @@ interface AppState {
   };
   bootstrapReady: boolean;
   bootstrapError: string | null;
+  bootstrapFailure: StudioProtectedSessionFailure | null;
 
   setProtectedSessionBound: () => void;
   clearAuthSession: () => void;
   setBootstrapReady: (ready: boolean) => void;
   setBootstrapError: (error: string | null) => void;
+  setBootstrapFailure: (failure: StudioProtectedSessionFailure | null) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -32,6 +35,7 @@ export const useAppStore = create<AppState>((set) => ({
   },
   bootstrapReady: false,
   bootstrapError: null,
+  bootstrapFailure: null,
 
   setProtectedSessionBound() {
     set({ auth: { status: 'authenticated', user: null } });
@@ -43,4 +47,5 @@ export const useAppStore = create<AppState>((set) => ({
   },
   setBootstrapReady: (ready) => set({ bootstrapReady: ready }),
   setBootstrapError: (error) => set({ bootstrapError: error }),
+  setBootstrapFailure: (failure) => set({ bootstrapFailure: failure }),
 }));

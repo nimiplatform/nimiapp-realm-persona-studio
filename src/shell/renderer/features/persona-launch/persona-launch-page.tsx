@@ -125,7 +125,7 @@ function LaunchBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) {
         description={t('launch.description')}
         actions={
           <>
-            <Button tone="primary" className="text-white" onClick={() => navigate(nextStep.path)}>
+            <Button tone="primary" onClick={() => navigate(nextStep.path)}>
               {t(nextStep.actionKey)}
             </Button>
             <Button tone="ghost" onClick={() => navigate(`/portfolio/${persona.id}`)}>
@@ -138,7 +138,7 @@ function LaunchBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) {
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="grid gap-3">
           {steps.map((step, index) => (
-            <Surface key={step.key} tone="panel" material="glass-regular" padding="lg" className="ras-radius-xl">
+            <Surface key={step.key} tone="card" padding="lg" className="ras-radius-xl">
               <div className="flex min-w-0 items-start gap-4">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--nimi-radius-field)] bg-[var(--nimi-surface-card)] text-[var(--nimi-text-secondary)]">
                   {step.status === 'ready' ? <CheckCircle2 size={20} strokeWidth={1.9} /> : <step.Icon size={20} strokeWidth={1.9} />}
@@ -157,7 +157,6 @@ function LaunchBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) {
                 </div>
                 <Button
                   tone={step.status === 'next' ? 'primary' : 'secondary'}
-                  className={step.status === 'next' ? 'text-white' : undefined}
                   onClick={() => navigate(step.path)}
                 >
                   {t(step.actionKey)}
@@ -187,14 +186,14 @@ export function PersonaLaunchPage() {
 
   if (!personaId) {
     return (
-      <Surface tone="panel" material="glass-regular" padding="lg">
+      <Surface tone="card" padding="lg">
         <InlineAlert tone="danger">{t('common.personaIdMissing')}</InlineAlert>
       </Surface>
     );
   }
 
   return (
-    <PersonaShell personaId={personaId} current="detail">
+    <PersonaShell personaId={personaId} current="launch">
       {(persona) => <LaunchBody persona={persona} />}
     </PersonaShell>
   );

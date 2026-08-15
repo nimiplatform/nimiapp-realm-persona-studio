@@ -1,5 +1,21 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Button, Checkbox, EmptyState, FieldShell, InlineAlert, nimiToast, SelectField, StatusBadge, Surface, TextareaField, TextField } from '@nimiplatform/kit/ui';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import {
+  ArrowUp,
+  AudioLines,
+  Check,
+  ChevronRight,
+  Clock3,
+  Image as ImageIcon,
+  ImagePlus,
+  Images,
+  RefreshCw,
+  SlidersHorizontal,
+  Sparkles,
+  Upload,
+  WandSparkles,
+  X,
+} from 'lucide-react';
+import { Button, Checkbox, EmptyState, FieldShell, IconButton, InlineAlert, nimiToast, OverlayShell, SelectField, StatusBadge, Surface, TextareaField, TextField } from '@nimiplatform/kit/ui';
 import type { OwnerPortfolioPersonaDetail } from './portfolio-data.js';
 import {
   generateReviewedAvatarPackageCandidate,
@@ -33,6 +49,7 @@ import {
 } from './media-voice-candidate.js';
 import {
   appendLocalCreativeAssetHistory,
+  CREATIVE_ASSET_HISTORY_UPDATED_EVENT,
   loadLocalCreativeAssetHistory,
   type CreativeAssetHistoryInput,
   type CreativeAssetHistoryKind,
@@ -47,6 +64,13 @@ import { CandidateFactGrid, TechnicalReviewDetails } from './OwnerPortfolio.shar
 import { useStudioI18n } from '../../i18n/use-studio-i18n.js';
 import type { StudioCopyKey } from '../../i18n/studio-copy.js';
 import type { StudioTranslateOptions } from '../../i18n/studio-i18n.js';
+import type { PersonaWorkspaceVisualData } from '../persona-detail/persona-workspace-visual-data.js';
+import {
+  formatVoiceDuration,
+  formatVoiceFileSize,
+  formatVoiceMimeType,
+  resolvePersonaVoiceSummary,
+} from './persona-voice-summary.js';
 
 export function createVisualMediaCandidateInput(): VisualMediaCandidateInput {
   return {
@@ -172,7 +196,609 @@ function translateIdentityPackSourceFields(fields: string[], t: StudioTranslator
     .join(', ');
 }
 
-export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { persona: OwnerPortfolioPersonaDetail; onPersonaWrite: () => Promise<void> }) {
+function activityIcon(kind: CreativeAssetHistoryKind) {
+  if (kind === 'voice-demo-candidate') return <AudioLines size={16} strokeWidth={1.8} />;
+  if (kind === 'identity-resource-upload') return <Upload size={16} strokeWidth={1.8} />;
+  if (kind === 'avatar-package-candidate') return <WandSparkles size={16} strokeWidth={1.8} />;
+  return <ImageIcon size={16} strokeWidth={1.8} />;
+}
+
+function formatActivityDate(value: string, locale: 'en' | 'zh'): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat(locale === 'zh' ? 'zh-CN' : 'en', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
+
+export function MediaVoiceCandidateWorkspace({
+  persona,
+  onPersonaWrite,
+  developmentVisualData,
+}: {
+  persona: OwnerPortfolioPersonaDetail;
+  onPersonaWrite: () => Promise<void>;
+  developmentVisualData?: PersonaWorkspaceVisualData;
+}) {
+  const { locale, t } = useStudioI18n();
+  const [visualEditorOpen, setVisualEditorOpen] = useState(false);
+  const [voiceEditorOpen, setVoiceEditorOpen] = useState(false);
+  const [creativeHistory, setCreativeHistory] = useState<CreativeAssetHistoryRecord[]>([]);
+  const [creativeHistoryUnavailable, setCreativeHistoryUnavailable] = useState(false);
+  const voiceSummary = useMemo(
+    () => resolvePersonaVoiceSummary(persona, developmentVisualData),
+    [developmentVisualData, persona],
+  );
+  const voiceFileMeta = voiceSummary.kind === 'development-selected'
+    ? [
+      formatVoiceMimeType(voiceSummary.mimeType),
+      formatVoiceDuration(voiceSummary.durationSeconds),
+      formatVoiceFileSize(voiceSummary.fileSizeBytes),
+    ].filter((value): value is string => Boolean(value)).join(' · ')
+    : '';
+  const voiceStatusKey = voiceSummary.kind === 'development-selected'
+    ? 'assets.overview.voice.selected'
+    : voiceSummary.kind === 'source-configured'
+      ? 'assets.overview.configured'
+      : 'assets.overview.notConfigured';
+
+  const refreshCreativeHistory = useCallback(async () => {
+    const result = await loadLocalCreativeAssetHistory(persona.id);
+    setCreativeHistory(result.records);
+    setCreativeHistoryUnavailable(!result.ok || result.unavailableCount > 0);
+  }, [persona.id]);
+
+  useEffect(() => {
+    void refreshCreativeHistory();
+    const handleHistoryUpdate = () => void refreshCreativeHistory();
+    window.addEventListener(CREATIVE_ASSET_HISTORY_UPDATED_EVENT, handleHistoryUpdate);
+    return () => window.removeEventListener(CREATIVE_ASSET_HISTORY_UPDATED_EVENT, handleHistoryUpdate);
+  }, [refreshCreativeHistory]);
+
+  return (
+    <>
+      <section className="ras-asset-overview" data-testid="persona-asset-overview">
+        <div className="ras-asset-overview__cards">
+          <article className="ras-asset-summary-card ras-asset-summary-card--visual">
+            <div className="ras-asset-summary-card__header">
+              <div>
+                <div className="ras-asset-summary-card__title-row">
+                  <h2>{t('assets.overview.visual.title')}</h2>
+                  <StatusBadge tone={persona.avatarUrl ? 'success' : 'warning'}>
+                    {t(persona.avatarUrl ? 'assets.overview.currentlyUsed' : 'assets.overview.notConfigured')}
+                  </StatusBadge>
+                </div>
+                <p>{t('assets.overview.visual.description')}</p>
+              </div>
+            </div>
+
+            <div className="ras-asset-summary-card__visual-preview">
+              {persona.avatarUrl ? (
+                <img
+                  src={persona.avatarUrl}
+                  alt={t('assets.overview.visual.alt', { name: persona.displayName.value })}
+                />
+              ) : (
+                <EmptyState
+                  icon={<ImageIcon size={24} strokeWidth={1.7} />}
+                  title={t('assets.overview.visual.emptyTitle')}
+                  description={t('assets.overview.visual.emptyDescription')}
+                />
+              )}
+            </div>
+
+            <div className="ras-asset-summary-card__actions">
+              <Button
+                tone="secondary"
+                size="sm"
+                className="w-full"
+                leadingIcon={persona.avatarUrl
+                  ? <RefreshCw size={16} strokeWidth={1.8} />
+                  : <ImagePlus size={16} strokeWidth={1.8} />}
+                onClick={() => setVisualEditorOpen(true)}
+              >
+                {t(persona.avatarUrl ? 'assets.overview.changeVisual' : 'assets.overview.createVisual')}
+              </Button>
+              <Button
+                tone="ghost"
+                size="sm"
+                trailingIcon={<ChevronRight size={15} strokeWidth={1.8} />}
+                onClick={() => setVisualEditorOpen(true)}
+              >
+                {t('assets.overview.openEditor')}
+              </Button>
+            </div>
+          </article>
+
+          <article className="ras-asset-summary-card ras-asset-summary-card--voice">
+            <div className="ras-asset-summary-card__header">
+              <div>
+                <div className="ras-asset-summary-card__title-row">
+                  <h2>{t('assets.overview.voice.title')}</h2>
+                  <StatusBadge tone={voiceSummary.kind === 'source-configured' ? 'success' : voiceSummary.kind === 'development-selected' ? 'info' : 'warning'}>
+                    {t(voiceStatusKey)}
+                  </StatusBadge>
+                </div>
+                <p>{t('assets.overview.voice.description')}</p>
+              </div>
+            </div>
+
+            {voiceSummary.kind === 'development-selected' ? (
+              <div className="ras-voice-summary" data-testid="selected-voice-summary" data-development-fixture="true">
+                <div className="ras-voice-summary__file">
+                  <span className="ras-voice-summary__file-icon" aria-hidden="true">
+                    <AudioLines size={25} strokeWidth={1.8} />
+                  </span>
+                  <div className="ras-voice-summary__file-copy">
+                    <h3 title={voiceSummary.fileName}>{voiceSummary.fileName}</h3>
+                    <p>{voiceFileMeta || t('common.sourceUnavailable')}</p>
+                  </div>
+                  <StatusBadge tone="warning">{t('assets.overview.voice.localCandidate')}</StatusBadge>
+                </div>
+
+                {voiceSummary.previewUrl ? (
+                  <audio
+                    className="ras-voice-summary__player"
+                    src={voiceSummary.previewUrl}
+                    controls
+                    preload="auto"
+                    aria-label={t('assets.overview.voice.playbackAriaLabel', { fileName: voiceSummary.fileName })}
+                  />
+                ) : (
+                  <InlineAlert tone="warning">{t('assets.overview.voice.previewUnavailable')}</InlineAlert>
+                )}
+
+                <dl className="ras-voice-summary__facts">
+                  <div>
+                    <dt>{t('assets.overview.voice.style')}</dt>
+                    <dd>{voiceSummary.voiceStyle || t('common.sourceUnavailable')}</dd>
+                  </div>
+                  <div>
+                    <dt>{t('assets.overview.voice.source')}</dt>
+                    <dd>{t(voiceSummary.sourceKind === 'generated'
+                      ? 'assets.overview.voice.sourceGenerated'
+                      : 'assets.overview.voice.sourceImported')}</dd>
+                  </div>
+                  <div>
+                    <dt>{t('assets.overview.voice.selectedAt')}</dt>
+                    <dd>{voiceSummary.selectedAt
+                      ? formatActivityDate(voiceSummary.selectedAt, locale)
+                      : t('common.sourceUnavailable')}</dd>
+                  </div>
+                  <div>
+                    <dt>{t('assets.overview.voice.publicState')}</dt>
+                    <dd>{t('assets.overview.voice.notPublished')}</dd>
+                  </div>
+                </dl>
+
+                <div className="ras-voice-summary__fixture-note">
+                  <StatusBadge tone="neutral">{t('assets.overview.voice.developmentPreview')}</StatusBadge>
+                  <span>{t('assets.overview.voice.developmentPreviewDescription')}</span>
+                </div>
+              </div>
+            ) : voiceSummary.kind === 'source-configured' ? (
+              <div className="ras-voice-summary ras-voice-summary--source" data-testid="source-voice-summary">
+                <div className="ras-voice-summary__file">
+                  <span className="ras-voice-summary__file-icon" aria-hidden="true">
+                    <AudioLines size={25} strokeWidth={1.8} />
+                  </span>
+                  <div className="ras-voice-summary__file-copy">
+                    <h3>{t('assets.overview.voice.currentVoice')}</h3>
+                    <p>{voiceSummary.voiceId}</p>
+                  </div>
+                  <StatusBadge tone="success">{t('assets.overview.currentlyUsed')}</StatusBadge>
+                </div>
+                <InlineAlert tone="warning">{t('assets.overview.voice.sourcePreviewUnavailable')}</InlineAlert>
+                <dl className="ras-voice-summary__facts">
+                  <div>
+                    <dt>{t('assets.overview.voice.style')}</dt>
+                    <dd>{voiceSummary.voiceStyle || t('common.sourceUnavailable')}</dd>
+                  </div>
+                  <div>
+                    <dt>{t('assets.overview.voice.source')}</dt>
+                    <dd>{t('assets.overview.realmSource')}</dd>
+                  </div>
+                </dl>
+              </div>
+            ) : (
+              <div className="ras-asset-summary-card__voice-empty">
+                <span className="ras-asset-summary-card__voice-icon" aria-hidden="true">
+                  <AudioLines size={32} strokeWidth={1.8} />
+                </span>
+                <div className="ras-asset-summary-card__voice-copy">
+                  <h3>{t('assets.overview.voice.emptyTitle')}</h3>
+                  <p>{t('assets.overview.voice.emptyDescription')}</p>
+                </div>
+              </div>
+            )}
+
+            <div className="ras-asset-summary-card__actions ras-asset-summary-card__actions--voice">
+              <Button
+                tone="primary"
+                size="sm"
+                className="w-full"
+                leadingIcon={<AudioLines size={16} strokeWidth={1.8} />}
+                onClick={() => setVoiceEditorOpen(true)}
+              >
+                {t(voiceSummary.kind === 'development-selected'
+                  ? 'assets.overview.replaceVoice'
+                  : voiceSummary.kind === 'source-configured'
+                    ? 'assets.overview.editVoice'
+                    : 'assets.overview.createVoice')}
+              </Button>
+              <Button
+                tone="ghost"
+                size="sm"
+                trailingIcon={<ChevronRight size={15} strokeWidth={1.8} />}
+                onClick={() => setVoiceEditorOpen(true)}
+              >
+                {t('assets.overview.openEditor')}
+              </Button>
+            </div>
+          </article>
+        </div>
+
+        <section className="ras-asset-activity" aria-labelledby="persona-asset-activity-title">
+          <h2 id="persona-asset-activity-title">
+            <Clock3 size={17} strokeWidth={1.8} aria-hidden="true" />
+            {t('assets.overview.activity.title')}
+          </h2>
+          {creativeHistoryUnavailable ? (
+            <InlineAlert tone="warning">{t('assets.history.unavailable')}</InlineAlert>
+          ) : creativeHistory.length === 0 ? (
+            <EmptyState
+              title={t('assets.overview.activity.emptyTitle')}
+              description={t('assets.overview.activity.emptyDescription')}
+            />
+          ) : (
+            <ul className="ras-asset-activity__list">
+              {creativeHistory.slice(0, 3).map((record) => (
+                <li key={record.id}>
+                  <span className="ras-asset-activity__icon" data-kind={record.kind} aria-hidden="true">
+                    {activityIcon(record.kind)}
+                  </span>
+                  <span className="ras-asset-activity__label">{t(CREATIVE_HISTORY_LABEL_KEYS[record.kind])}</span>
+                  <time dateTime={record.createdAt}>{formatActivityDate(record.createdAt, locale)}</time>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </section>
+
+      <OverlayShell
+        open={visualEditorOpen}
+        size="M"
+        panelStyle={{ width: '650px' }}
+        onClose={() => setVisualEditorOpen(false)}
+        title={(
+          <div className="ras-visual-change__title-row">
+            <span>{t('assets.visualChange.title')}</span>
+            <IconButton
+              tone="ghost"
+              size="sm"
+              className="ras-visual-change__close"
+              aria-label={t('common.close')}
+              onClick={() => setVisualEditorOpen(false)}
+              icon={<X size={18} strokeWidth={1.8} aria-hidden="true" />}
+            />
+          </div>
+        )}
+        description={<span className="ras-visual-change__description">{t('assets.visualChange.description')}</span>}
+        panelClassName="ras-visual-change-dialog"
+        contentClassName="ras-visual-change-dialog__content"
+        footer={(
+          <div className="flex justify-end">
+            <Button tone="secondary" onClick={() => setVisualEditorOpen(false)}>{t('common.cancel')}</Button>
+          </div>
+        )}
+        dataTestId="persona-visual-identity-dialog"
+      >
+        <VisualIdentityChangeEditor
+          persona={persona}
+          creativeHistory={creativeHistory}
+          onHistoryUpdated={refreshCreativeHistory}
+        />
+      </OverlayShell>
+
+      <OverlayShell
+        open={voiceEditorOpen}
+        size="XL"
+        onClose={() => setVoiceEditorOpen(false)}
+        title={t('assets.overview.modal.title')}
+        description={t('assets.overview.modal.description')}
+        panelClassName="flex max-h-[calc(100vh-32px)] flex-col overflow-hidden"
+        contentClassName="min-h-0 flex-1 overflow-y-auto"
+        footer={(
+          <div className="flex justify-end">
+            <Button tone="secondary" onClick={() => setVoiceEditorOpen(false)}>{t('common.close')}</Button>
+          </div>
+        )}
+        dataTestId="persona-voice-editor-dialog"
+      >
+        <MediaVoiceCandidateEditor persona={persona} onPersonaWrite={onPersonaWrite} />
+      </OverlayShell>
+    </>
+  );
+}
+
+type VisualIdentityMode = 'upload' | 'assets' | 'ai';
+
+type ExistingVisualAsset = {
+  id: string;
+  label: string;
+  previewUrl: string;
+};
+
+function VisualIdentityChangeEditor({
+  persona,
+  creativeHistory,
+  onHistoryUpdated,
+}: {
+  persona: OwnerPortfolioPersonaDetail;
+  creativeHistory: CreativeAssetHistoryRecord[];
+  onHistoryUpdated: () => Promise<void>;
+}) {
+  const { t } = useStudioI18n();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [mode, setMode] = useState<VisualIdentityMode | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [uploadedPreviewUrl, setUploadedPreviewUrl] = useState<string | null>(null);
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
+  const [prompt, setPrompt] = useState('');
+  const [generationResult, setGenerationResult] = useState<RuntimeVisualImageGenerationResult | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const existingAssets = useMemo<ExistingVisualAsset[]>(() => {
+    const assets: ExistingVisualAsset[] = [];
+    const seenUrls = new Set<string>();
+    if (persona.avatarUrl) {
+      seenUrls.add(persona.avatarUrl);
+      assets.push({
+        id: 'current-visual-identity',
+        label: t('assets.visualChange.currentAsset'),
+        previewUrl: persona.avatarUrl,
+      });
+    }
+    for (const record of creativeHistory) {
+      if (
+        record.kind === 'voice-demo-candidate'
+        || record.reviewState !== 'owner-reviewed'
+        || !record.previewUrl
+        || seenUrls.has(record.previewUrl)
+      ) continue;
+      seenUrls.add(record.previewUrl);
+      assets.push({ id: record.id, label: t(CREATIVE_HISTORY_LABEL_KEYS[record.kind]), previewUrl: record.previewUrl });
+    }
+    return assets;
+  }, [creativeHistory, persona.avatarUrl, t]);
+
+  useEffect(() => () => {
+    if (uploadedPreviewUrl) URL.revokeObjectURL(uploadedPreviewUrl);
+  }, [uploadedPreviewUrl]);
+
+  function selectMode(nextMode: VisualIdentityMode) {
+    setMode(nextMode);
+    if (nextMode === 'upload') {
+      window.setTimeout(() => fileInputRef.current?.click(), 0);
+    }
+  }
+
+  function handleUploadChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0] ?? null;
+    event.currentTarget.value = '';
+    if (!file) return;
+    if (!file.type.toLowerCase().startsWith('image/')) {
+      nimiToast.danger(t('assets.visualChange.uploadInvalid'));
+      return;
+    }
+    const nextPreviewUrl = URL.createObjectURL(file);
+    setUploadedPreviewUrl((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return nextPreviewUrl;
+    });
+    setUploadedFile(file);
+    setSelectedAssetId(null);
+    setGenerationResult(null);
+  }
+
+  async function generateImageCandidate() {
+    const normalizedPrompt = prompt.trim();
+    if (!normalizedPrompt || isGenerating) return;
+    setIsGenerating(true);
+    setGenerationResult(null);
+    try {
+      const result = await generateReviewedVisualImageCandidate({
+        ...createVisualImageGenerationDraft(),
+        prompt: normalizedPrompt,
+      }, persona);
+      setGenerationResult(result);
+      if (result.ok) {
+        const previewUrl = result.runtime.previewUrls[0];
+        await appendLocalCreativeAssetHistory(persona.id, {
+          sourceContentHash: persona.contentHash,
+          kind: 'runtime-image-candidate',
+          sourceKind: 'generated',
+          reviewState: 'candidate-only',
+          label: 'Runtime image candidate',
+          source: result.source,
+          ...(previewUrl ? { previewUrl } : {}),
+          detail: previewUrl || result.runtime.artifactUris[0] || result.runtime.artifactIds[0] || result.runtime.jobId || 'image artifact generated',
+          artifactIds: result.runtime.artifactIds,
+          ...(result.runtime.traceId ? { traceId: result.runtime.traceId } : {}),
+        });
+        await onHistoryUpdated();
+        nimiToast.success(t('assets.imageGenerated'));
+      } else if (result.failure === 'runtime-media-candidate-unavailable') {
+        nimiToast.info(translateFixedAssetMessage(result.message, t));
+      } else {
+        nimiToast.danger(translateFixedAssetMessage(result.message, t));
+      }
+    } finally {
+      setIsGenerating(false);
+    }
+  }
+
+  const generatedPreviewUrl = generationResult?.ok ? generationResult.runtime.previewUrls[0] || null : null;
+
+  return (
+    <div className="ras-visual-change">
+      <input
+        ref={fileInputRef}
+        className="ras-visual-change__file-input"
+        type="file"
+        accept="image/*"
+        aria-label={t('assets.visualChange.uploadAriaLabel')}
+        onChange={handleUploadChange}
+      />
+
+      <div className="ras-visual-change__methods" role="group" aria-label={t('assets.visualChange.methodsAriaLabel')}>
+        <VisualIdentityMethodButton
+          active={mode === 'upload'}
+          icon={<Upload size={32} strokeWidth={1.7} />}
+          title={t('assets.visualChange.upload')}
+          description={t('assets.visualChange.uploadDescription')}
+          onClick={() => selectMode('upload')}
+        />
+        <VisualIdentityMethodButton
+          active={mode === 'assets'}
+          icon={<Images size={32} strokeWidth={1.7} />}
+          title={t('assets.visualChange.assets')}
+          description={t('assets.visualChange.assetsDescription')}
+          onClick={() => selectMode('assets')}
+        />
+        <VisualIdentityMethodButton
+          active={mode === 'ai'}
+          icon={<Sparkles size={34} strokeWidth={1.7} />}
+          title={t('assets.visualChange.ai')}
+          description={t('assets.visualChange.aiDescription')}
+          onClick={() => selectMode('ai')}
+        />
+      </div>
+
+      {mode === 'upload' && uploadedPreviewUrl && uploadedFile ? (
+        <div className="ras-visual-change__selection" data-testid="visual-upload-selection">
+          <img src={uploadedPreviewUrl} alt="" />
+          <div>
+            <strong>{uploadedFile.name}</strong>
+            <span>{t('assets.visualChange.localCandidate')}</span>
+          </div>
+          <StatusBadge tone="info">{t('common.candidate')}</StatusBadge>
+        </div>
+      ) : null}
+
+      {mode === 'assets' ? (
+        <div className="ras-visual-change__assets" data-testid="visual-existing-assets">
+          {existingAssets.length > 0 ? existingAssets.map((asset) => {
+            const selected = selectedAssetId === asset.id;
+            return (
+              <button
+                key={asset.id}
+                type="button"
+                className="ras-visual-change__asset"
+                data-selected={selected}
+                aria-pressed={selected}
+                onClick={() => setSelectedAssetId(asset.id)}
+              >
+                <img src={asset.previewUrl} alt={asset.label} />
+                <span>{asset.label}</span>
+                {selected ? <i aria-hidden="true"><Check size={14} strokeWidth={2.2} /></i> : null}
+              </button>
+            );
+          }) : (
+            <EmptyState
+              icon={<ImageIcon size={22} strokeWidth={1.7} />}
+              title={t('assets.visualChange.assetsEmptyTitle')}
+              description={t('assets.visualChange.assetsEmptyDescription')}
+            />
+          )}
+        </div>
+      ) : null}
+
+      {mode === 'ai' ? (
+        <div className="ras-visual-change__ai" data-testid="visual-ai-composer">
+          <label htmlFor="visual-identity-prompt">{t('assets.visualChange.promptLabel')}</label>
+          <div className="ras-visual-change__composer">
+            <textarea
+              id="visual-identity-prompt"
+              rows={2}
+              maxLength={2000}
+              value={prompt}
+              placeholder={t('assets.visualChange.promptPlaceholder')}
+              onChange={(event) => {
+                setPrompt(event.currentTarget.value);
+                setGenerationResult(null);
+              }}
+            />
+            <div className="ras-visual-change__composer-actions">
+              <span className="ras-visual-change__intent-chip">
+                <SlidersHorizontal size={15} strokeWidth={1.8} aria-hidden="true" />
+                {t('assets.visualChange.imageGenerate')}
+              </span>
+              <IconButton
+                type="button"
+                className="ras-visual-change__generate"
+                tone="primary"
+                size="sm"
+                aria-label={t('assets.visualChange.generate')}
+                disabled={!prompt.trim() || isGenerating}
+                aria-busy={isGenerating || undefined}
+                onClick={() => void generateImageCandidate()}
+                icon={isGenerating
+                  ? <RefreshCw size={15} strokeWidth={2} className="ras-visual-change__spin" aria-hidden="true" />
+                  : <ArrowUp size={16} strokeWidth={2} aria-hidden="true" />}
+              />
+            </div>
+          </div>
+          {generationResult && !generationResult.ok ? (
+            <InlineAlert tone="danger">
+              {translateFixedAssetMessage(generationResult.message, t)}
+            </InlineAlert>
+          ) : null}
+          {generatedPreviewUrl ? (
+            <div className="ras-visual-change__generated">
+              <img src={generatedPreviewUrl} alt={t('assets.generatedVisualAlt')} />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function VisualIdentityMethodButton({
+  active,
+  icon,
+  title,
+  description,
+  onClick,
+}: {
+  active: boolean;
+  icon: ReactNode;
+  title: string;
+  description: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="ras-visual-change__method"
+      data-active={active}
+      aria-pressed={active}
+      onClick={onClick}
+    >
+      {active ? <span className="ras-visual-change__method-check" aria-hidden="true"><Check size={13} strokeWidth={2.4} /></span> : null}
+      <span className="ras-visual-change__method-icon" aria-hidden="true">{icon}</span>
+      <strong>{title}</strong>
+      <span>{description}</span>
+    </button>
+  );
+}
+
+function MediaVoiceCandidateEditor({ persona, onPersonaWrite }: { persona: OwnerPortfolioPersonaDetail; onPersonaWrite: () => Promise<void> }) {
   const { t } = useStudioI18n();
   const [identityPack, setIdentityPack] = useState<IdentityPackBuildResult | null>(null);
   const [visualImageDraft, setVisualImageDraft] = useState(() => createVisualImageGenerationDraft());
@@ -462,7 +1088,7 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
   }
 
   return (
-    <Surface tone="panel" padding="lg" className="mt-5">
+    <Surface tone="panel" padding="lg" className="ras-asset-editor">
       <div className="grid gap-4">
         <Surface tone="card" padding="md">
           <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
@@ -578,7 +1204,7 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
                   </div>
                 </div>
               </div>
-              <InlineAlert tone="info" className="mt-3">
+              <InlineAlert tone="warning" className="mt-3">
                 {t('assets.avatarUrl.unavailable')}
               </InlineAlert>
               {avatarResult ? (
@@ -687,7 +1313,7 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
                 </div>
               ) : null}
               {visualImageResult && !visualImageResult.ok ? (
-                <InlineAlert tone="info" className="mt-3">
+                <InlineAlert tone="danger" className="mt-3">
                   {translateFixedAssetMessage(visualImageResult.message, t)}
                 </InlineAlert>
               ) : null}
@@ -785,7 +1411,7 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
                 </div>
               ) : null}
               {avatarPackageResult && !avatarPackageResult.ok ? (
-                <InlineAlert tone="info" className="mt-3">
+                <InlineAlert tone="danger" className="mt-3">
                   {translateFixedAssetMessage(avatarPackageResult.message, t)}
                 </InlineAlert>
               ) : null}
@@ -840,7 +1466,7 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
                   {t('assets.uploadIdentity.button')}
                 </Button>
               </div>
-              <InlineAlert tone="info" className="mt-3">
+              <InlineAlert tone="warning" className="mt-3">
                 {t('assets.publicationUnavailable')}
               </InlineAlert>
               {identityUploadResult ? (
@@ -861,7 +1487,7 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
                 </div>
                 <StatusBadge tone="warning">{t('common.localOnly')}</StatusBadge>
               </div>
-              <InlineAlert tone="info" className="mt-3">
+              <InlineAlert tone="warning" className="mt-3">
                 {t('assets.publicPublishingDisabled.alert')}
               </InlineAlert>
             </Surface>
@@ -939,7 +1565,7 @@ export function MediaVoiceCandidateWorkspace({ persona, onPersonaWrite }: { pers
               </div>
             ) : null}
             {voiceResult && !voiceResult.ok ? (
-              <InlineAlert tone="info">
+              <InlineAlert tone="danger">
                 {translateFixedAssetMessage(voiceResult.message, t)}
               </InlineAlert>
             ) : null}

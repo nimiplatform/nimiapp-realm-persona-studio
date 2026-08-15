@@ -14,6 +14,13 @@ const retiredHandleCandidate = ['createRealm', 'Ag', 'ent', 'HandleCandidate'].j
 const retiredTraitLimitName = ['PERSONA_TRAIT_MAX', 'RECOMMENDED'].join('_');
 
 describe('Create Realm Persona workspace v2 shell', () => {
+  it('uses the shared route-level page container in every creation state', () => {
+    const source = workspaceSource();
+
+    expect(source.match(/className="ras-page ras-create-page"/g)).toHaveLength(3);
+    expect(source).not.toContain('max-w-[920px]');
+  });
+
   it('keeps the two-stage describe/review flow and local draft entry', () => {
     const source = workspaceSource();
 
@@ -21,8 +28,10 @@ describe('Create Realm Persona workspace v2 shell', () => {
     expect(source).toContain("const [stage, setStage] = useState<CreateStage>('describe')");
     expect(source).toContain("setStage('review')");
     expect(source).toContain("setStage('describe')");
-    expect(source).toContain("create.describe.heading");
-    expect(source).toContain("create.review.title");
+    expect(source).toContain("create.oneLineLabel");
+    expect(source).toContain("create.review.basicInfo");
+    expect(source).not.toContain("t('create.review.title')");
+    expect(source).not.toContain("t('create.review.description')");
     expect(source).toContain('createCreationDraftKey');
     expect(source).toContain('loadCreationDraft');
     expect(source).not.toContain("type CreateStage = 'seed' | 'edit'");
@@ -40,9 +49,17 @@ describe('Create Realm Persona workspace v2 shell', () => {
     expect(source).toContain('create.supplement.visual');
   });
 
-  it('keeps the describe screen focused on the primary creation card', () => {
+  it('keeps the describe screen focused on the primary creation actions without a card background', () => {
     const source = workspaceSource();
 
+    expect(source).toContain('<div className="grid gap-6">');
+    expect(source).toContain("t('create.supplement.hint')");
+    expect(source).toContain("t('create.aiButton.helper')");
+    expect(source).not.toContain("t('create.estimatedTime')");
+    expect(source).not.toContain("t('create.describe.heading')");
+    expect(source).not.toContain("t('create.describe.hint')");
+    expect(source).not.toContain("t('create.describe.helper')");
+    expect(source).not.toContain("t('create.describe.badge')");
     expect(source).not.toContain('create.boundaryLabel');
     expect(source).not.toContain('create.boundaryDescription');
     expect(source).not.toContain('create.generateFromDescription');
@@ -74,29 +91,70 @@ describe('Create Realm Persona workspace v2 shell', () => {
     expect(sidebar).not.toContain('CREATION_DRAFT_HISTORY_UPDATED_EVENT');
   });
 
-  it('keeps reviewed fields editable and accepts the current graph on explicit create', () => {
+  it('keeps reviewed fields editable and validates them on explicit create', () => {
     const source = workspaceSource();
 
     expect(source).toContain('onChange={(event) => updateDraft({ displayName: event.currentTarget.value })}');
     expect(source).toContain('onChange={(event) => updateDraft({ handle: event.currentTarget.value })}');
-    expect(source).toContain('validatePersonaCreationGraphForRealmCreate(creationGraph, graphAcceptedFingerprint)');
+    expect(source).toContain('const readiness = validateCreateRealmPersonaReadiness(draft, { selectableWorldIds, handleAvailability })');
     expect(source).toContain('const acceptedFingerprint = acceptPersonaCreationGraphForRealmCreate(creationGraph)');
     expect(source).toContain('validatePersonaCreationGraphForRealmCreate(creationGraph, acceptedFingerprint)');
     expect(source).toContain('setGraphAcceptedFingerprint(acceptedFingerprint)');
     expect(source).toContain('const createDisabled = createMutation.isPending');
     expect(source).toContain('!readiness.ready');
-    expect(source).toContain('!creationGraphReview.canAccept');
-    expect(source).toContain('handleCheckBlocking');
+    expect(source).not.toContain('!creationGraphReview.canAccept');
+    expect(source).not.toContain('handleCheckBlocking');
   });
 
-  it('uses a required marker instead of helper copy for the basic identity fields', () => {
+  it('moves submit validation to the affected field with inline danger feedback', () => {
+    const source = workspaceSource();
+
+    expect(source).toContain('createFieldErrorsFromReadiness(readiness.errors)');
+    expect(source).toContain('firstInvalidCreateField(nextFieldErrors)');
+    expect(source).toContain('focusCreateField(firstInvalidField)');
+    expect(source).toContain('scrollIntoView?.({ behavior: \'smooth\', block: \'center\' })');
+    expect(source).toContain("tone={displayNameError ? 'danger' : 'default'}");
+    expect(source).toContain("tone={handleError ? 'danger' : 'default'}");
+    expect(source).toContain("tone={conceptError ? 'danger' : 'default'}");
+    expect(source).toContain('data-create-field="personaArchetype"');
+    expect(source).toContain('data-create-field="personaTraits"');
+    expect(source).toContain('data-create-field="selectedWorldId"');
+    expect(source).not.toContain("t('create.validationFailed'");
+    expect(source).not.toContain("t('create.source.ownerLocal')");
+    expect(source).not.toContain("t('create.worldDefault'");
+  });
+
+  it('renders the review form without a right-column card background', () => {
+    const source = workspaceSource();
+
+    expect(source).toContain('<div className="grid min-w-0 gap-6 p-6">');
+    expect(source).not.toContain('<Surface tone="card" padding="lg" className="grid min-w-0 gap-6 rounded-[var(--nimi-radius-xl)]">');
+  });
+
+  it('removes the middle column and places the compact Persona image card below basic information', () => {
+    const source = workspaceSource();
+    const styles = stylesSource();
+
+    expect(source).not.toContain('xl:grid-cols-[380px_minmax(0,1fr)]');
+    expect(source).toMatch(/create\.review\.basicInfo[\s\S]*ras-create-reference-card[\s\S]*md:grid-cols-2/);
+    expect(source).toContain('setReferenceImageEditorOpen((open) => !open)');
+    expect(source).toContain('aria-expanded={referenceImageEditorOpen}');
+    expect(styles).toContain('width: min(100%, 430px);');
+    expect(styles).toContain('justify-self: center;');
+    expect(styles).toContain('aspect-ratio: 382 / 324;');
+  });
+
+  it('shows inline danger feedback without a required asterisk and restores normal focus color on focus', () => {
     const source = workspaceSource();
 
     expect(source).not.toContain("t('create.displayNameMessage')");
     expect(source).not.toContain("t('create.handleMessage')");
     expect(source).not.toContain("t('create.personaArchetypeMessage')");
-    expect(source).toContain('text-[var(--nimi-status-danger)]');
-    expect(source).toContain('aria-hidden="true">*</span>');
+    expect(source).not.toContain('aria-hidden="true">*</span>');
+    expect(source).toContain('focus-within:!border-[var(--nimi-field-focus)]');
+    expect(source).toContain('focus-within:!ring-[var(--nimi-focus-ring-color)]');
+    expect(source).toContain('focus:!border-[var(--nimi-field-focus)]');
+    expect(source).toContain('focus:!ring-[var(--nimi-focus-ring-color)]');
     expect(source).toMatch(/<SelectField\s+required\s+value=\{draft\.personaArchetype\}/);
   });
 
@@ -136,19 +194,45 @@ describe('Create Realm Persona workspace v2 shell', () => {
     expect(source).toContain('groupSelectableRealmWorldsForPicker');
   });
 
-  it('keeps image candidates actual, progressive, local, and fail-closed', () => {
+  it('keeps image generation actual, owner-reviewed, local, and fail-closed without the candidate-slot module', () => {
     const source = workspaceSource();
 
     expect(source).toContain('referenceImageCandidates');
     expect(source).toContain('referenceImagePrompt');
     expect(source).toContain('count: 1');
-    expect(source).toContain('REFERENCE_IMAGE_CANDIDATE_SLOT_COUNT');
-    expect(source).toContain('create.reference.generateOne');
+    expect(source).toContain('create.reference.selectCandidate');
     expect(source).toContain('create.reference.regenerateSelected');
     expect(source).toContain('create.reference.capabilityUnavailable');
     expect(source).toContain('generatePersonaReferenceImage');
     expect(source).not.toContain('count: 4');
+    expect(source).not.toContain('create.reference.candidatesTitle');
+    expect(source).not.toContain('create.reference.slotCount');
+    expect(source).not.toContain('create.reference.emptySlotLabel');
+    expect(source).not.toContain('create.reference.sourceSlotHelp');
     expect(source).not.toContain('create.reference.insufficient');
+  });
+
+  it('offers upload, owner-reviewed assets, and AI generation through one visual-source surface', () => {
+    const source = workspaceSource();
+
+    expect(source).toContain('ReferenceImageSourceChooser');
+    expect(source).toContain("useState<ReferenceImageSourceMode | null>('ai')");
+    expect(source).toContain("setReferenceImageSourceMode('ai')");
+    const chooser = readFileSync(join(process.cwd(), 'src/shell/renderer/features/portfolio/reference-image-source-chooser.tsx'), 'utf8');
+    expect(chooser).toContain("export type ReferenceImageSourceMode = 'assets' | 'ai'");
+    expect(chooser).toContain("t('assets.visualChange.upload')");
+    expect(chooser).toContain("t('assets.visualChange.assets')");
+    expect(chooser).toContain("t('assets.visualChange.ai')");
+    expect(chooser).toContain('onUploadRequest');
+    expect(source).toContain('importLocalAssetFile');
+    expect(source).toContain('aggregateAssetLibraryData');
+    expect(source).toContain('adoptImportedReferenceImageCandidate');
+    expect(source).toContain('referenceImageFileInputRef.current?.click()');
+    expect(source).not.toContain('window.setTimeout(() => referenceImageFileInputRef.current?.click()');
+    expect(source).not.toContain('data-testid="create-reference-upload"');
+    expect(source).toContain("'create.reference.uploadUnavailable'");
+    expect(source).toContain("t('create.reference.uploadLocalOnly')");
+    expect(source).not.toContain('REFERENCE_IMAGE_CANDIDATE_SLOT_COUNT');
   });
 
   it('renders world recovery, keeps the prompt view read-only, and exposes a separate editable image prompt', () => {

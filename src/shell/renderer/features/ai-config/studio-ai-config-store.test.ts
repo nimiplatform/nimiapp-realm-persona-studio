@@ -4,9 +4,8 @@ import type {
   NimiPortableAppAIConfigIntent,
 } from '@nimiplatform/sdk/ai';
 import {
-  createStudioLocalCapabilityIntent,
   loadStudioAIConfig,
-  overwriteStudioCapabilityIntent,
+  openStudioAIConfigurationInDesktop,
   requireStudioAIConfigOwner,
   type StudioAIConfigClient,
 } from './studio-ai-config-store.js';
@@ -21,12 +20,10 @@ function studioConfig(...capabilities: NimiPortableAppAIConfigIntent[]): NimiPor
 
 function fakeClient(input: {
   get: () => Promise<NimiPortableAppAIConfig>;
-  overwrite?: (capabilities: readonly NimiPortableAppAIConfigIntent[]) => Promise<NimiPortableAppAIConfig>;
 }): StudioAIConfigClient {
   return {
     aiConfig: {
       get: input.get,
-      overwrite: input.overwrite ?? (async () => studioConfig()),
     },
   };
 }
@@ -46,81 +43,6 @@ describe('studio App AIConfig store on the Nimi App Access contract', () => {
     }))).rejects.toMatchObject({ reasonCode: 'AI_CONFIG_PERSISTENCE_UNAVAILABLE' });
   });
 
-  it('builds a local capability intent without model or binding truth', () => {
-    expect(createStudioLocalCapabilityIntent()).toEqual({
-      capabilityContract: 'text.generate',
-      requiredFeatures: [],
-      route: { oneofKind: 'local', local: {} },
-    });
-    expect(JSON.stringify(createStudioLocalCapabilityIntent('image.generate')))
-      .not.toMatch(/model|asset|binding|target|path/iu);
-  });
-
-  it('replaces the matching capability intent and preserves unrelated intents on overwrite', async () => {
-    const cloudIntent: NimiPortableAppAIConfigIntent = {
-      capabilityContract: 'image.generate',
-      requiredFeatures: [],
-      route: {
-        oneofKind: 'cloud',
-        cloud: {
-          implementation: {
-            implementationId: 'image.cloud',
-            driverId: 'cloud.driver',
-            driverDialect: 'v1',
-          },
-        },
-      },
-    };
-    const staleTextIntent: NimiPortableAppAIConfigIntent = {
-      capabilityContract: 'text.generate',
-      requiredFeatures: ['legacy'],
-      route: {
-        oneofKind: 'cloud',
-        cloud: {
-          implementation: {
-            implementationId: 'text.cloud',
-            driverId: 'cloud.driver',
-            driverDialect: 'v1',
-          },
-        },
-      },
-    };
-    const overwrite = vi.fn(async (capabilities: readonly NimiPortableAppAIConfigIntent[]) =>
-      studioConfig(...capabilities));
-    const client = fakeClient({
-      get: async () => studioConfig(cloudIntent, staleTextIntent),
-      overwrite,
-    });
-
-    const next = await overwriteStudioCapabilityIntent(createStudioLocalCapabilityIntent(), client);
-
-    expect(overwrite).toHaveBeenCalledTimes(1);
-    expect(next.capabilities.map((intent) => intent.capabilityContract))
-      .toEqual(['image.generate', 'text.generate']);
-    expect(next.capabilities[0]).toEqual(cloudIntent);
-    expect(next.capabilities[1]).toEqual({
-      capabilityContract: 'text.generate',
-      requiredFeatures: [],
-      route: { oneofKind: 'local', local: {} },
-    });
-  });
-
-  it('treats a missing current config as empty capabilities on overwrite', async () => {
-    const overwrite = vi.fn(async (capabilities: readonly NimiPortableAppAIConfigIntent[]) =>
-      studioConfig(...capabilities));
-    const client = fakeClient({
-      async get() {
-        throw { reasonCode: 'AI_CONFIG_NOT_FOUND' };
-      },
-      overwrite,
-    });
-
-    const next = await overwriteStudioCapabilityIntent(createStudioLocalCapabilityIntent(), client);
-
-    expect(overwrite).toHaveBeenCalledTimes(1);
-    expect(next.capabilities).toEqual([createStudioLocalCapabilityIntent()]);
-  });
-
   it('rejects any AIConfig projection not owned by the exact nimi.realm-persona-studio App', async () => {
     expect(() => requireStudioAIConfigOwner({
       owner: { owner: { oneofKind: 'app', app: { appId: 'other.app' } } },
@@ -128,15 +50,43 @@ describe('studio App AIConfig store on the Nimi App Access contract', () => {
     })).toThrow(/exact nimi\.realm-persona-studio App/u);
 
     const client = fakeClient({
-      async get() {
-        throw { reasonCode: 'AI_CONFIG_NOT_FOUND' };
-      },
-      overwrite: async () => ({
+      get: async () => ({
         owner: { owner: { oneofKind: 'app', app: { appId: 'other.app' } } },
         capabilities: [],
       }),
     });
-    await expect(overwriteStudioCapabilityIntent(createStudioLocalCapabilityIntent(), client))
+    await expect(loadStudioAIConfig(client))
       .rejects.toThrow(/exact nimi\.realm-persona-studio App/u);
+  });
+
+  it('asks Nimi Desktop to open the Studio App configuration surface', async () => {
+    const openDesktop = vi.fn(async () => ({
+      status: 'accepted' as const,
+      confirmation: 'desktop-accepted' as const,
+      bridgeId: 'desktop-open-bridge-1',
+      requestId: 'desktop-open-request-1',
+      appliedTarget: 'open-apps' as const,
+    }));
+
+    await expect(openStudioAIConfigurationInDesktop(openDesktop)).resolves.toBeUndefined();
+    expect(openDesktop).toHaveBeenCalledWith({
+      intent: {
+        kind: 'open-apps',
+        appId: 'nimi.realm-persona-studio',
+      },
+    });
+  });
+
+  it('fails closed when Nimi Desktop rejects the owner configuration handoff', async () => {
+    const openDesktop = vi.fn(async () => ({
+      status: 'rejected' as const,
+      reasonCode: 'desktop-open-desktop-not-ready' as const,
+      actionHint: 'wait_for_desktop_ready' as const,
+    }));
+
+    await expect(openStudioAIConfigurationInDesktop(openDesktop)).rejects.toMatchObject({
+      reasonCode: 'desktop-open-desktop-not-ready',
+      actionHint: 'wait_for_desktop_ready',
+    });
   });
 });

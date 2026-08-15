@@ -1,19 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  AtSign,
-  Bold,
   CalendarDays,
   ChevronRight,
-  Image as ImageIcon,
-  Italic,
-  Link2,
-  List,
   Paperclip,
   Search,
-  Smile,
   Sparkles,
 } from 'lucide-react';
-import { Button, InlineAlert, StatusBadge, nimiToast } from '@nimiplatform/kit/ui';
+import { Button, InlineAlert, StatusBadge, Tooltip, nimiToast } from '@nimiplatform/kit/ui';
 import type { OwnerPortfolioPersonaDetail } from '@renderer/features/portfolio/portfolio-data.js';
 import { loadLocalPostSchedule } from '@renderer/features/portfolio/local-post-schedule-store.js';
 import {
@@ -21,7 +14,7 @@ import {
   persistLocalPostDraft,
   type LocalPostDraftRecord,
 } from '@renderer/features/portfolio/local-post-draft-store.js';
-import { detailFriendCountLabel, settingFieldDisplayValue } from '@renderer/features/portfolio/OwnerPortfolio.shared.js';
+import { settingFieldDisplayValue } from '@renderer/features/portfolio/OwnerPortfolio.shared.js';
 import type { PersonaWorkspaceQueueItem, PersonaWorkspaceVisualData } from '@renderer/features/persona-detail/persona-workspace-visual-data.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
 
@@ -46,8 +39,6 @@ export function PersonaPostEditor({
   const [savedRecord, setSavedRecord] = useState<LocalPostDraftRecord | null>(null);
   const [storageUnavailable, setStorageUnavailable] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [aiNoticeOpen, setAiNoticeOpen] = useState(false);
-  const [attachmentNoticeOpen, setAttachmentNoticeOpen] = useState(false);
   const [activeQueueItem, setActiveQueueItem] = useState<string | null>(null);
 
   useEffect(() => {
@@ -55,8 +46,6 @@ export function PersonaPostEditor({
     setTagsText(visualData?.initialPostTags ?? '');
     setSavedRecord(null);
     setPreviewOpen(false);
-    setAiNoticeOpen(false);
-    setAttachmentNoticeOpen(false);
     setActiveQueueItem(null);
     if (visualData) {
       setLoading(false);
@@ -159,7 +148,6 @@ export function PersonaPostEditor({
       <section className="ras-post-editor-panel">
         <header className="ras-post-editor-panel__heading">
           <div>
-            <p className="ras-post-editor-panel__eyebrow">{t('posts.workspace.localCandidate')}</p>
             <h2>{t('posts.workspace.writeFor', {
               persona: settingFieldDisplayValue(persona.displayName, persona.id, t),
             })}</h2>
@@ -175,15 +163,7 @@ export function PersonaPostEditor({
         ) : null}
 
         <div className="ras-post-editor">
-          <div className="ras-post-editor__toolbar" aria-label={t('posts.workspace.toolbar')}>
-            <button type="button" aria-label="Bold"><Bold size={16} /></button>
-            <button type="button" aria-label="Italic"><Italic size={16} /></button>
-            <button type="button" aria-label="List"><List size={16} /></button>
-            <span aria-hidden="true" />
-            <button type="button" aria-label="Link"><Link2 size={16} /></button>
-            <button type="button" aria-label={t('posts.workspace.image')} onClick={() => setAttachmentNoticeOpen(true)}><ImageIcon size={16} /></button>
-            <button type="button" aria-label="Mention"><AtSign size={16} /></button>
-            <button type="button" aria-label="Emoji"><Smile size={16} /></button>
+          <div className="ras-post-editor__toolbar">
             <strong>{caption.length} {t('posts.workspace.characters')}</strong>
           </div>
           <textarea
@@ -207,21 +187,23 @@ export function PersonaPostEditor({
             }}
           />
           <footer className="ras-post-editor__footer">
-            <button type="button" className="ras-post-editor__attachment" onClick={() => setAttachmentNoticeOpen(true)}>
-              <Paperclip size={17} />
-              {t('posts.workspace.addAttachment')}
-            </button>
+            <Tooltip content={t('posts.workspace.attachmentUnavailable')}>
+              <span className="inline-flex">
+                <Button tone="secondary" disabled leadingIcon={<Paperclip size={16} />}>
+                  {t('posts.workspace.addAttachment')}
+                </Button>
+              </span>
+            </Tooltip>
             <div>
-              <Button
-                tone="secondary"
-                leadingIcon={<Sparkles size={16} />}
-                onClick={() => setAiNoticeOpen((current) => !current)}
-              >
-                {t('posts.workspace.aiAssist')}
-              </Button>
+              <Tooltip content={t('posts.workspace.aiUnavailable')}>
+                <span className="inline-flex">
+                  <Button tone="secondary" disabled leadingIcon={<Sparkles size={16} />}>
+                    {t('posts.workspace.aiAssist')}
+                  </Button>
+                </span>
+              </Tooltip>
               <Button
                 tone="primary"
-                className="text-white"
                 loading={saving}
                 disabled={loading || !caption.trim()}
                 onClick={() => void saveDraftAndPreview()}
@@ -232,12 +214,6 @@ export function PersonaPostEditor({
           </footer>
         </div>
 
-        {aiNoticeOpen ? (
-          <InlineAlert tone="info">{t('posts.workspace.aiUnavailable')}</InlineAlert>
-        ) : null}
-        {attachmentNoticeOpen ? (
-          <InlineAlert tone="info">{t('posts.workspace.attachmentUnavailable')}</InlineAlert>
-        ) : null}
         {previewOpen ? (
           <section className="ras-post-preview" aria-label={t('posts.workspace.previewTitle')}>
             <div>
@@ -287,7 +263,6 @@ export function PersonaPostEditor({
 
       <aside className="ras-post-expression">
         <div>
-          <p className="ras-post-editor-panel__eyebrow">{t('posts.workspace.ownerVisibleSource')}</p>
           <h2>{t('posts.workspace.expressionReference')}</h2>
           <p>{t('posts.workspace.expressionDescription')}</p>
         </div>
@@ -300,11 +275,6 @@ export function PersonaPostEditor({
           )) : (
             <InlineAlert tone="warning">{t('common.sourceUnavailable')}</InlineAlert>
           )}
-        </div>
-        <div className="ras-post-expression__source">
-          <strong>{t('posts.workspace.publicSource')}</strong>
-          <span>{detailFriendCountLabel(persona, t)}</span>
-          <span>{t('posts.workspace.realmSource')}</span>
         </div>
       </aside>
     </div>

@@ -82,7 +82,6 @@ function normalizeCandidate(value: unknown, expectedDraftKey: string): Reference
     || value.draftKey !== expectedDraftKey
     || !isHttpUrl(value.url)
     || typeof value.prompt !== 'string'
-    || !value.prompt.trim()
     || !isIsoDateTime(value.createdAt)
     || !isReferenceImageCandidateSlot(value.slot)
   ) {
@@ -94,7 +93,7 @@ function normalizeCandidate(value: unknown, expectedDraftKey: string): Reference
   const reviewState = value.reviewState === 'candidate-only' || value.reviewState === 'owner-selected'
     ? value.reviewState
     : null;
-  if (!sourceKind || !reviewState) return null;
+  if (!sourceKind || !reviewState || (sourceKind === 'generated' && !value.prompt.trim())) return null;
   return {
     draftKey: expectedDraftKey,
     slot: value.slot,

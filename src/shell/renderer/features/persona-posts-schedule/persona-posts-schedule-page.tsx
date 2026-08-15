@@ -11,7 +11,7 @@ export function PersonaPostsSchedulePage() {
 
   if (!personaId) {
     return (
-      <Surface tone="panel" material="glass-regular" padding="lg">
+      <Surface tone="card" padding="lg">
         <InlineAlert tone="danger">{t('common.personaIdMissing')}</InlineAlert>
       </Surface>
     );

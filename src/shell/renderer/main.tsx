@@ -46,7 +46,7 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <NimiThemeProvider accentPack="nimi-accent" defaultScheme="light">
+    <NimiThemeProvider accentPack="nimi-accent" defaultScheme="light" defaultDensity="compact">
       <Suspense fallback={<EntryFallback />}>
         <App />
       </Suspense>

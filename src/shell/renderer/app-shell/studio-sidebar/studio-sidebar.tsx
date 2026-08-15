@@ -6,8 +6,7 @@ import {
   Image,
   Languages,
   LayoutGrid,
-  PanelLeftClose,
-  PanelLeftOpen,
+  PanelLeft,
   Plus,
   SlidersHorizontal,
   UserRound,
@@ -22,22 +21,17 @@ import {
   PopoverContent,
   PopoverTrigger,
   ScrollArea,
-  SegmentedControl,
   SidebarHeader,
   SidebarItem,
   SidebarSection,
   Surface,
   Tooltip,
 } from '@nimiplatform/kit/ui';
+import { motion, NIMI_PRESSED_SCALE, useNimiReducedMotion } from '@nimiplatform/kit/ui/motion';
 import { listOwnerPortfolioPersonas } from '../../features/portfolio/portfolio-client.js';
 import type { OwnerPortfolioPersona } from '../../features/portfolio/portfolio-data.js';
-import { type StudioLocale } from '../../i18n/studio-i18n.js';
 import { useStudioI18n } from '../../i18n/use-studio-i18n.js';
 import { ownerPortfolioListQueryKey } from '../../features/persona-detail/use-persona-detail-query.js';
-import {
-  PERSONA_WORKSPACE_VISUAL_FIXTURE_LIST,
-  PERSONA_WORKSPACE_VISUAL_FIXTURE_PENDING_REVIEWS,
-} from '../../features/persona-detail/persona-workspace.visual-fixture.js';
 import { useAppStore } from '../app-store.js';
 
 export const STUDIO_SIDEBAR_PREFERENCE_STORAGE_PATH = 'shell/sidebar.json';
@@ -63,33 +57,39 @@ export type StudioSidebarProps = {
 function SidebarBrand({ collapsed, onCollapsedChange }: StudioSidebarProps) {
   const { t } = useStudioI18n();
   const collapseLabel = t(collapsed ? 'shell.sidebar.expand' : 'shell.sidebar.collapse');
-  const toggle = (
-    <Tooltip content={collapseLabel} placement="right">
-      <IconButton
-        icon={collapsed ? <PanelLeftOpen size={17} strokeWidth={1.8} /> : <PanelLeftClose size={17} strokeWidth={1.8} />}
-        tone="ghost"
-        size="sm"
-        aria-label={collapseLabel}
-        title={collapseLabel}
-        data-titlebar-interactive="true"
-        onClick={() => onCollapsedChange(!collapsed)}
-      />
-    </Tooltip>
-  );
 
   return (
     <SidebarHeader
       className="!min-h-0 !px-0 !py-0"
       title={collapsed ? (
-        <div className="flex w-full flex-col items-center gap-3 py-1">
-          <Avatar
-            alt={t('app.name')}
-            size="sm"
-            shape="rounded"
-            tone="accent"
-            fallback={<span className="text-[10px] font-bold tracking-wide">{t('app.logoMark')}</span>}
-          />
-          {toggle}
+        <div className="flex w-full justify-center py-1">
+          <Tooltip content={collapseLabel} placement="right">
+            <button
+              type="button"
+              className="ras-sidebar-brand-switcher"
+              aria-label={collapseLabel}
+              title={collapseLabel}
+              data-titlebar-interactive="true"
+              data-testid="sidebar-brand-expand"
+              onClick={() => onCollapsedChange(false)}
+            >
+              <span className="ras-sidebar-brand-switcher__logo">
+                <Avatar
+                  alt={t('app.name')}
+                  size="sm"
+                  shape="rounded"
+                  tone="accent"
+                  fallback={<span className="text-[10px] font-bold tracking-wide">{t('app.logoMark')}</span>}
+                />
+              </span>
+              <PanelLeft
+                className="ras-sidebar-brand-switcher__icon"
+                size={20}
+                strokeWidth={1.8}
+                aria-hidden="true"
+              />
+            </button>
+          </Tooltip>
         </div>
       ) : (
         <div className="flex w-full items-center justify-between gap-2 py-1">
@@ -103,7 +103,18 @@ function SidebarBrand({ collapsed, onCollapsedChange }: StudioSidebarProps) {
             />
             <span className="min-w-0 truncate text-sm font-semibold text-[var(--nimi-text-primary)]">{t('app.name')}</span>
           </div>
-          {toggle}
+          <Tooltip content={collapseLabel} placement="right">
+            <IconButton
+              icon={<PanelLeft size={18} strokeWidth={1.8} />}
+              tone="ghost"
+              size="sm"
+              aria-label={collapseLabel}
+              title={collapseLabel}
+              data-titlebar-interactive="true"
+              data-testid="sidebar-collapse"
+              onClick={() => onCollapsedChange(true)}
+            />
+          </Tooltip>
         </div>
       )}
     />
@@ -132,11 +143,15 @@ function NavigationItem({
       aria-label={label}
       title={collapsed ? label : undefined}
       data-titlebar-interactive="true"
-      className={collapsed ? 'justify-center !px-0' : undefined}
+      className={collapsed ? 'ras-sidebar-navigation-item--collapsed' : undefined}
       onClick={onSelect}
     />
   );
-  return collapsed ? <Tooltip content={label} placement="right">{item}</Tooltip> : item;
+  return collapsed ? (
+    <Tooltip content={label} placement="right" className="ras-sidebar-navigation-tooltip">
+      {item}
+    </Tooltip>
+  ) : item;
 }
 
 function PersonaRosterItem({
@@ -152,9 +167,11 @@ function PersonaRosterItem({
   pendingReviewCount: number;
   onSelect: () => void;
 }) {
+  const { t } = useStudioI18n();
+  const reducedMotion = useNimiReducedMotion();
   const label = persona.displayName || persona.id;
   const item = (
-    <button
+    <motion.button
       type="button"
       className="ras-sidebar-persona"
       data-active={active}
@@ -162,7 +179,17 @@ function PersonaRosterItem({
       aria-label={label}
       title={collapsed ? label : undefined}
       onClick={onSelect}
+      whileHover={reducedMotion ? undefined : { y: -1 }}
+      whileTap={reducedMotion ? undefined : { scale: NIMI_PRESSED_SCALE }}
     >
+      {active ? (
+        <motion.span
+          layoutId="studio-sidebar-active-persona"
+          className="ras-sidebar-persona__active-bg"
+          aria-hidden="true"
+          transition={reducedMotion ? { duration: 0 } : undefined}
+        />
+      ) : null}
       <Avatar
         alt={label}
         src={persona.avatarUrl}
@@ -178,52 +205,17 @@ function PersonaRosterItem({
             <small>{persona.worldName || '—'}</small>
           </span>
           {pendingReviewCount > 0 ? (
-            <span className="ras-sidebar-persona__review">{pendingReviewCount} 待审核</span>
+            <span className="ras-sidebar-persona__review">{t('shell.sidebar.pendingReview', { count: pendingReviewCount })}</span>
           ) : null}
         </>
       )}
-    </button>
+    </motion.button>
   );
   return collapsed ? <Tooltip content={label} placement="right">{item}</Tooltip> : item;
 }
 
-function LanguageSwitcher({ collapsed }: { collapsed: boolean }) {
-  const { locale, setLocale, t } = useStudioI18n();
-  const label = t('locale.ariaLabel');
-  if (collapsed) {
-    return (
-      <Tooltip content={label} placement="right">
-        <IconButton
-          icon={<Languages size={17} strokeWidth={1.8} />}
-          tone="ghost"
-          size="sm"
-          aria-label={label}
-          title={label}
-          data-titlebar-interactive="true"
-          onClick={() => void setLocale(locale === 'en' ? 'zh' : 'en')}
-        />
-      </Tooltip>
-    );
-  }
-  return (
-    <div data-titlebar-interactive="true" className="min-w-0">
-      <SegmentedControl
-        size="sm"
-        className="w-full [&_.nimi-segmented-control__item]:flex-1"
-        ariaLabel={label}
-        value={locale}
-        onValueChange={(value) => void setLocale(value as StudioLocale)}
-        items={[
-          { value: 'en', label: t('locale.english') },
-          { value: 'zh', label: t('locale.chinese') },
-        ]}
-      />
-    </div>
-  );
-}
-
 function AccountMenu({ collapsed }: { collapsed: boolean }) {
-  const { t } = useStudioI18n();
+  const { locale, setLocale, t } = useStudioI18n();
   const authUser = useAppStore((state) => state.auth.user);
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -240,6 +232,10 @@ function AccountMenu({ collapsed }: { collapsed: boolean }) {
   const navigateTo = (path: string) => {
     setOpen(false);
     navigate(path);
+  };
+  const switchLocale = () => {
+    setOpen(false);
+    void setLocale(locale === 'en' ? 'zh' : 'en');
   };
 
   const trigger = collapsed ? (
@@ -301,6 +297,14 @@ function AccountMenu({ collapsed }: { collapsed: boolean }) {
               onSelect: () => navigateTo('/ai-config'),
             },
           ]}
+          footerItems={[
+            {
+              id: 'language',
+              label: t(locale === 'en' ? 'locale.switchToChinese' : 'locale.switchToEnglish'),
+              icon: <Languages size={16} strokeWidth={1.8} />,
+              onSelect: switchLocale,
+            },
+          ]}
         />
       </PopoverContent>
     </Popover>
@@ -335,19 +339,8 @@ export function StudioSidebar({
     queryFn: () => listOwnerPortfolioPersonas(),
     enabled: !fixtureMode,
   });
-  const developmentFixtureFallback = import.meta.env.DEV
-    && !fixtureMode
-    && !portfolioQuery.isLoading
-    && (portfolioQuery.isError || (portfolioQuery.data?.length ?? 0) === 0);
-  const usingFixture = fixtureMode || developmentFixtureFallback;
-  const personas = visualFixturePersonas
-    ?? (developmentFixtureFallback ? PERSONA_WORKSPACE_VISUAL_FIXTURE_LIST : portfolioQuery.data)
-    ?? [];
-  const pendingReviews = fixtureMode
-    ? visualFixturePendingReviews
-    : developmentFixtureFallback
-      ? PERSONA_WORKSPACE_VISUAL_FIXTURE_PENDING_REVIEWS
-      : {};
+  const personas = visualFixturePersonas ?? portfolioQuery.data ?? [];
+  const pendingReviews = fixtureMode ? visualFixturePendingReviews : {};
   const selectedPersonaId = currentPersonaId(location.pathname);
   const suffix = workspaceSuffix(location.pathname, selectedPersonaId);
 
@@ -371,7 +364,6 @@ export function StudioSidebar({
               <IconButton
                 icon={<Plus size={18} strokeWidth={1.8} />}
                 tone="primary"
-                className="text-white"
                 aria-label={t('shell.sidebar.createPersona')}
                 onClick={() => navigate('/portfolio/create')}
               />
@@ -380,7 +372,6 @@ export function StudioSidebar({
             <Button
               tone="primary"
               fullWidth
-              className="text-white"
               leadingIcon={<Plus size={17} strokeWidth={1.8} />}
               onClick={() => navigate('/portfolio/create')}
             >
@@ -403,7 +394,7 @@ export function StudioSidebar({
           <ScrollArea className="min-h-0 flex-1" viewportClassName="bg-transparent">
             {portfolioQuery.isLoading && !fixtureMode ? (
               <div className="ras-sidebar-roster-state">{t('common.loadingEllipsis')}</div>
-            ) : portfolioQuery.isError && !usingFixture ? (
+            ) : portfolioQuery.isError && !fixtureMode ? (
               collapsed ? null : (
                 <EmptyState
                   title={t('persona.workspace.rosterUnavailable')}
@@ -455,7 +446,6 @@ export function StudioSidebar({
         </SidebarSection>
 
         <div className={`flex shrink-0 flex-col gap-2 border-t border-[var(--nimi-border-subtle)] pt-3 ${collapsed ? 'items-center' : ''}`}>
-          <LanguageSwitcher collapsed={collapsed} />
           <AccountMenu collapsed={collapsed} />
         </div>
       </div>

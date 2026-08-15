@@ -655,7 +655,7 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
                 </div>
                 <StatusBadge tone="info">{t('posts.upload.badge')}</StatusBadge>
               </div>
-              <InlineAlert tone="info" className="mt-3">
+              <InlineAlert tone="warning" className="mt-3">
                 {t('posts.publicationUnavailable')}
               </InlineAlert>
               <div className="mt-3 grid gap-3 md:grid-cols-[180px_1fr]">
@@ -716,7 +716,7 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
                 </div>
                 <StatusBadge tone="info">{t('posts.textAttachment.badge')}</StatusBadge>
               </div>
-              <InlineAlert tone="info" className="mt-3">
+              <InlineAlert tone="warning" className="mt-3">
                 {t('posts.publicationUnavailable')}
               </InlineAlert>
               {postTextResourceDraft.publishable ? null : (
@@ -791,7 +791,7 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
               </Button>
             </div> : null}
             {!isScheduleWorkspace ? (
-              <InlineAlert tone="info">
+              <InlineAlert tone="warning">
                 {t('posts.publicationUnavailable')}
               </InlineAlert>
             ) : null}
@@ -902,7 +902,7 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
                   {t('posts.schedule.publishDue')}
                 </Button>
               </div>
-              <InlineAlert tone="info" className="mt-3">
+              <InlineAlert tone="warning" className="mt-3">
                 {t('posts.publicationUnavailable')}
               </InlineAlert>
               <TechnicalReviewDetails title={t('posts.schedule.payload')}>

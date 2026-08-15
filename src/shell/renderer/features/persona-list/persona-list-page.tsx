@@ -8,6 +8,8 @@ import {
   FieldShell,
   InlineAlert,
   LoadingSkeleton,
+  NimiTabs,
+  NimiText,
   ScrollArea,
   SearchField,
   SelectField,
@@ -22,7 +24,10 @@ import {
   type PortfolioFailureKind,
 } from '@renderer/features/portfolio/portfolio-data.js';
 import { listOwnerPortfolioPersonas } from '@renderer/features/portfolio/portfolio-client.js';
-import { PersonaCard } from '@renderer/features/portfolio/OwnerPortfolio.shared.js';
+import {
+  PersonaCard,
+  PersonaLibraryStatusBadge,
+} from '@renderer/features/portfolio/OwnerPortfolio.shared.js';
 import {
   loadCreationDraftHistory,
   type CreationDraftHistoryEntry,
@@ -111,20 +116,17 @@ const DESIGN_PREVIEW_PERSONAS: readonly DesignPreviewPersona[] = [
   },
 ];
 
-function localDateKey(value: Date): string {
-  return `${value.getFullYear()}-${value.getMonth()}-${value.getDate()}`;
-}
-
-function draftRecencyLabelKey(updatedAt: string, now = new Date()): StudioCopyKey {
+export function formatDraftUpdatedAt(updatedAt: string, locale: 'en' | 'zh'): string {
   const updatedDate = new Date(updatedAt);
-  if (Number.isNaN(updatedDate.getTime())) return 'portfolio.localDrafts.editedEarlier';
-  if (localDateKey(updatedDate) === localDateKey(now)) return 'portfolio.localDrafts.editedToday';
-
-  const yesterday = new Date(now);
-  yesterday.setDate(yesterday.getDate() - 1);
-  return localDateKey(updatedDate) === localDateKey(yesterday)
-    ? 'portfolio.localDrafts.editedYesterday'
-    : 'portfolio.localDrafts.editedEarlier';
+  if (Number.isNaN(updatedDate.getTime())) return updatedAt;
+  return new Intl.DateTimeFormat(locale === 'zh' ? 'zh-CN' : 'en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(updatedDate);
 }
 
 function FilterCard({
@@ -271,7 +273,7 @@ function LocalDraftList({
   onContinue: (draftKey: string) => void;
   onCreate: () => void;
 }) {
-  const { t } = useStudioI18n();
+  const { locale, t } = useStudioI18n();
 
   if (status === 'loading') {
     return (
@@ -297,7 +299,7 @@ function LocalDraftList({
         <FilePenLine size={30} strokeWidth={1.7} aria-hidden="true" />
         <h2>{t('portfolio.localDrafts.emptyTitle')}</h2>
         <p>{t('portfolio.localDrafts.emptyDescription')}</p>
-        <Button tone="primary" className="text-white" leadingIcon={<Plus size={16} />} onClick={onCreate}>
+        <Button tone="primary" leadingIcon={<Plus size={16} />} onClick={onCreate}>
           {t('portfolio.createButton')}
         </Button>
       </section>
@@ -316,6 +318,7 @@ function LocalDraftList({
               entry.worldName,
               entry.archetype ? translatePersonaArchetypeLabel(entry.archetype, t) : null,
             ].filter(Boolean).join(' · ');
+            const updatedAt = formatDraftUpdatedAt(entry.updatedAt, locale);
 
             return (
               <article key={entry.draftKey} className="ras-local-draft-row">
@@ -332,12 +335,19 @@ function LocalDraftList({
                   <h2>{entry.displayName}</h2>
                   {description ? <p>{description}</p> : null}
                 </div>
-                <div className="ras-local-draft-row__status">
-                  <StatusBadge tone="info">{t('portfolio.localDrafts.badge')}</StatusBadge>
-                  <StatusBadge tone="neutral">{t(draftRecencyLabelKey(entry.updatedAt))}</StatusBadge>
+                <div className="ras-local-draft-row__meta">
+                  <PersonaLibraryStatusBadge status="local-draft" />
+                  <time
+                    className="ras-local-draft-row__updated-at"
+                    dateTime={entry.updatedAt}
+                    aria-label={t('portfolio.localDrafts.updatedAt', { dateTime: updatedAt })}
+                  >
+                    {updatedAt}
+                  </time>
                 </div>
                 <Button
                   tone="ghost"
+                  size="sm"
                   className="ras-local-draft-row__action"
                   trailingIcon={<ChevronRight size={17} strokeWidth={1.8} />}
                   onClick={() => onContinue(entry.draftKey)}
@@ -348,12 +358,6 @@ function LocalDraftList({
             );
           })}
         </div>
-        <button type="button" className="ras-local-draft-create-row" onClick={onCreate}>
-          <span className="ras-local-draft-create-row__icon" aria-hidden="true">
-            <Plus size={20} strokeWidth={1.8} />
-          </span>
-          <span>{t('portfolio.localDrafts.createNew')}</span>
-        </button>
       </section>
     </div>
   );
@@ -362,7 +366,7 @@ function LocalDraftList({
 export function PersonaListPage() {
   const { t } = useStudioI18n();
   const navigate = useNavigate();
-  const [activeView, setActiveView] = useState<PortfolioView>('local-drafts');
+  const [activeView, setActiveView] = useState<PortfolioView>('personas');
   const [queryText, setQueryText] = useState('');
   const [filter, setFilter] = useState<OwnerPortfolioFilter>('all');
   const [sort, setSort] = useState<OwnerPortfolioSort>('realm-order');
@@ -424,7 +428,7 @@ export function PersonaListPage() {
   );
   const sourceWarnings = personas.filter((persona) => persona.friendCount.status === 'source-unavailable');
   const portfolioFailure = portfolioQuery.isError ? classifyPortfolioFailure(portfolioQuery.error) : null;
-  const showDesignPreview = import.meta.env.DEV && !portfolioQuery.isLoading && personas.length === 0;
+  const showDesignPreview = import.meta.env.DEV && portfolioQuery.isSuccess && personas.length === 0;
   const refreshing = portfolioQuery.isFetching || worldCoresQuery.isFetching || draftHistoryStatus === 'loading';
   const refreshAll = () => {
     void portfolioQuery.refetch();
@@ -437,7 +441,9 @@ export function PersonaListPage() {
     <ScrollArea className="flex-1" viewportClassName="bg-transparent">
       <div className="ras-page ras-persona-library">
         <header className="ras-page-header ras-persona-library__header">
-          <h1 className="ras-page-header__title">{t('portfolio.title')}</h1>
+          <NimiText as="h1" role="page-title" className="m-0">
+            {t('portfolio.title')}
+          </NimiText>
           <div className="ras-page-header__actions">
             <Button
               tone="secondary"
@@ -450,7 +456,6 @@ export function PersonaListPage() {
             </Button>
             <Button
               tone="primary"
-              className="text-white"
               leadingIcon={<Plus size={15} strokeWidth={2} />}
               onClick={openCreate}
             >
@@ -459,34 +464,17 @@ export function PersonaListPage() {
           </div>
         </header>
 
-        <div className="ras-portfolio-tabs" role="tablist" aria-label={t('portfolio.tabs.ariaLabel')}>
-          <button
-            type="button"
-            id="portfolio-tab-personas"
-            role="tab"
-            aria-selected={activeView === 'personas'}
-            aria-controls="portfolio-panel-personas"
-            className="ras-portfolio-tabs__item"
-            data-active={activeView === 'personas'}
-            onClick={() => setActiveView('personas')}
-          >
-            {t('portfolio.tabs.personas')}
-          </button>
-          <button
-            type="button"
-            id="portfolio-tab-local-drafts"
-            role="tab"
-            aria-selected={activeView === 'local-drafts'}
-            aria-controls="portfolio-panel-local-drafts"
-            className="ras-portfolio-tabs__item"
-            data-active={activeView === 'local-drafts'}
-            onClick={() => setActiveView('local-drafts')}
-          >
-            {t('portfolio.tabs.localDrafts')}
-          </button>
-        </div>
+        <NimiTabs
+          items={[
+            { value: 'personas', label: t('portfolio.tabs.personas') },
+            { value: 'local-drafts', label: t('portfolio.tabs.localDrafts') },
+          ]}
+          value={activeView}
+          onValueChange={(value) => setActiveView(value as PortfolioView)}
+          ariaLabel={t('portfolio.tabs.ariaLabel')}
+        />
 
-        {portfolioFailure && portfolioFailure.kind !== 'capability-unavailable' ? (
+        {activeView === 'personas' && portfolioFailure ? (
           <PortfolioSourceNotice
             failure={portfolioFailure.kind}
             loading={portfolioQuery.isFetching}
@@ -498,7 +486,6 @@ export function PersonaListPage() {
           <div
             id="portfolio-panel-local-drafts"
             role="tabpanel"
-            aria-labelledby="portfolio-tab-local-drafts"
           >
             <LocalDraftList
               entries={draftEntries}
@@ -513,7 +500,6 @@ export function PersonaListPage() {
           <div
             id="portfolio-panel-personas"
             role="tabpanel"
-            aria-labelledby="portfolio-tab-personas"
             className="ras-persona-library__persona-panel"
           >
             {portfolioQuery.isLoading ? (
@@ -532,7 +518,6 @@ export function PersonaListPage() {
                 <Button
                   tone="primary"
                   size="lg"
-                  className="text-white"
                   leadingIcon={<Plus size={16} strokeWidth={2} />}
                   onClick={openCreate}
                 >

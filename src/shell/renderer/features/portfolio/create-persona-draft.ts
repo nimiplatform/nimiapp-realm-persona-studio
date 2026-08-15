@@ -83,6 +83,18 @@ export type ReferenceImageCandidate = {
   reviewState: 'candidate-only' | 'owner-selected';
 };
 
+export type AdoptReferenceImageCandidateResult =
+  | {
+    ok: true;
+    referenceImageUrl: string;
+    referenceImageCandidates: ReferenceImageCandidate[];
+    targetSlot: ReferenceImageCandidateSlot;
+  }
+  | {
+    ok: false;
+    failure: 'draft-key-invalid' | 'reference-url-invalid' | 'candidate-slots-full';
+  };
+
 export type CreateRealmPersonaDraftInput = {
   handle: string;
   displayName: string;
@@ -92,7 +104,7 @@ export type CreateRealmPersonaDraftInput = {
   selectedWorldId: string;
   personaArchetype: PersonaArchetype | '';
   personaTraits: PersonaTrait[];
-  /** Optional reference image URL produced by Runtime image generation in the AI-seeded create flow. */
+  /** Optional owner-selected HTTP(S) reference image URL adopted from one local candidate source. */
   referenceImageUrl: string;
   /** Owner-editable local image-generation input, initialized from the describe-stage prompt. */
   referenceImagePrompt: string;
@@ -277,7 +289,13 @@ function normalizeReferenceImageCandidates(values: unknown): ReferenceImageCandi
     const reviewState = record.reviewState === 'candidate-only' || record.reviewState === 'owner-selected'
       ? record.reviewState
       : null;
-    if (!url || !prompt || Number.isNaN(Date.parse(createdAt)) || !sourceKind || !reviewState) return [];
+    if (
+      !url
+      || (sourceKind === 'generated' && !prompt)
+      || Number.isNaN(Date.parse(createdAt))
+      || !sourceKind
+      || !reviewState
+    ) return [];
     const candidate: ReferenceImageCandidate = {
       draftKey,
       slot: record.slot,
@@ -297,6 +315,53 @@ function normalizeReferenceImageCandidates(values: unknown): ReferenceImageCandi
       return true;
     })
     .sort((left, right) => left.slot - right.slot);
+}
+
+export function adoptImportedReferenceImageCandidate(
+  input: CreateRealmPersonaDraftInput,
+  draftKey: string,
+  url: string,
+  createdAt = new Date().toISOString(),
+): AdoptReferenceImageCandidateResult {
+  if (!/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(draftKey.trim())) {
+    return { ok: false, failure: 'draft-key-invalid' };
+  }
+  const normalizedUrl = normalizeReferenceImageUrl(url);
+  if (!normalizedUrl) return { ok: false, failure: 'reference-url-invalid' };
+
+  const draft = normalizeCreateRealmPersonaDraft(input);
+  const existingCandidate = draft.referenceImageCandidates.find((candidate) => candidate.url === normalizedUrl);
+  const selectedCandidate = draft.referenceImageCandidates.find((candidate) => candidate.reviewState === 'owner-selected');
+  const firstEmptySlot = Array.from(
+    { length: REFERENCE_IMAGE_CANDIDATE_SLOT_COUNT },
+    (_, slot) => slot as ReferenceImageCandidateSlot,
+  ).find((slot) => !draft.referenceImageCandidates.some((candidate) => candidate.slot === slot));
+  const targetSlot = existingCandidate?.slot ?? firstEmptySlot ?? selectedCandidate?.slot;
+  if (targetSlot === undefined) return { ok: false, failure: 'candidate-slots-full' };
+
+  const candidate: ReferenceImageCandidate = {
+    draftKey: draftKey.trim(),
+    slot: targetSlot,
+    url: normalizedUrl,
+    prompt: '',
+    createdAt,
+    sourceKind: 'imported',
+    reviewState: 'owner-selected',
+  };
+  const referenceImageCandidates: ReferenceImageCandidate[] = [
+    ...draft.referenceImageCandidates
+      .filter((current) => current.slot !== targetSlot)
+      .map((current) => ({ ...current, reviewState: 'candidate-only' as const })),
+    candidate,
+  ]
+    .sort((left, right) => left.slot - right.slot);
+
+  return {
+    ok: true,
+    referenceImageUrl: normalizedUrl,
+    referenceImageCandidates,
+    targetSlot,
+  };
 }
 
 function normalizeDraftText(value: unknown): string {

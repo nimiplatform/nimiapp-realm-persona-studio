@@ -114,7 +114,7 @@ function ContentManagementBody({ persona }: { persona: OwnerPortfolioPersonaDeta
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="grid gap-4">
-          <Surface tone="panel" material="glass-regular" padding="lg" className="ras-radius-xl">
+          <Surface tone="card" padding="lg" className="ras-radius-xl">
             <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
@@ -138,7 +138,7 @@ function ContentManagementBody({ persona }: { persona: OwnerPortfolioPersonaDeta
             </div>
           </Surface>
 
-          <Surface tone="panel" material="glass-regular" padding="lg" className="ras-radius-xl">
+          <Surface tone="card" padding="lg" className="ras-radius-xl">
             <h2 className="m-0 text-[length:var(--nimi-type-body-size)] font-semibold">{t('contentManagement.ledger.title')}</h2>
             <p className="m-0 mt-2 text-[length:var(--nimi-type-body-sm-size)] text-[var(--nimi-text-muted)]">
               {t('contentManagement.ledger.description')}
@@ -185,7 +185,7 @@ export function PersonaContentManagementPage() {
 
   if (!personaId) {
     return (
-      <Surface tone="panel" material="glass-regular" padding="lg">
+      <Surface tone="card" padding="lg">
         <InlineAlert tone="danger">{t('common.personaIdMissing')}</InlineAlert>
       </Surface>
     );

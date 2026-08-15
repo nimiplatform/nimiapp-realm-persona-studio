@@ -6,7 +6,15 @@ export type PersonaWorkspaceCandidate = {
   label: string;
   status: 'candidate-only' | 'owner-reviewed';
   imageUrl?: string;
-  fileLabel?: string;
+  selected?: boolean;
+  fileName?: string;
+  mimeType?: string;
+  durationSeconds?: number;
+  fileSizeBytes?: number;
+  previewUrl?: string;
+  sourceKind?: 'generated' | 'imported';
+  selectedAt?: string;
+  voiceStyle?: string;
 };
 
 export type PersonaWorkspaceQueueItem = {
@@ -17,7 +25,7 @@ export type PersonaWorkspaceQueueItem = {
 };
 
 export type PersonaWorkspaceVisualData = {
-  developmentFixture: boolean;
+  developmentFixture: true;
   traits: string[];
   candidates: PersonaWorkspaceCandidate[];
   recentDraft: {

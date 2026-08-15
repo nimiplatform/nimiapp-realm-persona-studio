@@ -19,6 +19,23 @@ describe('studio i18n resources', () => {
     expect(terminalCopy.some((value) => value.includes('capability-unavailable'))).toBe(false);
   });
 
+  it('keeps the create entry focused on the user idea instead of internal workflow terms', () => {
+    expect(studioChineseCopy['create.title']).toBe('创建角色');
+    expect(studioChineseCopy['create.describe.heading']).toBe('你想创建一个怎样的角色？');
+    expect(studioChineseCopy['create.describe.hint']).toBe('简单描述即可，不需要一次想完整');
+    expect(studioChineseCopy['create.oneLineLabel']).toBe('简单描述一下这个角色');
+    expect(studioChineseCopy['create.aiButton.label']).toBe('让 AI 帮我完善角色');
+    expect(studioChineseCopy['create.aiButton.helper']).toBe('生成后可以自由修改');
+    expect(studioChineseCopy['create.manualButton.label']).toBe('我想自己填写');
+    expect(studioChineseCopy['create.review.basicInfo']).toBe('角色基本信息');
+    expect(studioChineseCopy['create.displayNameLabel']).toBe('角色名称');
+    expect(studioChineseCopy['create.handleLabel']).toBe('角色ID');
+    expect(studioChineseCopy['create.conceptLabel']).toBe('描述');
+    expect(studioChineseCopy['create.personaArchetypeLabel']).toBe('角色性格');
+    expect(studioChineseCopy['create.personaTraitsLabel']).toBe('角色特质（最多 {{max}} 个）');
+    expect(studioChineseCopy).not.toHaveProperty('create.describe.badge');
+  });
+
   it('normalizes supported browser and stored locale values', () => {
     expect(normalizeStudioLocale('zh-CN')).toBe('zh');
     expect(normalizeStudioLocale('en-US')).toBe('en');

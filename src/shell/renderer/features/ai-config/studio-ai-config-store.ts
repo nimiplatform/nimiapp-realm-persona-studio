@@ -1,27 +1,25 @@
-import type {
-  NimiPortableAppAIConfig,
-  NimiPortableAppAIConfigIntent,
-} from '@nimiplatform/sdk/ai';
+import type { NimiPortableAppAIConfig } from '@nimiplatform/sdk/ai';
 import type { NimiLocalAppClient } from '@nimiplatform/sdk/app';
+import { openDesktopIntent } from '@nimiplatform/kit/shell/renderer/bridge';
 import { REALM_PERSONA_STUDIO_APP_ID } from '../../../app-identity.js';
 import { getStudioLocalAppClient } from '@renderer/app-shell/studio-platform.js';
 
 /**
- * Studio App AIConfig access on the Nimi App Access contract. Studio submits
- * capability intent only; the host and Runtime fix the exact App owner and own
- * implementation selection. Missing App AIConfig is one typed unconfigured
- * projection, never a pseudo-configured state.
+ * Studio App AIConfig access on the Nimi App Access contract. The protected
+ * App surface is projection-only; Nimi Desktop owns configuration changes and
+ * independently resolves the canonical owner. Studio's appId is only a
+ * navigation target. Missing App AIConfig is one typed unconfigured projection,
+ * never a pseudo-configured state or an invitation to shadow it.
  */
 
-export const STUDIO_TEXT_GENERATE_CAPABILITY_CONTRACT = 'text.generate' as const;
-
 export type StudioAIConfigClient = Pick<NimiLocalAppClient, 'aiConfig'>;
+export type StudioDesktopIntentOpener = typeof openDesktopIntent;
 
 export async function loadStudioAIConfig(
   client: StudioAIConfigClient = getStudioLocalAppClient(),
 ): Promise<NimiPortableAppAIConfig | null> {
   try {
-    return await client.aiConfig.get();
+    return requireStudioAIConfigOwner(await client.aiConfig.get());
   } catch (error) {
     if (isStudioAIConfigNotFound(error)) {
       return null;
@@ -30,25 +28,24 @@ export async function loadStudioAIConfig(
   }
 }
 
-export function createStudioLocalCapabilityIntent(
-  capabilityContract: string = STUDIO_TEXT_GENERATE_CAPABILITY_CONTRACT,
-): NimiPortableAppAIConfigIntent {
-  return {
-    capabilityContract,
-    requiredFeatures: [],
-    route: { oneofKind: 'local', local: {} },
-  };
-}
-
-export async function overwriteStudioCapabilityIntent(
-  intent: NimiPortableAppAIConfigIntent,
-  client: StudioAIConfigClient = getStudioLocalAppClient(),
-): Promise<NimiPortableAppAIConfig> {
-  const current = await loadStudioAIConfig(client);
-  const retained = (current?.capabilities ?? []).filter(
-    (existing) => existing.capabilityContract !== intent.capabilityContract,
-  );
-  return requireStudioAIConfigOwner(await client.aiConfig.overwrite([...retained, intent]));
+export async function openStudioAIConfigurationInDesktop(
+  openIntent: StudioDesktopIntentOpener = openDesktopIntent,
+): Promise<void> {
+  const result = await openIntent({
+    intent: {
+      kind: 'open-apps',
+      appId: REALM_PERSONA_STUDIO_APP_ID,
+    },
+  });
+  if (result.status === 'rejected') {
+    throw Object.assign(
+      new Error(`Nimi Desktop rejected opening the Studio App configuration surface (${result.reasonCode}).`),
+      {
+        reasonCode: result.reasonCode,
+        actionHint: result.actionHint,
+      },
+    );
+  }
 }
 
 export function requireStudioAIConfigOwner(config: NimiPortableAppAIConfig): NimiPortableAppAIConfig {

@@ -88,6 +88,18 @@ describe('Studio shell kit boundary', () => {
     expect(styles).toContain('scrollbar-gutter: stable;');
   });
 
+  it('uses one shared width and gutter for route-level page containers', () => {
+    const styles = rendererStylesSource();
+
+    expect(styles).toContain('--ras-page-max-width: 1160px;');
+    expect(styles).toContain('--ras-page-gutter: clamp(16px, 2.2vw, 28px);');
+    expect(styles).toMatch(/\.ras-page\s*\{[^}]*max-width: var\(--ras-page-max-width\);/);
+    expect(styles).toMatch(/\.ras-page\s*\{[^}]*padding: 12px var\(--ras-page-gutter\) 32px;/);
+    expect(styles).not.toMatch(/\.ras-persona-library\s*\{[^}]*max-width:/);
+    expect(styles).not.toMatch(/\.ras-persona-workspace-page\s*\{[^}]*max-width:/);
+    expect(styles).not.toMatch(/\.ras-asset-overview\s*\{[^}]*max-width:/);
+  });
+
   it('preserves the window drag whitelist and marks sidebar interactions', () => {
     const shell = shellLayoutSource();
     const sidebar = sidebarSource();
@@ -96,8 +108,30 @@ describe('Studio shell kit boundary', () => {
     expect(shell).toContain('startStudioWindowDrag');
     expect(shell).toContain('shell-main-drag-region');
     expect(sidebar).toContain('data-titlebar-interactive="true"');
-    expect(sidebar).toContain('SegmentedControl');
-    expect(sidebar).toContain('[&_.nimi-segmented-control__item]:flex-1');
+  });
+
+  it('uses the supplied panel icon and lets the collapsed brand reveal the expand action', () => {
+    const sidebar = sidebarSource();
+    const styles = rendererStylesSource();
+
+    expect(sidebar).toContain('PanelLeft,');
+    expect(sidebar).not.toContain('PanelLeftClose');
+    expect(sidebar).not.toContain('PanelLeftOpen');
+    expect(sidebar).toContain('data-testid="sidebar-collapse"');
+    expect(sidebar).toContain('data-testid="sidebar-brand-expand"');
+    expect(sidebar).toContain('onClick={() => onCollapsedChange(false)}');
+    expect(styles).toContain('.ras-sidebar-brand-switcher:hover .ras-sidebar-brand-switcher__logo');
+    expect(styles).toContain('.ras-sidebar-brand-switcher:focus-visible .ras-sidebar-brand-switcher__icon');
+  });
+
+  it('keeps locale switching inside the account popover', () => {
+    const sidebar = sidebarSource();
+
+    expect(sidebar).toContain("id: 'language'");
+    expect(sidebar).toContain('footerItems');
+    expect(sidebar).toContain("locale === 'en' ? 'locale.switchToChinese' : 'locale.switchToEnglish'");
+    expect(sidebar).not.toContain('function LanguageSwitcher');
+    expect(sidebar).not.toContain('SegmentedControl');
   });
 
   it('starts the full sidebar and route content at the top of the my-personas page', () => {
@@ -113,7 +147,7 @@ describe('Studio shell kit boundary', () => {
     expect(sidebar).not.toContain("t('persona.workspace.fixtureBadge')");
     expect(sidebar).not.toContain("t('shell.sidebar.creationHistory')");
     expect(sidebar).not.toContain('isPortfolioLibrary');
-    expect(styles).toMatch(/\.ras-shell__body\s*\{[^}]*padding: 14px;/);
+    expect(styles).toMatch(/\.ras-shell__body\s*\{[^}]*padding: 12px;/);
     expect(styles).not.toContain('padding: 70px 14px 14px 14px;');
     expect(styles).not.toContain('data-compact-chrome');
   });

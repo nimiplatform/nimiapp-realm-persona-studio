@@ -1,4 +1,5 @@
 import { useAppStore } from '../app-shell/app-store.js';
+import { classifyStudioProtectedSessionFailure } from '../app-shell/protected-session-state.js';
 import { getStudioLocalAppClient } from '../app-shell/studio-platform.js';
 import { describeError, logRendererEvent } from './telemetry/renderer-log.js';
 
@@ -20,14 +21,16 @@ export async function runStudioBootstrap(options: { force?: boolean } = {}): Pro
 }
 
 export async function ensureStudioBootstrapReady(): Promise<void> {
-  const store = useAppStore.getState();
-  if (store.bootstrapReady) {
-    return;
+  if (!useAppStore.getState().bootstrapReady) {
+    await runStudioBootstrap();
   }
-  await runStudioBootstrap();
-  const next = useAppStore.getState();
-  if (!next.bootstrapReady) {
-    throw new Error(next.bootstrapError || 'Realm Persona Studio bootstrap did not complete');
+  const state = useAppStore.getState();
+  if (!state.bootstrapReady) {
+    throw new Error(
+      state.bootstrapFailure?.message
+      || state.bootstrapError
+      || 'The protected Realm Persona Studio operation set is unavailable.',
+    );
   }
 }
 
@@ -35,29 +38,41 @@ async function doRunStudioBootstrap(): Promise<void> {
   const store = useAppStore.getState();
   const flowId = `studio-bootstrap-${Date.now().toString(36)}`;
 
-  try {
-    store.setBootstrapReady(false);
-    store.setBootstrapError(null);
-    store.clearAuthSession();
+  store.setBootstrapReady(false);
+  store.setBootstrapError(null);
+  store.setBootstrapFailure(null);
+  store.clearAuthSession();
 
+  try {
     const session = await getStudioLocalAppClient().auth.status();
     if (!session.sessionBound) {
-      store.setBootstrapReady(true);
-      return;
+      throw Object.assign(
+        new Error('Realm Persona Studio Desktop-supervised local-app session is not bound.'),
+        {
+          reasonCode: session.reasonCode,
+          actionHint: session.actionHint,
+          source: 'sdk',
+        },
+      );
     }
     store.setProtectedSessionBound();
     store.setBootstrapReady(true);
   } catch (error) {
-    store.clearAuthSession();
-    const message = error instanceof Error ? error.message : String(error);
+    const failure = classifyStudioProtectedSessionFailure(error);
     logRendererEvent({
-      level: 'error',
-      area: 'studio-bootstrap',
-      message: 'action:bootstrap-failed',
+      level: 'warn',
+      area: 'studio-bootstrap.protected-session',
+      message: 'action:protected-session-unavailable',
       flowId,
-      details: { error: describeError(error) },
+      details: {
+        error: describeError(error),
+        reasonCode: failure.reasonCode,
+        actionHint: failure.actionHint,
+        state: failure.state,
+      },
     });
-    store.setBootstrapError(message);
+    store.setBootstrapFailure(failure);
+    store.setBootstrapError(failure.message);
     store.setBootstrapReady(false);
   }
 }

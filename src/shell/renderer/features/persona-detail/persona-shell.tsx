@@ -6,6 +6,7 @@ import {
   Button,
   EmptyState,
   InlineAlert,
+  NimiTabs,
   ScrollArea,
   Surface,
 } from '@nimiplatform/kit/ui';
@@ -21,8 +22,12 @@ import {
   PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS,
 } from './persona-workspace.visual-fixture.js';
 
-export type PersonaShellTabKey = 'detail' | 'settings' | 'assets' | 'posts' | 'insights';
+export type PersonaShellTabKey = 'detail' | 'settings' | 'assets' | 'posts' | 'insights' | 'launch';
 export type PersonaShellMode = PersonaDetailReadScope;
+
+type StudioVisualPreviewGlobal = typeof globalThis & {
+  __RPS_VISUAL_PREVIEW__?: boolean;
+};
 
 type PersonaTabDef = {
   key: PersonaShellTabKey;
@@ -51,6 +56,18 @@ const TABS: PersonaTabDef[] = [
     basePath: (personaId) => `/portfolio/${personaId}/assets`,
   },
   {
+    key: 'insights',
+    labelKey: 'persona.tabs.insights',
+    modes: ['owner'],
+    basePath: (personaId) => `/portfolio/${personaId}/insights`,
+  },
+  {
+    key: 'launch',
+    labelKey: 'persona.tabs.launch',
+    modes: ['owner'],
+    basePath: (personaId) => `/portfolio/${personaId}/launch`,
+  },
+  {
     key: 'settings',
     labelKey: 'persona.tabs.settings',
     modes: ['owner'],
@@ -72,17 +89,15 @@ export function PersonaTabBar({
   const tabs = TABS.filter((tab) => tab.modes.includes(mode));
   return (
     <nav className="ras-persona-tabs" aria-label={t('persona.tabs.ariaLabel')}>
-      {tabs.map((tab) => (
-        <button
-          key={tab.key}
-          type="button"
-          data-active={current === tab.key}
-          aria-current={current === tab.key ? 'page' : undefined}
-          onClick={() => navigate(tab.basePath(personaId, mode))}
-        >
-          {t(tab.labelKey)}
-        </button>
-      ))}
+      <NimiTabs
+        items={tabs.map((tab) => ({ value: tab.key, label: t(tab.labelKey) }))}
+        value={current}
+        onValueChange={(value) => {
+          const tab = tabs.find((candidate) => candidate.key === value);
+          if (tab) navigate(tab.basePath(personaId, mode));
+        }}
+        ariaLabel={t('persona.tabs.ariaLabel')}
+      />
     </nav>
   );
 }
@@ -106,13 +121,16 @@ export function PersonaHeader({
   const handle = persona.handle.value ? `@${persona.handle.value}` : settingFieldDisplayValue(persona.handle, t('shared.handleNotSet'), t);
   const world = settingFieldDisplayValue(persona.world, t('shared.worldNotSet'), t);
   const coverAvailable = persona.profileCoverUrl.status === 'available' && persona.profileCoverUrl.value;
+  const coverFallback = persona.profileCoverUrl.status === 'available-empty'
+    ? t('persona.workspace.coverNotSet')
+    : t('persona.workspace.coverUnavailable');
   return (
     <section className="ras-persona-profile-header">
       <div className="ras-persona-profile-header__cover">
         {coverAvailable ? (
           <img src={persona.profileCoverUrl.value} alt={t('persona.workspace.coverAlt', { name })} />
         ) : (
-          <div className="ras-persona-profile-header__cover-unavailable">{t('persona.workspace.coverUnavailable')}</div>
+          <div className="ras-persona-profile-header__cover-unavailable">{coverFallback}</div>
         )}
       </div>
       <div className="ras-persona-profile-header__identity-row">
@@ -127,22 +145,17 @@ export function PersonaHeader({
             fallback={<span className="text-2xl font-semibold">{name.charAt(0).toUpperCase()}</span>}
           />
           <div className="ras-persona-profile-header__copy">
-            <h1>{name}</h1>
+            <div className="ras-persona-profile-header__title-row">
+              <h1>{name}</h1>
+              <span className="ras-persona-profile-header__visibility">
+                <i aria-hidden="true" />
+                {personaVisibilityLabel(persona, t)}
+              </span>
+            </div>
             <p>{handle} <span aria-hidden="true">·</span> {world}</p>
-            <span className="ras-persona-profile-header__visibility">
-              <i aria-hidden="true" />
-              {personaVisibilityLabel(persona, t)}
-            </span>
           </div>
         </div>
         <div className="ras-persona-profile-header__actions">
-          <Button
-            tone="primary"
-            className="text-white"
-            onClick={() => navigate(`/portfolio/${persona.id}/assets`)}
-          >
-            {t('persona.workspace.completeIdentity')}
-          </Button>
           <Button
             tone="secondary"
             leadingIcon={<Eye size={16} />}
@@ -199,6 +212,8 @@ function deriveCurrentTab(pathname: string, personaId: string): PersonaShellTabK
   if (pathname.startsWith(`/portfolio/${personaId}/settings`)) return 'settings';
   if (pathname.startsWith(`/portfolio/${personaId}/assets`)) return 'assets';
   if (pathname.startsWith(`/portfolio/${personaId}/posts`)) return 'posts';
+  if (pathname.startsWith(`/portfolio/${personaId}/insights`)) return 'insights';
+  if (pathname.startsWith(`/portfolio/${personaId}/launch`)) return 'launch';
   return 'detail';
 }
 
@@ -236,7 +251,9 @@ export function PersonaShell({
   const { t } = useStudioI18n();
   const location = useLocation();
   const activeTab = current ?? deriveCurrentTab(location.pathname, personaId);
-  const developmentFixturePersona = import.meta.env.DEV
+  const visualPreviewMode = import.meta.env.DEV
+    && (globalThis as StudioVisualPreviewGlobal).__RPS_VISUAL_PREVIEW__ === true;
+  const developmentFixturePersona = visualPreviewMode
     ? PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS[personaId]
     : undefined;
   const developmentVisualData = developmentFixturePersona
@@ -290,7 +307,6 @@ export function PersonaShell({
             <div>
               <Button
                 tone="primary"
-                className="text-white"
                 onClick={() => void detailQuery.refetch()}
                 loading={detailQuery.isFetching}
               >

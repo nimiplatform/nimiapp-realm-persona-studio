@@ -8,6 +8,19 @@ import type { OwnerPortfolioPersona, OwnerPortfolioPersonaDetail, SettingField, 
 
 type StudioTranslator = (key: StudioCopyKey, options?: StudioTranslateOptions) => string;
 
+export type PersonaLibraryStatus = 'local-draft' | 'public' | 'friends' | 'private' | 'source-unavailable';
+
+const PERSONA_LIBRARY_STATUS_PRESENTATION: Record<
+  PersonaLibraryStatus,
+  { labelKey: StudioCopyKey; tone: 'info' | 'warning' | 'success' }
+> = {
+  'local-draft': { labelKey: 'portfolio.status.localDraft', tone: 'info' },
+  public: { labelKey: 'persona.workspace.public', tone: 'success' },
+  friends: { labelKey: 'persona.workspace.friends', tone: 'info' },
+  private: { labelKey: 'persona.workspace.private', tone: 'warning' },
+  'source-unavailable': { labelKey: 'common.sourceUnavailable', tone: 'warning' },
+};
+
 const SETTING_FIELD_LABEL_KEYS: Record<SettingFieldKey, StudioCopyKey> = {
   displayName: 'settingField.displayName',
   handle: 'settingField.handle',
@@ -89,6 +102,24 @@ export function settingFieldDisplayValue(
   return t('shared.fieldStatus.sourceUnavailable');
 }
 
+export function PersonaLibraryStatusBadge({ status }: { status: PersonaLibraryStatus }) {
+  const { t } = useStudioI18n();
+  const presentation = PERSONA_LIBRARY_STATUS_PRESENTATION[status];
+  return (
+    <StatusBadge tone={presentation.tone} className="ras-persona-library-status">
+      {t(presentation.labelKey)}
+    </StatusBadge>
+  );
+}
+
+export function personaLibraryStatusFromRealmState(realmState: string | null): PersonaLibraryStatus {
+  const normalized = realmState?.trim().toUpperCase();
+  if (normalized === 'PUBLIC') return 'public';
+  if (normalized === 'FRIENDS') return 'friends';
+  if (normalized === 'PRIVATE') return 'private';
+  return 'source-unavailable';
+}
+
 function settingFieldStatusTone(field: SettingField): 'success' | 'neutral' | 'warning' {
   if (field.status === 'available') return 'success';
   if (field.status === 'available-empty') return 'neutral';
@@ -111,33 +142,52 @@ export function PersonaCard({
   const { t } = useStudioI18n();
   return (
     <article className="ras-world-persona-card" data-active={active || undefined}>
-      <div className="ras-world-persona-card__banner">
-        {worldBannerUrl ? (
-          <img src={worldBannerUrl} alt="" />
+      <div className="ras-world-persona-card__visual">
+        {persona.avatarUrl ? (
+          <img
+            className="ras-world-persona-card__portrait"
+            src={persona.avatarUrl}
+            alt={persona.displayName}
+          />
+        ) : worldBannerUrl ? (
+          <>
+            <img
+              className="ras-world-persona-card__world-backdrop"
+              src={worldBannerUrl}
+              alt=""
+            />
+            <span className="ras-world-persona-card__image-unavailable">
+              {t('portfolio.card.imageUnavailable')}
+            </span>
+          </>
         ) : (
-          <span>{t('portfolio.card.bannerUnavailable')}</span>
+          <span className="ras-world-persona-card__image-unavailable">
+            {t('portfolio.card.imageUnavailable')}
+          </span>
         )}
+        <span
+          className="ras-world-persona-card__world-label"
+          data-unavailable={worldName ? undefined : true}
+        >
+          {worldName || t('shared.worldUnavailable')}
+        </span>
       </div>
       <div className="ras-world-persona-card__panel">
-        <div className="ras-world-persona-card__avatar" aria-hidden="true">
-          {persona.avatarUrl ? (
-            <img src={persona.avatarUrl} alt="" />
-          ) : (
-            <span>{persona.displayName.charAt(0).toLocaleUpperCase()}</span>
-          )}
-        </div>
         <div className="ras-world-persona-card__identity">
-          <h2>{persona.displayName}</h2>
-          <p>@{persona.handle}</p>
-          <div className="ras-world-persona-card__tags">
-            <StatusBadge tone="neutral">{worldName || t('shared.worldUnavailable')}</StatusBadge>
-            <StatusBadge tone="info">{ownerScopeLabel(persona.ownerScope, t)}</StatusBadge>
+          <div className="ras-world-persona-card__title-row">
+            <h2>{persona.displayName}</h2>
+            <PersonaLibraryStatusBadge status={personaLibraryStatusFromRealmState(persona.realmState)} />
           </div>
+          <p>@{persona.handle}</p>
         </div>
         <div className="ras-world-persona-card__footer">
-          <StatusBadge tone={persona.friendCount.status === 'available' ? 'success' : 'warning'} shape="dot">
-            {friendCountLabel(persona, t)}
-          </StatusBadge>
+          <div className="ras-world-persona-card__friend-count">
+            <StatusBadge tone={persona.friendCount.status === 'available' ? 'success' : 'warning'} shape="dot">
+              {persona.friendCount.status === 'available'
+                ? friendCountLabel(persona, t)
+                : t('portfolio.card.friendCountUnavailable')}
+            </StatusBadge>
+          </div>
           <button
             type="button"
             className="ras-world-persona-card__enter"

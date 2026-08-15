@@ -49,7 +49,7 @@ export function PersonaSettingsReviewPage() {
 
   if (!personaId) {
     return (
-      <Surface tone="panel" material="glass-regular" padding="lg">
+      <Surface tone="card" padding="lg">
         <InlineAlert tone="danger">{t('common.personaIdMissing')}</InlineAlert>
       </Surface>
     );
@@ -101,15 +101,15 @@ function ConsistencyReviewBody({ personaId, onApplied }: { personaId: string; on
         description={t('persona.review.description')}
       />
 
-      <Surface tone="panel" material="glass-regular" padding="lg" className="ras-radius-xl">
+      <Surface tone="card" padding="lg" className="ras-radius-xl">
         {settingsQuery.isLoading ? (
           <EmptyState title={t('persona.review.loadingTitle')} description={t('persona.review.loadingDescription')} />
         ) : settingsQuery.isError ? (
-          <InlineAlert tone="info">
+          <InlineAlert tone="danger">
             {t('persona.review.unavailablePrefix')} {t('persona.review.readFailed')}
           </InlineAlert>
         ) : (
-          <div className="ras-stack-tight" style={{ gap: 16 }}>
+          <div className="grid gap-4">
             <FieldShell label={t('persona.review.promptLabel')} message={t('persona.review.promptMessage')}>
               <TextareaField
                 value={intent}
@@ -117,10 +117,9 @@ function ConsistencyReviewBody({ personaId, onApplied }: { personaId: string; on
                 onChange={(event) => setIntent(event.currentTarget.value)}
               />
             </FieldShell>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+            <div className="flex flex-wrap gap-2.5">
               <Button
                 tone="primary"
-                className="text-white"
                 onClick={() => void generateReview()}
                 disabled={!intent.trim() || isReviewing || !settingsQuery.data}
                 loading={isReviewing}
@@ -133,35 +132,35 @@ function ConsistencyReviewBody({ personaId, onApplied }: { personaId: string; on
             </div>
             {result?.ok ? (
               <Surface tone="card" padding="md" className="ras-radius-md">
-                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 600 }}>{t('persona.review.resultTitle')}</div>
-                    <div className="ras-break-anywhere ras-text-muted ras-text-size-sm" style={{ marginTop: 4 }}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-semibold">{t('persona.review.resultTitle')}</div>
+                    <div className="ras-break-anywhere ras-text-muted ras-text-size-sm mt-1">
                       {result.proposal.rationale}
                     </div>
                   </div>
                   <StatusBadge tone="info">{t('common.candidate')}</StatusBadge>
                 </div>
                 {result.proposal.changedSettingKeys.length > 0 ? (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+                  <div className="mt-3 flex flex-wrap gap-2">
                     {result.proposal.changedSettingKeys.map((key) => (
                       <StatusBadge key={key} tone="neutral">{key}</StatusBadge>
                     ))}
                   </div>
                 ) : null}
-                <div style={{ marginTop: 12 }}>
+                <div className="mt-3">
                   <InlineAlert tone="info">
                     {t('persona.review.candidateBoundary')}
                   </InlineAlert>
                 </div>
-                <details className="ras-technical-details" style={{ marginTop: 12 }}>
+                <details className="ras-technical-details mt-3">
                   <summary>{t('persona.review.patchTitle')}</summary>
-                  <pre className="ras-json-preview" style={{ margin: '12px 0 0', minHeight: 128, overflow: 'auto', borderRadius: 'var(--nimi-radius-field)', border: '1px solid var(--nimi-border-subtle)', background: 'var(--nimi-surface-panel)', padding: 12, fontSize: 12 }}>
+                  <pre className="ras-json-preview m-0 mt-3 min-h-32 overflow-auto rounded-[var(--nimi-radius-field)] border border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-panel)] p-3 text-xs">
                     {JSON.stringify(result.proposal.draftPatch, null, 2)}
                   </pre>
                 </details>
-                <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                  <Button tone="primary" className="text-white" onClick={onApplied}>{t('persona.review.goApply')}</Button>
+                <div className="mt-3 flex flex-wrap gap-2.5">
+                  <Button tone="primary" onClick={onApplied}>{t('persona.review.goApply')}</Button>
                 </div>
               </Surface>
             ) : null}

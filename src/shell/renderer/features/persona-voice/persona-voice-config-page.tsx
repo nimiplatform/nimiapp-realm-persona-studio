@@ -81,7 +81,7 @@ function VoiceConfigBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) 
       />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <Surface tone="panel" material="glass-regular" padding="lg" className="ras-radius-xl">
+        <Surface tone="card" padding="lg" className="ras-radius-xl">
           <div className="flex items-center gap-2">
             <Mic2 size={19} strokeWidth={1.8} />
             <h2 className="m-0 text-[length:var(--nimi-type-body-size)] font-semibold">{t('voiceConfig.demo.title')}</h2>
@@ -106,7 +106,6 @@ function VoiceConfigBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) 
           <div className="mt-3 flex flex-wrap gap-3">
             <Button
               tone="primary"
-              className="text-white"
               disabled={!payload.changed || isSynthesizing}
               loading={isSynthesizing}
               onClick={() => void synthesizeVoiceDemo()}
@@ -127,7 +126,7 @@ function VoiceConfigBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) 
             </div>
           ) : null}
           {result && !result.ok ? (
-            <InlineAlert tone="info" className="mt-3">
+            <InlineAlert tone="danger" className="mt-3">
               {result.failure === 'runtime-media-candidate-unavailable'
                 ? t('assets.error.runtimeMediaCandidateUnavailable')
                 : t('voiceConfig.scriptRequired')}
@@ -155,7 +154,7 @@ export function PersonaVoiceConfigPage() {
 
   if (!personaId) {
     return (
-      <Surface tone="panel" material="glass-regular" padding="lg">
+      <Surface tone="card" padding="lg">
         <InlineAlert tone="danger">{t('common.personaIdMissing')}</InlineAlert>
       </Surface>
     );

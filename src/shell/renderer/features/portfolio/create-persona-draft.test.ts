@@ -3,6 +3,7 @@ import {
   PERSONA_TRAIT_MAX,
   REALM_PERSONA_CREATE_PATH,
   REALM_PERSONA_CREATE_SOURCE,
+  adoptImportedReferenceImageCandidate,
   normalizeRealmPersonaHandleAvailability,
   normalizeCreateRealmPersonaDraft,
   normalizeSelectableWorlds,
@@ -135,6 +136,53 @@ describe('create Realm Persona draft normalization', () => {
       { slot: 0, url: 'https://cdn.example.test/slot-1.png' },
       { slot: 2, url: 'https://cdn.example.test/slot-3.png' },
     ]);
+  });
+
+  it('adopts one imported or existing image into an empty slot and selects it', () => {
+    const result = adoptImportedReferenceImageCandidate(
+      {
+        ...baseInput,
+        referenceImageCandidates: [{
+          draftKey: '01J00000000000000000000001',
+          slot: 0,
+          url: 'https://cdn.example.test/generated.png',
+          prompt: 'Owner visible image prompt',
+          createdAt: '2026-08-04T12:00:00.000Z',
+          sourceKind: 'generated',
+          reviewState: 'candidate-only',
+        }],
+      },
+      '01J00000000000000000000001',
+      'https://cdn.example.test/imported.png',
+      '2026-08-04T12:30:00.000Z',
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      targetSlot: 1,
+      referenceImageUrl: 'https://cdn.example.test/imported.png',
+      referenceImageCandidates: [
+        { slot: 0, reviewState: 'candidate-only', sourceKind: 'generated' },
+        { slot: 1, reviewState: 'owner-selected', sourceKind: 'imported', prompt: '' },
+      ],
+    });
+  });
+
+  it('requires an owner-selected replacement target when all four image slots are full', () => {
+    const fullCandidates = [0, 1, 2, 3].map((slot) => ({
+      draftKey: '01J00000000000000000000001',
+      slot: slot as 0 | 1 | 2 | 3,
+      url: `https://cdn.example.test/generated-${slot}.png`,
+      prompt: 'Owner visible image prompt',
+      createdAt: '2026-08-04T12:00:00.000Z',
+      sourceKind: 'generated' as const,
+      reviewState: 'candidate-only' as const,
+    }));
+    expect(adoptImportedReferenceImageCandidate(
+      { ...baseInput, referenceImageCandidates: fullCandidates },
+      '01J00000000000000000000001',
+      'https://cdn.example.test/imported.png',
+    )).toEqual({ ok: false, failure: 'candidate-slots-full' });
   });
 
   it('selects OASIS from the source-backed Realm world list', () => {

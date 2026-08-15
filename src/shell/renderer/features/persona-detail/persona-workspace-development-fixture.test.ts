@@ -12,9 +12,14 @@ function source(path: string): string {
 }
 
 describe('persona workspace development fixture', () => {
-  it('exposes two clearly marked personas without inventing friendCount', () => {
-    expect(PERSONA_WORKSPACE_VISUAL_FIXTURE_LIST.map((persona) => persona.displayName)).toEqual(['小米', '南星']);
-    expect(Object.keys(PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS)).toEqual(['visual-xiaomi', 'visual-nanxing']);
+  it('exposes four clearly marked personas without inventing friendCount', () => {
+    expect(PERSONA_WORKSPACE_VISUAL_FIXTURE_LIST.map((persona) => persona.displayName)).toEqual(['小米', '南星', '晨雾', '星澜']);
+    expect(Object.keys(PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS)).toEqual([
+      'visual-xiaomi',
+      'visual-nanxing',
+      'visual-chenwu',
+      'visual-xinglan',
+    ]);
     for (const persona of PERSONA_WORKSPACE_VISUAL_FIXTURE_LIST) {
       expect(persona.friendCount).toEqual({
         status: 'source-unavailable',
@@ -22,18 +27,39 @@ describe('persona workspace development fixture', () => {
       });
       expect(PERSONA_WORKSPACE_VISUAL_FIXTURE_DATA[persona.id]?.developmentFixture).toBe(true);
     }
+
+    const emptyPersona = PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS['visual-chenwu'];
+    expect(emptyPersona?.avatarUrl).toBeNull();
+    expect(emptyPersona?.profileCoverUrl.status).toBe('available-empty');
+    expect(emptyPersona?.voice).toBeUndefined();
+    expect(PERSONA_WORKSPACE_VISUAL_FIXTURE_DATA['visual-chenwu']?.candidates).toEqual([]);
+
+    const selectedVoice = PERSONA_WORKSPACE_VISUAL_FIXTURE_DATA['visual-nanxing']?.candidates
+      .find((candidate) => candidate.kind === 'voice' && candidate.selected);
+    expect(selectedVoice).toMatchObject({
+      fileName: 'nanxing_voice_v1.wav',
+      mimeType: 'audio/wav',
+      durationSeconds: 1,
+      fileSizeBytes: 8044,
+      sourceKind: 'imported',
+      status: 'candidate-only',
+    });
+    expect(selectedVoice?.previewUrl).toMatch(/^data:audio\/wav;base64,/);
   });
 
-  it('uses the fixture only behind the development guard when the real list is unavailable or empty', () => {
+  it('uses fixtures only through the explicit development visual-preview harness', () => {
     const sidebar = source('src/shell/renderer/app-shell/studio-sidebar/studio-sidebar.tsx');
     const shell = source('src/shell/renderer/features/persona-detail/persona-shell.tsx');
+    const preview = source('src/shell/renderer/visual-preview.tsx');
     const detailPage = source('src/shell/renderer/features/persona-detail/persona-detail-page.tsx');
     const postsPage = source('src/shell/renderer/features/persona-posts/persona-posts-page.tsx');
 
-    expect(sidebar).toContain('const developmentFixtureFallback = import.meta.env.DEV');
-    expect(sidebar).toContain('portfolioQuery.isError || (portfolioQuery.data?.length ?? 0) === 0');
-    expect(shell).toContain('const developmentFixturePersona = import.meta.env.DEV');
+    expect(sidebar).not.toContain('developmentFixtureFallback');
+    expect(sidebar).toContain('const fixtureMode = visualFixturePersonas !== undefined');
+    expect(shell).toContain('const visualPreviewMode = import.meta.env.DEV');
+    expect(shell).toContain('__RPS_VISUAL_PREVIEW__ === true');
     expect(shell).toContain('enabled: developmentFixturePersona === undefined');
+    expect(preview).toContain('previewGlobal.__RPS_VISUAL_PREVIEW__ = true');
     expect(detailPage).toContain('<PersonaCockpit persona={persona} visualData={visualData} />');
     expect(postsPage).toContain('<PersonaPostEditor persona={persona} visualData={visualData} />');
   });

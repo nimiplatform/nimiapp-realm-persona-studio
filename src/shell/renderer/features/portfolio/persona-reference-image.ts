@@ -102,3 +102,14 @@ export function defaultReferenceImagePromptFromDraft(input: {
   const tail = 'character portrait, cinematic lighting, full body, high detail, neutral background';
   return [lead, traits, tail].filter(Boolean).join(' — ');
 }
+
+export function initialReferenceImagePromptFromDraft(input: {
+  originalDescription: string;
+  description: string;
+  displayName: string;
+  concept: string;
+  personaArchetype: string;
+}): string {
+  const ownerDescription = input.originalDescription.trim();
+  return ownerDescription || defaultReferenceImagePromptFromDraft(input);
+}

@@ -3,6 +3,7 @@ import {
   buildPersonaReferenceImagePayload,
   defaultReferenceImagePromptFromDraft,
   generatePersonaReferenceImage,
+  initialReferenceImagePromptFromDraft,
 } from './persona-reference-image.js';
 import { RUNTIME_MEDIA_CANDIDATE_UNAVAILABLE_MESSAGE } from './portfolio-media-client.js';
 
@@ -77,5 +78,15 @@ describe('persona reference image generation', () => {
       concept: 'Public guide',
       personaArchetype: 'CARING',
     })).toBe('A precise visual identity — CARING, Mira — character portrait, cinematic lighting, full body, high detail, neutral background');
+  });
+
+  it('initializes the image prompt from the prior describe-stage owner text', () => {
+    expect(initialReferenceImagePromptFromDraft({
+      originalDescription: '  A night-shift archivist who protects forgotten stories.  ',
+      description: 'Runtime-generated public description.',
+      displayName: 'Mira',
+      concept: 'Public guide',
+      personaArchetype: 'CARING',
+    })).toBe('A night-shift archivist who protects forgotten stories.');
   });
 });

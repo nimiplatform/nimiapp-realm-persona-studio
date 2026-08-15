@@ -170,7 +170,14 @@ function normalizeDraftCandidate(
     : null;
   const createdAt = isIsoDateTime(value.createdAt) ? value.createdAt.trim() : null;
   const title = titleFallback || prompt;
-  if (!url || !prompt || !sourceKind || !reviewState || !createdAt || !title) return null;
+  if (
+    !url
+    || !sourceKind
+    || (sourceKind === 'generated' && !prompt)
+    || !reviewState
+    || !createdAt
+    || !title
+  ) return null;
 
   return {
     id: `draft:${provenance.draftKey}:${index}`,

@@ -4,37 +4,33 @@ import {
   AudioLines,
   CalendarDays,
   ChevronRight,
-  Database,
   FileText,
-  ShieldCheck,
   UserRound,
-  UsersRound,
 } from 'lucide-react';
 import { Button, InlineAlert, StatusBadge } from '@nimiplatform/kit/ui';
 import type { CreativeAssetHistoryRecord } from '@renderer/features/portfolio/creative-asset-history.js';
 import { loadLocalPostDraft, type LocalPostDraftRecord } from '@renderer/features/portfolio/local-post-draft-store.js';
 import { loadLocalPostSchedule } from '@renderer/features/portfolio/local-post-schedule-store.js';
 import type { OwnerPortfolioPersonaDetail } from '@renderer/features/portfolio/portfolio-data.js';
-import { detailFriendCountLabel, settingFieldDisplayValue } from '@renderer/features/portfolio/OwnerPortfolio.shared.js';
+import { settingFieldDisplayValue } from '@renderer/features/portfolio/OwnerPortfolio.shared.js';
 import { useLocalCreativeAssetHistory } from '@renderer/features/portfolio/use-local-creative-asset-history.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
 import type { PersonaWorkspaceCandidate, PersonaWorkspaceVisualData } from './persona-workspace-visual-data.js';
 
 function mapHistoryCandidate(record: CreativeAssetHistoryRecord): PersonaWorkspaceCandidate {
+  const voiceCandidate = record.kind === 'voice-demo-candidate';
   return {
     id: record.id,
-    kind: record.kind === 'voice-demo-candidate' ? 'voice' : record.kind === 'avatar-package-candidate' ? 'avatar' : 'cover',
+    kind: voiceCandidate ? 'voice' : record.kind === 'avatar-package-candidate' ? 'avatar' : 'cover',
     label: record.label,
     status: record.reviewState,
-    ...(record.previewUrl ? { imageUrl: record.previewUrl } : {}),
-    ...(record.kind === 'voice-demo-candidate' ? { fileLabel: record.detail } : {}),
+    ...(!voiceCandidate && record.previewUrl ? { imageUrl: record.previewUrl } : {}),
+    ...(voiceCandidate ? {
+      fileName: record.label,
+      sourceKind: record.sourceKind,
+      ...(record.previewUrl ? { previewUrl: record.previewUrl } : {}),
+    } : {}),
   };
-}
-
-function visibilityLabel(persona: OwnerPortfolioPersonaDetail, unavailable: string): string {
-  return persona.state.status === 'available' && persona.state.value
-    ? persona.state.value
-    : unavailable;
 }
 
 export function PersonaCockpit({
@@ -94,9 +90,6 @@ export function PersonaCockpit({
 
   return (
     <div className="ras-persona-overview">
-      {visualData?.developmentFixture ? (
-        <InlineAlert tone="info">{t('persona.workspace.fixtureNotice')}</InlineAlert>
-      ) : null}
       {creativeHistoryState.unavailable ? (
         <InlineAlert tone="warning">{t('assets.history.unavailable')}</InlineAlert>
       ) : null}
@@ -122,29 +115,6 @@ export function PersonaCockpit({
             </div>
           </div>
         </section>
-
-        <aside className="ras-persona-overview__source">
-          <header>
-            <Database size={18} />
-            <h2>{t('persona.workspace.sourceAndStatus')}</h2>
-          </header>
-          <div className="ras-persona-overview__source-primary">
-            <UsersRound size={17} />
-            <strong>{detailFriendCountLabel(persona, t)}</strong>
-            <span>· Realm</span>
-          </div>
-          <div className="ras-persona-overview__source-primary">
-            <ShieldCheck size={17} />
-            <strong>{visibilityLabel(persona, t('common.sourceUnavailable'))}</strong>
-          </div>
-          <dl>
-            <div><dt>{t('persona.workspace.visibleName')}</dt><dd>{settingFieldDisplayValue(persona.displayName, t('common.sourceUnavailable'), t)}</dd></div>
-            <div><dt>{t('persona.workspace.username')}</dt><dd>{persona.handle.value ? `@${persona.handle.value}` : t('common.sourceUnavailable')}</dd></div>
-            <div><dt>{t('persona.workspace.homeWorld')}</dt><dd>{settingFieldDisplayValue(persona.world, t('common.sourceUnavailable'), t)}</dd></div>
-            <div><dt>{t('persona.workspace.profileDescription')}</dt><dd>{persona.bio.status === 'available' ? t('common.available') : t('common.sourceUnavailable')}</dd></div>
-            <div><dt>{t('persona.workspace.publicImage')}</dt><dd>{persona.avatarUrl ? t('common.available') : t('common.sourceUnavailable')}</dd></div>
-          </dl>
-        </aside>
       </div>
 
       <section className="ras-persona-candidates">
@@ -173,7 +143,7 @@ export function PersonaCockpit({
                 {candidate.kind === 'voice' ? (
                   <div className="ras-persona-candidates__voice">
                     <AudioLines size={48} strokeWidth={1.45} />
-                    <span>{candidate.fileLabel ?? candidate.label}</span>
+                    <span>{candidate.fileName ?? candidate.label}</span>
                   </div>
                 ) : candidate.imageUrl ? (
                   <img src={candidate.imageUrl} alt={candidate.label} />

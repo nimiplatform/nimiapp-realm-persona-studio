@@ -199,7 +199,7 @@ export function SettingProposalWorkspace({ persona, onPersonaWrite }: { persona:
             <EmptyState title={t('settings.loadingTitle')} description={t('settings.loadingDescription')} />
           ) : null}
           {settingsQuery.isError ? (
-            <InlineAlert tone="info">
+            <InlineAlert tone="danger">
               {t('settings.unavailable', {
                 message: t('settings.readFailed'),
               })}
@@ -560,7 +560,7 @@ export function VisibilitySettingsWorkspace({ persona, onPersonaWrite }: { perso
         <EmptyState title={t('visibility.loadingTitle')} description={t('visibility.loadingDescription')} />
       ) : null}
       {visibilityQuery.isError ? (
-        <InlineAlert tone="info">
+        <InlineAlert tone="danger">
           {t('visibility.unavailable', {
             message: t('visibility.readFailed'),
           })}
@@ -700,7 +700,7 @@ export function RuntimeProjectionWorkspace({ persona }: { persona: OwnerPortfoli
         </dl>
       ) : null}
       {projectionResult && !projectionResult.ok ? (
-        <InlineAlert tone="info" className="mt-3">
+        <InlineAlert tone="danger" className="mt-3">
           {translateSettingsFixedMessage(projectionResult.message, t)}
         </InlineAlert>
       ) : null}

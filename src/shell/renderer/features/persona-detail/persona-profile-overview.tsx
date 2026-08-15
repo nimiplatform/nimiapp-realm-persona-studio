@@ -64,10 +64,10 @@ export function PersonaProfileOverview({
                 </h2>
                 <StatusBadge tone="info">{t('persona.profile.realmPersonaBadge')}</StatusBadge>
               </div>
-              <p className="ras-break-anywhere ras-text-secondary" style={{ margin: '4px 0 0' }}>
+              <p className="ras-break-anywhere ras-text-secondary mt-1">
                 {persona.handle.value ? `@${persona.handle.value}` : settingFieldDisplayValue(persona.handle, t('shared.handleNotSet'), t)}
               </p>
-              <p className="ras-break-anywhere ras-text-muted" style={{ margin: '8px 0 0', fontSize: 13, lineHeight: 1.55 }}>
+              <p className="ras-break-anywhere ras-text-muted ras-text-size-sm mt-2 leading-[1.55]">
                 {settingFieldDisplayValue(persona.bio, t('shared.profileDescriptionNotSet'), t)}
               </p>
             </>

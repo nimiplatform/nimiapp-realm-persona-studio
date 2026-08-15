@@ -9,8 +9,64 @@ import type {
 } from '@renderer/features/portfolio/portfolio-data.js';
 import type { PersonaWorkspaceVisualData } from './persona-workspace-visual-data.js';
 
+function encodeBase64(bytes: Uint8Array): string {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  let encoded = '';
+  for (let index = 0; index < bytes.length; index += 3) {
+    const first = bytes[index] ?? 0;
+    const second = bytes[index + 1] ?? 0;
+    const third = bytes[index + 2] ?? 0;
+    const block = (first << 16) | (second << 8) | third;
+    encoded += alphabet[(block >> 18) & 63];
+    encoded += alphabet[(block >> 12) & 63];
+    encoded += index + 1 < bytes.length ? alphabet[(block >> 6) & 63] : '=';
+    encoded += index + 2 < bytes.length ? alphabet[block & 63] : '=';
+  }
+  return encoded;
+}
+
+function createDevelopmentVoicePreviewDataUrl(): string {
+  const sampleRate = 8_000;
+  const sampleCount = sampleRate;
+  const bytes = new Uint8Array(44 + sampleCount);
+  const view = new DataView(bytes.buffer);
+
+  function writeText(offset: number, value: string) {
+    for (let index = 0; index < value.length; index += 1) {
+      bytes[offset + index] = value.charCodeAt(index);
+    }
+  }
+
+  writeText(0, 'RIFF');
+  view.setUint32(4, 36 + sampleCount, true);
+  writeText(8, 'WAVE');
+  writeText(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate, true);
+  view.setUint16(32, 1, true);
+  view.setUint16(34, 8, true);
+  writeText(36, 'data');
+  view.setUint32(40, sampleCount, true);
+
+  for (let index = 0; index < sampleCount; index += 1) {
+    const time = index / sampleRate;
+    const attack = Math.min(1, time / 0.08);
+    const release = Math.min(1, (1 - time) / 0.16);
+    const envelope = Math.max(0, Math.min(attack, release));
+    const voicedTone = (0.62 * Math.sin(2 * Math.PI * 125 * time))
+      + (0.2 * Math.sin(2 * Math.PI * 375 * time));
+    bytes[44 + index] = Math.max(0, Math.min(255, Math.round(128 + (82 * envelope * voicedTone))));
+  }
+
+  return `data:audio/wav;base64,${encodeBase64(bytes)}`;
+}
+
 const DETAIL_SOURCE = 'Realm WorldCoreController.getRealmPersona' as const;
 const LIST_SOURCE = 'Realm WorldCoreController.listRealmPersonas' as const;
+const DEV_VOICE_PREVIEW_DATA_URL = createDevelopmentVoicePreviewDataUrl();
 
 function field(
   key: SettingField['key'],
@@ -53,6 +109,32 @@ export const PERSONA_WORKSPACE_VISUAL_FIXTURE_LIST: OwnerPortfolioPersona[] = [
     realmState: 'PUBLIC',
     worldName: 'EDEN',
     updatedAt: '2026-08-09T18:20:00+08:00',
+    friendCount: { status: 'source-unavailable', label: 'friendCount source unavailable' },
+  },
+  {
+    id: 'visual-chenwu',
+    displayName: '晨雾',
+    handle: 'chenwu',
+    coverUrl: null,
+    avatarUrl: null,
+    ownerScope: 'owner-created',
+    source: LIST_SOURCE,
+    realmState: 'PRIVATE',
+    worldName: 'AURORA',
+    updatedAt: '2026-08-11T15:10:00+08:00',
+    friendCount: { status: 'source-unavailable', label: 'friendCount source unavailable' },
+  },
+  {
+    id: 'visual-xinglan',
+    displayName: '星澜',
+    handle: 'xinglan',
+    coverUrl: null,
+    avatarUrl: null,
+    ownerScope: 'owner-created',
+    source: LIST_SOURCE,
+    realmState: 'PRIVATE',
+    worldName: 'NEBULA',
+    updatedAt: '2026-08-12T10:30:00+08:00',
     friendCount: { status: 'source-unavailable', label: 'friendCount source unavailable' },
   },
 ];
@@ -112,6 +194,42 @@ export const PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS: Record<string, OwnerPortf
     ownerScope: 'owner-created',
     source: DETAIL_SOURCE,
   },
+  'visual-chenwu': {
+    id: 'visual-chenwu',
+    displayName: field('displayName', 'Display name', '晨雾'),
+    handle: field('handle', 'Handle', 'chenwu'),
+    bio: field('bio', 'Profile description', '喜欢收集清晨的声音与光线，在 AURORA 记录缓慢生长的想法。'),
+    greeting: field('greeting', 'Greeting', '你好，我是晨雾。'),
+    profileCoverUrl: field('profileCoverUrl', 'Profile cover URL', ''),
+    ownership: field('ownership', 'Ownership evidence', 'owner-created RealmPersona'),
+    world: field('world', 'World evidence', 'AURORA'),
+    state: field('state', 'State evidence', 'PRIVATE'),
+    avatarUrl: null,
+    contentHash: 'visual-fixture-chenwu-content-hash',
+    contentRevision: 1,
+    homeWorldId: 'AURORA',
+    friendCount: { status: 'source-unavailable', label: 'friendCount source unavailable' },
+    ownerScope: 'owner-created',
+    source: DETAIL_SOURCE,
+  },
+  'visual-xinglan': {
+    id: 'visual-xinglan',
+    displayName: field('displayName', 'Display name', '星澜'),
+    handle: field('handle', 'Handle', 'xinglan'),
+    bio: field('bio', 'Profile description', '在 NEBULA 记录星光、潮汐与缓慢成形的想法。'),
+    greeting: field('greeting', 'Greeting', '你好，我是星澜。'),
+    profileCoverUrl: field('profileCoverUrl', 'Profile cover URL', ''),
+    ownership: field('ownership', 'Ownership evidence', 'owner-created RealmPersona'),
+    world: field('world', 'World evidence', 'NEBULA'),
+    state: field('state', 'State evidence', 'PRIVATE'),
+    avatarUrl: null,
+    contentHash: 'visual-fixture-xinglan-content-hash',
+    contentRevision: 1,
+    homeWorldId: 'NEBULA',
+    friendCount: { status: 'source-unavailable', label: 'friendCount source unavailable' },
+    ownerScope: 'owner-created',
+    source: DETAIL_SOURCE,
+  },
 };
 
 export const PERSONA_WORKSPACE_VISUAL_FIXTURE_DATA: Record<string, PersonaWorkspaceVisualData> = {
@@ -121,7 +239,21 @@ export const PERSONA_WORKSPACE_VISUAL_FIXTURE_DATA: Record<string, PersonaWorksp
     candidates: [
       { id: 'xiaomi-avatar-candidate', kind: 'avatar', label: '头像候选', status: 'candidate-only', imageUrl: xiaomiAvatarUrl },
       { id: 'xiaomi-cover-candidate', kind: 'cover', label: '主页封面候选', status: 'candidate-only', imageUrl: oasisCoverUrl },
-      { id: 'xiaomi-voice-candidate', kind: 'voice', label: '声音候选', status: 'candidate-only', fileLabel: 'xiaomi_voice_v2.mp3 · 02:18' },
+      {
+        id: 'xiaomi-voice-candidate',
+        kind: 'voice',
+        label: '声音候选',
+        status: 'candidate-only',
+        selected: true,
+        fileName: 'xiaomi_voice_v2.wav',
+        mimeType: 'audio/wav',
+        durationSeconds: 1,
+        fileSizeBytes: 8044,
+        previewUrl: DEV_VOICE_PREVIEW_DATA_URL,
+        sourceKind: 'imported',
+        selectedAt: '2026-08-13T09:42:00+08:00',
+        voiceStyle: '温暖、好奇、简洁',
+      },
     ],
     recentDraft: {
       title: '在黎明前的小宇宙里',
@@ -146,7 +278,21 @@ export const PERSONA_WORKSPACE_VISUAL_FIXTURE_DATA: Record<string, PersonaWorksp
     candidates: [
       { id: 'nanxing-avatar-candidate', kind: 'avatar', label: '头像候选', status: 'owner-reviewed', imageUrl: nanxingAvatarUrl },
       { id: 'nanxing-cover-candidate', kind: 'cover', label: '主页封面候选', status: 'candidate-only', imageUrl: edenCoverUrl },
-      { id: 'nanxing-voice-candidate', kind: 'voice', label: '声音候选', status: 'candidate-only', fileLabel: 'nanxing_voice_v1.mp3 · 01:46' },
+      {
+        id: 'nanxing-voice-candidate',
+        kind: 'voice',
+        label: '声音候选',
+        status: 'candidate-only',
+        selected: true,
+        fileName: 'nanxing_voice_v1.wav',
+        mimeType: 'audio/wav',
+        durationSeconds: 1,
+        fileSizeBytes: 8044,
+        previewUrl: DEV_VOICE_PREVIEW_DATA_URL,
+        sourceKind: 'imported',
+        selectedAt: '2026-08-13T14:32:00+08:00',
+        voiceStyle: '清醒、笃定、温暖',
+      },
     ],
     recentDraft: {
       title: 'EDEN 的清晨为什么更安静',
@@ -161,9 +307,31 @@ export const PERSONA_WORKSPACE_VISUAL_FIXTURE_DATA: Record<string, PersonaWorksp
       { id: 'nanxing-queue-draft', title: '把未来写得更具体一点', state: 'local-draft', editedLabel: '昨天 16:08' },
     ],
   },
+  'visual-chenwu': {
+    developmentFixture: true,
+    traits: ['安静观察', '细腻表达', '自然灵感'],
+    candidates: [],
+    recentDraft: null,
+    localPlan: null,
+    initialPostCaption: '',
+    initialPostTags: '',
+    postQueue: [],
+  },
+  'visual-xinglan': {
+    developmentFixture: true,
+    traits: ['安静探索', '星空观察', '克制表达'],
+    candidates: [],
+    recentDraft: null,
+    localPlan: null,
+    initialPostCaption: '',
+    initialPostTags: '',
+    postQueue: [],
+  },
 };
 
 export const PERSONA_WORKSPACE_VISUAL_FIXTURE_PENDING_REVIEWS: Record<string, number> = {
   'visual-xiaomi': 1,
   'visual-nanxing': 1,
+  'visual-chenwu': 0,
+  'visual-xinglan': 0,
 };

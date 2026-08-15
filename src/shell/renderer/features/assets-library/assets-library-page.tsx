@@ -430,7 +430,7 @@ function UploadTab({
   return (
     <div className="grid gap-5">
       {!capability.available ? (
-        <InlineAlert tone="info">{t('assetsLibrary.upload.capabilityUnavailable')}</InlineAlert>
+        <InlineAlert tone="warning">{t('assetsLibrary.upload.capabilityUnavailable')}</InlineAlert>
       ) : null}
       <DashedAddButton
         shape="dropzone"

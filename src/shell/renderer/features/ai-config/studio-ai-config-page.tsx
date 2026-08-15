@@ -1,14 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Button, InlineAlert, StatusBadge, Surface } from '@nimiplatform/kit/ui';
 import type { NimiPortableAppAIConfigIntent } from '@nimiplatform/sdk/ai';
 import { TechnicalReviewDetails } from '@renderer/features/portfolio/OwnerPortfolio.shared.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
 import type { StudioCopyKey } from '@renderer/i18n/studio-copy.js';
 import {
-  createStudioLocalCapabilityIntent,
   loadStudioAIConfig,
-  overwriteStudioCapabilityIntent,
-  STUDIO_TEXT_GENERATE_CAPABILITY_CONTRACT,
+  openStudioAIConfigurationInDesktop,
 } from './studio-ai-config-store.js';
 
 const STUDIO_AI_CONFIG_QUERY_KEY = ['realm-persona-studio', 'studio-ai-config'] as const;
@@ -24,29 +22,23 @@ function routeKindLabelKey(intent: NimiPortableAppAIConfigIntent): StudioCopyKey
 
 export function StudioAIConfigPage() {
   const { t } = useStudioI18n();
-  const queryClient = useQueryClient();
   const configQuery = useQuery({
     queryKey: STUDIO_AI_CONFIG_QUERY_KEY,
     queryFn: () => loadStudioAIConfig(),
     retry: false,
+    refetchOnWindowFocus: 'always',
   });
-  const overwriteMutation = useMutation({
-    mutationFn: () => overwriteStudioCapabilityIntent(createStudioLocalCapabilityIntent()),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: STUDIO_AI_CONFIG_QUERY_KEY });
-    },
+  const ownerConfigurationMutation = useMutation({
+    mutationFn: () => openStudioAIConfigurationInDesktop(),
   });
 
   const config = configQuery.data ?? null;
-  const textGenerateIntent = config?.capabilities.find(
-    (intent) => intent.capabilityContract === STUDIO_TEXT_GENERATE_CAPABILITY_CONTRACT,
-  ) ?? null;
-  const rawError = configQuery.error ?? overwriteMutation.error;
-  const rawErrorText = rawError instanceof Error ? rawError.message : rawError ? String(rawError) : '';
+  const readErrorDetails = describeAIConfigFailure(configQuery.error);
+  const navigationErrorDetails = describeAIConfigFailure(ownerConfigurationMutation.error);
 
   return (
     <div className="ras-page">
-      <Surface tone="panel" material="glass-regular" padding="lg" className="ras-radius-xl">
+      <Surface tone="card" padding="lg" className="ras-radius-xl">
         <div className="mb-5 flex min-w-0 flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="m-0 text-2xl font-semibold">{t('aiConfig.title')}</h2>
@@ -69,12 +61,12 @@ export function StudioAIConfigPage() {
         </div>
 
         {configQuery.isError ? (
-          <InlineAlert tone="info" className="mb-4">
+          <InlineAlert tone="danger" className="mb-4">
             {t('aiConfig.unavailableDetail')}
           </InlineAlert>
         ) : null}
         {configQuery.isSuccess && !config ? (
-          <InlineAlert tone="info" className="mb-4">
+          <InlineAlert tone="warning" className="mb-4">
             {t('aiConfig.notConfiguredDetail')}
           </InlineAlert>
         ) : null}
@@ -92,34 +84,70 @@ export function StudioAIConfigPage() {
         ) : null}
 
         <div className="flex flex-wrap gap-3">
-          {configQuery.isError ? (
-            <Button tone="secondary" onClick={() => void configQuery.refetch()}>
-              {t('common.retry')}
-            </Button>
-          ) : null}
+          <Button
+            tone="secondary"
+            disabled={configQuery.isFetching}
+            loading={configQuery.isFetching}
+            onClick={() => void configQuery.refetch()}
+          >
+            {t('common.refresh')}
+          </Button>
           <Button
             tone="primary"
-            className="text-white"
-            disabled={configQuery.isPending || overwriteMutation.isPending}
-            loading={overwriteMutation.isPending}
-            onClick={() => overwriteMutation.mutate()}
+            disabled={ownerConfigurationMutation.isPending}
+            loading={ownerConfigurationMutation.isPending}
+            onClick={() => ownerConfigurationMutation.mutate()}
           >
-            {textGenerateIntent ? t('aiConfig.action.resetLocalIntent') : t('aiConfig.action.writeLocalIntent')}
+            {t('aiConfig.action.openOwnerConfiguration')}
           </Button>
         </div>
-        {overwriteMutation.isSuccess ? (
-          <InlineAlert tone="success" className="mt-3">
-            {t('aiConfig.action.saved')}
+        {ownerConfigurationMutation.isError ? (
+          <InlineAlert tone="warning" className="mt-3">
+            {t('aiConfig.handoffRejected')}
           </InlineAlert>
         ) : null}
-        {rawErrorText ? (
+        {navigationErrorDetails ? (
+          <TechnicalReviewDetails title={t('aiConfig.handoffErrorDetails')}>
+            <AIConfigFailureDetails details={navigationErrorDetails} />
+          </TechnicalReviewDetails>
+        ) : null}
+        {readErrorDetails ? (
           <TechnicalReviewDetails title={t('aiConfig.errorDetails')}>
-            <pre className="ras-json-preview m-0 min-h-16 overflow-auto rounded-[var(--nimi-radius-field)] border border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-panel)] p-3 text-xs">
-              {rawErrorText}
-            </pre>
+            <AIConfigFailureDetails details={readErrorDetails} />
           </TechnicalReviewDetails>
         ) : null}
       </Surface>
     </div>
+  );
+}
+
+type AIConfigFailureDetail = {
+  readonly message: string;
+  readonly reasonCode?: string;
+  readonly actionHint?: string;
+};
+
+function describeAIConfigFailure(error: unknown): AIConfigFailureDetail | null {
+  if (!error) return null;
+  const record = typeof error === 'object' ? error as Record<string, unknown> : null;
+  const message = error instanceof Error && error.message
+    ? error.message
+    : typeof record?.message === 'string'
+      ? record.message
+      : String(error);
+  const reasonCode = typeof record?.reasonCode === 'string' ? record.reasonCode : undefined;
+  const actionHint = typeof record?.actionHint === 'string' ? record.actionHint : undefined;
+  return {
+    message,
+    ...(reasonCode ? { reasonCode } : {}),
+    ...(actionHint ? { actionHint } : {}),
+  };
+}
+
+function AIConfigFailureDetails({ details }: { details: AIConfigFailureDetail }) {
+  return (
+    <pre className="ras-json-preview m-0 min-h-16 overflow-auto rounded-[var(--nimi-radius-field)] border border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-panel)] p-3 text-xs">
+      {JSON.stringify(details, null, 2)}
+    </pre>
   );
 }
