@@ -24,8 +24,9 @@ units:
     meaning: A local list of creation drafts and candidates organized by draft key and local timestamp for listing and reopening local work.
   - id: definition.realm-persona-studio.create-flow.portrait-variant-set
     kind: definition
+    lifecycle: removed
     title: Portrait variant set
-    meaning: Four ordered local candidate slots bound to the current draft; each manual generation action targets one slot and produces at most one actual candidate, while the owner may select at most one generated candidate.
+    reason: The owner removed the image-candidate slot module from the reviewed creation surface.
   - id: definition.realm-persona-studio.create-flow.generation-prompt-view
     kind: definition
     title: Generation prompt view
@@ -96,24 +97,14 @@ units:
         target: definition.realm-persona-studio.create-flow.creation-draft-history
   - id: rule.realm-persona-studio.create-flow.r007
     kind: rule
+    lifecycle: removed
     title: Progressive portrait candidate slots
-    modality: must
-    statement: The surface renders exactly four ordered local slots, each manual generation action requests and admits at most one actual candidate into its targeted empty slot, and every unfilled slot remains an explicit generate-one control rather than an image.
-    condition: Whenever portrait candidates or empty candidate slots are rendered or generated.
-    failure: A single action filling multiple slots, a fabricated candidate image, an unbound returned candidate, or a rendered count different from actual admitted candidates is a defect.
-    relations:
-      - type: applies_to
-        target: definition.realm-persona-studio.create-flow.portrait-variant-set
+    reason: The owner removed the four-slot image-candidate module from the reviewed creation surface.
   - id: rule.realm-persona-studio.create-flow.r008
     kind: rule
+    lifecycle: removed
     title: Local portrait candidate operations
-    modality: must
-    statement: Variant selection and regeneration remain local candidate operations until an owner-reviewed Realm core write, and regeneration replaces only the selected slot with an unselected candidate while preserving every other slot.
-    condition: Always.
-    failure: Reject a Realm write triggered solely by selection.
-    relations:
-      - type: applies_to
-        target: definition.realm-persona-studio.create-flow.portrait-variant-set
+    reason: The owner removed the multi-candidate selection and slot-regeneration module from the reviewed creation surface.
   - id: rule.realm-persona-studio.create-flow.r009
     kind: rule
     title: Prompt view boundary

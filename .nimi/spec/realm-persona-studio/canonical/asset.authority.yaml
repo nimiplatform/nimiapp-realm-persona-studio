@@ -117,7 +117,7 @@ units:
   - id: definition.realm-persona-studio.asset.pre-create-asset-candidate
     kind: definition
     title: Pre-create asset candidate
-    meaning: An asset candidate generated before persona creation is traced to a creation draft key, owner review state, and local timestamp; after canonical creation succeeds, it is rebound to persona provenance.
+    meaning: An asset candidate produced or adopted before persona creation is traced to a creation draft key, owner review state, source kind, and local timestamp; after canonical creation succeeds, it is rebound to persona provenance.
   - id: rule.realm-persona-studio.asset.r011
     kind: rule
     title: Asset source-kind provenance
@@ -145,7 +145,7 @@ units:
     title: Pre-create candidate rebinding
     modality: must
     statement: Pre-creation candidates retain draft-key provenance and are rebound to persona provenance only after canonical creation succeeds.
-    condition: When an asset is generated within the creation flow.
+    condition: When an asset candidate is generated, imported, or adopted within the creation flow.
     failure: Reject persistence for a candidate without draft-key provenance.
     relations:
       - type: applies_to

@@ -5,7 +5,7 @@ units:
   - id: definition.realm-persona-studio.runtime-ai.ai-config-operations
     kind: definition
     title: AI configuration operations
-    meaning: Protected AI configuration read and write operations are admissible only through the Desktop-supervised standard bridge and its granted capability posture.
+    meaning: Studio may read its exact App AIConfig projection only through the Desktop-supervised protected standard bridge; Nimi Desktop owns App AIConfig mutation, and Studio may request only that Desktop open the Studio App configuration surface while Desktop independently resolves its canonical owner.
   - id: rule.realm-persona-studio.runtime-ai.r001
     kind: rule
     title: Runtime candidate generation
@@ -112,9 +112,9 @@ units:
     kind: rule
     title: AI configuration capability gate
     modality: must
-    statement: AI provider and model configuration uses protected public AI configuration operations only after those operations are admitted by the Desktop-supervised capability posture; Studio may preserve persona prompts, preferences, drafts, candidates, and review state, but creates no app-local provider token custody, model registry truth, configuration fallback, or model availability simulation.
-    condition: Whenever Studio reads or writes AI provider or model configuration.
-    failure: Fail closed when the protected AI configuration operation is unadmitted while preserving only persona prompts, preferences, drafts, candidates, and review state.
+    statement: Studio reads only its exact App AIConfig projection through the admitted Desktop-supervised protected operation and requests configuration changes only by asking Nimi Desktop to open the Studio App configuration surface; the App id is a navigation target without authorization force, Desktop independently resolves the canonical owner, and Studio exposes no App AIConfig mutation. Studio may preserve persona prompts, preferences, drafts, candidates, and review state but creates no app-local provider token custody, model registry truth, configuration fallback, or model availability simulation.
+    condition: Whenever Studio reads AI provider or model configuration or requests that Desktop open configuration.
+    failure: Fail closed when the protected read or Desktop-owned configuration navigation is unadmitted while preserving only persona prompts, preferences, drafts, candidates, and review state.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.runtime-ai.ai-config-operations
