@@ -32,7 +32,10 @@ describe('studio i18n resources', () => {
     expect(studioChineseCopy['create.handleLabel']).toBe('角色ID');
     expect(studioChineseCopy['create.conceptLabel']).toBe('描述');
     expect(studioChineseCopy['create.personaArchetypeLabel']).toBe('角色性格');
+    expect(studioChineseCopy['create.personaArchetypePlaceholder']).toBe('选择一种性格基调');
     expect(studioChineseCopy['create.personaTraitsLabel']).toBe('角色特质（最多 {{max}} 个）');
+    expect(studioChineseCopy['create.personaTraitsPlaceholder']).toBe('选择几个鲜明特质');
+    expect(studioChineseCopy).not.toHaveProperty('create.personaTraitsHardLimit');
     expect(studioChineseCopy).not.toHaveProperty('create.describe.badge');
   });
 

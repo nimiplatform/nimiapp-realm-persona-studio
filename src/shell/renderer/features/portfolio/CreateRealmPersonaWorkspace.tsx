@@ -639,6 +639,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
   const [referenceCandidateLoadFailures, setReferenceCandidateLoadFailures] = useState<Set<string>>(() => new Set());
   const [referenceImageSourceMode, setReferenceImageSourceMode] = useState<ReferenceImageSourceMode | null>('ai');
   const [referenceImageEditorOpen, setReferenceImageEditorOpen] = useState(false);
+  const [traitPickerOpen, setTraitPickerOpen] = useState(false);
   const [referenceAssetLoadState, setReferenceAssetLoadState] = useState<ReferenceAssetLoadState>('idle');
   const [referenceAssets, setReferenceAssets] = useState<AssetLibraryEntry[]>([]);
   const [referenceAssetsUnavailableCount, setReferenceAssetsUnavailableCount] = useState(0);
@@ -1329,13 +1330,14 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
               createDisabled={createDisabled}
             />
           ) : (
-            <div className="grid min-w-0 gap-6 p-6">
+            <div className="grid min-w-0 gap-5 px-1 pb-6 pt-1">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <Button tone="ghost" size="sm" onClick={returnToDescribeStage} leadingIcon={<ArrowLeft size={15} aria-hidden="true" />}>{t('create.review.back')}</Button>
               </div>
 
-              <div className="grid gap-4">
-                <div className="flex flex-wrap items-center gap-2"><h3 className="m-0 text-base font-semibold">{t('create.review.basicInfo')}</h3><StatusBadge tone="info">{t('create.review.aiDraft')}</StatusBadge></div>
+              <Surface tone="card" material="glass-thick" padding="none" className="ras-create-review-card">
+                <div className="ras-create-review-form">
+                <div className="ras-create-review-card__heading"><h3>{t('create.review.basicInfo')}</h3><StatusBadge tone="info">{t('create.review.aiDraft')}</StatusBadge></div>
                 <Surface
                   tone="card"
                   material="glass-thick"
@@ -1500,7 +1502,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
                   {referenceImageError ? <p className="ras-create-reference-card__error">{referenceImageError}</p> : null}
                   {referenceImageFailure ? <div className="ras-create-reference-card__failure"><InlineAlert tone="danger">{referenceImageFailure}</InlineAlert></div> : null}
                 </Surface>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="ras-create-identity-grid">
                   <div className="min-w-0" data-create-field="displayName">
                     <FieldShell
                       label={<span className="flex flex-wrap items-center gap-2">{t('create.displayNameLabel')}{seedOriginalDisplayName && normalizedDraft.displayName !== seedOriginalDisplayName ? <StatusBadge tone="success">{t('create.review.modified')}</StatusBadge> : null}</span>}
@@ -1518,14 +1520,15 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
                     >
                       <TextField tone={handleError ? 'danger' : 'default'} className={handleError ? 'focus-within:!border-[var(--nimi-field-focus)] focus-within:!ring-[var(--nimi-focus-ring-color)]' : undefined} data-create-field-control value={draft.handle} placeholder={t('create.handlePlaceholder')} onChange={(event) => updateDraft({ handle: event.currentTarget.value })} />
                     </FieldShell>
+                    {handleAvailabilityQuery.isError ? <InlineAlert tone="danger">{t('create.handleCheckFailed')}</InlineAlert> : null}
                   </div>
                 </div>
-                {handleAvailabilityQuery.isError ? <InlineAlert tone="danger">{t('create.handleCheckFailed')}</InlineAlert> : null}
                 <div className="min-w-0" data-create-field="concept">
                   <FieldShell label={t('create.conceptLabel')} message={conceptError || t('create.conceptMessage')} messageTone={conceptError ? 'danger' : 'neutral'}>
                     <TextareaField tone={conceptError ? 'danger' : 'default'} className={conceptError ? 'focus-within:!border-[var(--nimi-field-focus)] focus-within:!ring-[var(--nimi-focus-ring-color)]' : undefined} data-create-field-control rows={3} value={draft.concept} placeholder={t('create.conceptPlaceholder')} onChange={(event) => updateDraft({ concept: event.currentTarget.value })} />
                   </FieldShell>
                 </div>
+                <div className="ras-create-personality-grid">
                 <div className="min-w-0" data-create-field="personaArchetype">
                   <FieldShell
                     label={t('create.personaArchetypeLabel')}
@@ -1542,32 +1545,60 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
                   </FieldShell>
                 </div>
                 <div className="min-w-0" data-create-field="personaTraits">
-                  <FieldShell label={t('create.personaTraitsLabel', { max: PERSONA_TRAIT_MAX })} message={personaTraitsError || t('create.personaTraitsHardLimit', { max: PERSONA_TRAIT_MAX })} messageTone={personaTraitsError ? 'danger' : 'neutral'}>
-                    <div
-                      data-create-field-control
-                      tabIndex={-1}
-                      aria-invalid={Boolean(personaTraitsError) || undefined}
-                      className={`flex flex-wrap gap-2 rounded-[var(--nimi-radius-field)] border p-1 ${personaTraitsError ? '!border-[var(--nimi-status-danger)]' : 'border-transparent'}`}
-                    >
-                      {PERSONA_TRAITS.map((trait) => {
-                        const active = draft.personaTraits.includes(trait);
-                        const disabled = !active && draft.personaTraits.length >= PERSONA_TRAIT_MAX;
-                        return (
-                          <button
-                            key={trait}
-                            type="button"
-                            title={t(PERSONA_TRAIT_DESCRIPTION_KEYS[trait])}
-                            aria-pressed={active}
-                            disabled={disabled}
-                            onClick={() => updateDraft({ personaTraits: active ? draft.personaTraits.filter((value) => value !== trait) : [...draft.personaTraits, trait] })}
-                            className={`rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide transition-colors ${active ? 'border-[var(--nimi-action-primary-bg)] bg-[var(--nimi-surface-active)] text-[var(--nimi-text-primary)]' : 'border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-card)] text-[var(--nimi-text-secondary)]'} disabled:cursor-not-allowed disabled:opacity-[var(--nimi-opacity-disabled)]`}
-                          >
-                            {translatePersonaTraitLabel(trait, t)}
-                          </button>
-                        );
-                      })}
+                  <FieldShell label={t('create.personaTraitsLabel', { max: PERSONA_TRAIT_MAX })} message={personaTraitsError} messageTone={personaTraitsError ? 'danger' : 'neutral'}>
+                    <div className="ras-create-trait-picker" data-open={traitPickerOpen || undefined}>
+                      <button
+                        type="button"
+                        data-create-field-control
+                        aria-expanded={traitPickerOpen}
+                        aria-invalid={Boolean(personaTraitsError) || undefined}
+                        className={`ras-create-trait-trigger ${personaTraitsError ? 'ras-create-trait-trigger--error' : ''}`}
+                        onClick={() => setTraitPickerOpen((open) => !open)}
+                      >
+                        <span className="ras-create-trait-trigger__selection">
+                          {draft.personaTraits.length > 0 ? draft.personaTraits.map((trait) => (
+                            <span key={trait} className="ras-create-trait-chip">
+                              {translatePersonaTraitLabel(trait, t).split(' · ')[0]}
+                            </span>
+                          )) : (
+                            <span className="ras-create-trait-trigger__placeholder">{t('create.personaTraitsPlaceholder', { max: PERSONA_TRAIT_MAX })}</span>
+                          )}
+                        </span>
+                        <ChevronDown className="ras-create-trait-trigger__chevron" size={15} aria-hidden="true" />
+                      </button>
+                      {traitPickerOpen ? (
+                        <div className="ras-create-trait-popover">
+                          <div className="ras-create-trait-grid">
+                            {PERSONA_TRAITS.map((trait) => {
+                              const active = draft.personaTraits.includes(trait);
+                              const disabled = !active && draft.personaTraits.length >= PERSONA_TRAIT_MAX;
+                              return (
+                                <button
+                                  key={trait}
+                                  type="button"
+                                  title={t(PERSONA_TRAIT_DESCRIPTION_KEYS[trait])}
+                                  aria-pressed={active}
+                                  disabled={disabled}
+                                  onClick={() => updateDraft({ personaTraits: active ? draft.personaTraits.filter((value) => value !== trait) : [...draft.personaTraits, trait] })}
+                                  className="ras-create-trait-option"
+                                >
+                                  {active ? <Check size={13} strokeWidth={2.2} aria-hidden="true" /> : null}
+                                  {translatePersonaTraitLabel(trait, t)}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <div className="ras-create-trait-popover__footer">
+                            <span>{t('create.personaTraitsSelectedCount', { count: draft.personaTraits.length, max: PERSONA_TRAIT_MAX })}</span>
+                            <button type="button" disabled={draft.personaTraits.length === 0} onClick={() => updateDraft({ personaTraits: [] })}>
+                              {t('create.personaTraitsClear')}
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   </FieldShell>
+                </div>
                 </div>
                 <div className="min-w-0" data-create-field="selectedWorldId">
                   <FieldShell label={t('create.worldLabel')} message={selectedWorldError} messageTone={selectedWorldError ? 'danger' : 'neutral'}>
@@ -1585,9 +1616,9 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
                     </FieldTrigger>
                   </FieldShell>
                 </div>
-              </div>
+                </div>
 
-              <details className="grid gap-3 rounded-[var(--nimi-radius-lg)] border border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-panel)] p-4">
+              <details className="ras-create-prompt-panel grid gap-3 rounded-[var(--nimi-radius-lg)] border border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-panel)] p-4">
                 <summary className="cursor-pointer font-medium text-[var(--nimi-text-primary)]">{t('create.prompt.title')}</summary>
                 <p className="m-0 text-sm text-[var(--nimi-text-muted)]">{t('create.prompt.description')}</p>
                 <PromptReadOnly label={t('create.prompt.ownerLabel')} text={seedPrompt} target="seed" copied={promptCopied === 'seed'} onCopy={copyPrompt} />
@@ -1596,14 +1627,15 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
               </details>
 
               {createdContext ? (
-                <Surface tone="card" padding="md">
+                <Surface tone="card" padding="md" className="ras-create-created-card">
                   <div className="flex min-w-0 flex-wrap items-center justify-between gap-3"><div className="min-w-0"><div className="font-medium">{t('create.createdCardTitle')}</div><div className="ras-break-anywhere mt-1 text-sm text-[var(--nimi-text-muted)]">@{createdContext.handle} · {createdContext.personaId}</div></div><StatusBadge tone="success">{t('create.createdStateFallback')}</StatusBadge></div>
                   <div className="mt-3 flex flex-wrap gap-3"><Button tone="secondary" onClick={() => onOpenCreatedPersona?.(createdContext.personaId, 'detail')}>{t('create.openCockpit')}</Button><Button tone="ghost" onClick={() => onOpenCreatedPersona?.(createdContext.personaId, 'settings')}>{t('create.openSettings')}</Button></div>
                 </Surface>
               ) : null}
-              <div className="flex justify-end border-t border-[var(--nimi-border-subtle)] pt-4">
+              <div className="ras-create-review-actions">
                 <Button tone="primary" disabled={createDisabled} loading={createMutation.isPending} onClick={submitCreate}>{t('create.submit')}</Button>
               </div>
+              </Surface>
             </div>
           )}
       </section>

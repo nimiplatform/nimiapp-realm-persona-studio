@@ -283,6 +283,7 @@ function AccountMenu({ collapsed }: { collapsed: boolean }) {
         <AccountPanel
           user={accountUser}
           ariaLabel={t('shell.account.menu')}
+          className="!w-[min(320px,calc(100vw-24px))]"
           items={[
             {
               id: 'owner-portfolio',

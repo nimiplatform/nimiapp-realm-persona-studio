@@ -124,24 +124,30 @@ describe('Create Realm Persona workspace v2 shell', () => {
     expect(source).not.toContain("t('create.worldDefault'");
   });
 
-  it('renders the review form without a right-column card background', () => {
+  it('renders the review form as one cohesive glass card', () => {
     const source = workspaceSource();
+    const styles = stylesSource();
 
-    expect(source).toContain('<div className="grid min-w-0 gap-6 p-6">');
-    expect(source).not.toContain('<Surface tone="card" padding="lg" className="grid min-w-0 gap-6 rounded-[var(--nimi-radius-xl)]">');
+    expect(source).toContain('className="ras-create-review-card"');
+    expect(source).toContain('className="ras-create-review-form"');
+    expect(styles).toContain('.ras-create-review-card {');
+    expect(styles).toContain('border-radius: 18px;');
   });
 
-  it('removes the middle column and places the compact Persona image card below basic information', () => {
+  it('places the Persona image beside identity fields and keeps personality controls below', () => {
     const source = workspaceSource();
     const styles = stylesSource();
 
     expect(source).not.toContain('xl:grid-cols-[380px_minmax(0,1fr)]');
-    expect(source).toMatch(/create\.review\.basicInfo[\s\S]*ras-create-reference-card[\s\S]*md:grid-cols-2/);
+    expect(source).toMatch(/create\.review\.basicInfo[\s\S]*ras-create-reference-card[\s\S]*ras-create-identity-grid/);
     expect(source).toContain('setReferenceImageEditorOpen((open) => !open)');
     expect(source).toContain('aria-expanded={referenceImageEditorOpen}');
-    expect(styles).toContain('width: min(100%, 430px);');
-    expect(styles).toContain('justify-self: center;');
-    expect(styles).toContain('aspect-ratio: 382 / 324;');
+    expect(styles).toContain('grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.82fr);');
+    expect(styles).toContain('.ras-create-review-form > .ras-create-reference-card {');
+    expect(styles).toContain('grid-row: 1 / span 3;');
+    expect(source).toContain('className="ras-create-personality-grid"');
+    expect(styles).toContain('.ras-create-personality-grid {');
+    expect(styles).toContain('grid-template-columns: minmax(260px, 0.72fr) minmax(0, 1.28fr);');
   });
 
   it('shows inline danger feedback without a required asterisk and restores normal focus color on focus', () => {
@@ -172,8 +178,13 @@ describe('Create Realm Persona workspace v2 shell', () => {
     const draft = readFileSync(join(process.cwd(), 'src/shell/renderer/features/portfolio/create-persona-draft.ts'), 'utf8');
 
     expect(source).toContain('PERSONA_TRAIT_MAX');
+    expect(source).toContain('ras-create-trait-trigger');
+    expect(source).toContain('aria-expanded={traitPickerOpen}');
+    expect(source).toContain('className="ras-create-trait-popover"');
+    expect(source).toContain('create.personaTraitsSelectedCount');
+    expect(source).toContain('create.personaTraitsClear');
     expect(source).toContain('disabled={disabled}');
-    expect(source).toContain('create.personaTraitsHardLimit');
+    expect(source).not.toContain('create.personaTraitsHardLimit');
     expect(draft).toContain('persona traits exceed hard maximum of 3');
     expect(draft).not.toContain(retiredTraitLimitName);
   });

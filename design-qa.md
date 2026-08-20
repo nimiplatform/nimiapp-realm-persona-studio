@@ -85,6 +85,67 @@ final result: blocked
 
 final result: passed
 
+---
+
+## Role basic-information redesign — 2026-08-19
+
+**Source visual truth**
+
+- Attachment: `/var/folders/5h/yywrq1bn0w75bzmcrf7l8rc40000gn/T/codex-clipboard-f9e62bf9-9552-4b8a-bf71-9f848f6687c4.png` (2560 × 1321 px).
+- Intended state: Chinese create-review screen with the page title and autosave state above one compact white card; identity fields and the empty Persona image sit side by side; personality and traits share the next row; the trait picker is open with two selected values.
+- Normalized source region: the highlighted main-content crop is 948 × 938 px, scaled proportionally to 936 × 926 px and padded to the 936 × 977 implementation region for the combined comparison.
+
+**Implementation evidence**
+
+- Matched browser screenshot: `/Users/snwozy/nimi-realm/nimi-apps/nimiapp-realm-persona-studio/.nimi/local/design-qa/persona-basic-info-matched-1220x977.png` (1220 × 977 px).
+- Combined source/implementation comparison: `/Users/snwozy/nimi-realm/nimi-apps/nimiapp-realm-persona-studio/.nimi/local/design-qa/persona-basic-info-side-by-side.png` (1872 × 976 px).
+- Narrow screenshot: `/Users/snwozy/nimi-realm/nimi-apps/nimiapp-realm-persona-studio/.nimi/local/design-qa/persona-basic-info-narrow.png` (760 × 900 px).
+- Browser URL: `http://127.0.0.1:1450/visual-preview.html#/preview/create-reference-sources`.
+- Viewport and density: matched desktop 1220 × 977 CSS px at device scale factor 1; responsive check 760 × 900 CSS px.
+- State: light theme, Chinese visual fixture, empty identity/image fields, trait picker open with two owner-selectable traits, OASIS fixture world.
+- Primary interactions tested: identity and description edit/clear; archetype menu open and selection; trait toggle, three-trait hard cap, nine remaining options disabled at the cap, clear state; Persona image editor open/close and three source methods exposed.
+- Responsive checks: no document, main-region, or form horizontal overflow at 760 px; identity and image stack in one column; the image follows the description; the personality grid collapses to one column.
+- Console errors and warnings checked: none.
+
+**Findings**
+
+- No actionable P0/P1/P2 visual, interaction, responsive, or accessibility mismatch remains.
+- The implementation retains the source-backed World selector below personality. The reference does not show it, but removing it would violate the existing create contract and fail-closed Realm world selection requirement; it is an intentional product constraint rather than visual drift.
+- The preview fixture uses different example trait content from the attachment. The component geometry, selected chips, open state, three-column option grid, selected count, clear action, and maximum-of-three behavior match the reference interaction pattern.
+
+**Required fidelity surfaces**
+
+- Fonts and typography: the existing Nimi sans stack preserves the reference hierarchy: 22 px page title, compact 17 px section title, semibold field labels, muted helper copy, and dense 11–13 px trait text. No unexpected wrapping or clipping remains at the matched viewport.
+- Spacing and layout rhythm: the page uses one 18 px-radius review card, 24 px content inset, a two-column identity/image region, a full-width divider, a 0.72fr/1.28fr personality row, and an overlaid trait popover so the closed form remains compact. The 760 px breakpoint stacks all content without horizontal overflow.
+- Colors and visual tokens: canvas, glass card, border, muted text, cyan action, success, focus, and selected-trait treatments all use existing Nimi tokens. No parallel theme or hardcoded brand color was introduced.
+- Image quality and asset fidelity: the target contains no custom raster artwork. The empty image state uses the existing icon library and production image surface; owner-selected images continue to render from their real candidate URL with `object-fit: cover`.
+- Copy and content: title, autosave status, basic-information label, field labels/placeholders, Persona image empty state, personality/trait labels, prompt summary, and create action match the requested Chinese structure. Added trait-picker copy is localized in both English and Chinese.
+- Interaction and accessibility: the trait trigger exposes `aria-expanded`; options expose `aria-pressed` and enforce the hard maximum; image source expansion keeps its localized accessible label; existing field validation, autosave, handle checks, world dialog, and real create mutation remain unchanged.
+
+**Full-view comparison evidence**
+
+- The highlighted source region and matched implementation main region were placed in one side-by-side image. Page hierarchy, card geometry, left identity/right image composition, divider placement, personality proportions, trait popover, prompt row, and primary action align closely. The implementation is slightly more compact vertically, consistent with the user's requested direction.
+
+**Focused region comparison evidence**
+
+- A separate crop was not needed because the normalized side-by-side main-content comparison renders every changed control and its typography legibly at 1872 × 976 px.
+
+**Comparison history**
+
+- Pass 1 found a P2 density mismatch: the trait grid occupied the narrow image column, causing long trait labels to clip.
+- Fix 1 moved personality into an independent full-width 0.72fr/1.28fr row, giving traits the larger track used by the reference.
+- Pass 2 found a P2 interaction/layout mismatch: traits were always in normal document flow rather than using the reference's compact trigger plus overlay.
+- Fix 2 added selected chips, an accessible open/closed trigger, an overlaid three-column picker, selected count, clear action, and responsive stacking. The post-fix side-by-side comparison has no actionable P0/P1/P2 issue.
+
+**Automated evidence**
+
+- Full Vitest suite passed: 47 files, 260 tests.
+- Renderer and Electron TypeScript checks passed.
+- ESLint passed with zero warnings.
+- Cargo check passed; only existing upstream unused-code warnings were emitted from `nimi-shell-protected-local`.
+
+final result: passed
+
 ## Create Persona user-language refinement — 2026-08-13
 
 **Source visual truth**
@@ -1243,5 +1304,13 @@ final result: passed
 - `/portfolio` now renders the typed `capability-unavailable` state instead of hiding it.
 - Development Persona fixtures are no longer substituted when the real owner-portfolio query fails. They are enabled only by the explicit `visual-preview.html` harness; the in-app design list remains visibly labeled and appears only after a successful empty read.
 - Full project check passed with 47 test files and 260 tests; Rust tests passed. The correction changes truth labeling and failure behavior without changing the approved card geometry.
+
+final result: passed
+
+---
+
+## Active QA result — Role basic-information redesign
+
+The active report is “Role basic-information redesign — 2026-08-19” above. The highlighted source and the 1220 × 977 browser implementation were normalized into one side-by-side comparison; the identity/image split, full-width personality row, compact overlay trait picker, narrow responsive layout, interactions, console, TypeScript, ESLint, Rust check, and all 260 tests passed. The source-backed World selector is intentionally retained.
 
 final result: passed
