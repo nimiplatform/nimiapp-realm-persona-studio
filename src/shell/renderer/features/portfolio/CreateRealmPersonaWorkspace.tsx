@@ -1242,12 +1242,21 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
       visualSupplement: { labelKey: 'create.supplement.visualLabel', placeholderKey: 'create.supplement.visualPlaceholder' },
     };
     return (
-      <div className="ras-page ras-create-page">
+      <div className="ras-page ras-create-page ras-create-page--describe">
         {renderHeader()}
-        <div className="grid gap-6">
-          <FieldShell label={t('create.oneLineLabel')}>
+        <Surface tone="card" material="glass-thick" padding="none" className="ras-create-describe-card">
+          <div className="ras-create-describe-card__body">
+          <FieldShell
+            label={(
+              <span className="ras-create-describe-field-label">
+                <span>{t('create.oneLineLabel')}</span>
+                <span className="ras-create-describe-field-label__hint">{t('create.oneLineRequired')}</span>
+              </span>
+            )}
+          >
             <TextareaField
               rows={5}
+              className="ras-create-describe-textarea"
               value={draft.originalDescription}
               placeholder={t('create.oneLinePlaceholder')}
               onChange={(event) => updateDraft({ originalDescription: event.currentTarget.value })}
@@ -1255,7 +1264,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
           </FieldShell>
           <div className="grid gap-2">
             <p className="m-0 text-xs text-[var(--nimi-text-muted)]">{t('create.supplement.hint')}</p>
-            <div className="flex flex-wrap gap-2">
+            <div className="ras-create-supplement-chips flex flex-wrap gap-2">
               {supplementButtons.map(({ key, labelKey }) => (
                 <Button
                   key={key}
@@ -1265,7 +1274,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
                   aria-expanded={expandedSupplements[key]}
                   onClick={() => setExpandedSupplements((current) => ({ ...current, [key]: !current[key] }))}
                 >
-                  + {t(labelKey)}
+                  {t(labelKey)}
                 </Button>
               ))}
             </div>
@@ -1286,13 +1295,15 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
             </FieldShell>
           ) : null)}
 
+          <div className="ras-create-describe-divider" aria-hidden="true" />
+
           <div className="grid gap-3">
             <div className="grid gap-1.5">
               <Button
                 tone="primary"
                 size="lg"
                 fullWidth
-                className="min-h-14 rounded-xl"
+                className="ras-create-ai-button min-h-14 rounded-xl"
                 disabled={!normalizedDraft.originalDescription}
                 loading={isGeneratingSeed}
                 leadingIcon={isGeneratingSeed ? undefined : <Sparkles size={18} aria-hidden="true" />}
@@ -1306,14 +1317,15 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
               tone="secondary"
               size="lg"
               fullWidth
-              className="min-h-14 rounded-xl"
+              className="ras-create-manual-button min-h-14 rounded-xl"
               leadingIcon={<Pencil size={18} aria-hidden="true" />}
               onClick={skipSeedAndCreateManually}
             >
               {t('create.manualButton.label')}
             </Button>
           </div>
-        </div>
+          </div>
+        </Surface>
       </div>
     );
   }

@@ -26,6 +26,19 @@ import {
   type RealmOwnerPersonaSettingsUpdateResult,
 } from './portfolio-settings-client.js';
 import { OWNER_SETTINGS_SAVE_SOURCE } from './setting-proposal.js';
+import {
+  PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS,
+  PERSONA_WORKSPACE_VISUAL_FIXTURE_LIST,
+} from '../persona-detail/persona-workspace.visual-fixture.js';
+
+// Development-only owner portfolio mock. Nimi App Access has no owner persona
+// list/detail operations yet, so dev renderer sessions resolve the first two
+// visual fixture personas for page testing. Never active in production builds
+// or vitest (MODE === 'test'); set VITE_RPS_DEV_MOCK_PORTFOLIO=false to opt out.
+const DEV_MOCK_PERSONA_COUNT = 2;
+const devMockPortfolioEnabled = import.meta.env.DEV
+  && import.meta.env.MODE !== 'test'
+  && import.meta.env.VITE_RPS_DEV_MOCK_PORTFOLIO !== 'false';
 
 type RealmCreatePersonaResponse = RealmModel<'PersonaCharacterCoreDto'>;
 
@@ -166,12 +179,19 @@ export function normalizeRealmPersonaCreateResult(persona: RealmCreatePersonaRes
   };
 }
 export async function listOwnerPortfolioPersonas(): Promise<OwnerPortfolioPersona[]> {
+  if (devMockPortfolioEnabled) {
+    return PERSONA_WORKSPACE_VISUAL_FIXTURE_LIST.slice(0, DEV_MOCK_PERSONA_COUNT);
+  }
   requireStudioProtectedOperation('Owner Realm Persona portfolio listing');
 }
 
 export async function getOwnerPortfolioPersonaDetail(
-  _personaId: string,
+  personaId: string,
 ): Promise<OwnerPortfolioPersonaDetail> {
+  if (devMockPortfolioEnabled) {
+    const fixture = PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS[personaId];
+    if (fixture) return fixture;
+  }
   requireStudioProtectedOperation('Owner Realm Persona detail reading');
 }
 

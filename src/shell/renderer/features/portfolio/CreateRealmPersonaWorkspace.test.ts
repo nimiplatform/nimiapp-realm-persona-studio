@@ -17,7 +17,8 @@ describe('Create Realm Persona workspace v2 shell', () => {
   it('uses the shared route-level page container in every creation state', () => {
     const source = workspaceSource();
 
-    expect(source.match(/className="ras-page ras-create-page"/g)).toHaveLength(3);
+    expect(source.match(/className="ras-page ras-create-page"/g)).toHaveLength(2);
+    expect(source).toContain('className="ras-page ras-create-page ras-create-page--describe"');
     expect(source).not.toContain('max-w-[920px]');
   });
 
@@ -49,10 +50,19 @@ describe('Create Realm Persona workspace v2 shell', () => {
     expect(source).toContain('create.supplement.visual');
   });
 
-  it('keeps the describe screen focused on the primary creation actions without a card background', () => {
+  it('keeps the describe screen focused on the primary creation actions inside a centered card', () => {
     const source = workspaceSource();
+    const styles = stylesSource();
 
-    expect(source).toContain('<div className="grid gap-6">');
+    expect(source).toContain('ras-create-page--describe');
+    expect(source).toContain('className="ras-create-describe-card"');
+    expect(source).toContain('ras-create-describe-card__body');
+    expect(styles).toContain('.ras-create-page--describe {');
+    expect(styles).toContain('.ras-create-describe-card {');
+    expect(styles).toContain('.ras-create-describe-divider {');
+    expect(styles).toContain('.ras-create-ai-button {');
+    expect(styles).toContain('.ras-create-manual-button {');
+    expect(source).toContain("t('create.oneLineRequired')");
     expect(source).toContain("t('create.supplement.hint')");
     expect(source).toContain("t('create.aiButton.helper')");
     expect(source).not.toContain("t('create.estimatedTime')");
