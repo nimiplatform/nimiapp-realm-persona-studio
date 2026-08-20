@@ -21,7 +21,6 @@ import {
   generateReviewedAvatarPackageCandidate,
   generateReviewedVisualImageCandidate,
   PERSONA_AVATAR_SELECTION_AVAILABLE,
-  RUNTIME_MEDIA_CANDIDATE_UNAVAILABLE_MESSAGE,
   selectReviewedPersonaAvatarUrl,
   synthesizeReviewedVoiceDemo,
   type RealmPersonaAvatarSelectResult,
@@ -143,9 +142,8 @@ const FIXED_ASSET_MESSAGE_KEYS: Record<string, StudioCopyKey> = {
   'Realm avatar selection did not confirm success.': 'assets.error.avatarSelectUnconfirmed',
   'RealmPersona replacement did not persist the reviewed avatar external ref.': 'assets.error.avatarSelectNotPersisted',
   'Realm avatar selection failed.': 'assets.error.avatarSelectFailed',
-  'Runtime imageGenerate scenario output missing readable artifact.': 'assets.error.runtimeImageMissingArtifact',
-  'Runtime speechSynthesize scenario output missing artifact id.': 'assets.error.runtimeVoiceMissingArtifact',
-  [RUNTIME_MEDIA_CANDIDATE_UNAVAILABLE_MESSAGE]: 'assets.error.runtimeMediaCandidateUnavailable',
+  'Runtime image.generate returned no readable artifact.': 'assets.error.runtimeImageMissingArtifact',
+  'Runtime audio.synthesize returned no artifact id.': 'assets.error.runtimeVoiceMissingArtifact',
   'image artifact generated': 'assets.history.detail.imageArtifactGenerated',
   'avatar package design sheet generated': 'assets.history.detail.avatarPackageGenerated',
   'voice artifact generated': 'assets.history.detail.voiceArtifactGenerated',
@@ -168,11 +166,44 @@ const CREATIVE_HISTORY_LABEL_KEYS: Record<CreativeAssetHistoryKind, StudioCopyKe
 };
 
 function translateFixedAssetMessage(message: string, t: StudioTranslator): string {
-  if (message.startsWith('Runtime speechSynthesize scenario failed:')) return t('assets.error.runtimeVoiceFailed');
-  if (message.startsWith('Runtime imageGenerate scenario failed:')) return t('assets.error.runtimeImageFailed');
-  if (message.startsWith('Runtime avatar package imageGenerate scenario failed:')) return t('assets.error.runtimeAvatarPackageFailed');
   const key = FIXED_ASSET_MESSAGE_KEYS[message];
   return key ? t(key) : t('common.operationFailed');
+}
+
+function isMediaCapabilityUnavailable(failure: string): boolean {
+  return failure === 'runtime-capability-unavailable'
+    || failure === 'runtime-route-unbound'
+    || failure === 'runtime-transport-unavailable';
+}
+
+function translateVisualCandidateFailure(
+  result: Extract<RuntimeVisualImageGenerationResult, { ok: false }>,
+  t: StudioTranslator,
+): string {
+  if (result.failure === 'runtime-payload-invalid') return t('assets.error.runtimeImagePayloadInvalid');
+  if (result.failure === 'runtime-transport-unavailable') return t('assets.error.runtimeImageTransportUnavailable');
+  if (result.failure === 'runtime-capability-unavailable' || result.failure === 'runtime-route-unbound') {
+    return t('assets.error.runtimeMediaCandidateUnavailable');
+  }
+  if (result.failure === 'runtime-output-malformed' || result.failure === 'runtime-output-missing') {
+    return t('assets.error.runtimeImageMissingArtifact');
+  }
+  return t('assets.error.runtimeImageFailed');
+}
+
+function translateVoiceCandidateFailure(
+  result: Extract<RuntimeVoiceDemoSynthesisResult, { ok: false }>,
+  t: StudioTranslator,
+): string {
+  if (result.failure === 'runtime-payload-invalid') return t('assets.error.runtimeVoicePayloadInvalid');
+  if (result.failure === 'runtime-transport-unavailable') return t('assets.error.runtimeVoiceTransportUnavailable');
+  if (result.failure === 'runtime-capability-unavailable' || result.failure === 'runtime-route-unbound') {
+    return t('assets.error.runtimeMediaCandidateUnavailable');
+  }
+  if (result.failure === 'runtime-output-malformed' || result.failure === 'runtime-output-missing') {
+    return t('assets.error.runtimeVoiceMissingArtifact');
+  }
+  return t('assets.error.runtimeVoiceFailed');
 }
 
 function translateFixedAssetMessages(messages: string[], t: StudioTranslator): string {
@@ -632,10 +663,10 @@ function VisualIdentityChangeEditor({
         });
         await onHistoryUpdated();
         nimiToast.success(t('assets.imageGenerated'));
-      } else if (result.failure === 'runtime-media-candidate-unavailable') {
-        nimiToast.info(translateFixedAssetMessage(result.message, t));
+      } else if (isMediaCapabilityUnavailable(result.failure)) {
+        nimiToast.info(translateVisualCandidateFailure(result, t));
       } else {
-        nimiToast.danger(translateFixedAssetMessage(result.message, t));
+        nimiToast.danger(translateVisualCandidateFailure(result, t));
       }
     } finally {
       setIsGenerating(false);
@@ -755,7 +786,7 @@ function VisualIdentityChangeEditor({
           </div>
           {generationResult && !generationResult.ok ? (
             <InlineAlert tone="danger">
-              {translateFixedAssetMessage(generationResult.message, t)}
+              {translateVisualCandidateFailure(generationResult, t)}
             </InlineAlert>
           ) : null}
           {generatedPreviewUrl ? (
@@ -956,10 +987,10 @@ function MediaVoiceCandidateEditor({ persona, onPersonaWrite }: { persona: Owner
           ...(result.runtime.traceId ? { traceId: result.runtime.traceId } : {}),
         });
       } else {
-        if (result.failure === 'runtime-media-candidate-unavailable') {
-          nimiToast.info(translateFixedAssetMessage(result.message, t));
+        if (isMediaCapabilityUnavailable(result.failure)) {
+          nimiToast.info(translateVisualCandidateFailure(result, t));
         } else {
-          nimiToast.danger(translateFixedAssetMessage(result.message, t));
+          nimiToast.danger(translateVisualCandidateFailure(result, t));
         }
       }
     } finally {
@@ -994,10 +1025,10 @@ function MediaVoiceCandidateEditor({ persona, onPersonaWrite }: { persona: Owner
           ...(result.runtime.traceId ? { traceId: result.runtime.traceId } : {}),
         });
       } else {
-        if (result.failure === 'runtime-media-candidate-unavailable') {
-          nimiToast.info(translateFixedAssetMessage(result.message, t));
+        if (isMediaCapabilityUnavailable(result.failure)) {
+          nimiToast.info(translateVisualCandidateFailure(result, t));
         } else {
-          nimiToast.danger(translateFixedAssetMessage(result.message, t));
+          nimiToast.danger(translateVisualCandidateFailure(result, t));
         }
       }
     } finally {
@@ -1076,10 +1107,10 @@ function MediaVoiceCandidateEditor({ persona, onPersonaWrite }: { persona: Owner
           ...(result.runtime.traceId ? { traceId: result.runtime.traceId } : {}),
         });
       } else {
-        if (result.failure === 'runtime-media-candidate-unavailable') {
-          nimiToast.info(translateFixedAssetMessage(result.message, t));
+        if (isMediaCapabilityUnavailable(result.failure)) {
+          nimiToast.info(translateVoiceCandidateFailure(result, t));
         } else {
-          nimiToast.danger(translateFixedAssetMessage(result.message, t));
+          nimiToast.danger(translateVoiceCandidateFailure(result, t));
         }
       }
     } finally {
@@ -1314,7 +1345,7 @@ function MediaVoiceCandidateEditor({ persona, onPersonaWrite }: { persona: Owner
               ) : null}
               {visualImageResult && !visualImageResult.ok ? (
                 <InlineAlert tone="danger" className="mt-3">
-                  {translateFixedAssetMessage(visualImageResult.message, t)}
+                  {translateVisualCandidateFailure(visualImageResult, t)}
                 </InlineAlert>
               ) : null}
               <TechnicalReviewDetails title={t('assets.imageTechnicalDetails')}>
@@ -1412,7 +1443,7 @@ function MediaVoiceCandidateEditor({ persona, onPersonaWrite }: { persona: Owner
               ) : null}
               {avatarPackageResult && !avatarPackageResult.ok ? (
                 <InlineAlert tone="danger" className="mt-3">
-                  {translateFixedAssetMessage(avatarPackageResult.message, t)}
+                  {translateVisualCandidateFailure(avatarPackageResult, t)}
                 </InlineAlert>
               ) : null}
               <TechnicalReviewDetails title={t('assets.avatarPackageTechnicalDetails')}>
@@ -1566,7 +1597,7 @@ function MediaVoiceCandidateEditor({ persona, onPersonaWrite }: { persona: Owner
             ) : null}
             {voiceResult && !voiceResult.ok ? (
               <InlineAlert tone="danger">
-                {translateFixedAssetMessage(voiceResult.message, t)}
+                {translateVoiceCandidateFailure(voiceResult, t)}
               </InlineAlert>
             ) : null}
             <TechnicalReviewDetails title={t('assets.voiceTechnicalDetails')}>

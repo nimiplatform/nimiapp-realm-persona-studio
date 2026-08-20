@@ -59,7 +59,7 @@ describe('studio App AIConfig store on the Nimi App Access contract', () => {
       .rejects.toThrow(/exact nimi\.realm-persona-studio App/u);
   });
 
-  it('asks Nimi Desktop to open the Studio App configuration surface', async () => {
+  it('asks Nimi Desktop to open Studio in the AI models section', async () => {
     const openDesktop = vi.fn(async () => ({
       status: 'accepted' as const,
       confirmation: 'desktop-accepted' as const,
@@ -73,6 +73,7 @@ describe('studio App AIConfig store on the Nimi App Access contract', () => {
       intent: {
         kind: 'open-apps',
         appId: 'nimi.realm-persona-studio',
+        section: 'ai-models',
       },
     });
   });

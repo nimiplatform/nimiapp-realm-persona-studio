@@ -493,7 +493,7 @@ export async function proposeReviewedPostCopy(
       candidate: false,
       truthWrite: false,
       failure: 'runtime-post-copy-failed',
-      message: `Runtime runtime.ai.text.generate failed: ${message}`,
+      message: `Nimi App Access ai.text.generateCandidate failed: ${message}`,
       submitted: null,
     };
   }

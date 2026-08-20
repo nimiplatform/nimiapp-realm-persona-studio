@@ -109,8 +109,8 @@ operations delivered through the protected standard bridge.
 
 Normative product authority lives in closed v2 containers under
 [`.nimi/spec/realm-persona-studio/canonical/`](./.nimi/spec/realm-persona-studio/canonical/).
-Use `nimicoding authority query` or bounded `authority context` to retrieve
-exact IDs.
+Use project-local `pnpm exec nimicoding authority query` or bounded
+`pnpm exec nimicoding authority context` to retrieve exact IDs.
 
 Studio canonical owner portfolio surfaces are
 `Realm WorldCoreController.listRealmPersonas` and

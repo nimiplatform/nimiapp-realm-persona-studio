@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  RUNTIME_MEDIA_CANDIDATE_UNAVAILABLE_MESSAGE,
   buildRealmSelectAvatarInput,
   generateReviewedVisualImageCandidate,
   normalizeRealmPersonaAvatarSelectResult,
@@ -73,27 +72,81 @@ describe('owner portfolio media client', () => {
     });
   });
 
-  it('returns typed unavailability for reviewed visual and voice candidates', async () => {
+  it('runs reviewed visual and voice candidates through the Nimi AI consumption runner', async () => {
     const visual = await generateReviewedVisualImageCandidate({
       resourceType: 'IMAGE',
       bindingPoint: 'PERSONA_CANDIDATE',
       prompt: 'Warm profile portrait.',
       notes: 'Use public bio only.',
       aspectRatio: '1:1',
-    }, ownerPersonaDetail());
+    }, ownerPersonaDetail(), async (input) => ({
+      ok: true,
+      jobId: 'image-job-1',
+      traceId: 'image-trace-1',
+      artifacts: [{
+        artifactId: 'image-artifact-1',
+        mimeType: 'image/png',
+        publicUri: 'https://cdn.example.test/image.png',
+        previewUrl: 'data:image/png;base64,AQID',
+        sizeBytes: '3',
+      }],
+    }));
     const voice = await synthesizeReviewedVoiceDemo({
       scriptText: 'Welcome in.',
-    }, ownerPersonaDetail());
+    }, ownerPersonaDetail(), async (input) => ({
+      ok: true,
+      jobId: 'voice-job-1',
+      traceId: 'voice-trace-1',
+      artifacts: [{
+        artifactId: 'voice-artifact-1',
+        mimeType: 'audio/mpeg',
+        previewUrl: 'data:audio/mpeg;base64,AQID',
+        sizeBytes: '3',
+      }],
+    }));
 
     expect(visual).toMatchObject({
-      ok: false,
-      failure: 'runtime-media-candidate-unavailable',
-      message: RUNTIME_MEDIA_CANDIDATE_UNAVAILABLE_MESSAGE,
+      ok: true,
+      candidate: true,
+      publicTruth: false,
+      runtime: {
+        jobId: 'image-job-1',
+        artifactIds: ['image-artifact-1'],
+        artifactUris: ['https://cdn.example.test/image.png'],
+        previewUrls: ['data:image/png;base64,AQID'],
+        traceId: 'image-trace-1',
+      },
     });
     expect(voice).toMatchObject({
+      ok: true,
+      candidate: true,
+      publicTruth: false,
+      runtime: {
+        jobId: 'voice-job-1',
+        artifactIds: ['voice-artifact-1'],
+        previewUrls: ['data:audio/mpeg;base64,AQID'],
+        traceId: 'voice-trace-1',
+      },
+    });
+  });
+
+  it('preserves structured Nimi AI capability failures without candidate success', async () => {
+    const result = await generateReviewedVisualImageCandidate({
+      resourceType: 'IMAGE',
+      bindingPoint: 'PERSONA_CANDIDATE',
+      prompt: 'Warm profile portrait.',
+      notes: '',
+      aspectRatio: '1:1',
+    }, ownerPersonaDetail(), async () => ({
       ok: false,
-      failure: 'runtime-media-candidate-unavailable',
-      message: RUNTIME_MEDIA_CANDIDATE_UNAVAILABLE_MESSAGE,
+      failure: 'runtime-route-unbound',
+      message: 'AI_CONFIG_NOT_FOUND',
+    }));
+
+    expect(result).toMatchObject({
+      ok: false,
+      failure: 'runtime-route-unbound',
+      message: 'AI_CONFIG_NOT_FOUND',
     });
   });
 

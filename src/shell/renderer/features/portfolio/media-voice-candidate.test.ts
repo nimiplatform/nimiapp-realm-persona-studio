@@ -305,7 +305,7 @@ describe('reviewed media and voice candidate payloads', () => {
       runtime: {
         capabilityToken: 'audio.synthesize',
         runtimeScenario: 'speechSynthesize',
-        source: 'Runtime ScenarioService.executeScenario audio.synthesize',
+        source: 'Runtime ScenarioService.submitScenarioJob audio.synthesize',
         input: {
           surfaceId: 'realm-persona-studio.voice-demo-candidate',
           capability: 'audio.synthesize',

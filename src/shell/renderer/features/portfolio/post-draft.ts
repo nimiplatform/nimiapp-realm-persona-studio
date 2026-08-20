@@ -3,7 +3,7 @@ import type { StudioTextCandidatePrompt } from './studio-text-candidate.js';
 import { parseStrictRuntimeJsonObject } from './strict-runtime-json.js';
 
 export const ATTACHMENT_TARGET_TYPES = ['RESOURCE', 'ASSET', 'BUNDLE'] as const;
-export const POST_COPY_ASSISTANCE_SOURCE = 'Runtime runtime.ai.text.generate';
+export const POST_COPY_ASSISTANCE_SOURCE = 'Nimi App Access ai.text.generateCandidate';
 
 export type AttachmentTargetType = typeof ATTACHMENT_TARGET_TYPES[number];
 

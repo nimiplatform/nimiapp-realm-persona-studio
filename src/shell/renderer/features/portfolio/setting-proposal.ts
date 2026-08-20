@@ -2,7 +2,7 @@ import type { StudioTextCandidatePrompt } from './studio-text-candidate.js';
 import { parseStrictRuntimeJsonObject } from './strict-runtime-json.js';
 
 export const OWNER_SETTINGS_SAVE_SOURCE = 'Realm WorldCoreController.replaceRealmPersona';
-export const SETTINGS_AI_PROPOSAL_SOURCE = 'Runtime runtime.ai.text.generate';
+export const SETTINGS_AI_PROPOSAL_SOURCE = 'Nimi App Access ai.text.generateCandidate';
 export const RAW_RULE_REVIEW_DEFERRED_REASON = 'raw rule text is not a RealmPersona core field; owner guidelines must be structured before save';
 
 export type OwnerPersonaSettingsSnapshot = {

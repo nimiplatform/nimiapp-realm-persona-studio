@@ -225,7 +225,7 @@ describe('app-local post schedule candidate', () => {
     }), baseInput);
 
     expect(proposal).toMatchObject({
-      source: 'Runtime runtime.ai.text.generate',
+      source: 'Nimi App Access ai.text.generateCandidate',
       candidate: true,
       truthWrite: false,
       draftPatch: {

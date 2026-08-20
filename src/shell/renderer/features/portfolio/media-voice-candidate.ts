@@ -13,7 +13,7 @@ export const VISUAL_IMAGE_CANDIDATE_NOTICE = 'Image candidates stay local for ow
 export const AVATAR_PACKAGE_CANDIDATE_NOTICE = 'Avatar package candidates stay local for owner review; generated output is a design sheet and rigging brief, not a published Live2D/VRM package.';
 export const VOICE_DEMO_CANDIDATE_NOTICE = 'Voice demo audio stays local for owner review; public voice profile publication is unavailable.';
 export const VISUAL_IMAGE_GENERATION_SOURCE = 'Runtime ScenarioService.submitScenarioJob image.generate';
-export const VOICE_DEMO_SYNTHESIS_SOURCE = 'Runtime ScenarioService.executeScenario audio.synthesize';
+export const VOICE_DEMO_SYNTHESIS_SOURCE = 'Runtime ScenarioService.submitScenarioJob audio.synthesize';
 
 export type MediaCandidateResourceType = typeof MEDIA_CANDIDATE_RESOURCE_TYPES[number];
 export type MediaCandidateBindingPoint = typeof MEDIA_CANDIDATE_BINDING_POINTS[number];
@@ -66,9 +66,9 @@ export type CandidatePersonaContext = {
 };
 
 /**
- * Local-only preview of the candidate input an owner reviewed. The Nimi
- * local App surface does not expose media candidate generation yet, so this
- * stays a review artifact and is never dispatched to a Runtime scenario.
+ * Local-only preview of the candidate input an owner reviewed. Execution uses
+ * the typed Nimi Local App AI consumption surface; this object carries no
+ * provider, model, route, credential, or Realm authority.
  */
 export type StudioImageCandidatePreview = {
   surfaceId: string;

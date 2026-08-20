@@ -591,7 +591,7 @@ export async function proposeReviewedOwnerPersonaSettings(
       candidate: false,
       truthWrite: false,
       failure: 'runtime-settings-proposal-failed',
-      message: `Runtime runtime.ai.text.generate failed: ${message}`,
+      message: `Nimi App Access ai.text.generateCandidate failed: ${message}`,
       submitted: null,
     };
   }

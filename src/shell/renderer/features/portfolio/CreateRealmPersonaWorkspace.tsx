@@ -43,7 +43,6 @@ import {
   type RealmPersonaCreateWithProfileSettingsResult,
   type RealmPersonaHandleAvailabilityResult,
 } from './portfolio-client.js';
-import { RUNTIME_MEDIA_CANDIDATE_UNAVAILABLE_MESSAGE } from './portfolio-media-client.js';
 import {
   generatePersonaSeedFromDescription,
   type PersonaSeedGenerationResult,
@@ -60,6 +59,7 @@ import {
 import {
   generatePersonaReferenceImage,
   initialReferenceImagePromptFromDraft,
+  type PersonaReferenceImageResult,
 } from './persona-reference-image.js';
 import {
   CREATION_DRAFT_AUTOSAVE_DEBOUNCE_MS,
@@ -241,10 +241,8 @@ const CREATE_FIXED_MESSAGE_KEYS: Record<string, StudioCopyKey> = {
   'reference image prompt empty': 'create.error.referencePromptEmpty',
   'reference image generation count must be 1': 'create.error.referenceCountInvalid',
   'Reference image payload invalid.': 'create.error.referencePayloadInvalid',
-  'Runtime imageGenerate scenario transport unavailable: Tauri IPC runtime transport is required.': 'create.error.referenceTransportUnavailable',
-  [RUNTIME_MEDIA_CANDIDATE_UNAVAILABLE_MESSAGE]: 'create.error.referenceCandidateUnavailable',
-  'Runtime imageGenerate scenario returned no readable artifact.': 'create.error.referenceNoArtifact',
-  'Runtime imageGenerate produced a local artifact but no http(s) URL that Realm can store as a public reference image.': 'create.error.referenceLocalArtifactNoUrl',
+  'Runtime image.generate returned no readable artifact.': 'create.error.referenceNoArtifact',
+  'Runtime image.generate produced a local candidate but no http(s) URI that Realm can store as a public reference image.': 'create.error.referenceLocalArtifactNoUrl',
   'A RealmPersona with this handle already exists in the owner portfolio.': 'create.error.handleAlreadyExists',
 };
 
@@ -306,10 +304,23 @@ function translateCreateFixedMessage(message: string, t: StudioTranslator): stri
       ? t(handleReason)
       : t('create.error.handleUnavailable', { message: reason });
   }
-  if (message.startsWith('Runtime imageGenerate scenario failed:')) return t('create.error.referenceGenerateFailed');
   if (message.startsWith('Nimi text candidate generation failed:')) return t('create.error.seedGenerationTransportFailed');
   const key = CREATE_FIXED_MESSAGE_KEYS[message];
   return key ? t(key) : t('common.operationFailed');
+}
+
+function translateReferenceImageFailure(
+  result: Extract<PersonaReferenceImageResult, { ok: false }>,
+  t: StudioTranslator,
+): string {
+  if (result.failure === 'runtime-payload-invalid') return t('create.error.referencePayloadInvalid');
+  if (result.failure === 'runtime-capability-unavailable' || result.failure === 'runtime-route-unbound') {
+    return t('create.error.referenceCandidateUnavailable');
+  }
+  if (result.failure === 'runtime-transport-unavailable') return t('create.error.referenceTransportUnavailable');
+  if (result.failure === 'runtime-output-malformed') return t('create.error.referenceNoArtifact');
+  if (result.failure === 'runtime-call-failed') return t('create.error.referenceGenerateFailed');
+  return translateCreateFixedMessage(result.message, t);
 }
 
 function translateCreateFixedMessages(messages: string[], t: StudioTranslator): string {
@@ -1017,10 +1028,14 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
     try {
       const result = await generatePersonaReferenceImage({ prompt, count: 1 });
       if (!result.ok) {
-        const message = translateCreateFixedMessage(result.message, t);
+        const message = translateReferenceImageFailure(result, t);
         setReferenceImageFailure(message);
         const toastMessage = t('create.referenceFailed', { message });
-        if (result.failure === 'persona-reference-image-candidate-unavailable') {
+        if (
+          result.failure === 'runtime-capability-unavailable'
+          || result.failure === 'runtime-route-unbound'
+          || result.failure === 'runtime-transport-unavailable'
+        ) {
           nimiToast.info(toastMessage);
         } else {
           nimiToast.danger(toastMessage);

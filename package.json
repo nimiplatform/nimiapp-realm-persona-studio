@@ -22,8 +22,8 @@
     "typecheck:electron": "tsc -p tsconfig.electron.json --noEmit",
     "build": "pnpm run typecheck && pnpm run build:renderer && (cd src-tauri && cargo check)",
     "lint": "pnpm run typecheck && eslint . --max-warnings 0 && (cd src-tauri && cargo check)",
-    "spec:authority:check": "nimicoding authority check .nimi/spec",
-    "spec:authority:compile": "nimicoding authority compile .nimi/spec",
+    "spec:authority:check": "pnpm exec nimicoding authority check .nimi/spec",
+    "spec:authority:compile": "pnpm exec nimicoding authority compile .nimi/spec",
     "check:spec-consistency": "pnpm run spec:authority:check",
     "i18n:check": "vitest run src/shell/renderer/i18n/studio-i18n.test.ts",
     "i18n:audit": "node scripts/i18n-audit.mjs",
@@ -35,13 +35,13 @@
     "pack": "pnpm run build:renderer && node scripts/pack.mjs",
     "doctor": "nimi-app doctor",
     "check": "pnpm run doctor && pnpm run validate && pnpm run local-audit && pnpm run check:spec-consistency && pnpm run i18n:check && pnpm run i18n:audit && pnpm run typecheck && pnpm run lint && pnpm run test",
-    "nimicoding": "nimicoding",
-    "nimicoding:doctor": "nimicoding doctor"
+    "nimicoding": "pnpm exec nimicoding",
+    "nimicoding:doctor": "pnpm exec nimicoding doctor"
   },
   "devDependencies": {
     "@nimiplatform/app-tools": "link:../../nimi/app-tools",
     "@eslint/js": "^10.0.1",
-    "@nimiplatform/nimi-coding": "0.5.0",
+    "@nimiplatform/nimi-coding": "0.6.1",
     "@tailwindcss/vite": "^4.3.0",
     "@tauri-apps/cli": "^2.11.2",
     "@testing-library/jest-dom": "^6.9.1",

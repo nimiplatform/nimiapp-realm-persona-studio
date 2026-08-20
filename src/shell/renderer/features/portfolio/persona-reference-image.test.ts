@@ -5,7 +5,6 @@ import {
   generatePersonaReferenceImage,
   initialReferenceImagePromptFromDraft,
 } from './persona-reference-image.js';
-import { RUNTIME_MEDIA_CANDIDATE_UNAVAILABLE_MESSAGE } from './portfolio-media-client.js';
 
 describe('persona reference image generation', () => {
   it('builds a local image candidate input preview from a reviewed prompt', () => {
@@ -48,19 +47,28 @@ describe('persona reference image generation', () => {
     expect(invalid.errors).toEqual(['reference image generation count must be 1']);
   });
 
-  it('fails closed with typed unavailability until the local app surface offers image candidates', async () => {
-    // CP3 behavior change: no Runtime scenario dispatch happens anymore; the
-    // reviewed prompt is preserved in `submitted` with a typed failure.
+  it('uses a reviewed Nimi image candidate only when Runtime returns a public http(s) URI', async () => {
     const result = await generatePersonaReferenceImage({
       prompt: 'A reviewed public Realm Persona portrait',
       aspectRatio: '16:9',
-    });
+    }, async () => ({
+      ok: true,
+      jobId: 'image-job-1',
+      traceId: 'trace-1',
+      artifacts: [{
+        artifactId: 'artifact-1',
+        publicUri: 'https://cdn.example.test/reference.png',
+        previewUrl: 'data:image/png;base64,AQID',
+      }],
+    }));
 
     expect(result).toMatchObject({
-      ok: false,
-      failure: 'persona-reference-image-candidate-unavailable',
+      ok: true,
       source: 'Runtime ScenarioService.submitScenarioJob image.generate',
-      message: RUNTIME_MEDIA_CANDIDATE_UNAVAILABLE_MESSAGE,
+      referenceImageUrl: 'https://cdn.example.test/reference.png',
+      previewUrl: 'data:image/png;base64,AQID',
+      artifactIds: ['artifact-1'],
+      runtime: { traceId: 'trace-1' },
       submitted: {
         surfaceId: 'realm-persona-studio.persona-reference-image',
         capability: 'image.generate',
@@ -68,6 +76,22 @@ describe('persona reference image generation', () => {
         aspectRatio: '16:9',
         count: 1,
       },
+    });
+  });
+
+  it('keeps a local-only generated artifact out of the Realm public reference field', async () => {
+    const result = await generatePersonaReferenceImage({
+      prompt: 'A reviewed public Realm Persona portrait',
+    }, async () => ({
+      ok: true,
+      jobId: 'image-job-2',
+      artifacts: [{ artifactId: 'artifact-2', previewUrl: 'data:image/png;base64,AQID' }],
+    }));
+
+    expect(result).toMatchObject({
+      ok: false,
+      failure: 'persona-reference-image-public-uri-unavailable',
+      submitted: { prompt: 'A reviewed public Realm Persona portrait' },
     });
   });
 

@@ -41,7 +41,6 @@ const SETTINGS_FIXED_MESSAGE_KEYS: Record<string, StudioCopyKey> = {
   'owner settings have no reviewed changes': 'settings.error.noReviewedChanges',
   'natural-language setting intent missing': 'settings.error.intentMissing',
   'Runtime settings proposal payload invalid.': 'settings.error.runtimeProposalPayloadInvalid',
-  'Runtime runtime.ai.text.generate runtime transport unavailable: Tauri IPC runtime transport is required.': 'settings.error.runtimeProposalTransportUnavailable',
   'Runtime settings proposal output invalid.': 'settings.error.runtimeProposalOutputInvalid',
   'Owner settings payload invalid.': 'settings.error.ownerSettingsPayloadInvalid',
   'Realm owner settings update failed.': 'settings.error.ownerSettingsUpdateFailed',
@@ -85,7 +84,7 @@ function translateSettingsFixedMessage(message: string, t: StudioTranslator): st
   }
   if (message.startsWith('Runtime settings proposal rejected forbidden ')) return t('settings.error.proposalForbiddenField');
   if (message.startsWith('Runtime settings proposal rejected invalid ')) return t('settings.error.proposalInvalidField');
-  if (message.startsWith('Runtime runtime.ai.text.generate failed:')) return t('settings.error.runtimeProposalFailed');
+  if (message.startsWith('Nimi App Access ai.text.generateCandidate failed:')) return t('settings.error.runtimeProposalFailed');
   if (message.startsWith('owner settings update rejected: forbidden ')) return t('settings.error.updateForbiddenField');
   const key = SETTINGS_FIXED_MESSAGE_KEYS[message];
   return key ? t(key) : t('common.operationFailed');

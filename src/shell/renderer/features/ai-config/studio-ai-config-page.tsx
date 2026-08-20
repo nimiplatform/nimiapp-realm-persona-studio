@@ -101,6 +101,11 @@ export function StudioAIConfigPage() {
             {t('aiConfig.action.openOwnerConfiguration')}
           </Button>
         </div>
+        {ownerConfigurationMutation.isSuccess ? (
+          <InlineAlert tone="success" className="mt-3">
+            {t('aiConfig.handoffAccepted')}
+          </InlineAlert>
+        ) : null}
         {ownerConfigurationMutation.isError ? (
           <InlineAlert tone="warning" className="mt-3">
             {t('aiConfig.handoffRejected')}

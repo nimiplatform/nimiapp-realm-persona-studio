@@ -8,8 +8,10 @@ import { getStudioLocalAppClient } from '@renderer/app-shell/studio-platform.js'
  * Studio App AIConfig access on the Nimi App Access contract. The protected
  * App surface is projection-only; Nimi Desktop owns configuration changes and
  * independently resolves the canonical owner. Studio's appId is only a
- * navigation target. Missing App AIConfig is one typed unconfigured projection,
- * never a pseudo-configured state or an invitation to shadow it.
+ * navigation target. The admitted open-apps ai-models section selects the
+ * Nimi-owned App AIConfig editor without granting mutation authority to Studio.
+ * Missing App AIConfig is one typed unconfigured projection, never a
+ * pseudo-configured state or an invitation to shadow it.
  */
 
 export type StudioAIConfigClient = Pick<NimiLocalAppClient, 'aiConfig'>;
@@ -28,6 +30,7 @@ export async function loadStudioAIConfig(
   }
 }
 
+// @nimi-authority: rule.realm-persona-studio.runtime-ai.r011
 export async function openStudioAIConfigurationInDesktop(
   openIntent: StudioDesktopIntentOpener = openDesktopIntent,
 ): Promise<void> {
@@ -35,11 +38,12 @@ export async function openStudioAIConfigurationInDesktop(
     intent: {
       kind: 'open-apps',
       appId: REALM_PERSONA_STUDIO_APP_ID,
+      section: 'ai-models',
     },
   });
   if (result.status === 'rejected') {
     throw Object.assign(
-      new Error(`Nimi Desktop rejected opening the Studio App configuration surface (${result.reasonCode}).`),
+      new Error(`Nimi Desktop rejected opening the Studio AI models surface (${result.reasonCode}).`),
       {
         reasonCode: result.reasonCode,
         actionHint: result.actionHint,

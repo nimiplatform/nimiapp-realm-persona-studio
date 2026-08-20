@@ -46,6 +46,16 @@ describe('Studio AIConfig read-only page', () => {
     await waitFor(() => expect(loadStudioAIConfigMock).toHaveBeenCalledTimes(2));
   });
 
+  it('shows accepted feedback after a direct AI models handoff', async () => {
+    openStudioAIConfigurationInDesktopMock.mockResolvedValue(undefined);
+    renderPage();
+
+    await screen.findByText('text.generate');
+    fireEvent.click(screen.getByRole('button', { name: 'Open AI models in Nimi Desktop' }));
+
+    await screen.findByText('Nimi Desktop accepted the request and opened Realm Persona Studio’s AI models. Complete the configuration there, then return and refresh.');
+  });
+
   it('shows Desktop navigation rejection independently with typed details', async () => {
     openStudioAIConfigurationInDesktopMock.mockRejectedValue(Object.assign(
       new Error('Desktop is not ready.'),
@@ -57,9 +67,9 @@ describe('Studio AIConfig read-only page', () => {
     renderPage();
 
     await screen.findByText('text.generate');
-    fireEvent.click(screen.getByRole('button', { name: 'Configure in Nimi Desktop' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open AI models in Nimi Desktop' }));
 
-    await screen.findByText('Nimi Desktop could not open the Studio App configuration surface. No configuration was changed.');
+    await screen.findByText('Nimi Desktop could not open Realm Persona Studio’s AI models. No configuration was changed.');
     const details = screen.getByText('Desktop navigation details').closest('details');
     expect(details?.textContent).toContain('desktop-open-desktop-not-ready');
     expect(details?.textContent).toContain('wait_for_desktop_ready');

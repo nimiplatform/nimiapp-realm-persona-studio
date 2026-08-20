@@ -96,14 +96,13 @@ const POST_FIXED_MESSAGE_KEYS: Record<string, StudioCopyKey> = {
   'Realm Create Post returned no canonical post id.': 'posts.error.createPostNoId',
   'Realm direct upload session did not return a PENDING resource id and upload URL.': 'posts.error.directUploadSessionMissing',
   'Realm finalizeResource did not return a READY media Resource.': 'posts.error.finalizeResourceNotReady',
-  'Runtime runtime.ai.text.generate runtime transport unavailable: Tauri IPC runtime transport is required.': 'posts.error.postCopyTransportUnavailable',
   [PERSONA_PUBLICATION_UNAVAILABLE_MESSAGE]: 'posts.publicationUnavailable',
 };
 
 function translatePostFixedMessage(message: string, t: StudioTranslator): string {
   const textResourceNotReady = message.match(/^Realm text resource (.+) is not a READY TEXT resource\.$/);
   if (textResourceNotReady) return t('posts.error.textResourceNotReady', { id: textResourceNotReady[1] });
-  if (message.startsWith('Runtime runtime.ai.text.generate failed:')) return t('posts.error.postCopyFailed');
+  if (message.startsWith('Nimi App Access ai.text.generateCandidate failed:')) return t('posts.error.postCopyFailed');
   if (message.startsWith('Runtime post copy output invalid')) return t('posts.error.postCopyOutputInvalid');
   const forbiddenField = message.match(/^(?:post payload|app-local schedule) rejected: forbidden (.+) present$/);
   if (forbiddenField) return t('posts.error.forbiddenField', { field: forbiddenField[1] ?? '' });

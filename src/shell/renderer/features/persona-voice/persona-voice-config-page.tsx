@@ -9,6 +9,21 @@ import { buildReviewedVoiceDemoCandidatePayload, type VoiceDemoCandidateInput } 
 import type { OwnerPortfolioPersonaDetail } from '@renderer/features/portfolio/portfolio-data.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
 
+function translateVoiceFailure(
+  result: Extract<RuntimeVoiceDemoSynthesisResult, { ok: false }>,
+  t: ReturnType<typeof useStudioI18n>['t'],
+): string {
+  if (result.failure === 'runtime-payload-invalid') return t('assets.error.runtimeVoicePayloadInvalid');
+  if (result.failure === 'runtime-transport-unavailable') return t('assets.error.runtimeVoiceTransportUnavailable');
+  if (result.failure === 'runtime-capability-unavailable' || result.failure === 'runtime-route-unbound') {
+    return t('assets.error.runtimeMediaCandidateUnavailable');
+  }
+  if (result.failure === 'runtime-output-malformed' || result.failure === 'runtime-output-missing') {
+    return t('assets.error.runtimeVoiceMissingArtifact');
+  }
+  return t('assets.error.runtimeVoiceFailed');
+}
+
 function createVoiceDraft(persona: OwnerPortfolioPersonaDetail): VoiceDemoCandidateInput {
   return {
     scriptText: persona.greeting.value || persona.bio.value || '',
@@ -46,10 +61,14 @@ function VoiceConfigBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) 
         });
         if (!persisted.ok) nimiToast.danger(t('assets.history.persistFailed'));
       } else {
-        if (next.failure === 'runtime-media-candidate-unavailable') {
-          nimiToast.info(t('assets.error.runtimeMediaCandidateUnavailable'));
+        if (
+          next.failure === 'runtime-capability-unavailable'
+          || next.failure === 'runtime-route-unbound'
+          || next.failure === 'runtime-transport-unavailable'
+        ) {
+          nimiToast.info(translateVoiceFailure(next, t));
         } else {
-          nimiToast.danger(t('voiceConfig.scriptRequired'));
+          nimiToast.danger(translateVoiceFailure(next, t));
         }
       }
     } finally {
@@ -127,9 +146,7 @@ function VoiceConfigBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) 
           ) : null}
           {result && !result.ok ? (
             <InlineAlert tone="danger" className="mt-3">
-              {result.failure === 'runtime-media-candidate-unavailable'
-                ? t('assets.error.runtimeMediaCandidateUnavailable')
-                : t('voiceConfig.scriptRequired')}
+              {translateVoiceFailure(result, t)}
             </InlineAlert>
           ) : null}
         </Surface>

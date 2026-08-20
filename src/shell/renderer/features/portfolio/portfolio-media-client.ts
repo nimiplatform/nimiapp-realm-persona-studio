@@ -16,27 +16,21 @@ import {
   type VisualImageGenerationInput,
   type VoiceDemoCandidateInput,
 } from './media-voice-candidate.js';
+import {
+  runStudioImageCandidate,
+  runStudioVoiceCandidate,
+  type StudioImageCandidateRunner,
+  type StudioMediaCandidateArtifact,
+  type StudioMediaCandidateFailure,
+  type StudioVoiceCandidateRunner,
+} from './studio-media-candidate.js';
 
 type RealmSelectAvatarInput = { avatarUrl: string };
 type RealmSelectAvatarResponse = RealmModel<'PersonaCharacterCoreDto'>;
 
 export const REALM_PERSONA_AVATAR_SELECT_SOURCE = 'Realm WorldCoreController.replaceRealmPersona';
 
-/**
- * The Nimi local App surface does not expose media candidate generation yet,
- * so Studio media candidates fail closed with a typed unavailability result
- * instead of a Runtime scenario dispatch.
- */
-export const RUNTIME_MEDIA_CANDIDATE_UNAVAILABLE_MESSAGE = 'The Nimi local app surface does not provide this candidate generation capability yet.';
 export const PERSONA_AVATAR_SELECTION_AVAILABLE = false;
-
-export type StudioMediaCandidateArtifact = {
-  artifactId?: string;
-  mimeType?: string;
-  publicUri?: string;
-  previewUrl?: string;
-  sizeBytes?: string;
-};
 
 export type RealmPersonaAvatarSelectResult =
   | {
@@ -71,7 +65,6 @@ export type RuntimeVisualImageGenerationResult =
       previewUrls: string[];
       artifacts: StudioMediaCandidateArtifact[];
       traceId?: string;
-      modelResolved?: string;
     };
   }
   | {
@@ -79,7 +72,8 @@ export type RuntimeVisualImageGenerationResult =
     source: typeof VISUAL_IMAGE_GENERATION_SOURCE;
     failure:
       | 'runtime-payload-invalid'
-      | 'runtime-media-candidate-unavailable';
+      | 'runtime-output-missing'
+      | StudioMediaCandidateFailure;
     message: string;
     draft: ReviewedVisualImageCandidatePayload | ReviewedAvatarPackageCandidatePayload | null;
   };
@@ -97,7 +91,6 @@ export type RuntimeVoiceDemoSynthesisResult =
       previewUrls: string[];
       artifacts: StudioMediaCandidateArtifact[];
       traceId?: string;
-      modelResolved?: string;
     };
   }
   | {
@@ -105,7 +98,8 @@ export type RuntimeVoiceDemoSynthesisResult =
     source: typeof VOICE_DEMO_SYNTHESIS_SOURCE;
     failure:
       | 'runtime-payload-invalid'
-      | 'runtime-media-candidate-unavailable';
+      | 'runtime-output-missing'
+      | StudioMediaCandidateFailure;
     message: string;
     draft: ReviewedVoiceDemoCandidatePayload | null;
   };
@@ -227,6 +221,7 @@ export async function selectReviewedPersonaAvatarUrl(
 export async function synthesizeReviewedVoiceDemo(
   input: VoiceDemoCandidateInput,
   persona: OwnerPortfolioPersonaDetail,
+  runner: StudioVoiceCandidateRunner = runStudioVoiceCandidate,
 ): Promise<RuntimeVoiceDemoSynthesisResult> {
   const draft = buildReviewedVoiceDemoCandidatePayload(input, persona);
 
@@ -240,61 +235,130 @@ export async function synthesizeReviewedVoiceDemo(
     };
   }
 
+  const output = await runner(draft.payload.runtime.input);
+  if (!output.ok) {
+    return {
+      ok: false,
+      source: VOICE_DEMO_SYNTHESIS_SOURCE,
+      failure: output.failure,
+      message: output.message,
+      draft: draft.payload,
+    };
+  }
+  const artifactIds = artifactValues(output.artifacts, 'artifactId');
+  if (artifactIds.length === 0) {
+    return {
+      ok: false,
+      source: VOICE_DEMO_SYNTHESIS_SOURCE,
+      failure: 'runtime-output-missing',
+      message: 'Runtime audio.synthesize returned no artifact id.',
+      draft: draft.payload,
+    };
+  }
+
   return {
-    ok: false,
+    ok: true,
     source: VOICE_DEMO_SYNTHESIS_SOURCE,
-    failure: 'runtime-media-candidate-unavailable',
-    message: RUNTIME_MEDIA_CANDIDATE_UNAVAILABLE_MESSAGE,
+    candidate: true,
+    publicTruth: false,
     draft: draft.payload,
+    runtime: {
+      jobId: output.jobId,
+      artifactIds,
+      previewUrls: artifactValues(output.artifacts, 'previewUrl'),
+      artifacts: output.artifacts,
+      ...(output.traceId ? { traceId: output.traceId } : {}),
+    },
   };
 }
 
 export async function generateReviewedVisualImageCandidate(
   input: VisualImageGenerationInput,
   persona: OwnerPortfolioPersonaDetail,
+  runner: StudioImageCandidateRunner = runStudioImageCandidate,
 ): Promise<RuntimeVisualImageGenerationResult> {
   const draft = buildReviewedVisualImageCandidatePayload(input, persona);
-
-  if (!draft.payload) {
-    return {
-      ok: false,
-      source: VISUAL_IMAGE_GENERATION_SOURCE,
-      failure: 'runtime-payload-invalid',
-      message: draft.errors.join('; ') || 'Runtime imageGenerate scenario payload invalid.',
-      draft: null,
-    };
-  }
-
-  return {
-    ok: false,
-    source: VISUAL_IMAGE_GENERATION_SOURCE,
-    failure: 'runtime-media-candidate-unavailable',
-    message: RUNTIME_MEDIA_CANDIDATE_UNAVAILABLE_MESSAGE,
-    draft: draft.payload,
-  };
+  return runReviewedImageCandidate(
+    draft,
+    'Runtime image.generate scenario payload invalid.',
+    runner,
+  );
 }
 
 export async function generateReviewedAvatarPackageCandidate(
   input: AvatarPackageCandidateInput,
   persona: OwnerPortfolioPersonaDetail,
+  runner: StudioImageCandidateRunner = runStudioImageCandidate,
 ): Promise<RuntimeVisualImageGenerationResult> {
   const draft = buildReviewedAvatarPackageCandidatePayload(input, persona);
+  return runReviewedImageCandidate(
+    draft,
+    'Runtime avatar package image.generate scenario payload invalid.',
+    runner,
+  );
+}
 
+async function runReviewedImageCandidate(
+  draft: ReturnType<typeof buildReviewedVisualImageCandidatePayload>
+    | ReturnType<typeof buildReviewedAvatarPackageCandidatePayload>,
+  invalidMessage: string,
+  runner: StudioImageCandidateRunner,
+): Promise<RuntimeVisualImageGenerationResult> {
   if (!draft.payload) {
     return {
       ok: false,
       source: VISUAL_IMAGE_GENERATION_SOURCE,
       failure: 'runtime-payload-invalid',
-      message: draft.errors.join('; ') || 'Runtime avatar package imageGenerate scenario payload invalid.',
+      message: draft.errors.join('; ') || invalidMessage,
       draft: null,
     };
   }
 
+  const output = await runner(draft.payload.runtime.input);
+  if (!output.ok) {
+    return {
+      ok: false,
+      source: VISUAL_IMAGE_GENERATION_SOURCE,
+      failure: output.failure,
+      message: output.message,
+      draft: draft.payload,
+    };
+  }
+  const previewUrls = artifactValues(output.artifacts, 'previewUrl');
+  const artifactUris = artifactValues(output.artifacts, 'publicUri');
+  if (previewUrls.length === 0 && artifactUris.length === 0) {
+    return {
+      ok: false,
+      source: VISUAL_IMAGE_GENERATION_SOURCE,
+      failure: 'runtime-output-missing',
+      message: 'Runtime image.generate returned no readable artifact.',
+      draft: draft.payload,
+    };
+  }
+
   return {
-    ok: false,
+    ok: true,
     source: VISUAL_IMAGE_GENERATION_SOURCE,
-    failure: 'runtime-media-candidate-unavailable',
-    message: RUNTIME_MEDIA_CANDIDATE_UNAVAILABLE_MESSAGE,
+    candidate: true,
+    publicTruth: false,
     draft: draft.payload,
+    runtime: {
+      jobId: output.jobId,
+      artifactIds: artifactValues(output.artifacts, 'artifactId'),
+      artifactUris,
+      previewUrls,
+      artifacts: output.artifacts,
+      ...(output.traceId ? { traceId: output.traceId } : {}),
+    },
   };
+}
+
+function artifactValues(
+  artifacts: readonly StudioMediaCandidateArtifact[],
+  field: 'artifactId' | 'publicUri' | 'previewUrl',
+): string[] {
+  return [...new Set(artifacts.flatMap((artifact) => {
+    const value = artifact[field];
+    return typeof value === 'string' && value.trim() ? [value.trim()] : [];
+  }))];
 }

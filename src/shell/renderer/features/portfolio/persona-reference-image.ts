@@ -1,5 +1,9 @@
 import type { StudioImageCandidatePreview } from './media-voice-candidate.js';
-import { RUNTIME_MEDIA_CANDIDATE_UNAVAILABLE_MESSAGE } from './portfolio-media-client.js';
+import {
+  runStudioImageCandidate,
+  type StudioImageCandidateRunner,
+  type StudioMediaCandidateFailure,
+} from './studio-media-candidate.js';
 
 export const PERSONA_REFERENCE_IMAGE_SOURCE = 'Runtime ScenarioService.submitScenarioJob image.generate' as const;
 
@@ -28,7 +32,8 @@ export type PersonaReferenceImageResult =
     source: typeof PERSONA_REFERENCE_IMAGE_SOURCE;
     failure:
       | 'persona-reference-image-payload-invalid'
-      | 'persona-reference-image-candidate-unavailable';
+      | 'persona-reference-image-public-uri-unavailable'
+      | StudioMediaCandidateFailure;
     message: string;
     submitted: StudioImageCandidatePreview | null;
   };
@@ -60,13 +65,9 @@ export function buildPersonaReferenceImagePayload(input: PersonaReferenceImageIn
   };
 }
 
-/**
- * Reference image generation stays fail-closed: the Nimi local App surface
- * does not expose image candidate generation yet, so the reviewed draft is
- * preserved and returned with a typed unavailability failure.
- */
 export async function generatePersonaReferenceImage(
   input: PersonaReferenceImageInput,
+  runner: StudioImageCandidateRunner = runStudioImageCandidate,
 ): Promise<PersonaReferenceImageResult> {
   const built = buildPersonaReferenceImagePayload(input);
   if (!built.ok || !built.payload) {
@@ -78,13 +79,52 @@ export async function generatePersonaReferenceImage(
       submitted: null,
     };
   }
+
+  const result = await runner(built.payload);
+  if (!result.ok) {
+    return {
+      ok: false,
+      source: PERSONA_REFERENCE_IMAGE_SOURCE,
+      failure: result.failure,
+      message: result.message,
+      submitted: built.payload,
+    };
+  }
+  const artifactIds = artifactValues(result.artifacts, 'artifactId');
+  const artifactUris = artifactValues(result.artifacts, 'publicUri');
+  const referenceImageUrl = artifactUris[0];
+  if (!referenceImageUrl) {
+    return {
+      ok: false,
+      source: PERSONA_REFERENCE_IMAGE_SOURCE,
+      failure: 'persona-reference-image-public-uri-unavailable',
+      message: 'Runtime image.generate produced a local candidate but no http(s) URI that Realm can store as a public reference image.',
+      submitted: built.payload,
+    };
+  }
+
   return {
-    ok: false,
+    ok: true,
     source: PERSONA_REFERENCE_IMAGE_SOURCE,
-    failure: 'persona-reference-image-candidate-unavailable',
-    message: RUNTIME_MEDIA_CANDIDATE_UNAVAILABLE_MESSAGE,
+    referenceImageUrl,
+    previewUrl: artifactValues(result.artifacts, 'previewUrl')[0] || referenceImageUrl,
+    artifactIds,
+    artifactUris,
     submitted: built.payload,
+    runtime: {
+      ...(result.traceId ? { traceId: result.traceId } : {}),
+    },
   };
+}
+
+function artifactValues(
+  artifacts: readonly { artifactId?: string; publicUri?: string; previewUrl?: string }[],
+  field: 'artifactId' | 'publicUri' | 'previewUrl',
+): string[] {
+  return [...new Set(artifacts.flatMap((artifact) => {
+    const value = artifact[field];
+    return typeof value === 'string' && value.trim() ? [value.trim()] : [];
+  }))];
 }
 
 /**
