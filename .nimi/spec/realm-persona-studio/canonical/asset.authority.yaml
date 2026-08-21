@@ -14,9 +14,9 @@ units:
     kind: rule
     title: Media workspace candidates
     modality: must
-    statement: Image, avatar, profile cover, and voice workspaces produce local candidates unless a Realm core replacement succeeds.
+    statement: Image, avatar, profile cover, and voice workspaces produce local candidates; only a reviewed display-safe HTTPS external reference becomes PersonaCharacter profile state after a complete owner replace succeeds.
     condition: Whenever a listed media workspace produces output.
-    failure: Keep the output local and make no Realm source-state claim until a Realm core replacement succeeds.
+    failure: Keep the output local and make no Realm source-state claim until an admitted complete PersonaCharacter replacement succeeds.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.asset.media-workspaces
@@ -44,9 +44,9 @@ units:
     kind: rule
     title: Avatar replacement path
     modality: must
-    statement: A reviewed avatar URL enters RealmPersona.core.avatarUrl only through replaceRealmPersona.
+    statement: A reviewed avatar HTTPS URL enters PersonaCharacter profile.assets.externalRefs only through client.realm.personaCharacter.replace using toProfileInput and the latest baseContentHash; avatarResourceRef remains a non-URL stable resource reference.
     condition: Whenever Studio writes a reviewed avatar URL as source state.
-    failure: Reject the avatar write when it does not use replaceRealmPersona.
+    failure: Reject the avatar write when it is not display-safe HTTPS or does not use the complete owner PersonaCharacter replace path.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.core.realm-core-surfaces

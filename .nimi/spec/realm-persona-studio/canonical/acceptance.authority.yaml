@@ -18,21 +18,21 @@ units:
         target: definition.realm-persona-studio.acceptance.studio-app
   - id: rule.realm-persona-studio.acceptance.r002
     kind: rule
-    title: RealmPersona source reads
+    title: Owner PersonaCharacter source reads
     modality: must
-    statement: Source reads use WorldCoreController RealmPersona surfaces only.
+    statement: Persona source reads use client.realm.personaCharacter.listOwned and getOwned, while selectable home-world reads use client.realm.worldCore.list, exclusively through the host-injected App client.
     condition: Whenever Studio reads persona source state.
-    failure: Reject acceptance when a source read uses any other surface.
+    failure: Reject acceptance when a source read uses a generic SDK, direct REST, controller, Desktop first-party, raw forwarding, creator, world-maintainer, or dev fallback.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.core.realm-core-surfaces
   - id: rule.realm-persona-studio.acceptance.r003
     kind: rule
-    title: Realm core writes
+    title: Owner PersonaCharacter writes
     modality: must
-    statement: Create and update writes use Realm core DTOs only.
+    statement: Persona create and replace writes use the exact host-injected App PersonaCharacter inputs only; replacement starts from toProfileInput on the latest owner detail and carries the latest baseContentHash.
     condition: Whenever Studio creates or updates a persona.
-    failure: Reject the write and acceptance when a non-Realm-core DTO is used.
+    failure: Reject the write and acceptance when the exact App input, latest owner detail, or latest baseContentHash is missing.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.persona.create-dto
@@ -40,11 +40,11 @@ units:
         target: definition.realm-persona-studio.persona.replace-dto
   - id: rule.realm-persona-studio.acceptance.r004
     kind: rule
-    title: Realm-to-runtime path
+    title: Realm-to-runtime materialization unavailable
     modality: must
-    statement: SourceMaterializationPacket is the only Realm-to-runtime materialization path in this app.
+    statement: Studio has no admitted Realm-to-runtime materialization operation and every SourceMaterializationPacket attempt remains capability-unavailable until a future exact App operation is admitted.
     condition: Whenever Studio materializes Realm source state for Runtime.
-    failure: Reject the materialization and acceptance when any other path is used.
+    failure: Reject the materialization attempt before transport and preserve only local candidate context.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.core.source-materialization-packet

@@ -112,12 +112,12 @@ Normative product authority lives in closed v2 containers under
 Use project-local `pnpm exec nimicoding authority query` or bounded
 `pnpm exec nimicoding authority context` to retrieve exact IDs.
 
-Studio canonical owner portfolio surfaces are
-`Realm WorldCoreController.listRealmPersonas` and
-`Realm WorldCoreController.getRealmPersona`. Create/update use
-`createRealmPersona` and `replaceRealmPersona`; home-world reads use
-`listWorldCores` / `getWorldCore`; runtime materialization uses
-`createSourceMaterializationPacket`. `/api/creator/agents`,
+Studio owner Realm Personas are canonical PersonaCharacters consumed through
+the host-injected `@nimiplatform/sdk/app` surface:
+`client.realm.personaCharacter.listOwned/getOwned/create/replace`. Replacement
+uses `toProfileInput` and the latest `baseContentHash`; home-world reads use the
+admitted `client.realm.worldCore` surface. Runtime source materialization is
+not admitted and remains fail-closed. `/api/creator/agents`,
 `/api/agent/forge-imported-system/**`, and `/api/agent/dev/my-agents` are
 explicitly non-current legacy anti-targets and must not be promoted into owner
 portfolio surfaces.

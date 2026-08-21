@@ -6,7 +6,7 @@ units:
     kind: rule
     title: Owner persona scope
     modality: must
-    statement: The app manages current-user-owned RealmPersona source objects.
+    statement: The app manages current-user-owned PersonaCharacter source objects exclusively through the owner-scoped host-injected App client while presenting Realm Persona as the product name.
     condition: Always.
     failure: Treat persona management as unavailable when the object is not returned as owned by the current user.
     relations:
@@ -26,7 +26,7 @@ units:
     kind: rule
     title: Home-world selection
     modality: must
-    statement: Home-world selection is read from Realm WorldCore data and submitted into RealmPersona.homeWorldId.
+    statement: Home-world selection is read from the admitted WorldCore App surface and submitted as PersonaCharacter worldId.
     condition: Whenever an owner selects or submits a home world.
     failure: Block submission and render home-world selection unavailable when Realm WorldCore data does not supply the selection.
     relations:
@@ -36,9 +36,9 @@ units:
     kind: rule
     title: Owner settings storage
     modality: must
-    statement: Owner settings are stored as reviewed RealmPersona.core replacements rather than hidden app state.
+    statement: Canonical native owner settings are stored through complete PersonaCharacter replacement, while unmapped creative settings remain explicit local candidates rather than bare extensions or hidden Realm state.
     condition: Whenever owner settings are saved.
-    failure: Reject the save as source-backed state when no reviewed RealmPersona.core replacement succeeds.
+    failure: Reject the save as source-backed state when no reviewed PersonaCharacter replacement succeeds.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.core.realm-persona
@@ -106,7 +106,7 @@ units:
     kind: rule
     title: No creator-route fallback
     modality: must_not
-    statement: Creator or world-maintainer routes are used as fallback for owner persona reads or writes.
+    statement: Creator, world-maintainer, Desktop first-party, generic Realm SDK, direct REST, or raw Realm forwarding routes are used as fallback for owner persona reads or writes.
     condition: Always.
     failure: Fail the owner persona operation without retrying through a creator or world-maintainer route.
     relations:
@@ -116,7 +116,7 @@ units:
     kind: rule
     title: No profile-based write proof
     modality: must_not
-    statement: Public profile or account data is used to prove owner write authority for a persona.
+    statement: Public profile, account data, ownerAccountId in Studio, or an app-local preflight is used to prove owner write authority for a persona.
     condition: Always.
     failure: Reject the write-authority claim and perform no persona write.
     relations:

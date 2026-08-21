@@ -20,9 +20,9 @@ units:
     kind: rule
     title: Materialization source reference
     modality: must
-    statement: SourceMaterializationPacket creation uses sourceRef.kind equal to realmPersona, worldId, sourceId, and sourceContentHash.
-    condition: Whenever Studio creates a SourceMaterializationPacket.
-    failure: Reject materialization when any required sourceRef value is missing or sourceRef.kind is not realmPersona.
+    statement: Studio local candidates may identify their canonical source as personaCharacter with worldId, sourceId, and sourceContentHash, but Studio invokes no SourceMaterializationPacket operation until a future exact App operation is admitted.
+    condition: Whenever Studio prepares local source context or materialization is requested.
+    failure: Preserve only the local candidate reference and return capability-unavailable before any materialization call.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.core.source-materialization-packet
@@ -30,9 +30,9 @@ units:
     kind: rule
     title: No materialization write-back
     modality: must_not
-    statement: A SourceMaterializationPacket payload mutates RealmPersona instead of remaining a by-value materialization.
+    statement: A local candidate or future SourceMaterializationPacket payload mutates PersonaCharacter instead of using the admitted owner create or replace operation.
     condition: Always.
-    failure: Reject the mutation and leave RealmPersona unchanged.
+    failure: Reject the mutation and leave PersonaCharacter unchanged.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.core.source-materialization-packet
@@ -40,7 +40,7 @@ units:
     kind: rule
     title: LocalAgent chat readiness
     modality: must
-    statement: localAgent chat readiness is generated only from SourceMaterializationPacket and owner-visible fields.
+    statement: localAgent chat readiness remains unavailable until an exact SourceMaterializationPacket App operation exists and may then use only owner-visible fields.
     condition: Whenever Studio generates localAgent chat readiness.
     failure: Return runtime input unavailable when the packet is missing or a field is not owner-visible.
     relations:
@@ -82,7 +82,7 @@ units:
     kind: rule
     title: Owner-accepted output boundary
     modality: must
-    statement: Runtime output accepted by the owner still requires the admitted Realm core replacement before it becomes source state.
+    statement: Runtime output accepted by the owner still requires the admitted complete PersonaCharacter replacement before it becomes source state.
     condition: Whenever an owner accepts Runtime output.
     failure: Keep the accepted output as a local candidate until the admitted Realm core replacement succeeds.
     relations:

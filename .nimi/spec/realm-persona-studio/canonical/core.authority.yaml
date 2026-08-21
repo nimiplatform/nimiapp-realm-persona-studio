@@ -5,19 +5,19 @@ units:
   - id: definition.realm-persona-studio.core.realm-persona
     kind: definition
     title: Realm persona
-    meaning: A RealmPersona is a user-owned RealmPersona source object whose canonical detail object is RealmPersonaDto from WorldCoreController.getRealmPersona and whose canonical list object is RealmPersonaDto[] from WorldCoreController.listRealmPersonas; id, homeWorldId, origin, contentHash, contentRevision, state, and core are preserved from Realm responses.
+    meaning: Realm Persona is the Studio product name for a current-user-owned canonical PersonaCharacter projected by the host-injected App client; source truth contains id, worldId, schemaVersion, contentHash, contentRevision, sourceHash, visibility, origin, profile, validity, materializationReadiness, createdAt, and updatedAt and never exposes ownerAccountId.
   - id: definition.realm-persona-studio.core.world-core
     kind: definition
     title: World core
-    meaning: Realm WorldCore data for which listWorldCores and getWorldCore are the selectable home-world surfaces.
+    meaning: Realm WorldCore data projected by client.realm.worldCore.list through the host-injected App client is the selectable home-world source; Studio has no App get-by-id fallback and resolves a selected preview from that list.
   - id: definition.realm-persona-studio.core.source-materialization-packet
     kind: definition
     title: Source materialization packet
-    meaning: WorldCoreController.createSourceMaterializationPacket materializes runtime input by value through sourceRef with kind realmPersona, worldId, sourceId, and sourceContentHash, and never mutates RealmPersona.
+    meaning: PersonaCharacter source materialization is an unadmitted future capability for Studio and remains unavailable; local candidate context is not a SourceMaterializationPacket.
   - id: definition.realm-persona-studio.core.realm-core-surfaces
     kind: definition
     title: Realm core surfaces
-    meaning: The admitted current Realm data plane consists of WorldCoreController.listRealmPersonas, getRealmPersona, createRealmPersona, replaceRealmPersona with writes carrying baseContentHash, listWorldCores, getWorldCore, and createSourceMaterializationPacket.
+    meaning: The admitted current Studio Realm data plane is client.realm.personaCharacter.listOwned, getOwned, create, and replace plus client.realm.worldCore.list and create through the host-injected App SDK under realm.data; post, media publication, materialization, friendCount, and delete remain unadmitted.
   - id: definition.realm-persona-studio.core.local-candidate
     kind: definition
     title: Local candidate
@@ -48,7 +48,7 @@ units:
     kind: rule
     title: Current object model
     modality: must
-    statement: Current app authority is based on WorldCore, RealmPersona, and SourceMaterializationPacket; Realm-side Agent, CharacterCard, rule package, truth package, and projection package paths are non-current.
+    statement: Current app authority is based on WorldCore, owner-scoped PersonaCharacter, and local candidates; SourceMaterializationPacket, Realm-side Agent, CharacterCard, rule package, truth package, and projection package paths are non-current or unadmitted.
     condition: Always.
     failure: Reject any current success path based on a listed non-current object or package path.
     relations:
@@ -102,7 +102,7 @@ units:
     kind: rule
     title: Required write inputs
     modality: must
-    statement: Writes fail closed when baseContentHash, homeWorldId, origin, required core fields, or Realm response identity are missing.
+    statement: Writes fail closed when worldId, writable visibility, origin, required profile fields, canonical response identity, or the latest baseContentHash for replacement is missing.
     condition: Whenever a listed required write input or response identity is missing.
     failure: Reject the write or its success result without presenting updated source-backed state.
     relations:
@@ -112,9 +112,9 @@ units:
     kind: rule
     title: Runtime candidate boundary
     modality: must
-    statement: Runtime output remains candidate material until an owner-reviewed Realm core write succeeds.
+    statement: Runtime output remains candidate material until an owner-reviewed PersonaCharacter create or replace succeeds through the host-injected App client.
     condition: Whenever Runtime returns output.
-    failure: Keep the output local and do not present it as Realm source state before an owner-reviewed Realm core write succeeds.
+    failure: Keep the output local and do not present it as Realm source state before an owner-reviewed PersonaCharacter write succeeds.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.core.local-candidate

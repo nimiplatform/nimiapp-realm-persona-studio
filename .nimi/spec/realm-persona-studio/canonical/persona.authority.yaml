@@ -5,11 +5,11 @@ units:
   - id: definition.realm-persona-studio.persona.create-dto
     kind: definition
     title: Persona create DTO
-    meaning: CreateRealmPersonaDto contains homeWorldId, origin, and reviewed core.
+    meaning: The Studio create input is the exact App SDK PersonaCharacter input containing worldId, writable visibility private, unlisted, or public, origin, and an owner-reviewed PersonaCharacter profile input without caller identity, id, profileHash, or profileCoverage.
   - id: definition.realm-persona-studio.persona.replace-dto
     kind: definition
     title: Persona replace DTO
-    meaning: ReplaceRealmPersonaDto contains the latest baseContentHash, homeWorldId, origin, and merged core built from the latest detail read.
+    meaning: The Studio replace input contains personaCharacterId, the latest lower-case sixty-four-hex baseContentHash, worldId, writable visibility, origin, and a complete profile produced from the latest detail through client.realm.personaCharacter.toProfileInput.
   - id: definition.realm-persona-studio.persona.world-character-core
     kind: definition
     title: World character core
@@ -18,9 +18,9 @@ units:
     kind: rule
     title: Canonical persona identity
     modality: must
-    statement: A Studio persona exists only after Realm returns a canonical RealmPersonaDto.id.
+    statement: A Studio persona exists only after client.realm.personaCharacter.create returns a canonical PersonaCharacter id, worldId, contentHash, and contentRevision.
     condition: Whenever Studio claims that a persona exists.
-    failure: Return persona creation without success when Realm returns no canonical RealmPersonaDto.id.
+    failure: Return persona creation without success when the App client returns no complete canonical PersonaCharacter identity.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.core.realm-persona
@@ -28,9 +28,9 @@ units:
     kind: rule
     title: Canonical detail object
     modality: must
-    statement: The canonical detail object is RealmPersonaDto from WorldCoreController.getRealmPersona.
+    statement: The canonical detail object is the sanitized owner PersonaCharacter projection from client.realm.personaCharacter.getOwned.
     condition: Whenever Studio presents persona detail as source-backed.
-    failure: Render persona detail source unavailable when that surface returns no canonical RealmPersonaDto.
+    failure: Render persona detail unavailable with the exact sanitized reasonCode when getOwned returns no canonical projection.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.core.realm-persona
@@ -38,9 +38,9 @@ units:
     kind: rule
     title: Canonical list object
     modality: must
-    statement: The canonical list object is RealmPersonaDto[] from WorldCoreController.listRealmPersonas.
+    statement: The canonical owner list is the complete ordered union of client.realm.personaCharacter.listOwned pages followed through nextAfterId until no successor remains.
     condition: Whenever Studio presents the owner persona list as source-backed.
-    failure: Render the portfolio source unavailable when that surface returns no canonical RealmPersonaDto list.
+    failure: Fail the whole portfolio read on an invalid or repeated cursor and never present one page as the complete owner list.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.core.realm-persona
@@ -48,8 +48,8 @@ units:
     kind: rule
     title: Preserve Realm fields
     modality: must
-    statement: id, homeWorldId, origin, contentHash, contentRevision, state, and core are preserved from Realm responses without local reinterpretation.
-    condition: Whenever Studio consumes a RealmPersona response.
+    statement: id, worldId, schemaVersion, contentHash, contentRevision, sourceHash, visibility, origin, profile, validity, materializationReadiness, createdAt, and updatedAt are preserved from the App projection without local canonicalization, while state and ownerAccountId are never synthesized or stored.
+    condition: Whenever Studio consumes a PersonaCharacter App projection.
     failure: Reject the locally reinterpreted object and do not present it as canonical source state.
     relations:
       - type: applies_to
@@ -58,9 +58,9 @@ units:
     kind: rule
     title: Persona core source fields
     modality: must
-    statement: Display name, handle, description, greeting, profile media, voice settings, visibility settings, and positioning are source fields inside RealmPersona.core when present.
-    condition: Whenever a listed field is present in RealmPersona.core.
-    failure: Do not claim the field as source-backed when it is absent from RealmPersona.core.
+    statement: Display name, handle, greeting, narrative, resource references, display-safe HTTPS external references, and extension envelopes are read only from their canonical PersonaCharacter profile locations, while top-level visibility remains distinct from profile content.
+    condition: Whenever a listed field is present in a PersonaCharacter projection.
+    failure: Do not claim the field as source-backed when it is absent from the canonical PersonaCharacter projection.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.core.realm-persona
@@ -78,9 +78,9 @@ units:
     kind: rule
     title: Owner-scope proof
     modality: must
-    statement: Owner scope is proven by the admitted Realm core surface returning the object for the current account session.
+    statement: Owner scope is proven only by the Runtime-mediated listOwned, getOwned, create, or replace App operation under the current protected session.
     condition: Whenever Studio requires proof of owner scope.
-    failure: Treat owner authority as missing when the admitted Realm core surface does not return the object for the current account session.
+    failure: Treat owner authority as missing or access denied when the owner App operation does not return the object for the current account session.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.core.realm-persona
@@ -100,7 +100,7 @@ units:
     kind: rule
     title: Persona creation surface
     modality: must
-    statement: Persona creation calls WorldCoreController.createRealmPersona with homeWorldId, origin, and reviewed core.
+    statement: Persona creation calls client.realm.personaCharacter.create with exact worldId, owner-selected writable visibility, origin, and reviewed profile input.
     condition: Whenever Studio submits persona creation.
     failure: Reject persona creation when the call or any listed field is missing.
     relations:
@@ -110,7 +110,7 @@ units:
     kind: rule
     title: Persona replacement surface
     modality: must
-    statement: Persona replacement calls WorldCoreController.replaceRealmPersona with the latest baseContentHash.
+    statement: Persona replacement calls client.realm.personaCharacter.replace with the latest baseContentHash and a complete profile produced by client.realm.personaCharacter.toProfileInput from the latest detail.
     condition: Whenever Studio submits persona replacement.
     failure: Reject persona replacement when the latest baseContentHash is absent or stale.
     relations:
@@ -120,9 +120,9 @@ units:
     kind: rule
     title: Replacement success identity
     modality: must
-    statement: A replace success is valid only when Realm returns the updated RealmPersonaDto with a new or confirmed contentHash.
+    statement: A replace success is valid only when the App client returns the updated canonical PersonaCharacter with its canonical contentHash and contentRevision.
     condition: Whenever Studio presents persona replacement as successful.
-    failure: Treat replacement as failed when Realm returns no updated RealmPersonaDto with a new or confirmed contentHash.
+    failure: Treat replacement as failed when the App client returns no complete updated PersonaCharacter projection.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.persona.replace-dto

@@ -5,14 +5,14 @@ units:
   - id: definition.realm-persona-studio.setting.core-field-map
     kind: definition
     title: Persona core field map
-    meaning: The admitted owner-reviewed RealmPersona.core field map contains displayName, handle, profile description, greeting, identity, personality, communication, boundaries, positioning, socialVisibility with PUBLIC, FRIENDS, or PRIVATE values, avatarUrl, referenceImageUrl, profileCoverUrl, and voice settings.
+    meaning: The admitted owner-reviewed PersonaCharacter field map contains presentation.displayName, identity.name, identity.handle, identity.summary, presentation.profileLine, interactionProfile.greeting, narrative, top-level visibility, stable resource references, and display-safe HTTPS assets.externalRefs; Studio-specific ownerSettings or socialVisibility extensions are not canonical fields.
   - id: rule.realm-persona-studio.setting.r001
     kind: rule
     title: Display name field
     modality: must
-    statement: displayName is admitted as RealmPersona.core.displayName.
+    statement: displayName is read and written as PersonaCharacter profile.presentation.displayName with profile.identity.name kept complete for replacement.
     condition: Whenever Studio reads or writes the persona display name.
-    failure: Treat the display name as unavailable or invalid when it cannot be read from or normalized to RealmPersona.core.displayName.
+    failure: Treat the display name as unavailable or invalid when the canonical PersonaCharacter profile fields cannot supply it.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.setting.core-field-map
@@ -20,9 +20,9 @@ units:
     kind: rule
     title: Handle field
     modality: must
-    statement: handle is admitted as RealmPersona.core.handle during create and replacement when owner-reviewed.
+    statement: handle is admitted as PersonaCharacter profile.identity.handle during create and replacement when owner-reviewed.
     condition: Whenever Studio creates or replaces an owner-reviewed handle.
-    failure: Reject the handle write when it is not owner-reviewed or cannot be normalized to RealmPersona.core.handle.
+    failure: Reject the handle write when it is not owner-reviewed or cannot be normalized to profile.identity.handle.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.setting.core-field-map
@@ -30,7 +30,7 @@ units:
     kind: rule
     title: Profile description field
     modality: must
-    statement: description and bio normalize to owner-reviewed profile description inside RealmPersona.core.
+    statement: description and bio normalize to PersonaCharacter profile.identity.summary and presentation.profileLine.
     condition: Whenever Studio reads or writes description or bio.
     failure: Reject the write when description or bio cannot be normalized to an owner-reviewed profile description.
     relations:
@@ -40,9 +40,9 @@ units:
     kind: rule
     title: Greeting field
     modality: must
-    statement: greeting is admitted as an owner-reviewed first-message field inside RealmPersona.core.
+    statement: greeting is admitted as profile.interactionProfile.greeting.
     condition: Whenever Studio reads or writes a greeting.
-    failure: Reject the greeting write when the field is not owner-reviewed or cannot be stored inside RealmPersona.core.
+    failure: Reject the greeting write when the field is not owner-reviewed or cannot be stored in interactionProfile.greeting.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.setting.core-field-map
@@ -50,19 +50,19 @@ units:
     kind: rule
     title: Structured persona sections
     modality: must
-    statement: identity, personality, communication, boundaries, and positioning are admitted as structured owner-reviewed core sections.
+    statement: Archetype, traits, and narrative summary use profile.narrative, while Studio creative personality, communication, boundary, positioning, and natural-language intent fields remain local candidates unless a registered Realm extension envelope is separately admitted.
     condition: Whenever Studio reads or writes a listed section.
-    failure: Reject the section write when it is unreviewed or malformed.
+    failure: Keep an unregistered or unmapped section local and omit it from PersonaCharacter replacement.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.setting.core-field-map
   - id: rule.realm-persona-studio.setting.r006
     kind: rule
-    title: Social visibility field
+    title: Canonical visibility field
     modality: must
-    statement: socialVisibility is admitted as a structured core section with PUBLIC, FRIENDS, or PRIVATE values.
-    condition: Whenever Studio reads or writes socialVisibility.
-    failure: Reject the visibility write when its value is not PUBLIC, FRIENDS, or PRIVATE.
+    statement: Persona visibility is the top-level PersonaCharacter visibility private, unlisted, public, or system; Studio writes only private, unlisted, or public and never introduces FRIENDS or maps unlisted to FRIENDS.
+    condition: Whenever Studio reads or writes persona visibility.
+    failure: Reject a write using system, FRIENDS, uppercase social visibility, or any non-canonical value.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.setting.core-field-map
@@ -70,7 +70,7 @@ units:
     kind: rule
     title: Profile media fields
     modality: must
-    statement: avatarUrl, referenceImageUrl, and profileCoverUrl are stored only as reviewed core fields or local candidates; a local preview is not public asset authority.
+    statement: avatarResourceRef and profileCoverResourceRef remain stable resource identifiers rather than URLs; only reviewed display-safe HTTPS assets.externalRefs may render as public external URLs, and local preview or artifact URIs remain local candidates.
     condition: Whenever Studio stores or previews a listed profile media field.
     failure: Keep unreviewed media local and expose no public asset authority claim for a local preview.
     relations:
@@ -90,7 +90,7 @@ units:
     kind: rule
     title: Complete setting replacement
     modality: must
-    statement: Every setting write builds a complete ReplaceRealmPersonaDto from the latest detail read.
+    statement: Every setting write uses the latest owner PersonaCharacter detail, calls client.realm.personaCharacter.toProfileInput, applies only canonical native field changes, and builds the complete exact replace input.
     condition: Whenever Studio prepares a setting write.
     failure: Reject the setting write when the replacement DTO is incomplete or not built from the latest detail read.
     relations:
@@ -102,7 +102,7 @@ units:
     kind: rule
     title: Required replacement fields
     modality: must
-    statement: The setting write includes baseContentHash, homeWorldId, origin, and merged core.
+    statement: The setting write includes personaCharacterId, latest baseContentHash, worldId, writable visibility, origin, and complete profile input.
     condition: Whenever Studio submits a setting write.
     failure: Reject the write before submission when any listed field is missing.
     relations:
@@ -114,7 +114,7 @@ units:
     kind: rule
     title: Forbidden setting payload
     modality: must_not
-    statement: A setting write submits raw rule text, provider or model configuration, LocalAgent state, private transcript, or unreviewed generated JSON.
+    statement: A setting write submits raw rule text, provider or model configuration, LocalAgent state, private transcript, unreviewed generated JSON, output-only profileHash or profileCoverage, bare ownerSettings or socialVisibility extensions, caller authority fields, or a system visibility write.
     condition: Always.
     failure: Reject the setting write before any Realm call.
     relations:
@@ -144,7 +144,7 @@ units:
     kind: rule
     title: Setting validation failure
     modality: must
-    statement: Invalid visibility values, malformed structured fields, and stale hashes fail closed before write.
+    statement: Invalid canonical visibility, malformed profile input, unsafe external references, and stale baseContentHash fail closed with the sanitized App reasonCode.
     condition: Whenever a setting payload contains an invalid visibility value, malformed structured field, or stale hash.
     failure: Reject the payload before any Realm write.
     relations:

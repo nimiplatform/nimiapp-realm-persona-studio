@@ -5,7 +5,7 @@ units:
   - id: definition.realm-persona-studio.graph.creation-graph
     kind: definition
     title: Persona creation graph
-    meaning: The persona creation graph is a local owner-reviewed candidate workspace whose inputs may include owner text, selected world, reference image URL, and current owner-approved persona fields.
+    meaning: The persona creation graph is a local owner-reviewed candidate workspace whose inputs may include owner text, selected world, explicit writable PersonaCharacter visibility, display-safe HTTPS reference image URL, and current owner-approved persona fields.
   - id: rule.realm-persona-studio.graph.r001
     kind: rule
     title: Candidate creation graph
@@ -20,7 +20,7 @@ units:
     kind: rule
     title: Creation graph inputs
     modality: must
-    statement: Graph inputs may include owner text, selected world, reference image URL, and current owner-approved persona fields.
+    statement: Graph inputs may include owner text, selected world, explicit writable PersonaCharacter visibility, display-safe HTTPS reference image URL, and current owner-approved persona fields.
     condition: Whenever the creation graph uses owner text, a selected world, a reference image URL, or current owner-approved persona fields.
     failure: Keep the affected graph input unavailable when its listed source value is unavailable.
     relations:
@@ -42,7 +42,7 @@ units:
     kind: rule
     title: Create payload normalization
     modality: must
-    statement: Every graph-derived create payload normalizes to CreateRealmPersonaDto shape with homeWorldId, origin, and core.
+    statement: Every graph-derived create payload normalizes to the exact App PersonaCharacter create input with worldId, explicit writable visibility, origin, and reviewed profile input.
     condition: Whenever the creation graph derives a create payload.
     failure: Reject the create payload before submission when it does not normalize to the required shape.
     relations:
@@ -66,7 +66,7 @@ units:
     kind: rule
     title: Handle preflight boundary
     modality: must
-    statement: Handle uniqueness preflight may compare current owner portfolio data, but create success still requires Realm create confirmation.
+    statement: Handle preflight may compare the complete paginated owner PersonaCharacter portfolio only as an advisory local conflict check; create success and global handle admission require the canonical create response.
     condition: Whenever handle uniqueness preflight is performed or create success is claimed.
     failure: Present no create success until Realm confirms creation.
     relations:

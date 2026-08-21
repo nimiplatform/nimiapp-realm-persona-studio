@@ -37,14 +37,15 @@ containers or bounded authority context; do not create parallel authority roots
 guide; refresh with `pnpm exec nimicoding sync --apply` after bumping the
 package.
 
-The closed product spec still names `listRealmPersonas`, `getRealmPersona`,
-`createRealmPersona`, `replaceRealmPersona`, and
-`createSourceMaterializationPacket`. Those names have no corresponding
-spec-4 Nimi App Access operations and are pending an explicit spec evolution;
-they are not callable implementation authority. The current App Access surface
-supports home-world reads through `realm.worldCore.list` only. Persona
-portfolio, create/update, settings, publication, and materialization gaps must
-fail closed until an authoritative operation exists. `/portfolio` must not call Forge-imported system,
+The current spec-4 Nimi App Access surface admits owner PersonaCharacter
+portfolio, detail, create, and replace through the host-injected
+`client.realm.personaCharacter.listOwned/getOwned/create/replace` methods under
+`realm.data`; writes use the complete PersonaCharacter profile contract and
+`replace` uses `toProfileInput` plus the latest `baseContentHash`. The Studio UI
+may call this product object Realm Persona, but legacy RealmPersona DTO and
+controller names are not callable authority. Publication, media upload,
+materialization, friendCount, and delete gaps must fail closed until an exact
+operation exists. `/portfolio` must not call Forge-imported system,
 creator, world-maintainer, or dev surfaces. `/api/creator/agents`,
 `/api/agent/dev/my-agents`, and `/api/agent/forge-imported-system/**` are
 explicitly non-current legacy anti-targets.
