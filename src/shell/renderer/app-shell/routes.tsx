@@ -85,7 +85,7 @@ export function AppRoutes() {
 
   return (
     <Suspense fallback={<PageFallback />}>
-      <AnimatePresence mode="wait" initial={false}>
+      <AnimatePresence mode="popLayout" initial={false}>
         <motion.div
           key={location.pathname}
           className="flex min-h-0 w-full flex-1 flex-col"

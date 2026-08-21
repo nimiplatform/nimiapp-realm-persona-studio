@@ -26,4 +26,14 @@ describe('Studio route boundaries', () => {
     expect(source).not.toContain('path="/curation/forge-imported-system/:personaId/posts/schedule"');
     expect(source).not.toContain('path="/curation/forge-imported-system/:personaId/settings/review"');
   });
+
+  it('does not hold the next route behind an exit wait or keep both pages in flex layout', () => {
+    const source = routesSource();
+
+    expect(source).toContain('<AnimatePresence mode="popLayout" initial={false}>');
+    expect(source).not.toContain('mode="sync"');
+    expect(source).not.toContain('mode="wait"');
+    expect(source).toContain('key={location.pathname}');
+    expect(source).toContain('<Routes location={location}>');
+  });
 });
