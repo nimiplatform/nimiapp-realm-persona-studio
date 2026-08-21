@@ -5,22 +5,15 @@ import { AlertTriangle, ChevronRight, FilePenLine, Info, LayoutGrid, Plus, Refre
 import {
   Avatar,
   Button,
-  FieldShell,
   InlineAlert,
   LoadingSkeleton,
   NimiTabs,
   NimiText,
   ScrollArea,
-  SearchField,
-  SelectField,
-  StatusBadge,
 } from '@nimiplatform/kit/ui';
 import {
-  applyOwnerPortfolioView,
   classifyPortfolioFailure,
   type OwnerPortfolioPersona,
-  type OwnerPortfolioFilter,
-  type OwnerPortfolioSort,
   type PortfolioFailureKind,
 } from '@renderer/features/portfolio/portfolio-data.js';
 import { listOwnerPortfolioPersonas } from '@renderer/features/portfolio/portfolio-client.js';
@@ -48,20 +41,6 @@ import oasisBannerUrl from '@renderer/assets/persona-preview/oasis-cover.png?url
 import edenBannerUrl from '@renderer/assets/persona-preview/eden-cover.png?url';
 import xiaomiAvatarUrl from '@renderer/assets/persona-preview/xiaomi-avatar.png?url';
 import nanxingAvatarUrl from '@renderer/assets/persona-preview/nanxing-avatar.png?url';
-
-const PORTFOLIO_FILTER_OPTIONS: { value: OwnerPortfolioFilter; labelKey: StudioCopyKey }[] = [
-  { value: 'all', labelKey: 'portfolio.filter.allPersonas' },
-  { value: 'friend-count-available', labelKey: 'portfolio.filter.friendCountAvailable' },
-  { value: 'friend-count-unavailable', labelKey: 'portfolio.filter.friendCountUnavailable' },
-];
-
-const PORTFOLIO_SORT_OPTIONS: { value: OwnerPortfolioSort; labelKey: StudioCopyKey }[] = [
-  { value: 'realm-order', labelKey: 'portfolio.sort.realmOrder' },
-  { value: 'display-name-asc', labelKey: 'portfolio.sort.nameAsc' },
-  { value: 'updated-desc', labelKey: 'portfolio.sort.updatedDesc' },
-  { value: 'friend-count-desc', labelKey: 'portfolio.sort.friendCountDesc' },
-  { value: 'friend-count-asc', labelKey: 'portfolio.sort.friendCountAsc' },
-];
 
 const PORTFOLIO_FAILURE_TITLE_KEYS: Record<PortfolioFailureKind, StudioCopyKey> = {
   'capability-unavailable': 'portfolio.failure.capabilityUnavailable.title',
@@ -127,67 +106,6 @@ export function formatDraftUpdatedAt(updatedAt: string, locale: 'en' | 'zh'): st
     minute: '2-digit',
     hourCycle: 'h23',
   }).format(updatedDate);
-}
-
-function FilterCard({
-  queryText,
-  filter,
-  sort,
-  visibleCount,
-  totalCount,
-  onQueryChange,
-  onFilterChange,
-  onSortChange,
-}: {
-  queryText: string;
-  filter: OwnerPortfolioFilter;
-  sort: OwnerPortfolioSort;
-  visibleCount: number;
-  totalCount: number;
-  onQueryChange: (next: string) => void;
-  onFilterChange: (next: OwnerPortfolioFilter) => void;
-  onSortChange: (next: OwnerPortfolioSort) => void;
-}) {
-  const { t } = useStudioI18n();
-  const filterOptions = PORTFOLIO_FILTER_OPTIONS.map((option) => ({
-    value: option.value,
-    label: t(option.labelKey),
-  }));
-  const sortOptions = PORTFOLIO_SORT_OPTIONS.map((option) => ({
-    value: option.value,
-    label: t(option.labelKey),
-  }));
-
-  return (
-    <section className="ras-card">
-      <SearchField
-        value={queryText}
-        placeholder={t('portfolio.search.placeholder')}
-        aria-label={t('portfolio.search.ariaLabel')}
-        onChange={(event) => onQueryChange(event.currentTarget.value)}
-      />
-      <div className="ras-filter-grid">
-        <FieldShell label={t('portfolio.filter.label')}>
-          <SelectField
-            value={filter}
-            options={filterOptions}
-            onValueChange={(value) => onFilterChange(value as OwnerPortfolioFilter)}
-          />
-        </FieldShell>
-        <FieldShell label={t('portfolio.sort.label')}>
-          <SelectField
-            value={sort}
-            options={sortOptions}
-            onValueChange={(value) => onSortChange(value as OwnerPortfolioSort)}
-          />
-        </FieldShell>
-        <div className="ras-filter-status">
-          <StatusBadge tone="neutral">{visibleCount} / {totalCount}</StatusBadge>
-          <StatusBadge tone="info">{t('portfolio.localView')}</StatusBadge>
-        </div>
-      </div>
-    </section>
-  );
 }
 
 function PortfolioLoadingState() {
@@ -367,9 +285,6 @@ export function PersonaListPage() {
   const { t } = useStudioI18n();
   const navigate = useNavigate();
   const [activeView, setActiveView] = useState<PortfolioView>('personas');
-  const [queryText, setQueryText] = useState('');
-  const [filter, setFilter] = useState<OwnerPortfolioFilter>('all');
-  const [sort, setSort] = useState<OwnerPortfolioSort>('realm-order');
   const [draftEntries, setDraftEntries] = useState<CreationDraftHistoryEntry[]>([]);
   const [draftImages, setDraftImages] = useState<Record<string, string | null>>({});
   const [draftHistoryStatus, setDraftHistoryStatus] = useState<DraftHistoryStatus>('loading');
@@ -422,10 +337,6 @@ export function PersonaListPage() {
       return [presentation.worldId, presentation] as const;
     }),
   ), [worldCoresQuery.data]);
-  const visiblePersonas = useMemo(
-    () => applyOwnerPortfolioView(personas, { query: queryText, filter, sort }),
-    [personas, filter, queryText, sort],
-  );
   const sourceWarnings = personas.filter((persona) => persona.friendCount.status === 'source-unavailable');
   const portfolioFailure = portfolioQuery.isError ? classifyPortfolioFailure(portfolioQuery.error) : null;
   const showDesignPreview = import.meta.env.DEV && portfolioQuery.isSuccess && personas.length === 0;
@@ -526,17 +437,6 @@ export function PersonaListPage() {
               </div>
             ) : (
               <>
-                <FilterCard
-                  queryText={queryText}
-                  filter={filter}
-                  sort={sort}
-                  visibleCount={visiblePersonas.length}
-                  totalCount={personas.length}
-                  onQueryChange={setQueryText}
-                  onFilterChange={setFilter}
-                  onSortChange={setSort}
-                />
-
                 {sourceWarnings.length > 0 ? (
                   <InlineAlert tone="warning">
                     {t('portfolio.friendCountWarning', {
@@ -546,30 +446,23 @@ export function PersonaListPage() {
                   </InlineAlert>
                 ) : null}
 
-                {visiblePersonas.length === 0 ? (
-                  <div className="ras-hero-empty">
-                    <h2 className="ras-hero-empty__title">{t('portfolio.noLocalMatchTitle')}</h2>
-                    <p className="ras-hero-empty__description">{t('portfolio.noLocalMatchDescription')}</p>
-                  </div>
-                ) : (
-                  <div className="ras-persona-grid">
-                    {visiblePersonas.map((persona) => {
-                      const worldPresentation = persona.worldName
-                        ? worldPresentationById.get(persona.worldName)
-                        : undefined;
-                      return (
-                        <PersonaCard
-                          key={persona.id}
-                          persona={persona}
-                          worldBannerUrl={worldPresentation?.bannerUrl || null}
-                          worldName={worldPresentation?.worldName || persona.worldName}
-                          active={false}
-                          onSelect={() => navigate(`/portfolio/${persona.id}`)}
-                        />
-                      );
-                    })}
-                  </div>
-                )}
+                <div className="ras-persona-grid">
+                  {personas.map((persona) => {
+                    const worldPresentation = persona.worldName
+                      ? worldPresentationById.get(persona.worldName)
+                      : undefined;
+                    return (
+                      <PersonaCard
+                        key={persona.id}
+                        persona={persona}
+                        worldBannerUrl={worldPresentation?.bannerUrl || null}
+                        worldName={worldPresentation?.worldName || persona.worldName}
+                        active={false}
+                        onSelect={() => navigate(`/portfolio/${persona.id}`)}
+                      />
+                    );
+                  })}
+                </div>
               </>
             )}
           </div>

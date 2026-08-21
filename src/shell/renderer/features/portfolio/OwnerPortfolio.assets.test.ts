@@ -57,3 +57,24 @@ describe('visual identity change dialog', () => {
     expect(styles).toContain('.ras-voice-summary__facts');
   });
 });
+
+describe('voice change dialog', () => {
+  it('hard-cuts the voice action to the focused three-source dialog', () => {
+    const component = source('src/shell/renderer/features/portfolio/OwnerPortfolio.assets.tsx');
+    const copy = source('src/shell/renderer/i18n/studio-copy.ts');
+    const styles = source('src/shell/renderer/styles.css');
+
+    expect(component).toContain('dataTestId="persona-voice-editor-dialog"');
+    expect(component).toContain("type VoiceChangeMode = 'upload' | 'candidates' | 'ai'");
+    expect(component).toContain('accept="audio/*"');
+    expect(component).toContain('data-testid="voice-upload-selection"');
+    expect(component).toContain('data-testid="voice-existing-candidates"');
+    expect(component).toContain('data-testid="voice-ai-composer"');
+    expect(component).toContain('synthesizeReviewedVoiceDemo');
+    expect(component).toContain("kind: 'voice-demo-candidate'");
+    expect(component).not.toContain('MediaVoiceCandidateEditor');
+    expect(copy).toContain("'assets.voiceChange.title': '编辑声音'");
+    expect(styles).toContain('.ras-voice-change__candidate');
+    expect(styles).toContain('.ras-voice-change__player');
+  });
+});

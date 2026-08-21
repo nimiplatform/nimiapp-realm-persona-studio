@@ -56,12 +56,6 @@ const TABS: PersonaTabDef[] = [
     basePath: (personaId) => `/portfolio/${personaId}/assets`,
   },
   {
-    key: 'insights',
-    labelKey: 'persona.tabs.insights',
-    modes: ['owner'],
-    basePath: (personaId) => `/portfolio/${personaId}/insights`,
-  },
-  {
     key: 'launch',
     labelKey: 'persona.tabs.launch',
     modes: ['owner'],

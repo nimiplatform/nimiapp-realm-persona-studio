@@ -19,6 +19,13 @@ ensureStudioI18nInitialized();
 installStudioGlobalErrorLogging();
 installNimiShellRuntimeBridge();
 
+// Development-only: lets the persona settings workspaces render visual-fixture
+// mock content for design review. Production builds never set this flag, so
+// the settings reads stay fail-closed there.
+if (import.meta.env.DEV) {
+  (globalThis as { __RPS_SETTINGS_VISUAL_MOCK__?: boolean }).__RPS_SETTINGS_VISUAL_MOCK__ = true;
+}
+
 const entryModuleLoader = createRendererEntryModuleLoader({
   retryDelaysMs: import.meta.env.DEV ? DEFAULT_DEV_RENDERER_ENTRY_IMPORT_RETRY_DELAYS_MS : [],
 });

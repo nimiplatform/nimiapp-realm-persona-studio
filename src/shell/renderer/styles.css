@@ -823,30 +823,6 @@ a {
 }
 
 /* ─────────────────────────────────────────────────────────────
- * Filter / search row inside cards
- * ───────────────────────────────────────────────────────────── */
-
-.ras-filter-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr auto;
-  gap: 14px;
-  align-items: end;
-}
-@media (max-width: 760px) {
-  .ras-filter-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.ras-filter-status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  padding-bottom: 6px;
-}
-
-/* ─────────────────────────────────────────────────────────────
  * Empty / hero state inside content area
  * ───────────────────────────────────────────────────────────── */
 
@@ -1520,10 +1496,6 @@ a {
   gap: 4px;
 }
 
-.ras-asset-summary-card__actions > :last-child {
-  justify-self: center;
-}
-
 .ras-asset-summary-card__voice-icon {
   display: grid;
   width: 68px;
@@ -1950,14 +1922,6 @@ a {
   color: var(--nimi-text-muted);
   font-size: 12px;
   line-height: 1.6;
-}
-
-.ras-create-reference-card__editor {
-  display: grid;
-  gap: 16px;
-  margin-top: 18px;
-  padding-top: 18px;
-  border-top: 1px solid var(--nimi-border-subtle);
 }
 
 .ras-create-reference-card__error {
@@ -2457,6 +2421,147 @@ a {
   object-fit: contain;
 }
 
+.ras-voice-change__selection {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--nimi-border-subtle);
+  border-radius: 15px;
+  background: color-mix(in srgb, var(--nimi-surface-panel) 76%, transparent);
+}
+
+.ras-voice-change__selection-icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--nimi-action-primary-bg) 10%, transparent);
+  color: var(--nimi-action-primary-bg);
+}
+
+.ras-voice-change__selection-copy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.ras-voice-change__selection-copy strong {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ras-voice-change__selection-copy span {
+  color: var(--nimi-text-muted);
+  font-size: 12px;
+}
+
+.ras-voice-change__player {
+  grid-column: 1 / -1;
+  width: 100%;
+  height: 38px;
+}
+
+.ras-voice-change__candidates {
+  display: grid;
+  gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.ras-voice-change__candidates > .nimi-empty-state {
+  min-height: 150px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.ras-voice-change__candidate {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--nimi-border-subtle);
+  border-radius: 13px;
+  background: var(--nimi-surface-card);
+  color: var(--nimi-text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--nimi-motion-fast) var(--nimi-motion-ease-standard),
+    box-shadow var(--nimi-motion-fast) var(--nimi-motion-ease-standard);
+}
+
+.ras-voice-change__candidate:hover {
+  border-color: var(--nimi-border-strong);
+}
+
+.ras-voice-change__candidate[data-selected='true'] {
+  border-color: var(--nimi-action-primary-bg);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--nimi-action-primary-bg) 14%, transparent);
+}
+
+.ras-voice-change__candidate-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--nimi-action-primary-bg) 10%, transparent);
+  color: var(--nimi-action-primary-bg);
+}
+
+.ras-voice-change__candidate-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.ras-voice-change__candidate-copy strong {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ras-voice-change__candidate-copy span {
+  color: var(--nimi-text-muted);
+  font-size: 11px;
+}
+
+.ras-voice-change__candidate > i {
+  display: grid;
+  width: 21px;
+  height: 21px;
+  place-items: center;
+  border-radius: var(--nimi-radius-full);
+  background: var(--nimi-action-primary-bg);
+  color: var(--nimi-action-primary-text);
+  font-style: normal;
+}
+
+.ras-voice-change__generated {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--nimi-border-subtle);
+  border-radius: 15px;
+  background: var(--nimi-surface-panel);
+}
+
+.ras-voice-change__generated-label {
+  color: var(--nimi-text-muted);
+  font-size: 12px;
+}
+
 @media (max-width: 700px) {
   .ras-asset-summary-card {
     padding: 20px;
@@ -2836,8 +2941,7 @@ a {
 
 .ras-persona-overview h2,
 .ras-persona-candidates h2,
-.ras-content-queue h3,
-.ras-post-expression h2 {
+.ras-content-queue h3 {
   margin: 0;
   color: var(--nimi-text-primary);
   font-size: 16px;
@@ -3130,14 +3234,15 @@ a {
 
 .ras-post-workspace {
   display: grid;
+  width: 100%;
   min-width: 0;
-  padding-top: 14px;
-  grid-template-columns: minmax(0, 1fr) 310px;
+  max-width: 920px;
+  margin: 0 auto;
+  padding-top: 18px;
   gap: 16px;
 }
 
-.ras-post-editor-panel,
-.ras-post-expression {
+.ras-post-editor-panel {
   min-width: 0;
   border: 1px solid var(--nimi-border-subtle);
   border-radius: 18px;
@@ -3169,68 +3274,79 @@ a {
 .ras-post-editor {
   overflow: hidden;
   border: 1px solid var(--nimi-border-subtle);
-  border-radius: 14px;
+  border-radius: 16px;
   background: var(--nimi-surface-card);
+  transition: border-color 140ms ease, box-shadow 140ms ease;
 }
 
-.ras-post-editor__toolbar {
-  display: flex;
-  min-height: 44px;
-  align-items: center;
-  gap: 4px;
-  border-bottom: 1px solid var(--nimi-border-subtle);
-  padding: 0 10px;
-}
-
-.ras-post-editor__toolbar > strong {
-  margin-left: auto;
-  color: var(--nimi-text-muted);
-  font-size: 11px;
-  font-weight: 520;
+.ras-post-editor:focus-within {
+  border-color: color-mix(in srgb, var(--nimi-action-primary-bg) 38%, var(--nimi-border-subtle));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--nimi-action-primary-bg) 10%, transparent);
 }
 
 .ras-post-editor textarea {
   display: block;
   width: 100%;
-  min-height: 230px;
+  min-height: 216px;
   resize: vertical;
   border: 0;
   outline: 0;
   background: transparent;
-  padding: 19px;
+  padding: 20px 22px 14px;
   color: var(--nimi-text-primary);
   font: inherit;
-  font-size: 14px;
-  line-height: 1.7;
+  font-size: 14.5px;
+  line-height: 1.75;
+}
+
+.ras-post-editor textarea::placeholder {
+  color: var(--nimi-text-muted);
 }
 
 .ras-post-editor > input {
   display: block;
-  width: calc(100% - 38px);
-  margin: 0 19px;
+  width: calc(100% - 44px);
+  margin: 0 22px;
   border: 0;
   border-top: 1px solid var(--nimi-border-subtle);
   outline: 0;
   background: transparent;
-  padding: 12px 0;
+  padding: 11px 0;
   color: var(--nimi-text-secondary);
   font: inherit;
-  font-size: 12px;
+  font-size: 12.5px;
+}
+
+.ras-post-editor > input::placeholder {
+  color: var(--nimi-text-muted);
 }
 
 .ras-post-editor__footer {
   display: flex;
-  min-height: 58px;
+  min-height: 56px;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  border-top: 1px solid var(--nimi-border-subtle);
-  padding: 9px 12px;
+  padding: 8px 12px 8px 14px;
 }
 
-.ras-post-editor__footer > div {
+.ras-post-editor__tools {
   display: flex;
-  gap: 9px;
+  align-items: center;
+  gap: 2px;
+}
+
+.ras-post-editor__actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ras-post-editor__count {
+  color: var(--nimi-text-muted);
+  font-size: 11.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
 }
 
 .ras-post-preview {
@@ -3340,45 +3456,6 @@ a {
   text-align: center;
 }
 
-.ras-post-expression {
-  display: flex;
-  align-self: start;
-  flex-direction: column;
-  gap: 16px;
-  padding: 18px;
-}
-
-.ras-post-expression > div:first-child > p:last-child {
-  margin: 8px 0 0;
-  color: var(--nimi-text-muted);
-  font-size: 12px;
-  line-height: 1.55;
-}
-
-.ras-post-expression__traits {
-  display: grid;
-  gap: 9px;
-}
-
-.ras-post-expression__traits > div {
-  border: 1px solid var(--nimi-border-subtle);
-  border-radius: 11px;
-  background: var(--nimi-surface-card);
-  padding: 13px;
-}
-
-.ras-post-expression__traits span {
-  color: var(--nimi-text-primary);
-  font-size: 13px;
-  font-weight: 650;
-}
-
-.ras-post-expression__traits p {
-  margin: 5px 0 0;
-  color: var(--nimi-text-muted);
-  font-size: 11px;
-}
-
 @media (max-width: 1100px) {
   .ras-persona-profile-header__identity-row {
     align-items: flex-start;
@@ -3387,9 +3464,6 @@ a {
   }
   .ras-persona-profile-header__actions {
     align-self: flex-start;
-  }
-  .ras-post-workspace {
-    grid-template-columns: minmax(0, 1fr);
   }
 }
 

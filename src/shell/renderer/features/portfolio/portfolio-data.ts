@@ -27,15 +27,6 @@ export type OwnerPortfolioPersona = {
   friendCount: FriendCountMetric;
 };
 
-export type OwnerPortfolioFilter = 'all' | 'friend-count-available' | 'friend-count-unavailable';
-export type OwnerPortfolioSort = 'realm-order' | 'display-name-asc' | 'updated-desc' | 'friend-count-desc' | 'friend-count-asc';
-
-export type OwnerPortfolioViewControls = {
-  query: string;
-  filter: OwnerPortfolioFilter;
-  sort: OwnerPortfolioSort;
-};
-
 export type SettingFieldKey =
   | 'displayName'
   | 'handle'
@@ -200,94 +191,6 @@ export function normalizeOwnerPortfolioPersona(
 
 export function normalizeOwnerPortfolio(personas: readonly MyRealmPersonaDto[]): OwnerPortfolioPersona[] {
   return personas.map((persona) => normalizeOwnerPortfolioPersona(persona));
-}
-
-function compareText(left: string, right: string): number {
-  return left.localeCompare(right, undefined, { sensitivity: 'base', numeric: true });
-}
-
-function compareUpdatedDesc(left: OwnerPortfolioPersona, right: OwnerPortfolioPersona): number {
-  if (left.updatedAt && right.updatedAt) {
-    return right.updatedAt.localeCompare(left.updatedAt) || compareText(left.displayName, right.displayName);
-  }
-  if (left.updatedAt) {
-    return -1;
-  }
-  if (right.updatedAt) {
-    return 1;
-  }
-  return compareText(left.displayName, right.displayName);
-}
-
-function compareFriendCount(left: OwnerPortfolioPersona, right: OwnerPortfolioPersona, direction: 'asc' | 'desc'): number {
-  const leftMetric = left.friendCount;
-  const rightMetric = right.friendCount;
-  const leftAvailable = leftMetric.status === 'available';
-  const rightAvailable = rightMetric.status === 'available';
-  if (leftAvailable && rightAvailable) {
-    const valueComparison = direction === 'desc'
-      ? rightMetric.value - leftMetric.value
-      : leftMetric.value - rightMetric.value;
-    return valueComparison || compareText(left.displayName, right.displayName);
-  }
-  if (leftAvailable) {
-    return -1;
-  }
-  if (rightAvailable) {
-    return 1;
-  }
-  return compareText(left.displayName, right.displayName);
-}
-
-function personaMatchesQuery(persona: OwnerPortfolioPersona, normalizedQuery: string): boolean {
-  if (!normalizedQuery) {
-    return true;
-  }
-
-  return [
-    persona.id,
-    persona.displayName,
-    persona.handle,
-    persona.worldName || '',
-    persona.realmState || '',
-  ].some((value) => value.toLocaleLowerCase().includes(normalizedQuery));
-}
-
-function personaMatchesFilter(persona: OwnerPortfolioPersona, filter: OwnerPortfolioFilter): boolean {
-  if (filter === 'friend-count-available') {
-    return persona.friendCount.status === 'available';
-  }
-  if (filter === 'friend-count-unavailable') {
-    return persona.friendCount.status === 'source-unavailable';
-  }
-  return true;
-}
-
-export function applyOwnerPortfolioView(
-  personas: OwnerPortfolioPersona[],
-  controls: OwnerPortfolioViewControls,
-): OwnerPortfolioPersona[] {
-  const normalizedQuery = controls.query.trim().toLocaleLowerCase();
-  const visiblePersonas = personas.filter((persona) => (
-    personaMatchesQuery(persona, normalizedQuery) && personaMatchesFilter(persona, controls.filter)
-  ));
-
-  if (controls.sort === 'realm-order') {
-    return visiblePersonas;
-  }
-
-  return [...visiblePersonas].sort((left, right) => {
-    if (controls.sort === 'updated-desc') {
-      return compareUpdatedDesc(left, right);
-    }
-    if (controls.sort === 'friend-count-desc') {
-      return compareFriendCount(left, right, 'desc');
-    }
-    if (controls.sort === 'friend-count-asc') {
-      return compareFriendCount(left, right, 'asc');
-    }
-    return compareText(left.displayName, right.displayName);
-  });
 }
 
 function settingField(

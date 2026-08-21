@@ -9,6 +9,17 @@ import {
 } from './studio-text-candidate.js';
 import type { OwnerPortfolioPersonaDetail, SettingField } from './portfolio-data.js';
 import {
+  PERSONA_ARCHETYPES,
+  PERSONA_TRAITS,
+  PERSONA_TRAIT_MAX,
+  type PersonaArchetype,
+  type PersonaTrait,
+} from './create-persona-draft.js';
+import {
+  buildVisualFixtureOwnerPersonaSettings,
+  buildVisualFixturePersonaVisibilitySettings,
+} from './persona-settings.visual-fixture.js';
+import {
   OWNER_SETTINGS_SAVE_SOURCE,
   SETTINGS_AI_PROPOSAL_SOURCE,
   buildRuntimeOwnerSettingsProposalPrompt,
@@ -388,6 +399,35 @@ export function createPersonaVisibilityDraft(settings: RealmPersonaVisibilitySet
   };
 }
 
+export type PersonaStylePreference = {
+  archetype: PersonaArchetype | null;
+  traits: PersonaTrait[];
+};
+
+export function readPersonaStylePreference(settings: RealmOwnerPersonaSettings): PersonaStylePreference {
+  const style = readRecord(readOwnerSettingsExtension(settings.core).personaStyle);
+  const archetypeValue = typeof style.archetype === 'string' ? style.archetype : '';
+  const archetype = (PERSONA_ARCHETYPES as readonly string[]).includes(archetypeValue)
+    ? archetypeValue as PersonaArchetype
+    : null;
+  const seen = new Set<string>();
+  const traits: PersonaTrait[] = [];
+  for (const value of readArray(style.traits)) {
+    if (typeof value !== 'string' || seen.has(value)) {
+      continue;
+    }
+    if (!(PERSONA_TRAITS as readonly string[]).includes(value)) {
+      continue;
+    }
+    seen.add(value);
+    traits.push(value as PersonaTrait);
+    if (traits.length >= PERSONA_TRAIT_MAX) {
+      break;
+    }
+  }
+  return { archetype, traits };
+}
+
 export function buildRealmUpdateVisibilityInput(
   draft: PersonaVisibilityDraft,
   current: RealmPersonaVisibilitySettings,
@@ -505,9 +545,24 @@ export function normalizePersonaChatReadinessProjectionSummary(
   };
 }
 
+type StudioSettingsVisualMockGlobal = typeof globalThis & {
+  __RPS_SETTINGS_VISUAL_MOCK__?: boolean;
+};
+
+// Development-only escape hatch: the renderer entry sets this flag so the
+// settings tab can render visual-fixture mock content for design review.
+// Production builds and tests leave it unset, keeping the reads fail-closed.
+function isSettingsVisualMockEnabled(): boolean {
+  return import.meta.env.DEV
+    && (globalThis as StudioSettingsVisualMockGlobal).__RPS_SETTINGS_VISUAL_MOCK__ === true;
+}
+
 export async function getPersonaVisibilitySettings(
-  _personaId: string,
+  persona: OwnerPortfolioPersonaDetail,
 ): Promise<RealmPersonaVisibilitySettings> {
+  if (isSettingsVisualMockEnabled()) {
+    return buildVisualFixturePersonaVisibilitySettings(persona);
+  }
   requireStudioProtectedOperation('Realm Persona visibility reading');
 }
 
@@ -518,8 +573,11 @@ export async function getOwnerPersonaSettings(
 }
 
 export async function getPortfolioPersonaSettings(
-  _persona: OwnerPortfolioPersonaDetail,
+  persona: OwnerPortfolioPersonaDetail,
 ): Promise<RealmOwnerPersonaSettings> {
+  if (isSettingsVisualMockEnabled()) {
+    return buildVisualFixtureOwnerPersonaSettings(persona);
+  }
   requireStudioProtectedOperation('Portfolio Realm Persona settings reading');
 }
 

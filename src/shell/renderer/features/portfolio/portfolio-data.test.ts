@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  applyOwnerPortfolioView,
   classifyPersonaDetailFailure,
   classifyPortfolioFailure,
   normalizeOwnerPortfolioPersona,
@@ -99,111 +98,6 @@ describe('owner portfolio normalization', () => {
       kind: 'capability-unavailable',
       title: 'Capability unavailable',
     });
-  });
-});
-
-describe('owner portfolio local view controls', () => {
-  const personas = [
-    normalizeOwnerPortfolioPersona({
-      ...basePersona,
-      id: 'persona-1',
-    }),
-    normalizeOwnerPortfolioPersona({
-      ...basePersona,
-      id: 'persona-2',
-      worldId: 'workshop',
-      contentHash: 'hash-persona-2',
-      profile: {
-        ...basePersona.profile,
-        identity: {
-          handle: 'zed',
-          name: 'Zed',
-          summary: 'Workshop persona',
-        },
-        presentation: {
-          displayName: 'Zed',
-          profileLine: 'Workshop persona',
-        },
-      },
-    }),
-    normalizeOwnerPortfolioPersona({
-      ...basePersona,
-      id: 'persona-3',
-      contentHash: 'hash-persona-3',
-      profile: {
-        ...basePersona.profile,
-        identity: {
-          handle: 'aster',
-          name: 'Aster',
-          summary: 'OASIS persona',
-        },
-        presentation: {
-          displayName: 'Aster',
-          profileLine: 'OASIS persona',
-        },
-      },
-    }),
-  ];
-
-  it('searches local display, handle, world, and state fields without mutating the source list', () => {
-    const result = applyOwnerPortfolioView(personas, {
-      query: 'oasis',
-      filter: 'all',
-      sort: 'display-name-asc',
-    });
-
-    expect(result.map((persona) => persona.id)).toEqual(['persona-3', 'persona-1']);
-    expect(personas.map((persona) => persona.id)).toEqual(['persona-1', 'persona-2', 'persona-3']);
-  });
-
-  it('searches canonical persona id for manual lookup', () => {
-    const result = applyOwnerPortfolioView(personas, {
-      query: 'persona-2',
-      filter: 'all',
-      sort: 'display-name-asc',
-    });
-
-    expect(result.map((persona) => persona.id)).toEqual(['persona-2']);
-  });
-
-  it('preserves Realm list order until an owner selects a local sort', () => {
-    const result = applyOwnerPortfolioView(personas, {
-      query: '',
-      filter: 'all',
-      sort: 'realm-order',
-    });
-
-    expect(result.map((persona) => persona.id)).toEqual(['persona-1', 'persona-2', 'persona-3']);
-  });
-
-  it('filters source unavailable friendCount as unavailable rather than zero', () => {
-    const result = applyOwnerPortfolioView(personas, {
-      query: '',
-      filter: 'friend-count-unavailable',
-      sort: 'display-name-asc',
-    });
-
-    expect(result.map((persona) => persona.id)).toEqual(['persona-3', 'persona-1', 'persona-2']);
-    expect(result[0]?.friendCount).toEqual({
-      status: 'source-unavailable',
-      label: 'friendCount source unavailable',
-    });
-  });
-
-  it('keeps friendCount sorting deterministic when all values are unavailable', () => {
-    const descending = applyOwnerPortfolioView(personas, {
-      query: '',
-      filter: 'all',
-      sort: 'friend-count-desc',
-    });
-    const ascending = applyOwnerPortfolioView(personas, {
-      query: '',
-      filter: 'all',
-      sort: 'friend-count-asc',
-    });
-
-    expect(descending.map((persona) => persona.id)).toEqual(['persona-3', 'persona-1', 'persona-2']);
-    expect(ascending.map((persona) => persona.id)).toEqual(['persona-3', 'persona-1', 'persona-2']);
   });
 });
 

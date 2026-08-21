@@ -150,8 +150,11 @@ describe('Create Realm Persona workspace v2 shell', () => {
 
     expect(source).not.toContain('xl:grid-cols-[380px_minmax(0,1fr)]');
     expect(source).toMatch(/create\.review\.basicInfo[\s\S]*ras-create-reference-card[\s\S]*ras-create-identity-grid/);
-    expect(source).toContain('setReferenceImageEditorOpen((open) => !open)');
+    expect(source).toContain('setReferenceImageEditorOpen(true)');
     expect(source).toContain('aria-expanded={referenceImageEditorOpen}');
+    expect(source).toContain('open={referenceImageEditorOpen}');
+    expect(source).toContain('panelClassName="ras-visual-change-dialog"');
+    expect(source).toContain('dataTestId="create-reference-image-dialog"');
     expect(styles).toContain('grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.82fr);');
     expect(styles).toContain('.ras-create-review-form > .ras-create-reference-card {');
     expect(styles).toContain('grid-row: 1 / span 3;');

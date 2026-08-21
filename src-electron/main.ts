@@ -17,7 +17,8 @@ const appRoot = resolveAppRoot(currentDir);
 const preloadPath = path.join(currentDir, 'preload.cjs');
 const rendererDistIndex = path.join(appRoot, 'dist', 'index.html');
 const rendererDistUrl = pathToFileURL(rendererDistIndex).toString();
-const rendererUrl = readDevelopmentRendererUrl() || rendererDistUrl;
+const developmentRendererUrl = readDevelopmentRendererUrl();
+const rendererUrl = developmentRendererUrl || rendererDistUrl;
 
 app.setName(REALM_PERSONA_STUDIO_APP_NAME);
 installRealmPersonaStudioStandardApplicationMenu();
@@ -27,6 +28,12 @@ registerNimiElectronAppAssetProtocolScheme(protocol);
 void app.whenReady().then(bootstrapElectron).catch(handleElectronStartupFailure);
 
 async function bootstrapElectron(): Promise<void> {
+  if (developmentRendererUrl) {
+    // Dev-server responses are transient. A poisoned HTTP cache entry can
+    // wedge the shell on a stale raw byte stream, so never reuse cached
+    // development renderer content.
+    await session.defaultSession.clearCache();
+  }
   registerNimiElectronAppBridge({
     appId: REALM_PERSONA_STUDIO_APP_ID,
     allowedRendererUrls: [rendererUrl],

@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button, InlineAlert, StatusBadge, Surface } from '@nimiplatform/kit/ui';
+import { Button, InlineAlert, Surface } from '@nimiplatform/kit/ui';
 import { PersonaShell, WorkspaceIntro } from '@renderer/features/persona-detail/persona-shell.js';
 import { useRefreshPersonaReads } from '@renderer/features/persona-detail/use-persona-detail-query.js';
 import {
@@ -29,7 +29,6 @@ function PersonaSettingsPageForScope() {
         <>
           <WorkspaceIntro
             title={t('persona.settings.title')}
-            badges={<StatusBadge tone="info">{t('common.workspace')}</StatusBadge>}
             description={t('persona.settings.description')}
             actions={(
               <Button tone="secondary" onClick={() => navigate(`/portfolio/${personaId}/settings/review`)}>
@@ -38,8 +37,8 @@ function PersonaSettingsPageForScope() {
             )}
           />
 
-          <VisibilitySettingsWorkspace persona={persona} onPersonaWrite={refreshPersonaReads} />
           <SettingProposalWorkspace persona={persona} onPersonaWrite={refreshPersonaReads} />
+          <VisibilitySettingsWorkspace persona={persona} onPersonaWrite={refreshPersonaReads} />
           <RuntimeProjectionWorkspace persona={persona} />
         </>
       )}

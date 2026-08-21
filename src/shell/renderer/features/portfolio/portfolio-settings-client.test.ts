@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  PERSONA_ARCHETYPES,
+  PERSONA_TRAITS,
+  PERSONA_TRAIT_MAX,
+} from './create-persona-draft.js';
+import {
   buildPersonaChatReadinessProjectionInput,
   buildRealmUpdateVisibilityInput,
   buildRuntimeProjectionInput,
@@ -11,6 +16,7 @@ import {
   normalizeRuntimeProjectionSummary,
   projectPersonaRuntimeContextSummary,
   proposeReviewedOwnerPersonaSettings,
+  readPersonaStylePreference,
   updateReviewedOwnerPersonaSettings,
   updateReviewedPersonaVisibility,
   updateReviewedPortfolioPersonaSettings,
@@ -60,7 +66,7 @@ describe('owner portfolio settings client', () => {
     const visibilityDraft = createPersonaVisibilityDraft(visibility);
     const detail = ownerPersonaDetail();
     const operations = [
-      getPersonaVisibilitySettings('persona-1'),
+      getPersonaVisibilitySettings(detail),
       getOwnerPersonaSettings('persona-1'),
       getPortfolioPersonaSettings(detail),
       updateReviewedPersonaVisibility('persona-1', visibilityDraft, visibility),
@@ -74,6 +80,71 @@ describe('owner portfolio settings client', () => {
         actionHint: 'retry_when_platform_surface_available',
       });
     }
+  });
+
+  it('returns visual-fixture mock settings only when the development mock flag is set', async () => {
+    const mockGlobal = globalThis as typeof globalThis & { __RPS_SETTINGS_VISUAL_MOCK__?: boolean };
+    const detail = ownerPersonaDetail();
+    mockGlobal.__RPS_SETTINGS_VISUAL_MOCK__ = true;
+    try {
+      const settings = await getPortfolioPersonaSettings(detail);
+      expect(settings.id).toBe(detail.id);
+      expect(settings.contentHash).toBe(detail.contentHash);
+      expect(settings.homeWorldId).toBe(detail.homeWorldId);
+      expect(settings.displayName).toBe('Mira');
+      expect(settings.personality?.summary).toContain('Mira');
+      expect(settings.communication?.formality).toBe('casual');
+
+      const visibilitySettings = await getPersonaVisibilitySettings(detail);
+      expect(visibilitySettings).toEqual({
+        defaultPostVisibility: 'PRIVATE',
+        dmVisibility: 'PRIVATE',
+        profileVisibility: 'PRIVATE',
+      });
+
+      const style = readPersonaStylePreference(settings);
+      expect(style.archetype).not.toBeNull();
+      expect(PERSONA_ARCHETYPES).toContain(style.archetype);
+      expect(style.traits.length).toBeGreaterThan(0);
+      expect(style.traits.length).toBeLessThanOrEqual(PERSONA_TRAIT_MAX);
+      for (const trait of style.traits) {
+        expect(PERSONA_TRAITS).toContain(trait);
+      }
+    } finally {
+      delete mockGlobal.__RPS_SETTINGS_VISUAL_MOCK__;
+    }
+
+    await expect(getPortfolioPersonaSettings(detail)).rejects.toMatchObject({
+      reasonCode: 'capability-unavailable',
+    });
+    await expect(getPersonaVisibilitySettings(detail)).rejects.toMatchObject({
+      reasonCode: 'capability-unavailable',
+    });
+  });
+
+  it('reads persona style preference defensively from owner settings extensions', () => {
+    const settings = currentSettings();
+    expect(readPersonaStylePreference(settings)).toEqual({ archetype: null, traits: [] });
+
+    const styled: RealmOwnerPersonaSettings = {
+      ...settings,
+      core: {
+        authoring: {
+          extensions: {
+            ownerSettings: {
+              personaStyle: {
+                archetype: 'PLAYFUL',
+                traits: ['GENTLE', 'NOT_A_TRAIT', 'WISE', 'GENTLE', 'DIRECT', 'HUMOROUS'],
+              },
+            },
+          },
+        },
+      },
+    };
+    expect(readPersonaStylePreference(styled)).toEqual({
+      archetype: 'PLAYFUL',
+      traits: ['GENTLE', 'WISE', 'DIRECT'],
+    });
   });
 
   it('builds changed visibility fields without transport or lifecycle state', () => {

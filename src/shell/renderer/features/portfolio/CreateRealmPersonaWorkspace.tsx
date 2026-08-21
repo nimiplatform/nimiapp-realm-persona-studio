@@ -6,6 +6,7 @@ import {
   EmptyState,
   FieldShell,
   FieldTrigger,
+  IconButton,
   InlineAlert,
   NimiText,
   OverlayShell,
@@ -17,7 +18,7 @@ import {
   TextField,
   nimiToast,
 } from '@nimiplatform/kit/ui';
-import { ArrowLeft, Check, ChevronDown, Copy, ImageIcon, Pencil, RefreshCw, Scan, Sparkles } from 'lucide-react';
+import { ArrowLeft, Check, ChevronDown, Copy, ImageIcon, Pencil, RefreshCw, Scan, Sparkles, X } from 'lucide-react';
 import {
   PERSONA_ARCHETYPES,
   PERSONA_TRAITS,
@@ -651,6 +652,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
   const [referenceImageSourceMode, setReferenceImageSourceMode] = useState<ReferenceImageSourceMode | null>('ai');
   const [referenceImageEditorOpen, setReferenceImageEditorOpen] = useState(false);
   const [traitPickerOpen, setTraitPickerOpen] = useState(false);
+  const traitPickerRef = useRef<HTMLDivElement>(null);
   const [referenceAssetLoadState, setReferenceAssetLoadState] = useState<ReferenceAssetLoadState>('idle');
   const [referenceAssets, setReferenceAssets] = useState<AssetLibraryEntry[]>([]);
   const [referenceAssetsUnavailableCount, setReferenceAssetsUnavailableCount] = useState(0);
@@ -729,6 +731,26 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
       cancelled = true;
     };
   }, [draftKey]);
+
+  useEffect(() => {
+    if (!traitPickerOpen) return undefined;
+    const onPointerDown = (event: PointerEvent) => {
+      if (traitPickerRef.current && !traitPickerRef.current.contains(event.target as Node)) {
+        setTraitPickerOpen(false);
+      }
+    };
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setTraitPickerOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', onPointerDown, true);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown, true);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [traitPickerOpen]);
 
   const worldsQuery = useQuery({
     queryKey: ['realm-persona-studio', 'create-persona-worlds'],
@@ -1381,7 +1403,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
                     data-create-field-control
                     aria-expanded={referenceImageEditorOpen}
                     aria-label={`${t('create.referenceTitle')}: ${previewReferenceCandidate ? t('create.referenceAttached') : t('create.reference.emptyTitle')}. ${t('create.reference.sourceTitle')}`}
-                    onClick={() => setReferenceImageEditorOpen((open) => !open)}
+                    onClick={() => setReferenceImageEditorOpen(true)}
                   >
                     <Scan className="ras-create-reference-card__corner" data-corner="top-left" strokeWidth={1.15} aria-hidden="true" />
                     <Scan className="ras-create-reference-card__corner" data-corner="top-right" strokeWidth={1.15} aria-hidden="true" />
@@ -1405,8 +1427,34 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
                     )}
                   </button>
 
-                  {referenceImageEditorOpen ? (
-                    <div className="ras-create-reference-card__editor">
+                  <OverlayShell
+                    open={referenceImageEditorOpen}
+                    size="M"
+                    onClose={() => setReferenceImageEditorOpen(false)}
+                    title={(
+                      <div className="ras-visual-change__title-row">
+                        <span>{t('create.referenceTitle')}</span>
+                        <IconButton
+                          tone="ghost"
+                          size="sm"
+                          className="ras-visual-change__close"
+                          aria-label={t('common.close')}
+                          onClick={() => setReferenceImageEditorOpen(false)}
+                          icon={<X size={18} strokeWidth={1.8} aria-hidden="true" />}
+                        />
+                      </div>
+                    )}
+                    description={<span className="ras-visual-change__description">{t('create.reference.sourceTitle')}</span>}
+                    panelClassName="ras-visual-change-dialog"
+                    contentClassName="ras-visual-change-dialog__content"
+                    footer={(
+                      <div className="flex justify-end">
+                        <Button tone="secondary" onClick={() => setReferenceImageEditorOpen(false)}>{t('common.cancel')}</Button>
+                      </div>
+                    )}
+                    dataTestId="create-reference-image-dialog"
+                  >
+                    <div className="ras-visual-change">
                       <input
                         ref={referenceImageFileInputRef}
                         type="file"
@@ -1525,7 +1573,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
                       {referenceSourceFailure ? <InlineAlert tone="danger">{referenceSourceFailure}</InlineAlert> : null}
                       {normalizedDraft.referenceImageUrl ? <Button tone="ghost" size="sm" onClick={clearReferenceImage}>{t('create.clearReference')}</Button> : null}
                     </div>
-                  ) : null}
+                  </OverlayShell>
                   {referenceImageError ? <p className="ras-create-reference-card__error">{referenceImageError}</p> : null}
                   {referenceImageFailure ? <div className="ras-create-reference-card__failure"><InlineAlert tone="danger">{referenceImageFailure}</InlineAlert></div> : null}
                 </Surface>
@@ -1573,7 +1621,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
                 </div>
                 <div className="min-w-0" data-create-field="personaTraits">
                   <FieldShell label={t('create.personaTraitsLabel', { max: PERSONA_TRAIT_MAX })} message={personaTraitsError} messageTone={personaTraitsError ? 'danger' : 'neutral'}>
-                    <div className="ras-create-trait-picker" data-open={traitPickerOpen || undefined}>
+                    <div ref={traitPickerRef} className="ras-create-trait-picker" data-open={traitPickerOpen || undefined}>
                       <button
                         type="button"
                         data-create-field-control
