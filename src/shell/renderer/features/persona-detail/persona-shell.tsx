@@ -8,6 +8,7 @@ import {
   InlineAlert,
   NimiTabs,
   ScrollArea,
+  StatusBadge,
   Surface,
 } from '@nimiplatform/kit/ui';
 import type { OwnerPortfolioPersonaDetail } from '@renderer/features/portfolio/portfolio-data.js';
@@ -17,17 +18,10 @@ import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
 import type { StudioCopyKey } from '@renderer/i18n/studio-copy.js';
 import { type PersonaDetailReadScope, usePersonaDetailQuery } from './use-persona-detail-query.js';
 import type { PersonaWorkspaceVisualData } from './persona-workspace-visual-data.js';
-import {
-  PERSONA_WORKSPACE_VISUAL_FIXTURE_DATA,
-  PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS,
-} from './persona-workspace.visual-fixture.js';
+import { usePersonaVisualPreview } from './persona-visual-preview-context.js';
 
 export type PersonaShellTabKey = 'detail' | 'settings' | 'assets' | 'posts' | 'insights' | 'launch';
 export type PersonaShellMode = PersonaDetailReadScope;
-
-type StudioVisualPreviewGlobal = typeof globalThis & {
-  __RPS_VISUAL_PREVIEW__?: boolean;
-};
 
 type PersonaTabDef = {
   key: PersonaShellTabKey;
@@ -103,10 +97,11 @@ export function PersonaTabBar({
 }
 
 function personaVisibilityLabel(persona: OwnerPortfolioPersonaDetail, t: ReturnType<typeof useStudioI18n>['t']): string {
-  const state = persona.state.status === 'available' ? persona.state.value.toUpperCase() : '';
-  if (state === 'PUBLIC') return t('persona.workspace.public');
-  if (state === 'FRIENDS') return t('persona.workspace.friends');
-  if (state === 'PRIVATE') return t('persona.workspace.private');
+  const visibility = persona.visibility.status === 'available' ? persona.visibility.value : '';
+  if (visibility === 'public') return t('persona.workspace.public');
+  if (visibility === 'unlisted') return t('visibility.value.unlisted');
+  if (visibility === 'private') return t('persona.workspace.private');
+  if (visibility === 'system') return t('visibility.value.system');
   return t('common.sourceUnavailable');
 }
 
@@ -137,7 +132,7 @@ export function PersonaHeader({
         <div className="ras-persona-profile-header__identity">
           <Avatar
             src={persona.avatarUrl ?? null}
-            alt={persona.displayName.value || t('persona.header.realmPersonaAlt')}
+            alt={persona.displayName.value || t('persona.header.personaCharacterAlt')}
             size="lg"
             shape="circle"
             tone="accent"
@@ -251,13 +246,10 @@ export function PersonaShell({
   const { t } = useStudioI18n();
   const location = useLocation();
   const activeTab = current ?? deriveCurrentTab(location.pathname, personaId);
-  const visualPreviewMode = import.meta.env.DEV
-    && (globalThis as StudioVisualPreviewGlobal).__RPS_VISUAL_PREVIEW__ === true;
-  const developmentFixturePersona = visualPreviewMode
-    ? PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS[personaId]
-    : undefined;
+  const visualPreview = usePersonaVisualPreview();
+  const developmentFixturePersona = visualPreview?.details[personaId];
   const developmentVisualData = developmentFixturePersona
-    ? PERSONA_WORKSPACE_VISUAL_FIXTURE_DATA[personaId]
+    ? visualPreview?.visualData[personaId]
     : undefined;
   const detailQuery = usePersonaDetailQuery(personaId, mode, {
     enabled: developmentFixturePersona === undefined,
@@ -282,19 +274,33 @@ export function PersonaShell({
     const failure = classifyPersonaDetailFailure(detailQuery.error);
     const titleKeyByKind = {
       'capability-unavailable': 'portfolio.failure.capabilityUnavailable.title',
-      'realm-unavailable': 'portfolio.failure.realmUnavailable.title',
+      'invalid-input': 'portfolio.failure.settingReadUnavailable.title',
+      'session-invalid': 'portfolio.failure.accessDenied.title',
       'access-denied': 'portfolio.failure.accessDenied.title',
       'owner-authority-missing': 'portfolio.failure.ownerAuthorityMissing.title',
-      'setting-read-unavailable': 'portfolio.failure.settingReadUnavailable.title',
-      unknown: 'portfolio.failure.portfolioUnavailable.title',
+      'not-found': 'portfolio.failure.portfolioUnavailable.title',
+      'content-conflict': 'portfolio.failure.settingReadUnavailable.title',
+      'realm-unavailable': 'portfolio.failure.realmUnavailable.title',
+      'rate-limited': 'portfolio.failure.realmUnavailable.title',
+      'upstream-failed': 'portfolio.failure.realmUnavailable.title',
+      'contract-invalid': 'portfolio.failure.settingReadUnavailable.title',
+      'request-too-large': 'portfolio.failure.settingReadUnavailable.title',
+      'response-too-large': 'portfolio.failure.settingReadUnavailable.title',
     } as const satisfies Record<typeof failure.kind, StudioCopyKey>;
     const detailKeyByKind = {
       'capability-unavailable': 'portfolio.failure.detail.capabilityUnavailable',
-      'realm-unavailable': 'portfolio.failure.detail.realm',
+      'invalid-input': 'portfolio.failure.detail.setting',
+      'session-invalid': 'portfolio.failure.detail.accessDenied',
       'access-denied': 'portfolio.failure.detail.accessDenied',
       'owner-authority-missing': 'portfolio.failure.detail.owner',
-      'setting-read-unavailable': 'portfolio.failure.detail.setting',
-      unknown: 'portfolio.failure.detail.unknown',
+      'not-found': 'portfolio.failure.detail.unknown',
+      'content-conflict': 'portfolio.failure.detail.setting',
+      'realm-unavailable': 'portfolio.failure.detail.realm',
+      'rate-limited': 'portfolio.failure.detail.realm',
+      'upstream-failed': 'portfolio.failure.detail.realm',
+      'contract-invalid': 'portfolio.failure.detail.setting',
+      'request-too-large': 'portfolio.failure.detail.setting',
+      'response-too-large': 'portfolio.failure.detail.setting',
     } as const satisfies Record<typeof failure.kind, StudioCopyKey>;
     return (
       <ScrollArea className="flex-1" viewportClassName="bg-transparent">
@@ -303,6 +309,7 @@ export function PersonaShell({
             <InlineAlert tone={failure.kind === 'capability-unavailable' ? 'info' : 'danger'}>
               <strong>{t(titleKeyByKind[failure.kind])}</strong>
               <div>{t(detailKeyByKind[failure.kind])}</div>
+              <StatusBadge tone="neutral">{failure.kind}</StatusBadge>
             </InlineAlert>
             <div>
               <Button

@@ -38,7 +38,7 @@ export function PersonaProfileOverview({
                   <h2 className="ras-break-anywhere ras-profile-cover__title">
                     {settingFieldDisplayValue(persona.displayName, t('shared.displayNameNotSet'), t)}
                   </h2>
-                  <StatusBadge tone="info">{t('persona.profile.realmPersonaBadge')}</StatusBadge>
+                  <StatusBadge tone="info">{t('persona.profile.personaCharacterBadge')}</StatusBadge>
                   <StatusBadge tone="neutral">{t('persona.profile.currentProfileBadge')}</StatusBadge>
                 </div>
                 <p className="ras-break-anywhere ras-profile-cover__handle">
@@ -62,7 +62,7 @@ export function PersonaProfileOverview({
                 <h2 className="ras-break-anywhere ras-profile-cover__title">
                   {settingFieldDisplayValue(persona.displayName, t('shared.displayNameNotSet'), t)}
                 </h2>
-                <StatusBadge tone="info">{t('persona.profile.realmPersonaBadge')}</StatusBadge>
+                <StatusBadge tone="info">{t('persona.profile.personaCharacterBadge')}</StatusBadge>
               </div>
               <p className="ras-break-anywhere ras-text-secondary mt-1">
                 {persona.handle.value ? `@${persona.handle.value}` : settingFieldDisplayValue(persona.handle, t('shared.handleNotSet'), t)}
@@ -89,7 +89,7 @@ export function PersonaProfileOverview({
               )}
               <EvidenceCard field={persona.ownership} />
               <EvidenceCard field={persona.world} />
-              <EvidenceCard field={persona.state} />
+              <EvidenceCard field={persona.visibility} />
             </>
           )}
         </div>

@@ -47,7 +47,7 @@ describe('persona reference image generation', () => {
     expect(invalid.errors).toEqual(['reference image generation count must be 1']);
   });
 
-  it('uses a reviewed Nimi image candidate only when Runtime returns a public http(s) URI', async () => {
+  it('uses a reviewed Nimi image candidate only when Runtime returns a display-safe HTTPS URI', async () => {
     const result = await generatePersonaReferenceImage({
       prompt: 'A reviewed public Realm Persona portrait',
       aspectRatio: '16:9',
@@ -77,6 +77,34 @@ describe('persona reference image generation', () => {
         count: 1,
       },
     });
+  });
+
+  it('keeps an HTTP artifact local instead of writing it into PersonaCharacter', async () => {
+    const result = await generatePersonaReferenceImage({
+      prompt: 'A reviewed public Realm Persona portrait',
+      aspectRatio: '16:9',
+    }, async () => ({
+      ok: true,
+      jobId: 'image-job-http',
+      artifacts: [{ artifactId: 'artifact-http', publicUri: 'http://cdn.example.test/reference.png' }],
+    }));
+
+    expect(result).toMatchObject({ ok: false, failure: 'persona-reference-image-public-uri-unavailable' });
+  });
+
+  it('keeps credential-bearing HTTPS artifacts local', async () => {
+    const result = await generatePersonaReferenceImage({
+      prompt: 'A reviewed public Realm Persona portrait',
+    }, async () => ({
+      ok: true,
+      jobId: 'image-job-credential',
+      artifacts: [{
+        artifactId: 'artifact-credential',
+        publicUri: 'https://cdn.example.test/reference.png?access_token=secret',
+      }],
+    }));
+
+    expect(result).toMatchObject({ ok: false, failure: 'persona-reference-image-public-uri-unavailable' });
   });
 
   it('keeps a local-only generated artifact out of the Realm public reference field', async () => {

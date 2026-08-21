@@ -8,7 +8,7 @@ function field(key: SettingField['key'], label: string, value: string, status: S
     label,
     value,
     status,
-    source: 'Realm WorldCoreController.getRealmPersona',
+    source: 'Nimi App Access realm.personaCharacter.getOwned',
     readOnly: true,
   };
 }
@@ -25,11 +25,11 @@ const persona: OwnerPortfolioPersonaDetail = {
   profileCoverUrl: field('profileCoverUrl', 'Profile cover URL', ''),
   ownership: field('ownership', 'Ownership evidence', 'MASTER_OWNED'),
   world: field('world', 'World evidence', 'world-oasis'),
-  state: field('state', 'State evidence', 'ACTIVE'),
+  visibility: field('visibility', 'Visibility', 'public'),
   avatarUrl: null,
   friendCount: { status: 'available', value: 1 },
   ownerScope: 'owner-created',
-  source: 'Realm WorldCoreController.getRealmPersona',
+  source: 'Nimi App Access realm.personaCharacter.getOwned',
 };
 
 describe('identity pack', () => {

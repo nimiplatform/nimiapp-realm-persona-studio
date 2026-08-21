@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   PERSONA_TRAIT_MAX,
-  REALM_PERSONA_CREATE_PATH,
   REALM_PERSONA_CREATE_SOURCE,
   adoptImportedReferenceImageCandidate,
   normalizeRealmPersonaHandleAvailability,
@@ -87,6 +86,7 @@ const baseInput: CreateRealmPersonaDraftInput = {
   description: ' Owner-created public identity ',
   ruleText: 'Stay visible and owner-reviewed.',
   selectedWorldId: ' world-oasis ',
+  visibility: 'public',
   personaArchetype: 'CARING',
   personaTraits: ['GENTLE', 'WISE'],
   referenceImageUrl: '',
@@ -103,6 +103,7 @@ describe('create Realm Persona draft normalization', () => {
       description: 'Owner-created public identity',
       ruleText: 'Stay visible and owner-reviewed.',
       selectedWorldId: 'world-oasis',
+      visibility: 'public',
       personaArchetype: 'CARING',
       personaTraits: ['GENTLE', 'WISE'],
       referenceImageUrl: '',
@@ -168,6 +169,15 @@ describe('create Realm Persona draft normalization', () => {
     });
   });
 
+  it('rejects imported candidates without ISO 8601 provenance time', () => {
+    expect(adoptImportedReferenceImageCandidate(
+      baseInput,
+      '01J00000000000000000000001',
+      'https://cdn.example.test/imported.png',
+      'not-a-timestamp',
+    )).toEqual({ ok: false, failure: 'candidate-timestamp-invalid' });
+  });
+
   it('requires an owner-selected replacement target when all four image slots are full', () => {
     const fullCandidates = [0, 1, 2, 3].map((slot) => ({
       draftKey: '01J00000000000000000000001',
@@ -189,7 +199,7 @@ describe('create Realm Persona draft normalization', () => {
     const worlds = normalizeSelectableWorlds([creatorWorld, oasisWorld]);
 
     expect(selectOasisDefaultWorld(worlds)?.id).toBe('world-oasis');
-    expect(worlds[0]?.source).toBe('Realm WorldCoreController.listWorldCores');
+    expect(worlds[0]?.source).toBe('Nimi App Access realm.worldCore.list');
   });
 
   it('groups only the source-backed OASIS default ahead of all other worlds', () => {
@@ -250,7 +260,7 @@ describe('selected world preview normalization', () => {
       themes: ['social', 'realm-persona'],
       personaCount: 2,
       nativeCreationState: null,
-      source: 'Realm WorldCoreController.getWorldCore',
+      source: 'Nimi App Access realm.worldCore.list',
     });
   });
 });
@@ -268,7 +278,6 @@ describe('create Realm Persona readiness', () => {
     expect(result.source).toBe(REALM_PERSONA_CREATE_SOURCE);
     expect(result.payload).toEqual({
       source: REALM_PERSONA_CREATE_SOURCE,
-      path: REALM_PERSONA_CREATE_PATH,
       publicFields: {
         handle: 'mira.persona',
         displayName: 'Mira Persona',
@@ -278,6 +287,7 @@ describe('create Realm Persona readiness', () => {
       },
       body: {
         worldId: 'world-oasis',
+        visibility: 'public',
         origin: {
           kind: 'manual',
           sourceId: 'realm-persona-studio:mira.persona',
@@ -309,24 +319,6 @@ describe('create Realm Persona readiness', () => {
           authoring: {
             source: 'realm-persona-studio',
             notes: [],
-            extensions: {
-              review: {
-                status: 'owner-reviewed',
-              },
-              personaStyle: {
-                voice: 'owner-reviewed',
-                pacing: 'responsive',
-              },
-              contentProfile: {
-                topics: [],
-                boundaries: [],
-                guidelines: [{
-                  guidelineId: 'owner-reviewed-1',
-                  statement: 'Stay visible and owner-reviewed.',
-                  source: 'realm-persona-studio',
-                }],
-              },
-            },
           },
         },
       },
@@ -377,6 +369,17 @@ describe('create Realm Persona readiness', () => {
     expect((rejected.payload?.body.profile.assets as { externalRefs?: unknown[] }).externalRefs).toBeUndefined();
   });
 
+  it('keeps credential-bearing or fragment-bearing HTTPS references out of create input', () => {
+    for (const referenceImageUrl of [
+      'https://cdn.example.test/reference.png?token=secret',
+      'https://user:secret@cdn.example.test/reference.png',
+      'https://cdn.example.test/reference.png#private-fragment',
+    ]) {
+      const normalized = normalizeCreateRealmPersonaDraft({ ...baseInput, referenceImageUrl });
+      expect(normalized.referenceImageUrl).toBe('');
+    }
+  });
+
   it('rejects an automatically populated image URL until the owner selects its candidate', () => {
     const result = validateCreateRealmPersonaReadiness({
       ...baseInput,
@@ -402,10 +405,10 @@ describe('create Realm Persona readiness', () => {
   });
 
   it('fails readiness when required local draft fields are missing', () => {
-    const result = validateCreateRealmPersonaReadiness({ ...baseInput, handle: ' ', concept: ' ', selectedWorldId: '' });
+    const result = validateCreateRealmPersonaReadiness({ ...baseInput, handle: ' ', concept: ' ', selectedWorldId: '', visibility: '' });
 
     expect(result.ready).toBe(false);
-    expect(result.errors).toEqual(['handle missing', 'concept missing', 'selected world missing']);
+    expect(result.errors).toEqual(['handle missing', 'concept missing', 'selected world missing', 'visibility missing']);
     expect(result.source).toBe(REALM_PERSONA_CREATE_SOURCE);
     expect(result.payload).toBeNull();
   });
@@ -467,7 +470,7 @@ describe('create Realm Persona readiness', () => {
     });
 
     expect(result.ready).toBe(false);
-    expect(result.errors).toEqual(['selected world not source-backed by WorldCoreController.listWorldCores']);
+    expect(result.errors).toEqual(['selected world not source-backed by Nimi App Access realm.worldCore.list']);
     expect(result.payload).toBeNull();
   });
 
@@ -488,7 +491,7 @@ describe('create Realm Persona readiness', () => {
     });
 
     expect(unchecked.ready).toBe(false);
-    expect(unchecked.errors).toEqual(['handle availability not checked against WorldCoreController.listRealmPersonas']);
+    expect(unchecked.errors).toEqual(['handle availability not checked against owner PersonaCharacter portfolio']);
     expect(unavailable.ready).toBe(false);
     expect(unavailable.errors).toEqual(['handle unavailable: Handle already taken.']);
     expect(stale.ready).toBe(false);

@@ -13,6 +13,7 @@ import {
   PERSONA_ARCHETYPES,
   PERSONA_TRAITS,
 } from './create-persona-draft.js';
+import { normalizeDisplaySafeHttpsUrl } from './persona-external-ref.js';
 
 export const CREATION_DRAFT_STORAGE_PATH_PREFIX = 'creation/drafts/';
 export const CREATION_DRAFT_AUTOSAVE_DEBOUNCE_MS = 800;
@@ -53,16 +54,6 @@ function isIsoDateTime(value: unknown): value is string {
     && !Number.isNaN(Date.parse(value.trim()));
 }
 
-function isHttpUrl(value: unknown): value is string {
-  if (typeof value !== 'string' || !value.trim()) return false;
-  try {
-    const url = new URL(value.trim());
-    return url.protocol === 'http:' || url.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
-
 function isValidDraftKey(value: unknown): value is string {
   return isAppUlid(value);
 }
@@ -77,10 +68,11 @@ function resolveStorage(storage?: CreationDraftStorage | null): CreationDraftSto
 }
 
 function normalizeCandidate(value: unknown, expectedDraftKey: string): ReferenceImageCandidate | null {
+  const normalizedUrl = isRecord(value) ? normalizeDisplaySafeHttpsUrl(value.url) : null;
   if (
     !isRecord(value)
     || value.draftKey !== expectedDraftKey
-    || !isHttpUrl(value.url)
+    || !normalizedUrl
     || typeof value.prompt !== 'string'
     || !isIsoDateTime(value.createdAt)
     || !isReferenceImageCandidateSlot(value.slot)
@@ -97,7 +89,7 @@ function normalizeCandidate(value: unknown, expectedDraftKey: string): Reference
   return {
     draftKey: expectedDraftKey,
     slot: value.slot,
-    url: new URL(value.url.trim()).toString(),
+    url: normalizedUrl,
     prompt: value.prompt.trim(),
     createdAt: value.createdAt.trim(),
     sourceKind,
@@ -124,6 +116,7 @@ function normalizeStoredDraft(value: unknown, expectedDraftKey: string): Creatio
     'description',
     'ruleText',
     'selectedWorldId',
+    'visibility',
     'personaArchetype',
     'referenceImageUrl',
     'referenceImagePrompt',
@@ -135,7 +128,11 @@ function normalizeStoredDraft(value: unknown, expectedDraftKey: string): Creatio
   if (requiredStrings.some((key) => typeof value[key] !== 'string')) return null;
   if (!Array.isArray(value.personaTraits) || value.personaTraits.some((trait) => !isKnownTrait(trait))) return null;
   if (!isKnownArchetype(value.personaArchetype)) return null;
-  if (value.referenceImageUrl !== '' && !isHttpUrl(value.referenceImageUrl)) return null;
+  if (!['', 'private', 'unlisted', 'public'].includes(String(value.visibility))) return null;
+  const normalizedReferenceImageUrl = value.referenceImageUrl === ''
+    ? ''
+    : normalizeDisplaySafeHttpsUrl(value.referenceImageUrl);
+  if (normalizedReferenceImageUrl === null) return null;
   if (!Array.isArray(value.referenceImageCandidates)) return null;
 
   const candidates = value.referenceImageCandidates.map((candidate) => normalizeCandidate(candidate, expectedDraftKey));
@@ -146,7 +143,7 @@ function normalizeStoredDraft(value: unknown, expectedDraftKey: string): Creatio
   if (selectedCandidates.length > 1) return null;
   if (
     value.referenceImageUrl
-    && !selectedCandidates.some((candidate) => candidate.url === new URL(String(value.referenceImageUrl)).toString())
+    && !selectedCandidates.some((candidate) => candidate.url === normalizedReferenceImageUrl)
   ) {
     return null;
   }
@@ -158,6 +155,7 @@ function normalizeStoredDraft(value: unknown, expectedDraftKey: string): Creatio
     description: value.description as string,
     ruleText: value.ruleText as string,
     selectedWorldId: value.selectedWorldId as string,
+    visibility: value.visibility as CreateRealmPersonaDraftInput['visibility'],
     personaArchetype: value.personaArchetype as CreateRealmPersonaDraftInput['personaArchetype'],
     personaTraits: value.personaTraits as CreateRealmPersonaDraftInput['personaTraits'],
     referenceImageUrl: value.referenceImageUrl as string,

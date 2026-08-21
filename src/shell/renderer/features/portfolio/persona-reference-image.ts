@@ -4,6 +4,7 @@ import {
   type StudioImageCandidateRunner,
   type StudioMediaCandidateFailure,
 } from './studio-media-candidate.js';
+import { normalizeDisplaySafeHttpsUrl } from './persona-external-ref.js';
 
 export const PERSONA_REFERENCE_IMAGE_SOURCE = 'Runtime ScenarioService.submitScenarioJob image.generate' as const;
 
@@ -92,13 +93,15 @@ export async function generatePersonaReferenceImage(
   }
   const artifactIds = artifactValues(result.artifacts, 'artifactId');
   const artifactUris = artifactValues(result.artifacts, 'publicUri');
-  const referenceImageUrl = artifactUris[0];
+  const referenceImageUrl = artifactUris
+    .map((uri) => normalizeDisplaySafeHttpsUrl(uri))
+    .find((uri): uri is string => Boolean(uri));
   if (!referenceImageUrl) {
     return {
       ok: false,
       source: PERSONA_REFERENCE_IMAGE_SOURCE,
       failure: 'persona-reference-image-public-uri-unavailable',
-      message: 'Runtime image.generate produced a local candidate but no http(s) URI that Realm can store as a public reference image.',
+      message: 'Runtime image.generate produced a local candidate but no display-safe HTTPS URI that Realm can store as a public reference image.',
       submitted: built.payload,
     };
   }

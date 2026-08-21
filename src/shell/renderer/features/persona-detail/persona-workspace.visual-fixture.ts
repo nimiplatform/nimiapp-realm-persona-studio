@@ -64,8 +64,8 @@ function createDevelopmentVoicePreviewDataUrl(): string {
   return `data:audio/wav;base64,${encodeBase64(bytes)}`;
 }
 
-const DETAIL_SOURCE = 'Realm WorldCoreController.getRealmPersona' as const;
-const LIST_SOURCE = 'Realm WorldCoreController.listRealmPersonas' as const;
+const DETAIL_SOURCE = 'Nimi App Access realm.personaCharacter.getOwned' as const;
+const LIST_SOURCE = 'Nimi App Access realm.personaCharacter.listOwned' as const;
 const DEV_VOICE_PREVIEW_DATA_URL = createDevelopmentVoicePreviewDataUrl();
 
 function field(
@@ -93,7 +93,7 @@ export const PERSONA_WORKSPACE_VISUAL_FIXTURE_LIST: OwnerPortfolioPersona[] = [
     avatarUrl: xiaomiAvatarUrl,
     ownerScope: 'owner-created',
     source: LIST_SOURCE,
-    realmState: 'PUBLIC',
+    visibility: 'public',
     worldName: 'OASIS',
     updatedAt: '2026-08-10T09:42:00+08:00',
     friendCount: { status: 'source-unavailable', label: 'friendCount source unavailable' },
@@ -106,7 +106,7 @@ export const PERSONA_WORKSPACE_VISUAL_FIXTURE_LIST: OwnerPortfolioPersona[] = [
     avatarUrl: nanxingAvatarUrl,
     ownerScope: 'owner-created',
     source: LIST_SOURCE,
-    realmState: 'PUBLIC',
+    visibility: 'public',
     worldName: 'EDEN',
     updatedAt: '2026-08-09T18:20:00+08:00',
     friendCount: { status: 'source-unavailable', label: 'friendCount source unavailable' },
@@ -119,7 +119,7 @@ export const PERSONA_WORKSPACE_VISUAL_FIXTURE_LIST: OwnerPortfolioPersona[] = [
     avatarUrl: null,
     ownerScope: 'owner-created',
     source: LIST_SOURCE,
-    realmState: 'PRIVATE',
+    visibility: 'private',
     worldName: 'AURORA',
     updatedAt: '2026-08-11T15:10:00+08:00',
     friendCount: { status: 'source-unavailable', label: 'friendCount source unavailable' },
@@ -132,7 +132,7 @@ export const PERSONA_WORKSPACE_VISUAL_FIXTURE_LIST: OwnerPortfolioPersona[] = [
     avatarUrl: null,
     ownerScope: 'owner-created',
     source: LIST_SOURCE,
-    realmState: 'PRIVATE',
+    visibility: 'private',
     worldName: 'NEBULA',
     updatedAt: '2026-08-12T10:30:00+08:00',
     friendCount: { status: 'source-unavailable', label: 'friendCount source unavailable' },
@@ -147,9 +147,9 @@ export const PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS: Record<string, OwnerPortf
     bio: field('bio', 'Profile description', '温柔理性、热爱探索的内容创作者，在 OASIS 记录生活与灵感，用真诚的表达连接有趣的灵魂。'),
     greeting: field('greeting', 'Greeting', '你好，我是小米，很高兴认识你。'),
     profileCoverUrl: field('profileCoverUrl', 'Profile cover URL', oasisCoverUrl),
-    ownership: field('ownership', 'Ownership evidence', 'owner-created RealmPersona'),
+    ownership: field('ownership', 'Ownership evidence', 'owner-scoped PersonaCharacter'),
     world: field('world', 'World evidence', 'OASIS'),
-    state: field('state', 'State evidence', 'PUBLIC'),
+    visibility: field('visibility', 'Visibility', 'public'),
     avatarUrl: xiaomiAvatarUrl,
     contentHash: 'visual-fixture-xiaomi-content-hash',
     contentRevision: 4,
@@ -174,9 +174,9 @@ export const PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS: Record<string, OwnerPortf
     bio: field('bio', 'Profile description', '关注未来城市与自然共生的观察者，在 EDEN 分享温暖、清醒而富有行动感的日常发现。'),
     greeting: field('greeting', 'Greeting', '你好，我是南星。一起把值得期待的未来讲清楚。'),
     profileCoverUrl: field('profileCoverUrl', 'Profile cover URL', edenCoverUrl),
-    ownership: field('ownership', 'Ownership evidence', 'owner-created RealmPersona'),
+    ownership: field('ownership', 'Ownership evidence', 'owner-scoped PersonaCharacter'),
     world: field('world', 'World evidence', 'EDEN'),
-    state: field('state', 'State evidence', 'PUBLIC'),
+    visibility: field('visibility', 'Visibility', 'public'),
     avatarUrl: nanxingAvatarUrl,
     contentHash: 'visual-fixture-nanxing-content-hash',
     contentRevision: 2,
@@ -201,9 +201,9 @@ export const PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS: Record<string, OwnerPortf
     bio: field('bio', 'Profile description', '喜欢收集清晨的声音与光线，在 AURORA 记录缓慢生长的想法。'),
     greeting: field('greeting', 'Greeting', '你好，我是晨雾。'),
     profileCoverUrl: field('profileCoverUrl', 'Profile cover URL', ''),
-    ownership: field('ownership', 'Ownership evidence', 'owner-created RealmPersona'),
+    ownership: field('ownership', 'Ownership evidence', 'owner-scoped PersonaCharacter'),
     world: field('world', 'World evidence', 'AURORA'),
-    state: field('state', 'State evidence', 'PRIVATE'),
+    visibility: field('visibility', 'Visibility', 'private'),
     avatarUrl: null,
     contentHash: 'visual-fixture-chenwu-content-hash',
     contentRevision: 1,
@@ -219,9 +219,9 @@ export const PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS: Record<string, OwnerPortf
     bio: field('bio', 'Profile description', '在 NEBULA 记录星光、潮汐与缓慢成形的想法。'),
     greeting: field('greeting', 'Greeting', '你好，我是星澜。'),
     profileCoverUrl: field('profileCoverUrl', 'Profile cover URL', ''),
-    ownership: field('ownership', 'Ownership evidence', 'owner-created RealmPersona'),
+    ownership: field('ownership', 'Ownership evidence', 'owner-scoped PersonaCharacter'),
     world: field('world', 'World evidence', 'NEBULA'),
-    state: field('state', 'State evidence', 'PRIVATE'),
+    visibility: field('visibility', 'Visibility', 'private'),
     avatarUrl: null,
     contentHash: 'visual-fixture-xinglan-content-hash',
     contentRevision: 1,

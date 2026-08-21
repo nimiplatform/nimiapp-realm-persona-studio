@@ -257,8 +257,8 @@ function normalizeDirectMediaTitle(fileName: string): string {
   return normalizeResourceTitle(fileName.replace(/\s+/g, ' ').trim() || 'Studio media upload');
 }
 
-function realmPersonaSourceRef(persona: OwnerPortfolioPersonaDetail): string {
-  return `realmPersona:${persona.homeWorldId}:${persona.id}:${persona.contentHash}`;
+function personaCharacterSourceRef(persona: OwnerPortfolioPersonaDetail): string {
+  return `personaCharacter:${persona.homeWorldId}:${persona.id}:${persona.contentHash}`;
 }
 
 export function buildFinalizeDirectMediaResourceInput(input: DirectMediaResourceUploadInput): RealmFinalizeResourceInput | null {
@@ -269,8 +269,8 @@ export function buildFinalizeDirectMediaResourceInput(input: DirectMediaResource
   const tags = input.tags?.map((tag) => tag.trim()).filter(Boolean) ?? [];
   const purpose = input.purpose === 'identity' ? 'identity' : 'post';
   const sourceRef = purpose === 'identity'
-    ? `${realmPersonaSourceRef(input.persona)}:reviewed-identity-media-resource`
-    : `${realmPersonaSourceRef(input.persona)}:reviewed-post-media-resource`;
+    ? `${personaCharacterSourceRef(input.persona)}:reviewed-identity-media-resource`
+    : `${personaCharacterSourceRef(input.persona)}:reviewed-post-media-resource`;
   return {
     deliveryAccess: 'SIGNED',
     label: `Reviewed ${purpose} ${input.resourceType.toLowerCase()} upload for ${input.persona.handle.value ? `@${input.persona.handle.value}` : input.persona.displayName.value}`,
@@ -281,7 +281,7 @@ export function buildFinalizeDirectMediaResourceInput(input: DirectMediaResource
     ...(tags.length > 0 ? { tags } : {}),
     metadata: {
       source: sourceRef,
-      sourceKind: 'realmPersona',
+      sourceKind: 'personaCharacter',
       sourceId: input.persona.id,
       sourceWorldId: input.persona.homeWorldId,
       sourceContentHash: input.persona.contentHash,
@@ -331,7 +331,7 @@ export function buildRealmPostTextResourceInput(payload: CandidatePostPayload): 
     metadata: {
       source: 'realm-persona-studio.reviewed-post-text-resource',
       sourceRef: payload.personaRef.sourceRefKey,
-      sourceKind: 'realmPersona',
+      sourceKind: 'personaCharacter',
       attachmentPurpose: 'post',
       humanReviewed: true,
     },

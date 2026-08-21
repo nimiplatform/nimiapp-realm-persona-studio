@@ -11,7 +11,7 @@ function field(key: SettingField['key'], label: string, value: string, status: S
     label,
     value,
     status,
-    source: 'Realm WorldCoreController.getRealmPersona',
+    source: 'Nimi App Access realm.personaCharacter.getOwned',
     readOnly: true,
   };
 }
@@ -28,7 +28,7 @@ const basePersona: OwnerPortfolioPersonaDetail = {
   profileCoverUrl: field('profileCoverUrl', 'Profile cover URL', 'https://cdn.example.test/cover.png'),
   ownership: field('ownership', 'Ownership evidence', 'MASTER_OWNED'),
   world: field('world', 'World evidence', 'world-oasis'),
-  state: field('state', 'State evidence', 'ACTIVE'),
+  visibility: field('visibility', 'Visibility', 'public'),
   avatarUrl: 'https://cdn.example.test/avatar.png',
   voice: {
     voiceId: 'voice-1',
@@ -41,7 +41,7 @@ const basePersona: OwnerPortfolioPersonaDetail = {
   },
   friendCount: { status: 'available', value: 42 },
   ownerScope: 'owner-created',
-  source: 'Realm WorldCoreController.getRealmPersona',
+  source: 'Nimi App Access realm.personaCharacter.getOwned',
 };
 
 const creativeCandidate: CreativeAssetHistoryRecord = {
@@ -73,15 +73,15 @@ const postCandidate: LocalPostScheduleCandidate = {
     candidate: true,
     source: 'realm-persona-studio.local-post-draft',
     personaRef: {
-      source: 'Realm WorldCoreController.getRealmPersona',
-      sourceKind: 'realmPersona',
+      source: 'Nimi App Access realm.personaCharacter.getOwned',
+      sourceKind: 'personaCharacter',
       sourceRef: {
-        kind: 'realmPersona',
+        kind: 'personaCharacter',
         worldId: 'world-oasis',
         sourceId: 'persona-1',
         sourceContentHash: 'hash-persona-1',
       },
-      sourceRefKey: 'realmPersona:world-oasis:persona-1:hash-persona-1',
+      sourceRefKey: 'personaCharacter:world-oasis:persona-1:hash-persona-1',
       handle: 'mira-prime',
       displayName: 'Mira Prime',
     },

@@ -32,9 +32,9 @@ export type CandidatePostPayload = {
   source: 'realm-persona-studio.local-post-draft';
   personaRef: {
     source: PortfolioPersonaDetailSource;
-    sourceKind: 'realmPersona';
+    sourceKind: 'personaCharacter';
     sourceRef: {
-      kind: 'realmPersona';
+      kind: 'personaCharacter';
       worldId: string;
       sourceId: string;
       sourceContentHash: string;
@@ -178,7 +178,7 @@ function assertNoForbiddenPayloadKeys(value: unknown): string | null {
   return null;
 }
 
-function buildRealmPersonaSourceRefKey(sourceRef: CandidatePostPayload['personaRef']['sourceRef']): string {
+function buildPersonaCharacterSourceRefKey(sourceRef: CandidatePostPayload['personaRef']['sourceRef']): string {
   return `${sourceRef.kind}:${sourceRef.worldId}:${sourceRef.sourceId}:${sourceRef.sourceContentHash}`;
 }
 
@@ -240,7 +240,7 @@ export function validateLocalPostDraft(
   }
 
   const sourceRef: CandidatePostPayload['personaRef']['sourceRef'] = {
-    kind: 'realmPersona',
+    kind: 'personaCharacter',
     worldId: persona.homeWorldId,
     sourceId: persona.id,
     sourceContentHash: persona.contentHash,
@@ -250,9 +250,9 @@ export function validateLocalPostDraft(
     source: 'realm-persona-studio.local-post-draft',
     personaRef: {
       source: persona.source,
-      sourceKind: 'realmPersona',
+      sourceKind: 'personaCharacter',
       sourceRef,
-      sourceRefKey: buildRealmPersonaSourceRefKey(sourceRef),
+      sourceRefKey: buildPersonaCharacterSourceRefKey(sourceRef),
       handle: persona.handle.value,
       displayName: persona.displayName.value,
     },
@@ -405,7 +405,7 @@ export function buildRuntimePostCopyPrompt(input: {
         topP: 1,
       },
       systemText: [
-        'You draft candidate RealmPersona post copy for owner review.',
+        'You draft candidate Realm Persona post copy for owner review.',
         'Return one JSON object with caption, tagsText, and rationale only.',
         'Do not include provider, model, LocalAgent, worldId, authorId, id, scheduledAt, scheduleId, queue, campaign, recurrence, moderation, or publish success fields.',
         'The owner must review the result before Realm publish.',
@@ -415,7 +415,7 @@ export function buildRuntimePostCopyPrompt(input: {
         currentDraft: normalizedDraft,
         personaPublicContext: {
           source: input.persona.source,
-          sourceKind: 'realmPersona',
+          sourceKind: 'personaCharacter',
           sourceId: input.persona.id,
           sourceWorldId: input.persona.homeWorldId,
           sourceContentHash: input.persona.contentHash,

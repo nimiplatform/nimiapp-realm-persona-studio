@@ -40,7 +40,7 @@ function PersonaSettingsPageForScope() {
 
           <VisibilitySettingsWorkspace persona={persona} onPersonaWrite={refreshPersonaReads} />
           <SettingProposalWorkspace persona={persona} onPersonaWrite={refreshPersonaReads} />
-          <RuntimeProjectionWorkspace persona={persona} />
+          <RuntimeProjectionWorkspace />
         </>
       )}
     </PersonaShell>

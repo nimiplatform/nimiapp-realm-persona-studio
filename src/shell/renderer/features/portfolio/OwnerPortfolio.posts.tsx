@@ -251,12 +251,16 @@ export function CreativePostWorkspace({ persona, mode }: { persona: OwnerPortfol
     if (!schedulePreview) {
       return;
     }
-    const saved = saveLocalPostSchedule(persona.id, schedulePreview);
-    setSavedSchedule(saved);
-    if (isLocalPostScheduleDue(saved)) {
-      nimiToast.info(t('posts.schedule.due'));
-    } else {
-      nimiToast.success(t('posts.schedule.savedFor', { time: saved.localRunAt }));
+    try {
+      const saved = saveLocalPostSchedule(persona.id, schedulePreview);
+      setSavedSchedule(saved);
+      if (isLocalPostScheduleDue(saved)) {
+        nimiToast.info(t('posts.schedule.due'));
+      } else {
+        nimiToast.success(t('posts.schedule.savedFor', { time: saved.localRunAt }));
+      }
+    } catch {
+      nimiToast.danger(t('common.operationFailed'));
     }
   }
 

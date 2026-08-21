@@ -69,7 +69,7 @@ describe('owner settings proposal normalization', () => {
     });
   });
 
-  it('builds an UpdateOwnerPersonaSettingsDto diff and excludes raw rule text', () => {
+  it('builds only native PersonaCharacter profile changes and excludes local creative fields', () => {
     const result = buildRealmOwnerPersonaSettingsUpdateInput({
       ...createOwnerPersonaSettingsDraft(settings),
       displayName: 'Mira Prime',
@@ -84,15 +84,6 @@ describe('owner settings proposal normalization', () => {
       changed: true,
       input: {
         displayName: 'Mira Prime',
-        identity: {
-          worldview: 'The world is layered and negotiated.',
-        },
-        personality: {
-          interests: ['strategy', 'tea', 'ruins'],
-        },
-        communication: {
-          formality: 'formal',
-        },
       },
     });
     expect(JSON.stringify(result.input)).not.toContain('Visible rule candidate only.');
@@ -113,13 +104,13 @@ describe('owner settings proposal normalization', () => {
     });
   });
 
-  it('rejects invalid enum values before Realm submission', () => {
+  it('keeps legacy creative enum fields local instead of submitting them', () => {
     expect(buildRealmOwnerPersonaSettingsUpdateInput({
       ...createOwnerPersonaSettingsDraft(settings),
       formality: 'robotic',
     }, settings)).toMatchObject({
       ok: false,
-      failure: 'owner-settings-invalid',
+      failure: 'owner-settings-no-changes',
       input: null,
     });
   });
@@ -151,7 +142,11 @@ describe('owner settings proposal normalization', () => {
     };
     const result = buildRuntimeOwnerSettingsProposalPrompt({
       personaId: 'persona-1',
-      current: settings,
+      current: {
+        ...settings,
+        contentHash: 'private-canonical-hash',
+        profile: { profileHash: 'private-profile-hash' },
+      } as OwnerPersonaSettingsSnapshot,
       draft,
     });
 
@@ -167,33 +162,28 @@ describe('owner settings proposal normalization', () => {
     const userText = result.payload?.userText || '';
     expect(userText).not.toContain('provider');
     expect(userText).not.toContain('LocalAgent');
+    expect(userText).not.toContain('contentHash');
+    expect(userText).not.toContain('profileHash');
+    expect(userText).not.toContain('publicRole');
   });
 
   it('normalizes Runtime proposal JSON into supported draft fields only', () => {
     const baseDraft = createOwnerPersonaSettingsDraft(settings);
     const proposal = normalizeRuntimeOwnerSettingsProposal(JSON.stringify({
       description: 'Warmer public strategist.',
-      worldview: 'Layered world with practical entry points.',
-      contentStyle: 'Warm, clear, and concise.',
-      allowedThemesText: ['adventure', 'friendship'],
-      responseLength: 'short',
       rationale: 'Matches the owner intent.',
     }), baseDraft);
 
     expect(proposal).toMatchObject({
       candidate: true,
       truthWrite: false,
-      changedSettingKeys: ['description', 'worldview', 'contentStyle', 'allowedThemesText', 'responseLength'],
+      changedSettingKeys: ['description'],
       draftPatch: {
         description: 'Warmer public strategist.',
-        allowedThemesText: 'adventure, friendship',
-        responseLength: 'short',
       },
     });
     expect(applyRuntimeOwnerSettingsProposal(baseDraft, proposal)).toMatchObject({
       description: 'Warmer public strategist.',
-      worldview: 'Layered world with practical entry points.',
-      contentStyle: 'Warm, clear, and concise.',
     });
   });
 
@@ -205,7 +195,7 @@ describe('owner settings proposal normalization', () => {
     }), baseDraft)).toThrow('unknown field model');
     expect(() => normalizeRuntimeOwnerSettingsProposal(JSON.stringify({
       responseLength: 'endless',
-    }), baseDraft)).toThrow('invalid responseLength');
+    }), baseDraft)).toThrow('unknown field responseLength');
   });
 
   it('rejects Runtime proposals wrapped in prose or carrying unknown fields', () => {

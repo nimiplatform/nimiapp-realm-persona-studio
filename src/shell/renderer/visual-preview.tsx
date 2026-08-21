@@ -24,6 +24,7 @@ import { ArrowLeft, Check, ChevronDown, ImageIcon, Scan } from 'lucide-react';
 import { StudioSidebar } from './app-shell/studio-sidebar/index.js';
 import { PersonaCockpit } from './features/persona-detail/persona-cockpit.js';
 import { PersonaWorkspaceFrame } from './features/persona-detail/persona-shell.js';
+import { PersonaVisualPreviewProvider } from './features/persona-detail/persona-visual-preview-context.js';
 import {
   PERSONA_WORKSPACE_VISUAL_FIXTURE_DATA,
   PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS,
@@ -392,9 +393,7 @@ if (!rootElement) throw new Error('REALM_PERSONA_STUDIO_VISUAL_PREVIEW_ROOT_MISS
 
 const previewGlobal = globalThis as typeof globalThis & {
   __RPS_VISUAL_PREVIEW_ROOT__?: Root;
-  __RPS_VISUAL_PREVIEW__?: boolean;
 };
-previewGlobal.__RPS_VISUAL_PREVIEW__ = true;
 const previewRoot = previewGlobal.__RPS_VISUAL_PREVIEW_ROOT__ ?? createRoot(rootElement);
 previewGlobal.__RPS_VISUAL_PREVIEW_ROOT__ = previewRoot;
 
@@ -404,7 +403,12 @@ previewRoot.render(
       <QueryClientProvider client={studioQueryClient}>
         <TooltipProvider>
           <HashRouter>
-            <PreviewShell />
+            <PersonaVisualPreviewProvider
+              details={PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS}
+              visualData={PERSONA_WORKSPACE_VISUAL_FIXTURE_DATA}
+            >
+              <PreviewShell />
+            </PersonaVisualPreviewProvider>
           </HashRouter>
           <NimiToaster />
         </TooltipProvider>

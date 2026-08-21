@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { personaLibraryStatusFromRealmState } from '../portfolio/OwnerPortfolio.shared.js';
+import { personaLibraryStatusFromVisibility } from '../portfolio/OwnerPortfolio.shared.js';
 
 const personaListSource = () =>
   readFileSync(join(process.cwd(), 'src/shell/renderer/features/persona-list/persona-list-page.tsx'), 'utf8');
@@ -58,26 +58,24 @@ describe('persona list read boundaries', () => {
     expect(source).toContain('status="local-draft"');
     expect(source).not.toContain('draftRecencyLabelKey');
     expect(source).not.toContain('ras-local-draft-create-row');
-    expect(sharedSource).toContain('personaLibraryStatusFromRealmState(persona.realmState)');
+    expect(sharedSource).toContain('personaLibraryStatusFromVisibility(persona.visibility)');
     expect(source).not.toContain('friendCount: 0');
   });
 
-  it('derives Persona card visibility only from the source-backed Realm state', () => {
-    expect(personaLibraryStatusFromRealmState('PUBLIC')).toBe('public');
-    expect(personaLibraryStatusFromRealmState('FRIENDS')).toBe('friends');
-    expect(personaLibraryStatusFromRealmState('PRIVATE')).toBe('private');
-    expect(personaLibraryStatusFromRealmState(null)).toBe('source-unavailable');
-    expect(personaLibraryStatusFromRealmState('unknown')).toBe('source-unavailable');
+  it('derives Persona card visibility only from canonical lowercase visibility', () => {
+    expect(personaLibraryStatusFromVisibility('public')).toBe('public');
+    expect(personaLibraryStatusFromVisibility('unlisted')).toBe('unlisted');
+    expect(personaLibraryStatusFromVisibility('private')).toBe('private');
+    expect(personaLibraryStatusFromVisibility('system')).toBe('system');
   });
 
-  it('shows explicitly labeled design examples only in development without inventing Realm metrics', () => {
+  it('renders an honest empty state without design Persona fallback', () => {
     const source = personaListSource();
 
-    expect(source).toContain('import.meta.env.DEV');
-    expect(source).toContain("portfolioQuery.isSuccess && personas.length === 0");
-    expect(source).toContain("t('portfolio.preview.notice')");
-    expect(source).toContain('DESIGN_PREVIEW_PERSONAS');
-    expect(source).toContain("displayName: '小米'");
+    expect(source).toContain('personas.length === 0');
+    expect(source).toContain("t('portfolio.emptyTitle')");
+    expect(source).not.toContain('DESIGN_PREVIEW_PERSONAS');
+    expect(source).not.toContain('design-preview-xiaomi');
     expect(source).not.toContain('friendCount: 0');
   });
 

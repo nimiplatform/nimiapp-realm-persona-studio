@@ -23,7 +23,7 @@ function settingField(key: SettingField['key'], label: string, value: string): S
     label,
     value,
     status: hasValue ? 'available' : 'available-empty',
-    source: 'Realm WorldCoreController.getRealmPersona',
+    source: 'Nimi App Access realm.personaCharacter.getOwned',
     readOnly: true,
     emptyLabel: hasValue ? undefined : 'not set',
   };
@@ -41,11 +41,11 @@ const persona: OwnerPortfolioPersonaDetail = {
   profileCoverUrl: settingField('profileCoverUrl', 'Profile cover URL', 'https://cdn.example.test/cover.png'),
   ownership: settingField('ownership', 'Ownership evidence', 'MASTER_OWNED'),
   world: settingField('world', 'World evidence', 'OASIS'),
-  state: settingField('state', 'State evidence', 'ACTIVE'),
+  visibility: settingField('visibility', 'Visibility', 'public'),
   avatarUrl: 'https://cdn.example.test/avatar.png',
   friendCount: { status: 'available', value: 7 },
   ownerScope: 'owner-created',
-  source: 'Realm WorldCoreController.getRealmPersona',
+  source: 'Nimi App Access realm.personaCharacter.getOwned',
 };
 
 function collectKeys(value: unknown, keys = new Set<string>()) {
@@ -294,7 +294,7 @@ describe('reviewed media and voice candidate payloads', () => {
       publicTruth: false,
       source: 'realm-persona-studio.reviewed-voice-demo-candidate',
       personaContext: {
-        source: 'Realm WorldCoreController.getRealmPersona',
+        source: 'Nimi App Access realm.personaCharacter.getOwned',
         personaKey: 'persona-1',
         handle: 'mira',
         displayName: 'Mira',

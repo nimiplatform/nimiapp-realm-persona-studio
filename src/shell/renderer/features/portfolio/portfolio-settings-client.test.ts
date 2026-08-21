@@ -1,31 +1,38 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const personaCharacter = vi.hoisted(() => ({
+  getOwned: vi.fn(),
+  replace: vi.fn(),
+  toProfileInput: vi.fn(),
+}));
+
+vi.mock('@renderer/app-shell/studio-platform.js', () => ({
+  getStudioLocalAppClient: () => ({ realm: { personaCharacter } }),
+}));
+
 import {
-  buildPersonaChatReadinessProjectionInput,
   buildRealmUpdateVisibilityInput,
-  buildRuntimeProjectionInput,
   createPersonaVisibilityDraft,
   getOwnerPersonaSettings,
   getPersonaVisibilitySettings,
   getPortfolioPersonaSettings,
-  normalizePersonaChatReadinessProjectionSummary,
-  normalizeRuntimeProjectionSummary,
-  projectPersonaRuntimeContextSummary,
   proposeReviewedOwnerPersonaSettings,
   updateReviewedOwnerPersonaSettings,
   updateReviewedPersonaVisibility,
-  updateReviewedPortfolioPersonaSettings,
-  type PersonaVisibilityDraft,
   type RealmOwnerPersonaSettings,
   type RealmPersonaVisibilitySettings,
 } from './portfolio-settings-client.js';
 import { createOwnerPersonaSettingsDraft } from './setting-proposal.js';
 import {
-  collectKeys,
   ownerPersonaDetail,
-  ownerPersonaDetailWithWorldId,
   persona,
 } from './portfolio-client.test-helpers.js';
 import type { StudioTextCandidateRunner } from './studio-text-candidate.js';
+
+function profileInput() {
+  const { profileHash: _profileHash, profileCoverage: _profileCoverage, ...input } = persona.profile;
+  return input;
+}
 
 function currentSettings(): RealmOwnerPersonaSettings {
   return {
@@ -34,12 +41,13 @@ function currentSettings(): RealmOwnerPersonaSettings {
     homeWorldId: persona.worldId,
     visibility: persona.visibility,
     origin: persona.origin,
-    core: persona.profile as unknown as Record<string, unknown>,
+    profile: persona.profile,
+    persona,
     displayName: 'Mira',
-    description: 'Artifact review guide.',
-    greeting: null,
+    description: 'Quiet strategist',
+    greeting: 'Welcome in.',
     naturalLanguageIntent: null,
-    identity: { publicRole: 'Guide' },
+    identity: {},
     personality: {},
     communication: {},
     boundaries: {},
@@ -47,56 +55,132 @@ function currentSettings(): RealmOwnerPersonaSettings {
   };
 }
 
-const visibility: RealmPersonaVisibilitySettings = {
-  defaultPostVisibility: 'PUBLIC',
-  dmVisibility: 'FRIENDS',
-  profileVisibility: 'PUBLIC',
-};
+const visibility: RealmPersonaVisibilitySettings = { visibility: 'public', persona };
 
-describe('owner portfolio settings client', () => {
-  it('fails closed for all Persona settings and visibility reads and writes', async () => {
-    const settings = currentSettings();
-    const ownerDraft = createOwnerPersonaSettingsDraft(settings);
-    const visibilityDraft = createPersonaVisibilityDraft(visibility);
-    const detail = ownerPersonaDetail();
-    const operations = [
-      getPersonaVisibilitySettings('persona-1'),
-      getOwnerPersonaSettings('persona-1'),
-      getPortfolioPersonaSettings(detail),
-      updateReviewedPersonaVisibility('persona-1', visibilityDraft, visibility),
-      updateReviewedOwnerPersonaSettings('persona-1', ownerDraft, settings),
-      updateReviewedPortfolioPersonaSettings(detail, ownerDraft, settings),
-    ];
-
-    for (const operation of operations) {
-      await expect(operation).rejects.toMatchObject({
-        reasonCode: 'capability-unavailable',
-        actionHint: 'retry_when_platform_surface_available',
-      });
-    }
+describe('owner PersonaCharacter settings client', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    personaCharacter.getOwned.mockResolvedValue(persona);
+    personaCharacter.toProfileInput.mockImplementation(profileInput);
+    personaCharacter.replace.mockImplementation(async (input) => ({
+      ...persona,
+      contentHash: 'e'.repeat(64),
+      contentRevision: 2,
+      visibility: input.visibility,
+      profile: { ...input.profile, profileHash: 'f'.repeat(64), profileCoverage: persona.profile.profileCoverage },
+    }));
   });
 
-  it('builds changed visibility fields without transport or lifecycle state', () => {
-    const draft: PersonaVisibilityDraft = {
-      ...createPersonaVisibilityDraft(visibility),
-      dmVisibility: 'PRIVATE',
-      profileVisibility: 'FRIENDS',
-    };
+  it('reads native settings and canonical visibility through getOwned', async () => {
+    await expect(getPersonaVisibilitySettings('persona-1')).resolves.toMatchObject({ visibility: 'public' });
+    await expect(getOwnerPersonaSettings('persona-1')).resolves.toMatchObject({
+      displayName: 'Mira',
+      description: 'Quiet strategist',
+      greeting: 'Welcome in.',
+    });
+    await expect(getPortfolioPersonaSettings(ownerPersonaDetail())).resolves.toMatchObject({ id: 'persona-1' });
+    expect(personaCharacter.getOwned).toHaveBeenCalledTimes(3);
+  });
 
-    expect(buildRealmUpdateVisibilityInput(draft, visibility)).toEqual({
-      input: {
-        dmVisibility: 'PRIVATE',
-        profileVisibility: 'FRIENDS',
-      },
+  it('builds one canonical lowercase visibility update', () => {
+    expect(buildRealmUpdateVisibilityInput({ visibility: 'unlisted' }, visibility)).toEqual({
+      input: { visibility: 'unlisted' },
       errors: [],
     });
     expect(buildRealmUpdateVisibilityInput(createPersonaVisibilityDraft(visibility), visibility)).toEqual({
       input: null,
       errors: ['visibility settings have no reviewed changes'],
     });
+    expect(buildRealmUpdateVisibilityInput({ visibility: 'FRIENDS' }, visibility)).toEqual({
+      input: null,
+      errors: ['visibility must be private, unlisted, or public'],
+    });
+    expect(buildRealmUpdateVisibilityInput(
+      { visibility: 'public' },
+      { visibility: 'system', persona: { ...persona, visibility: 'system' } },
+    )).toEqual({
+      input: null,
+      errors: ['system visibility is read-only'],
+    });
   });
 
-  it('uses the injected text candidate runner for owner-reviewed proposals only', async () => {
+  it('replaces visibility with toProfileInput and the latest canonical hash', async () => {
+    const result = await updateReviewedPersonaVisibility('persona-1', { visibility: 'unlisted' }, visibility);
+
+    expect(personaCharacter.toProfileInput).toHaveBeenCalledWith(persona.profile);
+    expect(personaCharacter.replace).toHaveBeenCalledWith({
+      personaCharacterId: 'persona-1',
+      baseContentHash: persona.contentHash,
+      worldId: persona.worldId,
+      visibility: 'unlisted',
+      origin: persona.origin,
+      profile: profileInput(),
+    });
+    expect(result).toMatchObject({ ok: true, settings: { visibility: 'unlisted' } });
+  });
+
+  it('writes only native profile fields and never restores bare extensions', async () => {
+    const settings = currentSettings();
+    const draft = {
+      ...createOwnerPersonaSettingsDraft(settings),
+      displayName: 'Mira Prime',
+      description: 'Owner-reviewed native summary.',
+      greeting: 'Welcome back.',
+      publicRole: 'must remain local',
+    };
+
+    const result = await updateReviewedOwnerPersonaSettings('persona-1', draft, settings);
+    const submitted = personaCharacter.replace.mock.calls[0]?.[0];
+
+    expect(result.ok).toBe(true);
+    expect(personaCharacter.toProfileInput).toHaveBeenCalledWith(persona.profile);
+    expect(submitted.profile.presentation.displayName).toBe('Mira Prime');
+    expect(submitted.profile.identity.summary).toBe('Owner-reviewed native summary.');
+    expect(submitted.profile.interactionProfile.greeting).toBe('Welcome back.');
+    expect(JSON.stringify(submitted.profile)).not.toContain('ownerSettings');
+    expect(JSON.stringify(submitted.profile)).not.toContain('socialVisibility');
+    expect(JSON.stringify(submitted.profile)).not.toContain('must remain local');
+  });
+
+  it('preserves sanitized content-conflict without upstream text', async () => {
+    personaCharacter.replace.mockRejectedValue(Object.assign(new Error('private Realm body'), {
+      reasonCode: 'content-conflict',
+    }));
+    const result = await updateReviewedPersonaVisibility('persona-1', { visibility: 'unlisted' }, visibility);
+
+    expect(result).toMatchObject({ ok: false, failure: 'content-conflict', message: 'content-conflict' });
+    expect(JSON.stringify(result)).not.toContain('private Realm body');
+  });
+
+  it('sanitizes profile roundtrip failures before replace transport', async () => {
+    personaCharacter.toProfileInput.mockImplementationOnce(() => {
+      throw Object.assign(new Error('private profile detail'), { reasonCode: 'contract-invalid' });
+    });
+
+    const result = await updateReviewedPersonaVisibility('persona-1', { visibility: 'unlisted' }, visibility);
+
+    expect(result).toMatchObject({ ok: false, failure: 'contract-invalid', message: 'contract-invalid' });
+    expect(personaCharacter.replace).not.toHaveBeenCalled();
+  });
+
+  it('rejects settings and visibility writes when the current detail belongs to another persona', async () => {
+    const mismatchedSettings = await updateReviewedOwnerPersonaSettings(
+      'persona-2',
+      { ...createOwnerPersonaSettingsDraft(currentSettings()), displayName: 'Mira Prime' },
+      currentSettings(),
+    );
+    const mismatchedVisibility = await updateReviewedPersonaVisibility(
+      'persona-2',
+      { visibility: 'unlisted' },
+      visibility,
+    );
+
+    expect(mismatchedSettings).toMatchObject({ ok: false, failure: 'invalid-input', submitted: null });
+    expect(mismatchedVisibility).toMatchObject({ ok: false, failure: 'invalid-input', submitted: null });
+    expect(personaCharacter.replace).not.toHaveBeenCalled();
+  });
+
+  it('uses the injected text candidate runner for native profile proposals only', async () => {
     const settings = currentSettings();
     const draft = {
       ...createOwnerPersonaSettingsDraft(settings),
@@ -105,7 +189,6 @@ describe('owner portfolio settings client', () => {
     const runner = vi.fn(async (prompt: Parameters<StudioTextCandidateRunner>[0]) => ({
       text: JSON.stringify({
         description: 'Warmer strategist for builders.',
-        contentStyle: 'Warm and concise.',
         rationale: 'Owner asked for a warmer public presentation.',
       }),
       finishReason: 'stop' as const,
@@ -115,84 +198,12 @@ describe('owner portfolio settings client', () => {
 
     const result = await proposeReviewedOwnerPersonaSettings('persona-1', draft, settings, runner);
 
-    expect(runner).toHaveBeenCalledOnce();
-    expect(runner.mock.calls[0]?.[0]).toMatchObject({
-      surfaceId: 'realm-persona-studio.settings-proposal',
-      params: { maxTokens: 900, temperature: 0.2, topP: 1 },
-    });
     expect(result).toMatchObject({
       ok: true,
       candidate: true,
       truthWrite: false,
-      proposal: {
-        draftPatch: {
-          description: 'Warmer strategist for builders.',
-          contentStyle: 'Warm and concise.',
-        },
-      },
+      proposal: { draftPatch: { description: 'Warmer strategist for builders.' } },
     });
   });
 
-  it('does not call the candidate runner when owner intent is empty', async () => {
-    const settings = currentSettings();
-    const runner = vi.fn<StudioTextCandidateRunner>();
-
-    const result = await proposeReviewedOwnerPersonaSettings('persona-1', {
-      ...createOwnerPersonaSettingsDraft(settings),
-      naturalLanguageIntent: '',
-    }, settings, runner);
-
-    expect(runner).not.toHaveBeenCalled();
-    expect(result).toMatchObject({
-      ok: false,
-      failure: 'runtime-settings-proposal-payload-invalid',
-    });
-  });
-
-  it('keeps Runtime projection local and fail-closed without source evidence', async () => {
-    const detail = ownerPersonaDetail();
-    const unavailable = await projectPersonaRuntimeContextSummary({
-      ...detail,
-      homeWorldId: '',
-    });
-
-    expect(buildRuntimeProjectionInput({ ...detail, id: '' })).toBeNull();
-    expect(buildRuntimeProjectionInput({ ...detail, homeWorldId: '' })).toBeNull();
-    expect(buildRuntimeProjectionInput({ ...detail, contentHash: '' })).toBeNull();
-    expect(unavailable).toMatchObject({
-      ok: false,
-      failure: 'runtime-projection-world-unavailable',
-      submitted: null,
-    });
-  });
-
-  it('normalizes projection summaries without raw source content', () => {
-    const summary = normalizeRuntimeProjectionSummary({
-      sourceWorldId: 'world-1',
-      packetHash: 'checksum-1',
-      payload: { worldRules: [{ statement: 'world raw' }] },
-    });
-    const chatSummary = normalizePersonaChatReadinessProjectionSummary({
-      sourceWorldId: 'world-1',
-      sourceId: 'persona-1',
-      packetHash: 'checksum-1',
-      payload: { 'communication.contentStyle': 'must stay hidden' },
-    });
-
-    expect(summary).toMatchObject({
-      worldId: 'world-1',
-      checksum: 'checksum-1',
-      rawRuleContentExposed: false,
-    });
-    expect(chatSummary).toMatchObject({
-      personaId: 'persona-1',
-      selectedOwnerSettingFields: ['communication.contentStyle'],
-      rawRuleContentExposed: false,
-    });
-    expect(collectKeys(summary).has('statement')).toBe(false);
-    expect(collectKeys(chatSummary).has('contentStyle')).toBe(false);
-    expect(buildPersonaChatReadinessProjectionInput(ownerPersonaDetailWithWorldId())).toMatchObject({
-      sourceRef: { kind: 'realmPersona', worldId: 'world-oasis' },
-    });
-  });
 });

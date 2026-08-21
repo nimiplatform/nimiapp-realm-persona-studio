@@ -1,9 +1,9 @@
 import type { StudioTextCandidatePrompt } from './studio-text-candidate.js';
 import { parseStrictRuntimeJsonObject } from './strict-runtime-json.js';
 
-export const OWNER_SETTINGS_SAVE_SOURCE = 'Realm WorldCoreController.replaceRealmPersona';
+export const OWNER_SETTINGS_SAVE_SOURCE = 'Nimi App Access realm.personaCharacter.replace';
 export const SETTINGS_AI_PROPOSAL_SOURCE = 'Nimi App Access ai.text.generateCandidate';
-export const RAW_RULE_REVIEW_DEFERRED_REASON = 'raw rule text is not a RealmPersona core field; owner guidelines must be structured before save';
+export const RAW_RULE_REVIEW_DEFERRED_REASON = 'raw rule text is not a PersonaCharacter profile field and remains a local candidate';
 
 export type OwnerPersonaSettingsSnapshot = {
   displayName?: string | null;
@@ -168,9 +168,6 @@ export type OwnerSettingsUpdateBuildResult =
     rawRuleTextCandidate?: string;
   };
 
-const FORMALITY_VALUES = ['casual', 'formal', 'slang'] as const;
-const RESPONSE_LENGTH_VALUES = ['short', 'medium', 'long'] as const;
-const SENTIMENT_VALUES = ['positive', 'neutral', 'cynical'] as const;
 const FORBIDDEN_SETTING_KEYS = new Set([
   'handle',
   'worldId',
@@ -191,30 +188,11 @@ const RUNTIME_PROPOSAL_STRING_FIELDS = [
   'displayName',
   'description',
   'greeting',
-  'naturalLanguageIntent',
-  'publicRole',
-  'worldview',
-  'personalitySummary',
-  'relationshipMode',
-  'interestsText',
-  'goalsText',
-  'contentStyle',
-  'allowedThemesText',
-  'disallowedThemesText',
-  'targetAudience',
-  'positioning',
   'rawRuleTextCandidate',
 ] as const;
 
-const RUNTIME_PROPOSAL_ENUM_FIELDS = {
-  formality: FORMALITY_VALUES,
-  responseLength: RESPONSE_LENGTH_VALUES,
-  sentiment: SENTIMENT_VALUES,
-} as const;
-
 const RUNTIME_PROPOSAL_OUTPUT_KEYS = [
   ...RUNTIME_PROPOSAL_STRING_FIELDS,
-  ...Object.keys(RUNTIME_PROPOSAL_ENUM_FIELDS),
   'rationale',
 ] as const;
 
@@ -260,11 +238,6 @@ function normalizeNullableSingleLine(value: string): string | null {
   return normalized ? normalized : null;
 }
 
-function sameStringArray(left: readonly string[] | undefined, right: readonly string[]): boolean {
-  const normalizedLeft = left ?? [];
-  return normalizedLeft.length === right.length && normalizedLeft.every((value, index) => value === right[index]);
-}
-
 function hasOwnKeys(value: object): boolean {
   return Object.keys(value).length > 0;
 }
@@ -278,29 +251,6 @@ function addNullableChange<T extends Record<string, unknown>>(
   if (proposed !== (current ?? null)) {
     target[key] = proposed as T[keyof T];
   }
-}
-
-function addStringArrayChange<T extends Record<string, unknown>>(
-  target: T,
-  key: keyof T,
-  proposed: string[],
-  current: readonly string[] | undefined,
-) {
-  if (!sameStringArray(current, proposed)) {
-    target[key] = proposed as T[keyof T];
-  }
-}
-
-function validateEnum<T extends readonly string[]>(value: string, allowed: T, label: string, errors: string[]): T[number] | undefined {
-  const normalized = compactProfileText(value);
-  if (!normalized) {
-    return undefined;
-  }
-  if (!allowed.includes(normalized)) {
-    errors.push(`${label} must be one of: ${allowed.join(', ')}`);
-    return undefined;
-  }
-  return normalized as T[number];
 }
 
 export function createOwnerPersonaSettingsDraft(settings: OwnerPersonaSettingsSnapshot): OwnerPersonaSettingsDraft {
@@ -403,9 +353,9 @@ export function buildRuntimeOwnerSettingsProposalPrompt(input: {
         topP: 1,
       },
       systemText: [
-        'You propose owner-reviewed RealmPersona core settings only.',
+        'You propose owner-reviewed PersonaCharacter native profile settings only.',
         'Return one JSON object with supported draft field names only.',
-        'Allowed fields: displayName, description, greeting, naturalLanguageIntent, publicRole, worldview, personalitySummary, relationshipMode, interestsText, goalsText, contentStyle, formality, responseLength, sentiment, allowedThemesText, disallowedThemesText, targetAudience, positioning, rawRuleTextCandidate, rationale.',
+        'Allowed fields: displayName, description, greeting, rawRuleTextCandidate, rationale.',
         'Do not include provider, model, LocalAgent, lifecycle, state, worldId, handle, avatarUrl, profileCoverUrl, dna, personaRule, or personaRules.',
         'The owner must review the result before any Realm save.',
       ].join('\n'),
@@ -421,8 +371,18 @@ export function buildRuntimeOwnerSettingsProposalPrompt(input: {
           },
         } : {}),
         ownerIntent: intent,
-        currentSettings: input.current,
-        currentDraft: normalizedDraft,
+        currentSettings: {
+          displayName: input.current.displayName ?? null,
+          description: input.current.description ?? null,
+          greeting: input.current.greeting ?? null,
+        },
+        currentDraft: {
+          displayName: normalizedDraft.displayName,
+          description: normalizedDraft.description,
+          greeting: normalizedDraft.greeting,
+          naturalLanguageIntent: normalizedDraft.naturalLanguageIntent,
+          rawRuleTextCandidate: normalizedDraft.rawRuleTextCandidate,
+        },
       }),
     },
   };
@@ -450,21 +410,6 @@ export function normalizeRuntimeOwnerSettingsProposal(
     const value = proposalValueToText(record[field]);
     if (value !== null && value !== baseDraft[field]) {
       draftPatch[field] = value;
-      changedSettingKeys.push(field);
-    }
-  }
-
-  for (const [field, allowed] of Object.entries(RUNTIME_PROPOSAL_ENUM_FIELDS)) {
-    const value = proposalValueToText(record[field]);
-    if (!value) {
-      continue;
-    }
-    if (!(allowed as readonly string[]).includes(value)) {
-      throw new Error(`Runtime settings proposal rejected invalid ${field}.`);
-    }
-    const typedField = field as keyof typeof RUNTIME_PROPOSAL_ENUM_FIELDS;
-    if (value !== baseDraft[typedField]) {
-      draftPatch[typedField] = value;
       changedSettingKeys.push(field);
     }
   }
@@ -506,60 +451,11 @@ export function buildRealmOwnerPersonaSettingsUpdateInput(
   addNullableChange(input, 'displayName', normalizeNullableSingleLine(normalized.displayName), current.displayName);
   addNullableChange(input, 'description', normalizeNullableText(normalized.description), current.description);
   addNullableChange(input, 'greeting', normalizeNullableText(normalized.greeting), current.greeting);
-  addNullableChange(input, 'naturalLanguageIntent', normalizeNullableText(normalized.naturalLanguageIntent), current.naturalLanguageIntent);
   if (Object.prototype.hasOwnProperty.call(input, 'displayName') && input.displayName === null) {
-    errors.push('displayName cannot be empty because RealmPersonaCoreV1 requires presentation.displayName');
+    errors.push('displayName cannot be empty because PersonaCharacter profile.presentation.displayName is required');
   }
   if (Object.prototype.hasOwnProperty.call(input, 'description') && input.description === null) {
-    errors.push('description cannot be empty because RealmPersonaCoreV1 requires identity.summary and presentation.profileLine');
-  }
-
-  const identity: NonNullable<OwnerPersonaSettingsUpdateInput['identity']> = {};
-  addNullableChange(identity, 'publicRole', normalizeNullableSingleLine(normalized.publicRole), current.identity?.publicRole);
-  addNullableChange(identity, 'worldview', normalizeNullableText(normalized.worldview), current.identity?.worldview);
-  if (hasOwnKeys(identity)) {
-    input.identity = identity;
-  }
-
-  const personality: NonNullable<OwnerPersonaSettingsUpdateInput['personality']> = {};
-  addNullableChange(personality, 'summary', normalizeNullableText(normalized.personalitySummary), current.personality?.summary);
-  addNullableChange(personality, 'relationshipMode', normalizeNullableSingleLine(normalized.relationshipMode), current.personality?.relationshipMode);
-  addStringArrayChange(personality, 'interests', normalized.interests, current.personality?.interests);
-  addStringArrayChange(personality, 'goals', normalized.goals, current.personality?.goals);
-  if (hasOwnKeys(personality)) {
-    input.personality = personality;
-  }
-
-  const communication: NonNullable<OwnerPersonaSettingsUpdateInput['communication']> = {};
-  addNullableChange(communication, 'contentStyle', normalizeNullableText(normalized.contentStyle), current.communication?.contentStyle);
-  const formality = validateEnum(normalized.formality, FORMALITY_VALUES, 'formality', errors);
-  const responseLength = validateEnum(normalized.responseLength, RESPONSE_LENGTH_VALUES, 'response length', errors);
-  const sentiment = validateEnum(normalized.sentiment, SENTIMENT_VALUES, 'sentiment', errors);
-  if (formality && formality !== current.communication?.formality) {
-    communication.formality = formality;
-  }
-  if (responseLength && responseLength !== current.communication?.responseLength) {
-    communication.responseLength = responseLength;
-  }
-  if (sentiment && sentiment !== current.communication?.sentiment) {
-    communication.sentiment = sentiment;
-  }
-  if (hasOwnKeys(communication)) {
-    input.communication = communication;
-  }
-
-  const boundaries: NonNullable<OwnerPersonaSettingsUpdateInput['boundaries']> = {};
-  addStringArrayChange(boundaries, 'allowedThemes', normalized.allowedThemes, current.boundaries?.allowedThemes);
-  addStringArrayChange(boundaries, 'disallowedThemes', normalized.disallowedThemes, current.boundaries?.disallowedThemes);
-  if (hasOwnKeys(boundaries)) {
-    input.boundaries = boundaries;
-  }
-
-  const positioning: NonNullable<OwnerPersonaSettingsUpdateInput['positioning']> = {};
-  addNullableChange(positioning, 'targetAudience', normalizeNullableText(normalized.targetAudience), current.positioning?.targetAudience);
-  addNullableChange(positioning, 'positioning', normalizeNullableText(normalized.positioning), current.positioning?.positioning);
-  if (hasOwnKeys(positioning)) {
-    input.positioning = positioning;
+    errors.push('description cannot be empty because PersonaCharacter profile.identity.summary is required');
   }
 
   changedSettingKeys.push(...Object.keys(input));

@@ -51,15 +51,20 @@ describe('persona workspace development fixture', () => {
     const sidebar = source('src/shell/renderer/app-shell/studio-sidebar/studio-sidebar.tsx');
     const shell = source('src/shell/renderer/features/persona-detail/persona-shell.tsx');
     const preview = source('src/shell/renderer/visual-preview.tsx');
+    const portfolioClient = source('src/shell/renderer/features/portfolio/portfolio-client.ts');
+    const personaList = source('src/shell/renderer/features/persona-list/persona-list-page.tsx');
     const detailPage = source('src/shell/renderer/features/persona-detail/persona-detail-page.tsx');
     const postsPage = source('src/shell/renderer/features/persona-posts/persona-posts-page.tsx');
 
     expect(sidebar).not.toContain('developmentFixtureFallback');
     expect(sidebar).toContain('const fixtureMode = visualFixturePersonas !== undefined');
-    expect(shell).toContain('const visualPreviewMode = import.meta.env.DEV');
-    expect(shell).toContain('__RPS_VISUAL_PREVIEW__ === true');
+    expect(shell).toContain('usePersonaVisualPreview()');
     expect(shell).toContain('enabled: developmentFixturePersona === undefined');
-    expect(preview).toContain('previewGlobal.__RPS_VISUAL_PREVIEW__ = true');
+    expect(shell).not.toContain('persona-workspace.visual-fixture');
+    expect(preview).toContain('<PersonaVisualPreviewProvider');
+    expect(portfolioClient).not.toContain('PERSONA_WORKSPACE_VISUAL_FIXTURE');
+    expect(portfolioClient).not.toContain('VITE_RPS_DEV_MOCK_PORTFOLIO');
+    expect(personaList).not.toContain('DESIGN_PREVIEW_PERSONAS');
     expect(detailPage).toContain('<PersonaCockpit persona={persona} visualData={visualData} />');
     expect(postsPage).toContain('<PersonaPostEditor persona={persona} visualData={visualData} />');
   });

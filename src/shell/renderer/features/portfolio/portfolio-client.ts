@@ -1,7 +1,9 @@
 import type {
-  RealmModel,
-} from '@nimiplatform/sdk/realm/generated';
-import { requireStudioProtectedOperation } from '@renderer/app-shell/studio-platform.js';
+  NimiLocalAppPersonaCharacter,
+  NimiLocalAppPersonaCharacterFailureReason,
+} from '@nimiplatform/sdk/app';
+import { createNimiError } from '@nimiplatform/sdk/types';
+import { getStudioLocalAppClient } from '@renderer/app-shell/studio-platform.js';
 import {
   getStudioWorldCoreById,
   listStudioWorldCores,
@@ -9,9 +11,13 @@ import {
 import {
   type OwnerPortfolioPersona,
   type OwnerPortfolioPersonaDetail,
+  normalizeOwnerPortfolio,
+  normalizeOwnerPortfolioPersonaDetail,
+  personaCharacterFailureReason,
 } from './portfolio-data.js';
 import {
   REALM_PERSONA_CREATE_SOURCE,
+  REALM_PERSONA_HANDLE_CHECK_SOURCE,
   normalizeSelectableWorlds,
   normalizeSelectedWorldPreview,
   type NormalizedRealmPersonaHandleAvailability,
@@ -21,32 +27,16 @@ import {
   type SelectableRealmWorld,
   type SelectedWorldPreview,
 } from './create-persona-draft.js';
-import {
-  type RealmOwnerPersonaSettings,
-  type RealmOwnerPersonaSettingsUpdateResult,
-} from './portfolio-settings-client.js';
-import { OWNER_SETTINGS_SAVE_SOURCE } from './setting-proposal.js';
-import {
-  PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS,
-  PERSONA_WORKSPACE_VISUAL_FIXTURE_LIST,
-} from '../persona-detail/persona-workspace.visual-fixture.js';
+const OWNER_PERSONA_PAGE_SIZE = 500;
 
-// Development-only owner portfolio mock. Nimi App Access has no owner persona
-// list/detail operations yet, so dev renderer sessions resolve the first two
-// visual fixture personas for page testing. Never active in production builds
-// or vitest (MODE === 'test'); set VITE_RPS_DEV_MOCK_PORTFOLIO=false to opt out.
-const DEV_MOCK_PERSONA_COUNT = 2;
-const devMockPortfolioEnabled = import.meta.env.DEV
-  && import.meta.env.MODE !== 'test'
-  && import.meta.env.VITE_RPS_DEV_MOCK_PORTFOLIO !== 'false';
-
-type RealmCreatePersonaResponse = RealmModel<'PersonaCharacterCoreDto'>;
+type RealmCreatePersonaResponse = NimiLocalAppPersonaCharacter;
 
 export type RealmPersonaCreateCanonicalFields = {
   id: string;
-  state?: string;
   contentHash: string;
   homeWorldId: string;
+  contentRevision: number;
+  visibility: NimiLocalAppPersonaCharacter['visibility'];
 };
 
 export type RealmPersonaCreateResult =
@@ -59,30 +49,15 @@ export type RealmPersonaCreateResult =
   | {
     ok: false;
     source: typeof REALM_PERSONA_CREATE_SOURCE;
-    failure: 'realm-create-persona-failed' | 'realm-create-persona-missing-canonical-id';
+    failure: NimiLocalAppPersonaCharacterFailureReason;
     message: string;
   };
 
 export type RealmPersonaCreateProfileSettingsCompletion =
-  | {
+  {
     status: 'not-applicable';
     truthWrite: false;
     description: '';
-  }
-  | {
-    status: 'already-current';
-    source: 'Realm WorldCoreController.getRealmPersonaSettings';
-    truthWrite: false;
-    description: string;
-    settings: RealmOwnerPersonaSettings;
-  }
-  | {
-    status: 'updated';
-    source: typeof OWNER_SETTINGS_SAVE_SOURCE;
-    truthWrite: true;
-    description: string;
-    submitted: Extract<RealmOwnerPersonaSettingsUpdateResult, { ok: true }>['submitted'];
-    settings: RealmOwnerPersonaSettings;
   };
 
 export type RealmPersonaCreateWithProfileSettingsResult =
@@ -96,14 +71,9 @@ export type RealmPersonaCreateWithProfileSettingsResult =
   | {
     ok: false;
     source: typeof REALM_PERSONA_CREATE_SOURCE;
-    failure:
-      | 'realm-create-persona-failed'
-      | 'realm-create-persona-missing-canonical-id'
-      | 'realm-create-persona-profile-settings-read-failed'
-      | 'realm-create-persona-profile-settings-failed';
+    failure: NimiLocalAppPersonaCharacterFailureReason;
     message: string;
     createdCanonical?: RealmPersonaCreateCanonicalFields;
-    settingsResult?: RealmOwnerPersonaSettingsUpdateResult;
   };
 
 export type RealmPersonaHandleAvailabilityResult =
@@ -120,79 +90,73 @@ export type RealmPersonaHandleAvailabilityResult =
     availability: null;
   };
 
-function readOptionalString(record: Record<string, unknown>, key: string): string | undefined {
-  const value = record[key];
-  return typeof value === 'string' && value.trim() ? value : undefined;
-}
-
 export function buildRealmCreatePersonaInput(payload: ReviewedCreateRealmPersonaPayload): RealmCreatePersonaInput {
-  return {
-    worldId: payload.body.worldId,
-    origin: payload.body.origin,
-    profile: payload.body.profile,
-  };
+  return payload.body;
 }
 
 export function normalizeRealmPersonaCreateResult(persona: RealmCreatePersonaResponse): RealmPersonaCreateResult {
-  if (!persona || typeof persona !== 'object') {
-    return {
-      ok: false,
-      source: REALM_PERSONA_CREATE_SOURCE,
-      failure: 'realm-create-persona-missing-canonical-id',
-      message: 'Realm create RealmPersona returned no persona object.',
-    };
-  }
-
-  const record = persona as unknown as Record<string, unknown>;
-  const id = readOptionalString(record, 'id');
-  const contentHash = readOptionalString(record, 'contentHash');
-  const homeWorldId = readOptionalString(record, 'worldId');
-  if (!id) {
-    return {
-      ok: false,
-      source: REALM_PERSONA_CREATE_SOURCE,
-      failure: 'realm-create-persona-missing-canonical-id',
-      message: 'Realm create RealmPersona returned no canonical persona id.',
-    };
-  }
-  if (!contentHash || !homeWorldId) {
-    return {
-      ok: false,
-      source: REALM_PERSONA_CREATE_SOURCE,
-      failure: 'realm-create-persona-missing-canonical-id',
-      message: 'Realm create RealmPersona returned incomplete canonical source fields.',
-    };
-  }
-
-  const state = readOptionalString(record, 'state');
-  const core = record.profile && typeof record.profile === 'object' ? record.profile as Record<string, unknown> : {};
   return {
     ok: true,
     source: REALM_PERSONA_CREATE_SOURCE,
     persona,
     canonical: {
-      id,
-      contentHash,
-      homeWorldId,
-      ...(state ? { state } : readOptionalString(core, 'state') ? { state: readOptionalString(core, 'state') } : {}),
+      id: persona.id,
+      contentHash: persona.contentHash,
+      homeWorldId: persona.worldId,
+      contentRevision: persona.contentRevision,
+      visibility: persona.visibility,
     },
   };
 }
-export async function listOwnerPortfolioPersonas(): Promise<OwnerPortfolioPersona[]> {
-  if (devMockPortfolioEnabled) {
-    return PERSONA_WORKSPACE_VISUAL_FIXTURE_LIST.slice(0, DEV_MOCK_PERSONA_COUNT);
+
+async function listAllOwnedPersonaCharacters(): Promise<readonly NimiLocalAppPersonaCharacter[]> {
+  const client = getStudioLocalAppClient().realm.personaCharacter;
+  const items: NimiLocalAppPersonaCharacter[] = [];
+  const seenCursors = new Set<string>();
+  const seenPersonaIds = new Set<string>();
+  let afterId: string | undefined;
+
+  while (true) {
+    const page = await client.listOwned({
+      take: OWNER_PERSONA_PAGE_SIZE,
+      ...(afterId ? { afterId } : {}),
+    });
+    for (const persona of page.items) {
+      if (seenPersonaIds.has(persona.id)) {
+        throw createNimiError({
+          message: 'PersonaCharacter owner pagination returned a duplicate persona id.',
+          reasonCode: 'contract-invalid',
+          actionHint: 'retry_after_contract_repair',
+          source: 'sdk',
+        });
+      }
+      seenPersonaIds.add(persona.id);
+      items.push(persona);
+    }
+    if (!page.nextAfterId) return items;
+    if (seenCursors.has(page.nextAfterId)) {
+      throw createNimiError({
+        message: 'PersonaCharacter owner pagination returned a repeated cursor.',
+        reasonCode: 'contract-invalid',
+        actionHint: 'retry_after_contract_repair',
+        source: 'sdk',
+      });
+    }
+    seenCursors.add(page.nextAfterId);
+    afterId = page.nextAfterId;
   }
-  requireStudioProtectedOperation('Owner Realm Persona portfolio listing');
+}
+
+// @nimi-authority: rule.realm-persona-studio.persona.r003
+export async function listOwnerPortfolioPersonas(): Promise<OwnerPortfolioPersona[]> {
+  return normalizeOwnerPortfolio(await listAllOwnedPersonaCharacters());
 }
 
 export async function getOwnerPortfolioPersonaDetail(
   personaId: string,
 ): Promise<OwnerPortfolioPersonaDetail> {
-  if (devMockPortfolioEnabled) {
-    const fixture = PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS[personaId];
-    if (fixture) return fixture;
-  }
-  requireStudioProtectedOperation('Owner Realm Persona detail reading');
+  const persona = await getStudioLocalAppClient().realm.personaCharacter.getOwned(personaId);
+  return normalizeOwnerPortfolioPersonaDetail(persona);
 }
 
 export async function listCreateRealmPersonaSelectableWorlds(): Promise<SelectableRealmWorld[]> {
@@ -208,21 +172,85 @@ export async function getCreateRealmPersonaWorldPreview(
 }
 
 export async function checkCreateRealmPersonaHandleAvailability(
-  _handle: string,
+  handle: string,
 ): Promise<RealmPersonaHandleAvailabilityResult> {
-  requireStudioProtectedOperation('Realm Persona handle availability checking');
+  const normalized = handle.trim().replace(/^@+/u, '').toLocaleLowerCase();
+  if (!normalized) {
+    return {
+      ok: false,
+      truthWrite: false,
+      failure: 'persona-handle-invalid',
+      message: 'PersonaCharacter handle is invalid.',
+      availability: null,
+    };
+  }
+  try {
+    const personas = await listAllOwnedPersonaCharacters();
+    const conflict = personas.some((persona) => persona.profile.identity.handle?.trim().toLocaleLowerCase() === normalized);
+    return {
+      ok: true,
+      truthWrite: false,
+      availability: conflict
+        ? {
+            checked: true,
+            source: REALM_PERSONA_HANDLE_CHECK_SOURCE,
+            handle: normalized,
+            normalized,
+            available: false,
+            message: 'A PersonaCharacter with this handle already exists in the owner portfolio.',
+          }
+        : {
+            checked: true,
+            source: REALM_PERSONA_HANDLE_CHECK_SOURCE,
+            handle: normalized,
+            normalized,
+            available: true,
+          },
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      truthWrite: false,
+      failure: 'realm-persona-handle-check-failed',
+      message: personaCharacterFailureReason(error),
+      availability: null,
+    };
+  }
 }
 
+// @nimi-authority: rule.realm-persona-studio.persona.r009
 export async function createReviewedRealmPersona(
-  _payload: ReviewedCreateRealmPersonaPayload,
+  payload: ReviewedCreateRealmPersonaPayload,
 ): Promise<RealmPersonaCreateResult> {
-  requireStudioProtectedOperation('Reviewed Realm Persona creation');
+  try {
+    const persona = await getStudioLocalAppClient().realm.personaCharacter.create(
+      buildRealmCreatePersonaInput(payload),
+    );
+    return normalizeRealmPersonaCreateResult(persona);
+  } catch (error) {
+    const reason = personaCharacterFailureReason(error);
+    return {
+      ok: false,
+      source: REALM_PERSONA_CREATE_SOURCE,
+      failure: reason,
+      message: reason,
+    };
+  }
 }
 
 export async function createReviewedRealmPersonaWithProfileSettings(
-  _payload: ReviewedCreateRealmPersonaPayload,
+  payload: ReviewedCreateRealmPersonaPayload,
 ): Promise<RealmPersonaCreateWithProfileSettingsResult> {
-  requireStudioProtectedOperation('Reviewed Realm Persona creation with profile settings');
+  const result = await createReviewedRealmPersona(payload);
+  if (!result.ok) return result;
+  return {
+    ...result,
+    profileSettings: {
+      status: 'not-applicable',
+      truthWrite: false,
+      description: '',
+    },
+  };
 }
 
 export * from './portfolio-media-client.js';

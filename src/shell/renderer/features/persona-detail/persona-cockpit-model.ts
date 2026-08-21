@@ -14,7 +14,7 @@ export type PersonaCockpitAction = {
   label: string;
   route: 'settings' | 'assets' | 'posts' | 'insights';
   reason: string;
-  source: 'Realm WorldCoreController.getRealmPersona' | 'local workspace state';
+  source: 'Nimi App Access realm.personaCharacter.getOwned' | 'local workspace state';
 };
 
 export type PersonaCockpitCard = {
@@ -24,7 +24,7 @@ export type PersonaCockpitCard = {
   summary: string;
   evidence: string[];
   actions: PersonaCockpitActionKey[];
-  source: 'Realm WorldCoreController.getRealmPersona';
+  source: 'Nimi App Access realm.personaCharacter.getOwned';
 };
 
 export type PersonaCockpitModel = {
@@ -61,35 +61,35 @@ export function derivePersonaCockpitModel(persona: OwnerPortfolioPersonaDetail):
       label: 'Improve settings',
       route: 'settings',
       reason: 'Review public identity, greeting, communication, and boundary fields.',
-      source: 'Realm WorldCoreController.getRealmPersona',
+      source: 'Nimi App Access realm.personaCharacter.getOwned',
     },
     {
       key: 'generate-identity',
       label: 'Generate identity',
       route: 'assets',
       reason: 'Create avatar, visual reference, and voice candidates from source-backed profile fields.',
-      source: 'Realm WorldCoreController.getRealmPersona',
+      source: 'Nimi App Access realm.personaCharacter.getOwned',
     },
     {
       key: 'create-post',
       label: 'Create post',
       route: 'posts',
       reason: 'Draft owner-reviewed content from current profile voice and public setting fields.',
-      source: 'Realm WorldCoreController.getRealmPersona',
+      source: 'Nimi App Access realm.personaCharacter.getOwned',
     },
     {
       key: 'review-visibility',
       label: 'Review visibility',
       route: 'settings',
       reason: 'Open owner-scoped settings and visibility controls.',
-      source: 'Realm WorldCoreController.getRealmPersona',
+      source: 'Nimi App Access realm.personaCharacter.getOwned',
     },
     {
       key: 'inspect-source',
       label: 'Inspect sources',
       route: 'insights',
       reason: 'Check source availability and deferred metrics without fallback values.',
-      source: 'Realm WorldCoreController.getRealmPersona',
+      source: 'Nimi App Access realm.personaCharacter.getOwned',
     },
   ];
 
@@ -102,7 +102,7 @@ export function derivePersonaCockpitModel(persona: OwnerPortfolioPersonaDetail):
     ['greeting', persona.greeting],
     ['profile cover URL', persona.profileCoverUrl],
     ['world', persona.world],
-    ['state', persona.state],
+    ['visibility', persona.visibility],
   ] as const;
   for (const [label, field] of trackedFields) {
     if (isUnavailable(field)) unavailableSignals.push(label);
@@ -152,7 +152,7 @@ export function derivePersonaCockpitModel(persona: OwnerPortfolioPersonaDetail):
         fieldEvidence('Greeting', persona.greeting),
       ],
       actions: ['improve-settings', 'review-visibility'],
-      source: 'Realm WorldCoreController.getRealmPersona',
+      source: 'Nimi App Access realm.personaCharacter.getOwned',
     },
     {
       key: 'ai-readiness',
@@ -165,7 +165,7 @@ export function derivePersonaCockpitModel(persona: OwnerPortfolioPersonaDetail):
         `Voice config: ${hasVoiceConfig ? 'available' : 'not set'}`,
       ],
       actions: ['improve-settings', 'generate-identity'],
-      source: 'Realm WorldCoreController.getRealmPersona',
+      source: 'Nimi App Access realm.personaCharacter.getOwned',
     },
     {
       key: 'identity',
@@ -182,7 +182,7 @@ export function derivePersonaCockpitModel(persona: OwnerPortfolioPersonaDetail):
         `Voice config: ${hasVoiceConfig ? 'available' : 'not set'}`,
       ],
       actions: ['generate-identity'],
-      source: 'Realm WorldCoreController.getRealmPersona',
+      source: 'Nimi App Access realm.personaCharacter.getOwned',
     },
     {
       key: 'content',
@@ -196,7 +196,7 @@ export function derivePersonaCockpitModel(persona: OwnerPortfolioPersonaDetail):
         fieldEvidence('Greeting', persona.greeting),
       ],
       actions: ['create-post', 'improve-settings'],
-      source: 'Realm WorldCoreController.getRealmPersona',
+      source: 'Nimi App Access realm.personaCharacter.getOwned',
     },
     {
       key: 'adoption',
@@ -211,7 +211,7 @@ export function derivePersonaCockpitModel(persona: OwnerPortfolioPersonaDetail):
           : 'friendCount: source unavailable',
       ],
       actions: ['inspect-source'],
-      source: 'Realm WorldCoreController.getRealmPersona',
+      source: 'Nimi App Access realm.personaCharacter.getOwned',
     },
   ];
 

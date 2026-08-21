@@ -14,6 +14,7 @@ const readyDraft: CreateRealmPersonaDraftInput = {
   description: 'Mira helps owners review persona behavior before public writes.',
   ruleText: 'Keep output practical.',
   selectedWorldId: 'world-oasis',
+  visibility: 'public',
   personaArchetype: 'INTELLECTUAL',
   personaTraits: ['WISE', 'DIRECT'],
   referenceImageUrl: 'https://cdn.example.test/mira.png',

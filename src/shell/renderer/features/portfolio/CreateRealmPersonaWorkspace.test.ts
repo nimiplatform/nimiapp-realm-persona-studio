@@ -112,6 +112,9 @@ describe('Create Realm Persona workspace v2 shell', () => {
     expect(source).toContain('setGraphAcceptedFingerprint(acceptedFingerprint)');
     expect(source).toContain('const createDisabled = createMutation.isPending');
     expect(source).toContain('!readiness.ready');
+    expect(source).toContain('queryClient.fetchQuery({');
+    expect(source).toContain('getOwnerPortfolioPersonaDetail(result.canonical.id)');
+    expect(source).toContain("onOpenCreatedPersona(result.canonical.id, 'detail')");
     expect(source).not.toContain('!creationGraphReview.canAccept');
     expect(source).not.toContain('handleCheckBlocking');
   });

@@ -8,7 +8,7 @@ export type MaintenanceSuggestionRoute = 'settings' | 'assets' | 'posts' | 'sche
 export type MaintenanceSuggestionKind = 'profile' | 'identity' | 'content' | 'schedule' | 'adoption';
 
 export type MaintenanceSuggestionSource =
-  | 'Realm WorldCoreController.getRealmPersona'
+  | 'Nimi App Access realm.personaCharacter.getOwned'
   | 'realm-persona-studio.local-creative-asset-history'
   | 'realm-persona-studio.local-single-post-schedule-store';
 
@@ -94,7 +94,7 @@ export function deriveMaintenanceSuggestions(context: MaintenanceSuggestionConte
       rationale: 'Realm detail did not return the profile fields needed for reliable maintenance.',
       evidence: profileUnavailable.map((field) => `${field}: source unavailable`),
       action: { label: 'Inspect source', route: 'insights' },
-      sources: ['Realm WorldCoreController.getRealmPersona'],
+      sources: ['Nimi App Access realm.personaCharacter.getOwned'],
       candidate: true,
       publicTruth: false,
       truthWrite: false,
@@ -109,7 +109,7 @@ export function deriveMaintenanceSuggestions(context: MaintenanceSuggestionConte
       rationale: 'Public profile and greeting fields need owner-reviewed copy before stronger content and identity work.',
       evidence: profileMissing.map((field) => `${field}: not set`),
       action: { label: 'Open settings', route: 'settings' },
-      sources: ['Realm WorldCoreController.getRealmPersona'],
+      sources: ['Nimi App Access realm.personaCharacter.getOwned'],
       candidate: true,
       publicTruth: false,
       truthWrite: false,
@@ -132,7 +132,7 @@ export function deriveMaintenanceSuggestions(context: MaintenanceSuggestionConte
       rationale: 'Realm did not return enough profile media state to judge public identity readiness.',
       evidence: identityUnavailable.map((field) => `${field}: source unavailable`),
       action: { label: 'Inspect source', route: 'insights' },
-      sources: ['Realm WorldCoreController.getRealmPersona'],
+      sources: ['Nimi App Access realm.personaCharacter.getOwned'],
       candidate: true,
       publicTruth: false,
       truthWrite: false,
@@ -147,7 +147,7 @@ export function deriveMaintenanceSuggestions(context: MaintenanceSuggestionConte
       rationale: 'Avatar, cover, or voice candidates can be prepared from current owner-visible profile state.',
       evidence: identityMissing.map((field) => `${field}: not set`),
       action: { label: 'Open assets', route: 'assets' },
-      sources: ['Realm WorldCoreController.getRealmPersona'],
+      sources: ['Nimi App Access realm.personaCharacter.getOwned'],
       candidate: true,
       publicTruth: false,
       truthWrite: false,
@@ -188,7 +188,7 @@ export function deriveMaintenanceSuggestions(context: MaintenanceSuggestionConte
       rationale: 'Post variants need source-backed profile voice fields; Studio will not infer them from private or missing state.',
       evidence: contentUnavailable.map((field) => `${field}: source unavailable`),
       action: { label: 'Inspect source', route: 'insights' },
-      sources: ['Realm WorldCoreController.getRealmPersona'],
+      sources: ['Nimi App Access realm.personaCharacter.getOwned'],
       candidate: true,
       publicTruth: false,
       truthWrite: false,
@@ -203,7 +203,7 @@ export function deriveMaintenanceSuggestions(context: MaintenanceSuggestionConte
       rationale: 'Content Studio should use reviewed profile voice instead of inventing a voice from empty fields.',
       evidence: contentMissing.map((field) => `${field}: not set`),
       action: { label: 'Open settings', route: 'settings' },
-      sources: ['Realm WorldCoreController.getRealmPersona'],
+      sources: ['Nimi App Access realm.personaCharacter.getOwned'],
       candidate: true,
       publicTruth: false,
       truthWrite: false,
@@ -218,7 +218,7 @@ export function deriveMaintenanceSuggestions(context: MaintenanceSuggestionConte
       rationale: 'Profile description and greeting are available for owner-reviewed post drafting.',
       evidence: ['Profile description: available', 'Greeting: available'],
       action: { label: 'Open posts', route: 'posts' },
-      sources: ['Realm WorldCoreController.getRealmPersona'],
+      sources: ['Nimi App Access realm.personaCharacter.getOwned'],
       candidate: true,
       publicTruth: false,
       truthWrite: false,
@@ -255,7 +255,7 @@ export function deriveMaintenanceSuggestions(context: MaintenanceSuggestionConte
       rationale: 'friendCount is not present on the Realm detail projection, so Studio shows no fallback engagement metric.',
       evidence: ['friendCount: source unavailable'],
       action: { label: 'Inspect source', route: 'insights' },
-      sources: ['Realm WorldCoreController.getRealmPersona'],
+      sources: ['Nimi App Access realm.personaCharacter.getOwned'],
       candidate: true,
       publicTruth: false,
       truthWrite: false,

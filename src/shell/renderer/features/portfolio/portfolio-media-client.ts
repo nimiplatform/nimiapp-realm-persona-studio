@@ -1,8 +1,13 @@
 import type {
-  RealmModel,
-} from '@nimiplatform/sdk/realm/generated';
-import { requireStudioProtectedOperation } from '@renderer/app-shell/studio-platform.js';
-import type { OwnerPortfolioPersonaDetail } from './portfolio-data.js';
+  NimiLocalAppPersonaCharacter,
+  NimiLocalAppPersonaCharacterFailureReason,
+  NimiLocalAppPersonaCharacterProfileInput,
+} from '@nimiplatform/sdk/app';
+import { getStudioLocalAppClient } from '@renderer/app-shell/studio-platform.js';
+import {
+  personaCharacterFailureReason,
+  type OwnerPortfolioPersonaDetail,
+} from './portfolio-data.js';
 import {
   VISUAL_IMAGE_GENERATION_SOURCE,
   VOICE_DEMO_SYNTHESIS_SOURCE,
@@ -24,13 +29,14 @@ import {
   type StudioMediaCandidateFailure,
   type StudioVoiceCandidateRunner,
 } from './studio-media-candidate.js';
+import { normalizeDisplaySafeHttpsUrl } from './persona-external-ref.js';
 
 type RealmSelectAvatarInput = { avatarUrl: string };
-type RealmSelectAvatarResponse = RealmModel<'PersonaCharacterCoreDto'>;
+type RealmSelectAvatarResponse = NimiLocalAppPersonaCharacter;
 
-export const REALM_PERSONA_AVATAR_SELECT_SOURCE = 'Realm WorldCoreController.replaceRealmPersona';
+export const REALM_PERSONA_AVATAR_SELECT_SOURCE = 'Nimi App Access realm.personaCharacter.replace';
 
-export const PERSONA_AVATAR_SELECTION_AVAILABLE = false;
+export const PERSONA_AVATAR_SELECTION_AVAILABLE = true;
 
 export type RealmPersonaAvatarSelectResult =
   | {
@@ -46,7 +52,7 @@ export type RealmPersonaAvatarSelectResult =
     ok: false;
     source: typeof REALM_PERSONA_AVATAR_SELECT_SOURCE;
     publicTruth: false;
-    failure: 'avatar-url-invalid' | 'realm-select-avatar-failed' | 'realm-select-avatar-rejected';
+    failure: NimiLocalAppPersonaCharacterFailureReason;
     message: string;
     submitted: RealmSelectAvatarInput | null;
   };
@@ -105,20 +111,7 @@ export type RuntimeVoiceDemoSynthesisResult =
   };
 
 function normalizeAvatarUrl(value: string): string | null {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  try {
-    const url = new URL(trimmed);
-    if (url.protocol !== 'https:' && url.protocol !== 'http:') {
-      return null;
-    }
-    return url.toString();
-  } catch {
-    return null;
-  }
+  return normalizeDisplaySafeHttpsUrl(value.trim());
 }
 
 export function buildRealmSelectAvatarInput(avatarUrl: string): RealmSelectAvatarInput | null {
@@ -144,8 +137,8 @@ export function normalizeRealmPersonaAvatarSelectResult(
       ok: false,
       source: REALM_PERSONA_AVATAR_SELECT_SOURCE,
       publicTruth: false,
-      failure: 'realm-select-avatar-rejected',
-      message: 'RealmPersona replacement did not persist the reviewed avatar external ref.',
+      failure: 'contract-invalid',
+      message: 'contract-invalid',
       submitted,
     };
   }
@@ -175,16 +168,15 @@ function coreHasExternalRef(core: Record<string, unknown>, kind: string, uri: st
 }
 
 export function withSelectedAvatarExternalRef(
-  profile: RealmModel<'PersonaCharacterCoreDto'>['profile'],
+  profile: NimiLocalAppPersonaCharacterProfileInput,
   avatarUrl: string,
-): RealmModel<'CharacterProfileCoreInputDto'> {
-  const assets = asRecord(profile.assets);
-  const existingRefs = Array.isArray(assets.externalRefs) ? assets.externalRefs : [];
+): NimiLocalAppPersonaCharacterProfileInput {
+  const existingRefs = profile.assets.externalRefs ?? [];
   const retainedRefs = existingRefs.filter((entry) => asRecord(entry).kind !== 'avatar');
   return {
+    ...profile,
     assets: {
-      ...assets,
-      resourceRefs: Array.isArray(assets.resourceRefs) ? assets.resourceRefs : [],
+      ...profile.assets,
       externalRefs: [
         ...retainedRefs,
         {
@@ -194,28 +186,60 @@ export function withSelectedAvatarExternalRef(
           purpose: 'profile-avatar',
         },
       ],
-      intents: Array.isArray(assets.intents) ? assets.intents : [],
     },
-    authoring: asRecord(profile.authoring),
-    ...(profile.capabilities ? { capabilities: asRecord(profile.capabilities) } : {}),
-    identity: asRecord(profile.identity),
-    interactionProfile: asRecord(profile.interactionProfile),
-    ...(profile.knowledge ? { knowledge: asRecord(profile.knowledge) } : {}),
-    narrative: asRecord(profile.narrative),
-    presentation: asRecord(profile.presentation),
-    ...(profile.psychology ? { psychology: asRecord(profile.psychology) } : {}),
-    ...(profile.relationships
-      ? { relationships: profile.relationships.map((relationship) => asRecord(relationship)) }
-      : {}),
-    profileSchemaVersion: profile.profileSchemaVersion,
   };
 }
 
+// @nimi-authority: rule.realm-persona-studio.asset.r004
 export async function selectReviewedPersonaAvatarUrl(
-  _personaId: string,
-  _avatarUrl: string,
+  persona: OwnerPortfolioPersonaDetail,
+  avatarUrl: string,
 ): Promise<RealmPersonaAvatarSelectResult> {
-  requireStudioProtectedOperation('Reviewed Realm Persona avatar selection');
+  const submitted = buildRealmSelectAvatarInput(avatarUrl);
+  if (!submitted) {
+    return {
+      ok: false,
+      source: REALM_PERSONA_AVATAR_SELECT_SOURCE,
+      publicTruth: false,
+      failure: 'invalid-input',
+      message: 'invalid-input',
+      submitted: null,
+    };
+  }
+  const current = persona.canonical;
+  if (!current || current.id !== persona.id || current.visibility === 'system') {
+    return {
+      ok: false,
+      source: REALM_PERSONA_AVATAR_SELECT_SOURCE,
+      publicTruth: false,
+      failure: 'contract-invalid',
+      message: 'contract-invalid',
+      submitted,
+    };
+  }
+  try {
+    const client = getStudioLocalAppClient().realm.personaCharacter;
+    const profile = withSelectedAvatarExternalRef(client.toProfileInput(current.profile), submitted.avatarUrl);
+    const replaced = await client.replace({
+      personaCharacterId: current.id,
+      baseContentHash: current.contentHash,
+      worldId: current.worldId,
+      visibility: current.visibility,
+      origin: current.origin,
+      profile,
+    });
+    return normalizeRealmPersonaAvatarSelectResult(replaced, submitted);
+  } catch (error) {
+    const reason = personaCharacterFailureReason(error);
+    return {
+      ok: false,
+      source: REALM_PERSONA_AVATAR_SELECT_SOURCE,
+      publicTruth: false,
+      failure: reason,
+      message: reason,
+      submitted,
+    };
+  }
 }
 
 export async function synthesizeReviewedVoiceDemo(

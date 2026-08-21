@@ -35,15 +35,15 @@ const candidate: LocalPostScheduleCandidate = {
     candidate: true,
     source: 'realm-persona-studio.local-post-draft',
     personaRef: {
-      source: 'Realm WorldCoreController.getRealmPersona',
-      sourceKind: 'realmPersona',
+      source: 'Nimi App Access realm.personaCharacter.getOwned',
+      sourceKind: 'personaCharacter',
       sourceRef: {
-        kind: 'realmPersona',
+        kind: 'personaCharacter',
         worldId: 'world-oasis',
         sourceId: 'persona-1',
         sourceContentHash: 'hash-persona-1',
       },
-      sourceRefKey: 'realmPersona:world-oasis:persona-1:hash-persona-1',
+      sourceRefKey: 'personaCharacter:world-oasis:persona-1:hash-persona-1',
       handle: 'mira',
       displayName: 'Mira',
     },
@@ -92,7 +92,7 @@ describe('local post schedule store', () => {
     const oldCandidate = structuredClone(candidate) as unknown as Record<string, unknown>;
     const postCandidate = oldCandidate.postCandidate as Record<string, unknown>;
     const personaRef = postCandidate.personaRef as Record<string, unknown>;
-    personaRef.sourceRef = 'realmPersona:world-oasis:persona-1:hash-persona-1';
+    personaRef.sourceRef = 'personaCharacter:world-oasis:persona-1:hash-persona-1';
     delete personaRef.sourceRefKey;
     const oldRecord = {
       localKey: 'persona-1:2026-05-22T09:30',
@@ -111,6 +111,17 @@ describe('local post schedule store', () => {
       'persona-1',
       oldCandidate as unknown as LocalPostScheduleCandidate,
       storage,
-    )).toThrow(/typed RealmPersona sourceRef/);
+    )).toThrow(/typed PersonaCharacter sourceRef/);
+  });
+
+  it('rejects a schedule stored under a different persona than its sourceRef', () => {
+    const storage = createStorage();
+
+    expect(() => saveLocalPostSchedule('persona-2', candidate, storage)).toThrow(/persona identity does not match/u);
+    expect(storage.setItem).not.toHaveBeenCalled();
+  });
+
+  it('does not report a saved schedule when local storage is unavailable', () => {
+    expect(() => saveLocalPostSchedule('persona-1', candidate, null)).toThrow(/storage is unavailable/u);
   });
 });

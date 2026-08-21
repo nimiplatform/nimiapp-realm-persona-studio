@@ -1,13 +1,15 @@
 import type {
-  RealmModel,
-} from '@nimiplatform/sdk/realm/generated';
+  NimiLocalAppPersonaCharacter,
+  NimiLocalAppPersonaCharacterFailureReason,
+  NimiLocalAppPersonaCharacterVisibility,
+} from '@nimiplatform/sdk/app';
+import { normalizeDisplaySafeHttpsUrl } from './persona-external-ref.js';
 
-export type MyRealmPersonaDto = RealmModel<'PersonaCharacterCoreDto'>;
-export type MyRealmPersonaDetailDto = RealmModel<'PersonaCharacterCoreDto'>;
+export type OwnerPersonaCharacter = NimiLocalAppPersonaCharacter;
 
 export type PortfolioPersonaOwnerScope = 'owner-created';
-export type PortfolioPersonaListSource = 'Realm WorldCoreController.listRealmPersonas';
-export type PortfolioPersonaDetailSource = 'Realm WorldCoreController.getRealmPersona';
+export type PortfolioPersonaListSource = 'Nimi App Access realm.personaCharacter.listOwned';
+export type PortfolioPersonaDetailSource = 'Nimi App Access realm.personaCharacter.getOwned';
 
 export type FriendCountMetric =
   | { status: 'available'; value: number }
@@ -16,12 +18,12 @@ export type FriendCountMetric =
 export type OwnerPortfolioPersona = {
   id: string;
   displayName: string;
-  handle: string;
+  handle: string | null;
   coverUrl: string | null;
   avatarUrl: string | null;
   ownerScope: PortfolioPersonaOwnerScope;
   source: PortfolioPersonaListSource;
-  realmState: string | null;
+  visibility: NimiLocalAppPersonaCharacterVisibility;
   worldName: string | null;
   updatedAt: string | null;
   friendCount: FriendCountMetric;
@@ -44,7 +46,7 @@ export type SettingFieldKey =
   | 'profileCoverUrl'
   | 'ownership'
   | 'world'
-  | 'state';
+  | 'visibility';
 
 export type SettingField = {
   key: SettingFieldKey;
@@ -76,7 +78,7 @@ export type OwnerPortfolioPersonaDetail = {
   profileCoverUrl: SettingField;
   ownership: SettingField;
   world: SettingField;
-  state: SettingField;
+  visibility: SettingField;
   avatarUrl: string | null;
   contentHash: string;
   contentRevision: number;
@@ -85,34 +87,17 @@ export type OwnerPortfolioPersonaDetail = {
   friendCount: FriendCountMetric;
   ownerScope: PortfolioPersonaOwnerScope;
   source: PortfolioPersonaDetailSource;
+  canonical?: NimiLocalAppPersonaCharacter;
 };
 
-export type PortfolioFailureKind =
-  | 'capability-unavailable'
-  | 'realm-unavailable'
-  | 'access-denied'
-  | 'owner-authority-missing'
-  | 'setting-read-unavailable'
-  | 'unknown';
+export type PortfolioFailureKind = NimiLocalAppPersonaCharacterFailureReason;
 
 export type PortfolioFailure = {
   kind: PortfolioFailureKind;
-  title: 'Capability unavailable' | 'Realm unavailable' | 'Access unavailable' | 'owner authority missing' | 'Setting read unavailable' | 'Portfolio unavailable';
-  detail: string;
 };
 
 function readOptionalRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' ? value as Record<string, unknown> : null;
-}
-
-function readNumber(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) ? value : null;
-}
-
-function readHttpStatus(error: unknown): number | null {
-  const errorRecord = readOptionalRecord(error);
-  const details = readOptionalRecord(errorRecord?.details);
-  return readNumber(errorRecord?.status) || readNumber(details?.httpStatus);
 }
 
 function readString(value: unknown): string | null {
@@ -148,7 +133,7 @@ function stringFieldFromValue(value: string | null): StringFieldRead {
   return value === null ? { present: false } : { present: true, value };
 }
 
-function readPersonaCore(persona: MyRealmPersonaDto | MyRealmPersonaDetailDto): Record<string, unknown> {
+function readPersonaCore(persona: OwnerPersonaCharacter): Record<string, unknown> {
   return readOptionalRecord(persona.profile) ?? {};
 }
 
@@ -161,44 +146,45 @@ function readExternalAssetUri(core: Record<string, unknown>, kind: string): stri
   const refs = Array.isArray(assets?.externalRefs) ? assets.externalRefs : [];
   for (const ref of refs) {
     const record = readOptionalRecord(ref);
-    if (readString(record?.kind) === kind) {
-      return readString(record?.uri);
+    const uri = normalizeDisplaySafeHttpsUrl(readString(record?.uri));
+    if (readString(record?.kind) === kind && uri) {
+      return uri;
     }
   }
   return null;
 }
 
-export function normalizeFriendCount(_persona: MyRealmPersonaDto | MyRealmPersonaDetailDto): FriendCountMetric {
+export function normalizeFriendCount(_persona: OwnerPersonaCharacter): FriendCountMetric {
   return { status: 'source-unavailable', label: 'friendCount source unavailable' };
 }
 
 export function normalizeOwnerPortfolioPersona(
-  persona: MyRealmPersonaDto,
+  persona: OwnerPersonaCharacter,
 ): OwnerPortfolioPersona {
   const core = readPersonaCore(persona);
   const identity = readCoreSection(core, 'identity');
-  const presentation = readCoreSection(core, 'presentation');
-  const displayName = readString(presentation?.displayName) || readString(identity?.name) || persona.id;
-  const handle = readString(identity?.handle) || persona.id;
+  const displayName = persona.profile.presentation.displayName;
+  const handle = Object.prototype.hasOwnProperty.call(identity ?? {}, 'handle')
+    ? persona.profile.identity.handle ?? ''
+    : null;
 
   return {
     id: persona.id,
     displayName,
     handle,
-    coverUrl: readString(presentation?.profileCoverResourceRef) || readExternalAssetUri(core, 'profileCover'),
-    avatarUrl: readString(presentation?.avatarResourceRef)
-      || readExternalAssetUri(core, 'avatar')
+    coverUrl: readExternalAssetUri(core, 'profileCover'),
+    avatarUrl: readExternalAssetUri(core, 'avatar')
       || readExternalAssetUri(core, 'referenceImage'),
     ownerScope: 'owner-created',
-    source: 'Realm WorldCoreController.listRealmPersonas',
-    realmState: null,
+    source: 'Nimi App Access realm.personaCharacter.listOwned',
+    visibility: persona.visibility,
     worldName: persona.worldId,
     updatedAt: persona.updatedAt,
     friendCount: normalizeFriendCount(persona),
   };
 }
 
-export function normalizeOwnerPortfolio(personas: readonly MyRealmPersonaDto[]): OwnerPortfolioPersona[] {
+export function normalizeOwnerPortfolio(personas: readonly OwnerPersonaCharacter[]): OwnerPortfolioPersona[] {
   return personas.map((persona) => normalizeOwnerPortfolioPersona(persona));
 }
 
@@ -247,9 +233,9 @@ function personaMatchesQuery(persona: OwnerPortfolioPersona, normalizedQuery: st
   return [
     persona.id,
     persona.displayName,
-    persona.handle,
+    persona.handle || '',
     persona.worldName || '',
-    persona.realmState || '',
+    persona.visibility,
   ].some((value) => value.toLocaleLowerCase().includes(normalizedQuery));
 }
 
@@ -330,28 +316,15 @@ function settingField(
   };
 }
 
-function readPersonaVoiceConfig(core: Record<string, unknown>): PortfolioPersonaVoiceConfig {
-  const narrative = readCoreSection(core, 'narrative');
-  return {
-    voiceId: '',
-    description: readString(narrative?.archetype) || '',
-    emotionEnabled: null,
-    speed: null,
-    pitch: null,
-    speechModelId: '',
-    speechRoutePolicy: null,
-  };
-}
-
 export function normalizeOwnerPortfolioPersonaDetail(
-  persona: MyRealmPersonaDetailDto,
+  persona: OwnerPersonaCharacter,
 ): OwnerPortfolioPersonaDetail {
   const core = readPersonaCore(persona);
   const identity = readCoreSection(core, 'identity');
   const presentation = readCoreSection(core, 'presentation');
   const interactionProfile = readCoreSection(core, 'interactionProfile');
   const bio = readFirstStringField(identity, ['summary', 'concept']);
-  const source: PortfolioPersonaDetailSource = 'Realm WorldCoreController.getRealmPersona';
+  const source: PortfolioPersonaDetailSource = 'Nimi App Access realm.personaCharacter.getOwned';
   return {
     id: persona.id,
     displayName: settingField('displayName', 'Display name', readStringField(presentation, 'displayName'), source),
@@ -361,92 +334,57 @@ export function normalizeOwnerPortfolioPersonaDetail(
     profileCoverUrl: settingField(
       'profileCoverUrl',
       'Profile cover URL',
-      stringFieldFromValue(readString(presentation?.profileCoverResourceRef) || readExternalAssetUri(core, 'profileCover')),
+      stringFieldFromValue(readExternalAssetUri(core, 'profileCover')),
       source,
     ),
-    ownership: settingField('ownership', 'Ownership evidence', { present: true, value: 'owner-created RealmPersona' }, source),
+    ownership: settingField('ownership', 'Ownership evidence', { present: true, value: 'owner-scoped PersonaCharacter' }, source),
     world: settingField('world', 'World evidence', { present: true, value: persona.worldId }, source),
-    state: settingField('state', 'State evidence', { present: false }, source),
-    avatarUrl: readString(presentation?.avatarResourceRef)
-      || readExternalAssetUri(core, 'avatar')
+    visibility: settingField('visibility', 'Visibility', { present: true, value: persona.visibility }, source),
+    avatarUrl: readExternalAssetUri(core, 'avatar')
       || readExternalAssetUri(core, 'referenceImage'),
     contentHash: persona.contentHash,
     contentRevision: persona.contentRevision,
     homeWorldId: persona.worldId,
-    voice: readPersonaVoiceConfig(core),
     friendCount: normalizeFriendCount(persona),
     ownerScope: 'owner-created',
     source,
+    canonical: persona,
   };
 }
 
-export function classifyRealmPersonaReadFailure(error: unknown, read: 'portfolio' | 'detail'): PortfolioFailure {
+const PERSONA_FAILURE_REASONS = new Set<PortfolioFailureKind>([
+  'capability-unavailable',
+  'invalid-input',
+  'session-invalid',
+  'access-denied',
+  'owner-authority-missing',
+  'not-found',
+  'content-conflict',
+  'realm-unavailable',
+  'rate-limited',
+  'upstream-failed',
+  'contract-invalid',
+  'request-too-large',
+  'response-too-large',
+]);
+
+export function personaCharacterFailureReason(error: unknown): PortfolioFailureKind {
   const errorRecord = readOptionalRecord(error);
   const errorDetails = readOptionalRecord(errorRecord?.details);
   const reasonCode = readString(errorRecord?.reasonCode) || readString(errorDetails?.reasonCode);
-  if (reasonCode === 'capability-unavailable') {
-    return {
-      kind: 'capability-unavailable',
-      title: 'Capability unavailable',
-      detail: read === 'detail'
-        ? 'This Persona detail is unavailable because Nimi App Access does not expose its source yet.'
-        : 'The owner Persona portfolio is unavailable because Nimi App Access does not expose its source yet.',
-    };
-  }
+  return reasonCode && PERSONA_FAILURE_REASONS.has(reasonCode as PortfolioFailureKind)
+    ? reasonCode as PortfolioFailureKind
+    : 'contract-invalid';
+}
 
-  const status = readHttpStatus(error);
-  if (status === 401 || status === 403) {
-    return {
-      kind: 'access-denied',
-      title: 'Access unavailable',
-      detail: read === 'detail'
-        ? 'This Runtime account session cannot read that Realm Persona.'
-        : 'This Runtime account session cannot read your Realm Persona portfolio.',
-    };
-  }
-
-  const message = error instanceof Error ? error.message : '';
-  if (/owner|MASTER_OWNED|authority/i.test(message)) {
-    return {
-      kind: 'owner-authority-missing',
-      title: 'owner authority missing',
-      detail: read === 'detail'
-        ? 'Realm did not prove current-user owner-created authority for this Realm Persona detail.'
-        : 'Realm did not prove current-user owner-created authority for this portfolio.',
-    };
-  }
-
-  if (/fetch|network|timeout|realm/i.test(message)) {
-    return {
-      kind: 'realm-unavailable',
-      title: 'Realm unavailable',
-      detail: read === 'detail' ? 'Realm Persona detail could not reach Realm.' : 'Owner portfolio could not reach Realm.',
-    };
-  }
-
-  if (/setting|field|read|shape|schema|parse/i.test(message)) {
-    return {
-      kind: 'setting-read-unavailable',
-      title: 'Setting read unavailable',
-      detail: read === 'detail'
-        ? 'Realm did not return usable read-only setting fields for this persona.'
-        : 'Realm did not return usable portfolio fields.',
-    };
-  }
-
-  return {
-    kind: read === 'detail' ? 'setting-read-unavailable' : 'unknown',
-    title: read === 'detail' ? 'Setting read unavailable' : 'Portfolio unavailable',
-    detail: read === 'detail'
-      ? 'Realm did not return a usable user-owned Realm Persona detail.'
-      : 'Realm did not return a usable owner portfolio.',
-  };
+export function classifyRealmPersonaReadFailure(error: unknown): PortfolioFailure {
+  return { kind: personaCharacterFailureReason(error) };
 }
 
 export function classifyPortfolioFailure(error: unknown): PortfolioFailure {
-  return classifyRealmPersonaReadFailure(error, 'portfolio');
+  return classifyRealmPersonaReadFailure(error);
 }
 
 export function classifyPersonaDetailFailure(error: unknown): PortfolioFailure {
-  return classifyRealmPersonaReadFailure(error, 'detail');
+  return classifyRealmPersonaReadFailure(error);
 }

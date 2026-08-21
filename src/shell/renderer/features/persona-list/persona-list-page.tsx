@@ -18,7 +18,6 @@ import {
 import {
   applyOwnerPortfolioView,
   classifyPortfolioFailure,
-  type OwnerPortfolioPersona,
   type OwnerPortfolioFilter,
   type OwnerPortfolioSort,
   type PortfolioFailureKind,
@@ -44,10 +43,6 @@ import {
   listStudioWorldCores,
   studioWorldCardPresentation,
 } from '@renderer/data/studio-world-core.js';
-import oasisBannerUrl from '@renderer/assets/persona-preview/oasis-cover.png?url';
-import edenBannerUrl from '@renderer/assets/persona-preview/eden-cover.png?url';
-import xiaomiAvatarUrl from '@renderer/assets/persona-preview/xiaomi-avatar.png?url';
-import nanxingAvatarUrl from '@renderer/assets/persona-preview/nanxing-avatar.png?url';
 
 const PORTFOLIO_FILTER_OPTIONS: { value: OwnerPortfolioFilter; labelKey: StudioCopyKey }[] = [
   { value: 'all', labelKey: 'portfolio.filter.allPersonas' },
@@ -65,56 +60,38 @@ const PORTFOLIO_SORT_OPTIONS: { value: OwnerPortfolioSort; labelKey: StudioCopyK
 
 const PORTFOLIO_FAILURE_TITLE_KEYS: Record<PortfolioFailureKind, StudioCopyKey> = {
   'capability-unavailable': 'portfolio.failure.capabilityUnavailable.title',
-  'realm-unavailable': 'portfolio.failure.realmUnavailable.title',
+  'invalid-input': 'portfolio.failure.settingReadUnavailable.title',
+  'session-invalid': 'portfolio.failure.accessDenied.title',
   'access-denied': 'portfolio.failure.accessDenied.title',
   'owner-authority-missing': 'portfolio.failure.ownerAuthorityMissing.title',
-  'setting-read-unavailable': 'portfolio.failure.settingReadUnavailable.title',
-  unknown: 'portfolio.failure.portfolioUnavailable.title',
+  'not-found': 'portfolio.failure.portfolioUnavailable.title',
+  'content-conflict': 'portfolio.failure.settingReadUnavailable.title',
+  'realm-unavailable': 'portfolio.failure.realmUnavailable.title',
+  'rate-limited': 'portfolio.failure.realmUnavailable.title',
+  'upstream-failed': 'portfolio.failure.realmUnavailable.title',
+  'contract-invalid': 'portfolio.failure.settingReadUnavailable.title',
+  'request-too-large': 'portfolio.failure.settingReadUnavailable.title',
+  'response-too-large': 'portfolio.failure.settingReadUnavailable.title',
 };
 
 const PORTFOLIO_FAILURE_DETAIL_KEYS: Record<PortfolioFailureKind, StudioCopyKey> = {
   'capability-unavailable': 'portfolio.failure.portfolio.capabilityUnavailable',
-  'realm-unavailable': 'portfolio.failure.portfolio.realm',
+  'invalid-input': 'portfolio.failure.portfolio.setting',
+  'session-invalid': 'portfolio.failure.portfolio.accessDenied',
   'access-denied': 'portfolio.failure.portfolio.accessDenied',
   'owner-authority-missing': 'portfolio.failure.portfolio.owner',
-  'setting-read-unavailable': 'portfolio.failure.portfolio.setting',
-  unknown: 'portfolio.failure.portfolio.unknown',
+  'not-found': 'portfolio.failure.portfolio.unknown',
+  'content-conflict': 'portfolio.failure.portfolio.setting',
+  'realm-unavailable': 'portfolio.failure.portfolio.realm',
+  'rate-limited': 'portfolio.failure.portfolio.realm',
+  'upstream-failed': 'portfolio.failure.portfolio.realm',
+  'contract-invalid': 'portfolio.failure.portfolio.setting',
+  'request-too-large': 'portfolio.failure.portfolio.setting',
+  'response-too-large': 'portfolio.failure.portfolio.setting',
 };
 
 type PortfolioView = 'personas' | 'local-drafts';
 type DraftHistoryStatus = 'loading' | 'ready' | 'unavailable';
-type DesignPreviewPersona = OwnerPortfolioPersona & { worldBannerUrl: string };
-
-const DESIGN_PREVIEW_PERSONAS: readonly DesignPreviewPersona[] = [
-  {
-    id: 'design-preview-xiaomi',
-    displayName: '小米',
-    handle: 'xiaomi',
-    worldName: 'OASIS',
-    worldBannerUrl: oasisBannerUrl,
-    coverUrl: null,
-    avatarUrl: xiaomiAvatarUrl,
-    ownerScope: 'owner-created',
-    source: 'Realm WorldCoreController.listRealmPersonas',
-    realmState: 'PUBLIC',
-    updatedAt: '2026-08-10T09:42:00+08:00',
-    friendCount: { status: 'available', value: 128 },
-  },
-  {
-    id: 'design-preview-nanxing',
-    displayName: '南星',
-    handle: 'nanxing',
-    worldName: 'EDEN',
-    worldBannerUrl: edenBannerUrl,
-    coverUrl: null,
-    avatarUrl: nanxingAvatarUrl,
-    ownerScope: 'owner-created',
-    source: 'Realm WorldCoreController.listRealmPersonas',
-    realmState: 'PUBLIC',
-    updatedAt: '2026-08-09T18:20:00+08:00',
-    friendCount: { status: 'available', value: 76 },
-  },
-];
 
 export function formatDraftUpdatedAt(updatedAt: string, locale: 'en' | 'zh'): string {
   const updatedDate = new Date(updatedAt);
@@ -202,29 +179,6 @@ function PortfolioLoadingState() {
   );
 }
 
-function DesignPreviewPersonaList() {
-  const { t } = useStudioI18n();
-  const navigate = useNavigate();
-
-  return (
-    <div className="ras-persona-preview" aria-label={t('portfolio.preview.ariaLabel')}>
-      <InlineAlert tone="info">{t('portfolio.preview.notice')}</InlineAlert>
-      <div className="ras-persona-grid">
-        {DESIGN_PREVIEW_PERSONAS.map((persona) => (
-          <PersonaCard
-            key={persona.id}
-            persona={persona}
-            worldBannerUrl={persona.worldBannerUrl}
-            worldName={persona.worldName}
-            active={false}
-            onSelect={() => navigate(`/portfolio/${persona.id}`)}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function PortfolioSourceNotice({
   failure,
   loading,
@@ -250,6 +204,7 @@ function PortfolioSourceNotice({
       <div className="ras-portfolio-source-notice__copy">
         <h2>{t(PORTFOLIO_FAILURE_TITLE_KEYS[failure])}</h2>
         <p>{t(PORTFOLIO_FAILURE_DETAIL_KEYS[failure])}</p>
+        <StatusBadge tone="neutral">{failure}</StatusBadge>
       </div>
       <Button tone="secondary" loading={loading} onClick={onRetry}>
         {t('common.retry')}
@@ -428,7 +383,6 @@ export function PersonaListPage() {
   );
   const sourceWarnings = personas.filter((persona) => persona.friendCount.status === 'source-unavailable');
   const portfolioFailure = portfolioQuery.isError ? classifyPortfolioFailure(portfolioQuery.error) : null;
-  const showDesignPreview = import.meta.env.DEV && portfolioQuery.isSuccess && personas.length === 0;
   const refreshing = portfolioQuery.isFetching || worldCoresQuery.isFetching || draftHistoryStatus === 'loading';
   const refreshAll = () => {
     void portfolioQuery.refetch();
@@ -504,8 +458,6 @@ export function PersonaListPage() {
           >
             {portfolioQuery.isLoading ? (
               <PortfolioLoadingState />
-            ) : showDesignPreview ? (
-              <DesignPreviewPersonaList />
             ) : portfolioFailure ? null : personas.length === 0 ? (
               <div className="ras-hero-empty">
                 <div className="ras-hero-empty__icon">

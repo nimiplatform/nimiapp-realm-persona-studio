@@ -34,6 +34,7 @@ const draft: CreateRealmPersonaDraftInput = {
   description: 'An owner-reviewed profile.',
   ruleText: 'Stay practical.',
   selectedWorldId: 'world-oasis',
+  visibility: 'private',
   personaArchetype: 'INTELLECTUAL',
   personaTraits: ['WISE', 'DIRECT'],
   referenceImageUrl: 'https://cdn.example.test/mira.png',

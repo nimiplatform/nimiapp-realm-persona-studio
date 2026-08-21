@@ -8,7 +8,7 @@ import type { OwnerPortfolioPersona, OwnerPortfolioPersonaDetail, SettingField, 
 
 type StudioTranslator = (key: StudioCopyKey, options?: StudioTranslateOptions) => string;
 
-export type PersonaLibraryStatus = 'local-draft' | 'public' | 'friends' | 'private' | 'source-unavailable';
+export type PersonaLibraryStatus = 'local-draft' | 'public' | 'unlisted' | 'private' | 'system';
 
 const PERSONA_LIBRARY_STATUS_PRESENTATION: Record<
   PersonaLibraryStatus,
@@ -16,9 +16,9 @@ const PERSONA_LIBRARY_STATUS_PRESENTATION: Record<
 > = {
   'local-draft': { labelKey: 'portfolio.status.localDraft', tone: 'info' },
   public: { labelKey: 'persona.workspace.public', tone: 'success' },
-  friends: { labelKey: 'persona.workspace.friends', tone: 'info' },
+  unlisted: { labelKey: 'visibility.value.unlisted', tone: 'info' },
   private: { labelKey: 'persona.workspace.private', tone: 'warning' },
-  'source-unavailable': { labelKey: 'common.sourceUnavailable', tone: 'warning' },
+  system: { labelKey: 'visibility.value.system', tone: 'warning' },
 };
 
 const SETTING_FIELD_LABEL_KEYS: Record<SettingFieldKey, StudioCopyKey> = {
@@ -29,7 +29,7 @@ const SETTING_FIELD_LABEL_KEYS: Record<SettingFieldKey, StudioCopyKey> = {
   profileCoverUrl: 'settingField.profileCoverUrl',
   ownership: 'settingField.ownership',
   world: 'settingField.world',
-  state: 'settingField.state',
+  visibility: 'settingField.visibility',
 };
 
 export function TechnicalReviewDetails({ title, children }: { title: string; children: ReactNode }) {
@@ -112,12 +112,10 @@ export function PersonaLibraryStatusBadge({ status }: { status: PersonaLibrarySt
   );
 }
 
-export function personaLibraryStatusFromRealmState(realmState: string | null): PersonaLibraryStatus {
-  const normalized = realmState?.trim().toUpperCase();
-  if (normalized === 'PUBLIC') return 'public';
-  if (normalized === 'FRIENDS') return 'friends';
-  if (normalized === 'PRIVATE') return 'private';
-  return 'source-unavailable';
+export function personaLibraryStatusFromVisibility(
+  visibility: OwnerPortfolioPersona['visibility'],
+): PersonaLibraryStatus {
+  return visibility;
 }
 
 function settingFieldStatusTone(field: SettingField): 'success' | 'neutral' | 'warning' {
@@ -176,9 +174,15 @@ export function PersonaCard({
         <div className="ras-world-persona-card__identity">
           <div className="ras-world-persona-card__title-row">
             <h2>{persona.displayName}</h2>
-            <PersonaLibraryStatusBadge status={personaLibraryStatusFromRealmState(persona.realmState)} />
+            <PersonaLibraryStatusBadge status={personaLibraryStatusFromVisibility(persona.visibility)} />
           </div>
-          <p>@{persona.handle}</p>
+          <p>
+            {persona.handle === null
+              ? t('shared.fieldStatus.sourceUnavailable')
+              : persona.handle
+                ? `@${persona.handle}`
+                : t('shared.handleNotSet')}
+          </p>
         </div>
         <div className="ras-world-persona-card__footer">
           <div className="ras-world-persona-card__friend-count">

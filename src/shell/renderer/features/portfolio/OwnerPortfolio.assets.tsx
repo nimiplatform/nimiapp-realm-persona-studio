@@ -20,6 +20,7 @@ import type { OwnerPortfolioPersonaDetail } from './portfolio-data.js';
 import {
   generateReviewedAvatarPackageCandidate,
   generateReviewedVisualImageCandidate,
+  buildRealmSelectAvatarInput,
   PERSONA_AVATAR_SELECTION_AVAILABLE,
   selectReviewedPersonaAvatarUrl,
   synthesizeReviewedVoiceDemo,
@@ -138,10 +139,6 @@ const FIXED_ASSET_MESSAGE_KEYS: Record<string, StudioCopyKey> = {
   'visual prompt missing for avatar package candidate generation': 'assets.error.avatarPackagePromptMissing',
   'voice demo script missing for voice candidate generation': 'assets.error.voiceDemoScriptMissing',
   'Reviewed identity Resource upload requires a selected image file.': 'assets.error.identityUploadFileMissing',
-  'Avatar URL selection requires a valid http(s) URL.': 'assets.error.avatarUrlInvalid',
-  'Realm avatar selection did not confirm success.': 'assets.error.avatarSelectUnconfirmed',
-  'RealmPersona replacement did not persist the reviewed avatar external ref.': 'assets.error.avatarSelectNotPersisted',
-  'Realm avatar selection failed.': 'assets.error.avatarSelectFailed',
   'Runtime image.generate returned no readable artifact.': 'assets.error.runtimeImageMissingArtifact',
   'Runtime audio.synthesize returned no artifact id.': 'assets.error.runtimeVoiceMissingArtifact',
   'image artifact generated': 'assets.history.detail.imageArtifactGenerated',
@@ -165,7 +162,14 @@ const CREATIVE_HISTORY_LABEL_KEYS: Record<CreativeAssetHistoryKind, StudioCopyKe
   'voice-demo-candidate': 'assets.history.voiceDemoCandidate',
 };
 
+const PERSONA_FAILURE_REASONS = new Set([
+  'capability-unavailable', 'invalid-input', 'session-invalid', 'access-denied',
+  'owner-authority-missing', 'not-found', 'content-conflict', 'realm-unavailable',
+  'rate-limited', 'upstream-failed', 'contract-invalid', 'request-too-large', 'response-too-large',
+]);
+
 function translateFixedAssetMessage(message: string, t: StudioTranslator): string {
+  if (PERSONA_FAILURE_REASONS.has(message)) return t('persona.failure.sanitized', { reason: message });
   const key = FIXED_ASSET_MESSAGE_KEYS[message];
   return key ? t(key) : t('common.operationFailed');
 }
@@ -856,6 +860,7 @@ function MediaVoiceCandidateEditor({ persona, onPersonaWrite }: { persona: Owner
   const voicePayload = useMemo(() => buildReviewedVoiceDemoCandidatePayload(voiceDraft, persona), [persona, voiceDraft]);
   const avatarUrlChanged = avatarUrlDraft.trim() !== (persona.avatarUrl || '');
   const profileMediaChanged = avatarUrlChanged;
+  const avatarUrlWritable = buildRealmSelectAvatarInput(avatarUrlDraft) !== null;
   const visualResourceTypes = MEDIA_CANDIDATE_RESOURCE_TYPES.filter((resourceType): resourceType is VisualCandidateResourceType => resourceType === 'IMAGE');
   const visualBindingPoints = MEDIA_CANDIDATE_BINDING_POINTS.filter((bindingPoint) => bindingPoint !== 'PERSONA_VOICE_SAMPLE');
   const visualPreviewUrl = visualImageResult?.ok ? visualImageResult.runtime.previewUrls[0] || '' : '';
@@ -951,7 +956,7 @@ function MediaVoiceCandidateEditor({ persona, onPersonaWrite }: { persona: Owner
     setIsSelectingAvatar(true);
     setAvatarResult(null);
     try {
-      const result = await selectReviewedPersonaAvatarUrl(persona.id, avatarUrlDraft);
+      const result = await selectReviewedPersonaAvatarUrl(persona, avatarUrlDraft);
       setAvatarResult(result);
       if (result.ok) {
         nimiToast.success(t('assets.avatarUrl.saved'));
@@ -1226,7 +1231,7 @@ function MediaVoiceCandidateEditor({ persona, onPersonaWrite }: { persona: Owner
                   />
                   <div className="flex flex-wrap gap-3">
                     <Button
-                      disabled={!PERSONA_AVATAR_SELECTION_AVAILABLE || !profileMediaChanged || !avatarReviewed || isSelectingAvatar}
+                      disabled={!PERSONA_AVATAR_SELECTION_AVAILABLE || !avatarUrlWritable || !profileMediaChanged || !avatarReviewed || isSelectingAvatar}
                       loading={isSelectingAvatar}
                       onClick={() => void selectAvatarUrl()}
                     >

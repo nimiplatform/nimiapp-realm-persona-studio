@@ -1,4 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const personaCharacter = vi.hoisted(() => ({
+  replace: vi.fn(),
+  toProfileInput: vi.fn(),
+}));
+
+vi.mock('@renderer/app-shell/studio-platform.js', () => ({
+  getStudioLocalAppClient: () => ({ realm: { personaCharacter } }),
+}));
 import {
   buildRealmSelectAvatarInput,
   generateReviewedVisualImageCandidate,
@@ -13,14 +22,32 @@ import {
 } from './portfolio-client.test-helpers.js';
 
 describe('owner portfolio media client', () => {
-  it('fails closed before Persona avatar selection', async () => {
-    await expect(selectReviewedPersonaAvatarUrl(
-      'persona-1',
-      'https://cdn.example.test/avatar.png',
-    )).rejects.toMatchObject({
-      reasonCode: 'capability-unavailable',
-      actionHint: 'retry_when_platform_surface_available',
-    });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    const { profileHash: _profileHash, profileCoverage: _profileCoverage, ...input } = personaFixture.profile;
+    personaCharacter.toProfileInput.mockReturnValue(input);
+    personaCharacter.replace.mockImplementation(async (request) => ({
+      ...personaFixture,
+      contentHash: 'e'.repeat(64),
+      contentRevision: 2,
+      profile: {
+        ...request.profile,
+        profileHash: 'f'.repeat(64),
+        profileCoverage: personaFixture.profile.profileCoverage,
+      },
+    }));
+  });
+
+  it('selects an HTTPS avatar through a complete PersonaCharacter replace', async () => {
+    const detail = ownerPersonaDetail();
+    const result = await selectReviewedPersonaAvatarUrl(detail, 'https://cdn.example.test/avatar.png');
+
+    expect(result).toMatchObject({ ok: true, publicTruth: true });
+    expect(personaCharacter.toProfileInput).toHaveBeenCalledWith(personaFixture.profile);
+    expect(personaCharacter.replace).toHaveBeenCalledWith(expect.objectContaining({
+      personaCharacterId: personaFixture.id,
+      baseContentHash: personaFixture.contentHash,
+    }));
   });
 
   it('builds avatar selection data from a narrow URL allowlist', () => {
@@ -28,12 +55,40 @@ describe('owner portfolio media client', () => {
       avatarUrl: 'https://cdn.example.test/avatar.png',
     });
     expect(buildRealmSelectAvatarInput('ftp://cdn.example.test/avatar.png')).toBeNull();
+    expect(buildRealmSelectAvatarInput('http://cdn.example.test/avatar.png')).toBeNull();
+    expect(buildRealmSelectAvatarInput('https://cdn.example.test/avatar.png?token=secret')).toBeNull();
+    expect(buildRealmSelectAvatarInput('https://user:secret@cdn.example.test/avatar.png')).toBeNull();
+    expect(buildRealmSelectAvatarInput('https://cdn.example.test/avatar.png#fragment')).toBeNull();
     expect(buildRealmSelectAvatarInput('')).toBeNull();
+  });
+
+  it('rejects avatar replacement when detail identity and canonical identity diverge', async () => {
+    const result = await selectReviewedPersonaAvatarUrl(
+      { ...ownerPersonaDetail(), id: 'persona-2' },
+      'https://cdn.example.test/avatar.png',
+    );
+
+    expect(result).toMatchObject({ ok: false, failure: 'contract-invalid' });
+    expect(personaCharacter.replace).not.toHaveBeenCalled();
+  });
+
+  it('sanitizes avatar profile roundtrip failures before replace transport', async () => {
+    personaCharacter.toProfileInput.mockImplementationOnce(() => {
+      throw Object.assign(new Error('private profile detail'), { reasonCode: 'contract-invalid' });
+    });
+
+    const result = await selectReviewedPersonaAvatarUrl(
+      ownerPersonaDetail(),
+      'https://cdn.example.test/avatar.png',
+    );
+
+    expect(result).toMatchObject({ ok: false, failure: 'contract-invalid', message: 'contract-invalid' });
+    expect(personaCharacter.replace).not.toHaveBeenCalled();
   });
 
   it('builds a reviewed avatar profile without removing unrelated assets', () => {
     const profile = withSelectedAvatarExternalRef(
-      personaFixture.profile,
+      personaCharacter.toProfileInput(personaFixture.profile),
       'https://cdn.example.test/avatar.png',
     );
 
@@ -67,7 +122,7 @@ describe('owner portfolio media client', () => {
 
     expect(result).toMatchObject({
       ok: false,
-      failure: 'realm-select-avatar-rejected',
+      failure: 'contract-invalid',
       submitted,
     });
   });

@@ -30,11 +30,11 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
-function isRealmPersonaSourceRef(value: unknown): boolean {
+function isPersonaCharacterSourceRef(value: unknown): boolean {
   if (!isRecord(value)) {
     return false;
   }
-  return value.kind === 'realmPersona'
+  return value.kind === 'personaCharacter'
     && isNonEmptyString(value.worldId)
     && isNonEmptyString(value.sourceId)
     && isNonEmptyString(value.sourceContentHash);
@@ -60,10 +60,10 @@ function isLocalPostScheduleCandidate(value: unknown): value is LocalPostSchedul
     && boundary.moderation === 'not-claimed'
     && postCandidate?.candidate === true
     && postCandidate.source === 'realm-persona-studio.local-post-draft'
-    && personaRef?.sourceKind === 'realmPersona'
-    && isRealmPersonaSourceRef(personaRef.sourceRef)
+    && personaRef?.sourceKind === 'personaCharacter'
+    && isPersonaCharacterSourceRef(personaRef.sourceRef)
     && isNonEmptyString(personaRef.sourceRefKey)
-    && isNonEmptyString(personaRef.handle)
+    && typeof personaRef.handle === 'string'
     && isNonEmptyString(personaRef.displayName)
     && realmCreatePost !== null
     && review?.humanReviewed === true;
@@ -96,6 +96,7 @@ function normalizeRecord(value: unknown, personaId: string): LocalPostScheduleRe
     || !candidate
     || candidate.source !== 'realm-persona-studio.local-single-post-schedule'
     || candidate.appLocalOnly !== true
+    || candidate.postCandidate.personaRef.sourceRef.sourceId !== personaId
   ) {
     return null;
   }
@@ -136,7 +137,10 @@ export function saveLocalPostSchedule(
   now = new Date(),
 ): LocalPostScheduleRecord {
   if (!isLocalPostScheduleCandidate(candidate)) {
-    throw new Error('Local post schedule candidate requires typed RealmPersona sourceRef evidence.');
+    throw new Error('Local post schedule candidate requires typed PersonaCharacter sourceRef evidence.');
+  }
+  if (candidate.postCandidate.personaRef.sourceRef.sourceId !== personaId) {
+    throw new Error('Local post schedule persona identity does not match its PersonaCharacter sourceRef.');
   }
 
   const record: LocalPostScheduleRecord = {
@@ -153,8 +157,13 @@ export function saveLocalPostSchedule(
     candidate,
   };
   const targetStorage = resolveStorage(storage);
-  if (targetStorage) {
+  if (!targetStorage) {
+    throw new Error('Local post schedule storage is unavailable.');
+  }
+  try {
     targetStorage.setItem(scheduleKey(personaId), JSON.stringify(record));
+  } catch {
+    throw new Error('Local post schedule could not be persisted.');
   }
   return record;
 }

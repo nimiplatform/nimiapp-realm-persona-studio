@@ -39,10 +39,13 @@ import {
 import {
   checkCreateRealmPersonaHandleAvailability,
   createReviewedRealmPersonaWithProfileSettings,
+  getOwnerPortfolioPersonaDetail,
   listCreateRealmPersonaSelectableWorlds,
   type RealmPersonaCreateWithProfileSettingsResult,
   type RealmPersonaHandleAvailabilityResult,
 } from './portfolio-client.js';
+import { personaCharacterFailureReason } from './portfolio-data.js';
+import { ownerPersonaDetailQueryKey, ownerPortfolioListQueryKey } from '../persona-detail/use-persona-detail-query.js';
 import {
   generatePersonaSeedFromDescription,
   type PersonaSeedGenerationResult,
@@ -101,7 +104,7 @@ import {
 
 export type CreatedRealmPersonaContext = {
   personaId: string;
-  state: string | null;
+  visibility: 'private' | 'unlisted' | 'public' | 'system';
   handle: string;
   displayName: string;
   selectedWorldId: string;
@@ -134,6 +137,7 @@ type CreateValidationField =
   | 'personaArchetype'
   | 'personaTraits'
   | 'selectedWorldId'
+  | 'visibility'
   | 'referenceImage';
 type CreateFieldErrors = Partial<Record<CreateValidationField, string>>;
 
@@ -144,6 +148,7 @@ const CREATE_VALIDATION_FIELD_ORDER: readonly CreateValidationField[] = [
   'personaArchetype',
   'personaTraits',
   'selectedWorldId',
+  'visibility',
   'referenceImage',
 ];
 
@@ -152,13 +157,13 @@ const CREATE_VALIDATION_FIELD_BY_ERROR: Record<string, CreateValidationField> = 
   'display name missing': 'displayName',
   'concept missing': 'concept',
   'selected world missing': 'selectedWorldId',
+  'visibility missing': 'visibility',
   'persona archetype missing': 'personaArchetype',
   'persona archetype outside closed value set': 'personaArchetype',
   'persona trait outside closed value set': 'personaTraits',
   'persona traits exceed hard maximum of 3': 'personaTraits',
-  'selected world not source-backed by WorldCoreController.listWorldCores': 'selectedWorldId',
-  'handle availability not checked by WorldCoreController.listRealmPersonas': 'handle',
-  'handle availability not checked against WorldCoreController.listRealmPersonas': 'handle',
+  'selected world not source-backed by Nimi App Access realm.worldCore.list': 'selectedWorldId',
+  'handle availability not checked against owner PersonaCharacter portfolio': 'handle',
   'handle availability not checked for the current normalized handle': 'handle',
   'more than one reference image candidate is owner-selected': 'referenceImage',
   'reference image candidate is not owner-selected': 'referenceImage',
@@ -171,6 +176,7 @@ const CREATE_DRAFT_FIELD_TO_VALIDATION_FIELD: Partial<Record<keyof CreateRealmPe
   personaArchetype: 'personaArchetype',
   personaTraits: 'personaTraits',
   selectedWorldId: 'selectedWorldId',
+  visibility: 'visibility',
   referenceImageUrl: 'referenceImage',
   referenceImageCandidates: 'referenceImage',
 };
@@ -224,27 +230,31 @@ const CREATE_FIXED_MESSAGE_KEYS: Record<string, StudioCopyKey> = {
   'LLM output missing required `displayName` or `concept`.': 'create.error.seedRequiredOutputMissing',
   'LLM output personaArchetype missing or outside the supported archetypes.': 'create.error.seedArchetypeInvalid',
   'Persona seed output invalid.': 'create.error.seedOutputInvalid',
-  'selected world not source-backed by WorldCoreController.listWorldCores': 'create.error.selectedWorldNotSourceBacked',
-  'handle availability not checked by WorldCoreController.listRealmPersonas': 'create.error.handleAvailabilityMissing',
-  'handle availability not checked against WorldCoreController.listRealmPersonas': 'create.error.handleAvailabilityMissing',
+  'selected world not source-backed by Nimi App Access realm.worldCore.list': 'create.error.selectedWorldNotSourceBacked',
+  'visibility missing': 'create.error.visibilityMissing',
+  'handle availability not checked against owner PersonaCharacter portfolio': 'create.error.handleAvailabilityMissing',
   'handle availability not checked for the current normalized handle': 'create.error.handleAvailabilityStale',
   'Persona handle check requires a non-empty normalized handle.': 'create.error.handleAvailabilityEmpty',
   'Realm handle availability check did not return an availability boolean.': 'create.error.handleAvailabilityMissingBoolean',
   'Realm handle availability check failed.': 'create.error.handleAvailabilityFailed',
-  'RealmPersona handle availability check failed.': 'create.error.handleAvailabilityFailed',
-  'Realm create RealmPersona returned no persona object.': 'create.error.realmCreateNoPersona',
-  'Realm create RealmPersona returned no canonical persona id.': 'create.error.realmCreateNoId',
-  'Realm create RealmPersona returned incomplete canonical source fields.': 'create.error.realmCreateIncompleteSource',
-  'Realm create RealmPersona failed.': 'create.error.realmCreateFailed',
-  'Realm owner settings read failed after create.': 'create.error.ownerSettingsReadFailed',
-  'Realm owner settings update failed.': 'settings.error.ownerSettingsUpdateFailed',
+  'PersonaCharacter handle availability check failed.': 'create.error.handleAvailabilityFailed',
+  'PersonaCharacter create returned no persona object.': 'create.error.realmCreateNoPersona',
+  'PersonaCharacter create returned no canonical persona id.': 'create.error.realmCreateNoId',
+  'PersonaCharacter create returned incomplete canonical source fields.': 'create.error.realmCreateIncompleteSource',
+  'PersonaCharacter create failed.': 'create.error.realmCreateFailed',
   'reference image prompt empty': 'create.error.referencePromptEmpty',
   'reference image generation count must be 1': 'create.error.referenceCountInvalid',
   'Reference image payload invalid.': 'create.error.referencePayloadInvalid',
   'Runtime image.generate returned no readable artifact.': 'create.error.referenceNoArtifact',
-  'Runtime image.generate produced a local candidate but no http(s) URI that Realm can store as a public reference image.': 'create.error.referenceLocalArtifactNoUrl',
-  'A RealmPersona with this handle already exists in the owner portfolio.': 'create.error.handleAlreadyExists',
+  'Runtime image.generate produced a local candidate but no display-safe HTTPS URI that Realm can store as a public reference image.': 'create.error.referenceLocalArtifactNoUrl',
+  'A PersonaCharacter with this handle already exists in the owner portfolio.': 'create.error.handleAlreadyExists',
 };
+
+const PERSONA_FAILURE_REASONS = new Set([
+  'capability-unavailable', 'invalid-input', 'session-invalid', 'access-denied',
+  'owner-authority-missing', 'not-found', 'content-conflict', 'realm-unavailable',
+  'rate-limited', 'upstream-failed', 'contract-invalid', 'request-too-large', 'response-too-large',
+]);
 
 const PERSONA_ARCHETYPE_DESCRIPTION_KEYS: Record<PersonaArchetype, StudioCopyKey> = {
   CARING: 'create.personaStyle.archetype.CARING',
@@ -295,6 +305,7 @@ function translateGraphReviewErrors(errors: string[], t: StudioTranslator): stri
 }
 
 function translateCreateFixedMessage(message: string, t: StudioTranslator): string {
+  if (PERSONA_FAILURE_REASONS.has(message)) return t('persona.failure.sanitized', { reason: message });
   if (message.startsWith('Persona Creation Graph ')) return translateGraphReviewError(message, t);
   const handleUnavailable = message.match(/^handle unavailable: (.+)$/);
   if (handleUnavailable) {
@@ -353,6 +364,7 @@ function createEmptyDraft(): CreateRealmPersonaDraftInput {
     description: '',
     ruleText: '',
     selectedWorldId: '',
+    visibility: '',
     personaArchetype: '',
     personaTraits: [],
     referenceImageUrl: '',
@@ -442,6 +454,7 @@ export function countCompletedCreationDraftFields(input: CreateRealmPersonaDraft
     draft.description,
     draft.ruleText,
     draft.selectedWorldId,
+    draft.visibility,
     draft.personaArchetype,
     draft.speechSupplement,
     draft.boundarySupplement,
@@ -892,26 +905,37 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
         }
       }
       if (result.ok) {
-        nimiToast.success(t('create.createdSuccess', { id: result.canonical.id }));
-        if (result.profileSettings.status !== 'not-applicable') {
-          nimiToast.success(t('create.profileDescriptionSaved', {
-            status: result.profileSettings.status === 'updated'
-              ? t('create.profileDescriptionSavedUpdated')
-              : t('create.profileDescriptionSavedCurrent'),
-          }));
-        }
         const currentDraft = normalizeCreateRealmPersonaDraft(draft);
         const context: CreatedRealmPersonaContext = {
           personaId: result.canonical.id,
-          state: result.canonical.state || null,
+          visibility: result.canonical.visibility,
           handle: currentDraft.handle,
           displayName: currentDraft.displayName,
           selectedWorldId: currentDraft.selectedWorldId,
         };
-        setCreatedContext(context);
         setFieldErrors({});
+        await queryClient.invalidateQueries({ queryKey: ownerPortfolioListQueryKey() });
+        try {
+          await queryClient.fetchQuery({
+            queryKey: ownerPersonaDetailQueryKey(result.canonical.id),
+            queryFn: () => getOwnerPortfolioPersonaDetail(result.canonical.id),
+          });
+        } catch (error) {
+          const reason = personaCharacterFailureReason(error);
+          nimiToast.danger(t('create.createdPartial', {
+            message: t('persona.failure.sanitized', { reason }),
+            created: t('create.createdPersonaId', { id: result.canonical.id }),
+          }));
+          onOpenCreatedPersona?.(result.canonical.id, 'detail');
+          return;
+        }
+        nimiToast.success(t('create.createdSuccess', { id: result.canonical.id }));
         onCreated?.(context);
-        void queryClient.invalidateQueries({ queryKey: ['realm-persona-studio', 'owner-portfolio'] });
+        if (onOpenCreatedPersona) {
+          onOpenCreatedPersona(result.canonical.id, 'detail');
+        } else {
+          setCreatedContext(context);
+        }
       } else {
         nimiToast.danger(t('create.createdPartial', {
           message: translateCreateFixedMessage(result.message, t),
@@ -1223,6 +1247,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
   const personaArchetypeError = fieldErrors.personaArchetype ? translateCreateFixedMessage(fieldErrors.personaArchetype, t) : null;
   const personaTraitsError = fieldErrors.personaTraits ? translateCreateFixedMessage(fieldErrors.personaTraits, t) : null;
   const selectedWorldError = fieldErrors.selectedWorldId ? translateCreateFixedMessage(fieldErrors.selectedWorldId, t) : null;
+  const visibilityError = fieldErrors.visibility ? translateCreateFixedMessage(fieldErrors.visibility, t) : null;
   const referenceImageError = fieldErrors.referenceImage ? translateCreateFixedMessage(fieldErrors.referenceImage, t) : null;
 
   const renderHeader = () => (
@@ -1643,6 +1668,24 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
                     </FieldTrigger>
                   </FieldShell>
                 </div>
+                <div className="min-w-0" data-create-field="visibility">
+                  <FieldShell
+                    label={t('create.visibilityLabel')}
+                    message={visibilityError || t('create.visibilityMessage')}
+                    messageTone={visibilityError ? 'danger' : 'neutral'}
+                  >
+                    <SelectField
+                      value={draft.visibility}
+                      options={[
+                        { value: '', label: t('create.visibilityPlaceholder') },
+                        { value: 'private', label: t('visibility.value.private') },
+                        { value: 'unlisted', label: t('visibility.value.unlisted') },
+                        { value: 'public', label: t('visibility.value.public') },
+                      ]}
+                      onValueChange={(value) => updateDraft({ visibility: value as CreateRealmPersonaDraftInput['visibility'] })}
+                    />
+                  </FieldShell>
+                </div>
                 </div>
 
               <details className="ras-create-prompt-panel grid gap-3 rounded-[var(--nimi-radius-lg)] border border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-panel)] p-4">
@@ -1655,7 +1698,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
 
               {createdContext ? (
                 <Surface tone="card" padding="md" className="ras-create-created-card">
-                  <div className="flex min-w-0 flex-wrap items-center justify-between gap-3"><div className="min-w-0"><div className="font-medium">{t('create.createdCardTitle')}</div><div className="ras-break-anywhere mt-1 text-sm text-[var(--nimi-text-muted)]">@{createdContext.handle} · {createdContext.personaId}</div></div><StatusBadge tone="success">{t('create.createdStateFallback')}</StatusBadge></div>
+                  <div className="flex min-w-0 flex-wrap items-center justify-between gap-3"><div className="min-w-0"><div className="font-medium">{t('create.createdCardTitle')}</div><div className="ras-break-anywhere mt-1 text-sm text-[var(--nimi-text-muted)]">@{createdContext.handle} · {createdContext.personaId}</div></div><StatusBadge tone="success">{t(`visibility.value.${createdContext.visibility}` as StudioCopyKey)}</StatusBadge></div>
                   <div className="mt-3 flex flex-wrap gap-3"><Button tone="secondary" onClick={() => onOpenCreatedPersona?.(createdContext.personaId, 'detail')}>{t('create.openCockpit')}</Button><Button tone="ghost" onClick={() => onOpenCreatedPersona?.(createdContext.personaId, 'settings')}>{t('create.openSettings')}</Button></div>
                 </Surface>
               ) : null}

@@ -81,7 +81,7 @@ function InsightsBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) {
               ['greeting', persona.greeting],
               ['profileCoverUrl', persona.profileCoverUrl],
               ['world', persona.world],
-              ['state', persona.state],
+              ['visibility', persona.visibility],
               ['ownership', persona.ownership],
             ] as const).map(([field, setting]) => (
               <li key={field}>

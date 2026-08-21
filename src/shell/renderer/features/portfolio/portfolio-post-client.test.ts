@@ -15,6 +15,7 @@ import {
   collectKeys,
   ownerPersonaDetail,
   ownerPersonaDetailWithWorldId,
+  persona,
 } from './portfolio-client.test-helpers.js';
 import type { StudioTextCandidateRunner } from './studio-text-candidate.js';
 
@@ -49,7 +50,7 @@ describe('owner portfolio publication hardcut', () => {
       submitted: {
         mimeType: 'image/png',
         sizeBytes: 2048,
-        sourceRef: 'realmPersona:world-oasis:persona-1:hash-persona-1:reviewed-post-media-resource',
+        sourceRef: `personaCharacter:world-oasis:persona-1:${persona.contentHash}:reviewed-post-media-resource`,
       },
     });
   });
@@ -82,7 +83,7 @@ describe('owner portfolio publication hardcut', () => {
       attachmentTruth: false,
       publicTruth: false,
       submitted: {
-        sourceRef: 'realmPersona:world-oasis:persona-1:hash-persona-1:reviewed-identity-media-resource',
+        sourceRef: `personaCharacter:world-oasis:persona-1:${persona.contentHash}:reviewed-identity-media-resource`,
       },
     });
   });
@@ -97,7 +98,7 @@ describe('owner portfolio publication hardcut', () => {
       attachmentTruth: false,
       submitted: {
         content: 'Published caption',
-        sourceRef: 'realmPersona:world-oasis:persona-1:hash-persona-1',
+        sourceRef: `personaCharacter:world-oasis:persona-1:${persona.contentHash}`,
       },
     });
   });
@@ -108,10 +109,10 @@ describe('owner portfolio publication hardcut', () => {
     expect(input).toEqual({
       ...candidatePayload.realmCreatePost,
       sourceRef: {
-        kind: 'realmPersona',
+        kind: 'personaCharacter',
         worldId: 'world-oasis',
         sourceId: 'persona-1',
-        sourceContentHash: 'hash-persona-1',
+        sourceContentHash: persona.contentHash,
       },
     });
     expect(collectKeys(input).has('authorId')).toBe(false);
