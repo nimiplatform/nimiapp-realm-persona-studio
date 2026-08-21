@@ -54,11 +54,11 @@ export function ReferenceImageSourceChooser({
   const { t } = useStudioI18n();
   return (
     <div className="grid gap-2">
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="m-0 text-sm font-semibold text-[var(--nimi-text-primary)]">{t('create.reference.sourceTitle')}</h3>
-        {attached ? <StatusBadge tone="success">{t('create.referenceAttached')}</StatusBadge> : null}
-      </div>
-      <p className="m-0 text-xs leading-5 text-[var(--nimi-text-muted)]">{t('create.reference.sourceDescription')}</p>
+      {attached ? (
+        <div className="flex items-center justify-end gap-3">
+          <StatusBadge tone="success">{t('create.referenceAttached')}</StatusBadge>
+        </div>
+      ) : null}
       <div className="ras-create-visual-source__methods" role="group" aria-label={t('assets.visualChange.methodsAriaLabel')}>
         <SourceButton
           active={false}

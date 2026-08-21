@@ -163,7 +163,7 @@ export function SettingProposalWorkspace({ persona, onPersonaWrite }: { persona:
 
   return (
     <Surface tone="panel" padding="lg" className="mt-5">
-      <div className="grid min-w-0 gap-5 xl:grid-cols-[1fr_360px]">
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_280px]">
         <div className="min-w-0">
           <div className="flex min-w-0 flex-wrap items-center gap-3">
             <h3 className="m-0 text-xl font-semibold">{t('persona.settings.title')}</h3>
@@ -318,7 +318,19 @@ export function SettingProposalWorkspace({ persona, onPersonaWrite }: { persona:
             </div>
           ) : null}
         </div>
-        <div className="min-w-0">
+        <div className="grid min-w-0 content-start gap-4">
+          <Surface tone="card" padding="md">
+            <div className="font-medium">{t('create.referenceTitle')}</div>
+            {persona.avatarUrl ? (
+              <div className="mt-3 overflow-hidden rounded-[var(--nimi-radius-field)] border border-[var(--nimi-border-subtle)]">
+                <img src={persona.avatarUrl} alt={draft?.displayName || persona.displayName.value} className="aspect-square w-full object-cover" />
+              </div>
+            ) : (
+              <div className="mt-3 grid aspect-square place-items-center rounded-[var(--nimi-radius-field)] border border-dashed border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-card)] p-4 text-center text-[length:var(--nimi-type-body-sm-size)] text-[var(--nimi-text-muted)]">
+                {t('create.reference.emptyTitle')}
+              </div>
+            )}
+          </Surface>
           <div className="mb-3 flex items-center justify-between gap-3">
             <h4 className="m-0 text-base font-semibold">{t('settings.reviewSummary')}</h4>
             <StatusBadge tone={proposal?.ok ? 'success' : 'warning'}>{proposal?.ok ? t('settings.ready') : t('settings.notReady')}</StatusBadge>

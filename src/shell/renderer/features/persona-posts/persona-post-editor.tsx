@@ -6,7 +6,7 @@ import {
   Search,
   Sparkles,
 } from 'lucide-react';
-import { Button, InlineAlert, StatusBadge, Tooltip, nimiToast } from '@nimiplatform/kit/ui';
+import { Button, IconButton, InlineAlert, StatusBadge, Tooltip, nimiToast } from '@nimiplatform/kit/ui';
 import type { OwnerPortfolioPersonaDetail } from '@renderer/features/portfolio/portfolio-data.js';
 import { loadLocalPostSchedule } from '@renderer/features/portfolio/local-post-schedule-store.js';
 import {
@@ -101,10 +101,6 @@ export function PersonaPostEditor({
     return items;
   }, [localSchedule, persona.id, savedRecord, t, visualData]);
 
-  const traits = visualData?.traits
-    ?? persona.voice?.description.split(/[、,，]/).map((item) => item.trim()).filter(Boolean)
-    ?? [];
-
   async function saveDraftAndPreview() {
     const normalizedCaption = caption.trim();
     if (!normalizedCaption) {
@@ -163,9 +159,6 @@ export function PersonaPostEditor({
         ) : null}
 
         <div className="ras-post-editor">
-          <div className="ras-post-editor__toolbar">
-            <strong>{caption.length} {t('posts.workspace.characters')}</strong>
-          </div>
           <textarea
             value={caption}
             disabled={loading}
@@ -187,21 +180,32 @@ export function PersonaPostEditor({
             }}
           />
           <footer className="ras-post-editor__footer">
-            <Tooltip content={t('posts.workspace.attachmentUnavailable')}>
-              <span className="inline-flex">
-                <Button tone="secondary" disabled leadingIcon={<Paperclip size={16} />}>
-                  {t('posts.workspace.addAttachment')}
-                </Button>
-              </span>
-            </Tooltip>
-            <div>
-              <Tooltip content={t('posts.workspace.aiUnavailable')}>
+            <div className="ras-post-editor__tools">
+              <Tooltip content={t('posts.workspace.attachmentUnavailable')}>
                 <span className="inline-flex">
-                  <Button tone="secondary" disabled leadingIcon={<Sparkles size={16} />}>
-                    {t('posts.workspace.aiAssist')}
-                  </Button>
+                  <IconButton
+                    size="sm"
+                    disabled
+                    icon={<Paperclip size={15} />}
+                    aria-label={t('posts.workspace.addAttachment')}
+                  />
                 </span>
               </Tooltip>
+              <Tooltip content={t('posts.workspace.aiUnavailable')}>
+                <span className="inline-flex">
+                  <IconButton
+                    size="sm"
+                    disabled
+                    icon={<Sparkles size={15} />}
+                    aria-label={t('posts.workspace.aiAssist')}
+                  />
+                </span>
+              </Tooltip>
+            </div>
+            <div className="ras-post-editor__actions">
+              <span className="ras-post-editor__count">
+                {caption.length} {t('posts.workspace.characters')}
+              </span>
               <Button
                 tone="primary"
                 loading={saving}
@@ -260,23 +264,6 @@ export function PersonaPostEditor({
           )}
         </section>
       </section>
-
-      <aside className="ras-post-expression">
-        <div>
-          <h2>{t('posts.workspace.expressionReference')}</h2>
-          <p>{t('posts.workspace.expressionDescription')}</p>
-        </div>
-        <div className="ras-post-expression__traits">
-          {traits.length > 0 ? traits.slice(0, 3).map((trait) => (
-            <div key={trait}>
-              <span>{trait}</span>
-              <p>{t('posts.workspace.traitOwnerReviewed')}</p>
-            </div>
-          )) : (
-            <InlineAlert tone="warning">{t('common.sourceUnavailable')}</InlineAlert>
-          )}
-        </div>
-      </aside>
     </div>
   );
 }

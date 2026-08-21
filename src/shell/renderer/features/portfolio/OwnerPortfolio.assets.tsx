@@ -261,6 +261,7 @@ export function MediaVoiceCandidateWorkspace({
   const { locale, t } = useStudioI18n();
   const [visualEditorOpen, setVisualEditorOpen] = useState(false);
   const [voiceEditorOpen, setVoiceEditorOpen] = useState(false);
+  const [advancedEditorOpen, setAdvancedEditorOpen] = useState(false);
   const [creativeHistory, setCreativeHistory] = useState<CreativeAssetHistoryRecord[]>([]);
   const [creativeHistoryUnavailable, setCreativeHistoryUnavailable] = useState(false);
   const voiceSummary = useMemo(
@@ -341,7 +342,7 @@ export function MediaVoiceCandidateWorkspace({
                 tone="ghost"
                 size="sm"
                 trailingIcon={<ChevronRight size={15} strokeWidth={1.8} />}
-                onClick={() => setVisualEditorOpen(true)}
+                onClick={() => setAdvancedEditorOpen(true)}
               >
                 {t('assets.overview.openEditor')}
               </Button>
@@ -468,7 +469,7 @@ export function MediaVoiceCandidateWorkspace({
                 tone="ghost"
                 size="sm"
                 trailingIcon={<ChevronRight size={15} strokeWidth={1.8} />}
-                onClick={() => setVoiceEditorOpen(true)}
+                onClick={() => setAdvancedEditorOpen(true)}
               >
                 {t('assets.overview.openEditor')}
               </Button>
@@ -536,25 +537,61 @@ export function MediaVoiceCandidateWorkspace({
           persona={persona}
           creativeHistory={creativeHistory}
           onHistoryUpdated={refreshCreativeHistory}
+          onPersonaWrite={onPersonaWrite}
         />
       </OverlayShell>
 
       <OverlayShell
         open={voiceEditorOpen}
-        size="XL"
+        size="M"
+        panelStyle={{ width: '650px' }}
         onClose={() => setVoiceEditorOpen(false)}
+        title={(
+          <div className="ras-visual-change__title-row">
+            <span>{t('assets.voiceChange.title')}</span>
+            <IconButton
+              tone="ghost"
+              size="sm"
+              className="ras-visual-change__close"
+              aria-label={t('common.close')}
+              onClick={() => setVoiceEditorOpen(false)}
+              icon={<X size={18} strokeWidth={1.8} aria-hidden="true" />}
+            />
+          </div>
+        )}
+        description={<span className="ras-visual-change__description">{t('assets.voiceChange.description')}</span>}
+        panelClassName="ras-visual-change-dialog"
+        contentClassName="ras-visual-change-dialog__content"
+        footer={(
+          <div className="flex justify-end">
+            <Button tone="secondary" onClick={() => setVoiceEditorOpen(false)}>{t('common.cancel')}</Button>
+          </div>
+        )}
+        dataTestId="persona-voice-editor-dialog"
+      >
+        <VoiceChangeEditor
+          persona={persona}
+          creativeHistory={creativeHistory}
+          onHistoryUpdated={refreshCreativeHistory}
+        />
+      </OverlayShell>
+
+      <OverlayShell
+        open={advancedEditorOpen}
+        size="XL"
+        onClose={() => setAdvancedEditorOpen(false)}
         title={t('assets.overview.modal.title')}
         description={t('assets.overview.modal.description')}
         panelClassName="flex max-h-[calc(100vh-32px)] flex-col overflow-hidden"
         contentClassName="min-h-0 flex-1 overflow-y-auto"
         footer={(
           <div className="flex justify-end">
-            <Button tone="secondary" onClick={() => setVoiceEditorOpen(false)}>{t('common.close')}</Button>
+            <Button tone="secondary" onClick={() => setAdvancedEditorOpen(false)}>{t('common.close')}</Button>
           </div>
         )}
-        dataTestId="persona-voice-editor-dialog"
+        dataTestId="persona-advanced-asset-editor-dialog"
       >
-        <MediaVoiceCandidateEditor persona={persona} onPersonaWrite={onPersonaWrite} />
+        <AdvancedAssetCandidateWorkspace persona={persona} onPersonaWrite={onPersonaWrite} />
       </OverlayShell>
     </>
   );
@@ -572,10 +609,12 @@ function VisualIdentityChangeEditor({
   persona,
   creativeHistory,
   onHistoryUpdated,
+  onPersonaWrite,
 }: {
   persona: OwnerPortfolioPersonaDetail;
   creativeHistory: CreativeAssetHistoryRecord[];
   onHistoryUpdated: () => Promise<void>;
+  onPersonaWrite: () => Promise<void>;
 }) {
   const { t } = useStudioI18n();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -586,6 +625,10 @@ function VisualIdentityChangeEditor({
   const [prompt, setPrompt] = useState('');
   const [generationResult, setGenerationResult] = useState<RuntimeVisualImageGenerationResult | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [avatarUrlDraft, setAvatarUrlDraft] = useState(() => persona.avatarUrl || '');
+  const [avatarReviewed, setAvatarReviewed] = useState(false);
+  const [avatarResult, setAvatarResult] = useState<RealmPersonaAvatarSelectResult | null>(null);
+  const [isSelectingAvatar, setIsSelectingAvatar] = useState(false);
 
   const existingAssets = useMemo<ExistingVisualAsset[]>(() => {
     const assets: ExistingVisualAsset[] = [];
@@ -614,6 +657,16 @@ function VisualIdentityChangeEditor({
   useEffect(() => () => {
     if (uploadedPreviewUrl) URL.revokeObjectURL(uploadedPreviewUrl);
   }, [uploadedPreviewUrl]);
+
+  useEffect(() => {
+    setAvatarUrlDraft(persona.avatarUrl || '');
+    setAvatarReviewed(false);
+    setAvatarResult(null);
+    setIsSelectingAvatar(false);
+  }, [persona.avatarUrl, persona.id]);
+
+  const avatarUrlChanged = avatarUrlDraft.trim() !== (persona.avatarUrl || '');
+  const avatarUrlWritable = buildRealmSelectAvatarInput(avatarUrlDraft) !== null;
 
   function selectMode(nextMode: VisualIdentityMode) {
     setMode(nextMode);
@@ -674,6 +727,32 @@ function VisualIdentityChangeEditor({
       }
     } finally {
       setIsGenerating(false);
+    }
+  }
+
+  function updateAvatarUrlDraft(value: string) {
+    setAvatarUrlDraft(value);
+    setAvatarReviewed(false);
+    setAvatarResult(null);
+  }
+
+  async function selectAvatarUrl() {
+    if (!PERSONA_AVATAR_SELECTION_AVAILABLE || !avatarUrlWritable || !avatarUrlChanged || !avatarReviewed || isSelectingAvatar) return;
+    setIsSelectingAvatar(true);
+    setAvatarResult(null);
+    try {
+      const result = await selectReviewedPersonaAvatarUrl(persona, avatarUrlDraft);
+      setAvatarResult(result);
+      if (result.ok) {
+        nimiToast.success(t('assets.avatarUrl.saved'));
+        await onPersonaWrite();
+      } else {
+        nimiToast.danger(t('persona.failure.sanitized', { reason: result.failure }));
+      }
+    } catch {
+      nimiToast.info(t('assets.avatarUrl.unavailable'));
+    } finally {
+      setIsSelectingAvatar(false);
     }
   }
 
@@ -800,6 +879,52 @@ function VisualIdentityChangeEditor({
           ) : null}
         </div>
       ) : null}
+
+      <Surface tone="panel" padding="md" data-testid="reviewed-avatar-url-editor">
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="font-medium">{t('assets.avatarUrl.title')}</div>
+            <div className="mt-1 text-[length:var(--nimi-type-body-sm-size)] text-[var(--nimi-text-muted)]">
+              {t('assets.avatarUrl.description')}
+            </div>
+          </div>
+          <StatusBadge tone="info">{t('common.realmSave')}</StatusBadge>
+        </div>
+        <div className="mt-3 grid gap-3 md:grid-cols-[80px_1fr]">
+          <div className="h-20 w-20 overflow-hidden rounded-[var(--nimi-radius-md)] bg-[var(--nimi-surface-active)]">
+            {avatarUrlWritable ? <img src={avatarUrlDraft.trim()} alt="" className="h-full w-full object-cover" /> : null}
+          </div>
+          <div className="grid gap-3">
+            <FieldShell label={t('assets.avatarUrl.label')} message={t('assets.avatarUrl.message')}>
+              <TextField
+                value={avatarUrlDraft}
+                placeholder="https://..."
+                onChange={(event) => updateAvatarUrlDraft(event.currentTarget.value)}
+              />
+            </FieldShell>
+            <Checkbox
+              checked={avatarReviewed}
+              onChange={(event) => setAvatarReviewed(event.currentTarget.checked)}
+              label={t('common.humanReviewComplete')}
+            />
+            <Button
+              disabled={!PERSONA_AVATAR_SELECTION_AVAILABLE || !avatarUrlWritable || !avatarUrlChanged || !avatarReviewed || isSelectingAvatar}
+              loading={isSelectingAvatar}
+              onClick={() => void selectAvatarUrl()}
+            >
+              {t('assets.avatarUrl.select')}
+            </Button>
+          </div>
+        </div>
+        {!PERSONA_AVATAR_SELECTION_AVAILABLE ? (
+          <InlineAlert tone="warning" className="mt-3">{t('assets.avatarUrl.unavailable')}</InlineAlert>
+        ) : null}
+        {avatarResult && !avatarResult.ok ? (
+          <InlineAlert tone="danger" className="mt-3">
+            {t('persona.failure.sanitized', { reason: avatarResult.failure })}
+          </InlineAlert>
+        ) : null}
+      </Surface>
     </div>
   );
 }
@@ -833,7 +958,262 @@ function VisualIdentityMethodButton({
   );
 }
 
-function MediaVoiceCandidateEditor({ persona, onPersonaWrite }: { persona: OwnerPortfolioPersonaDetail; onPersonaWrite: () => Promise<void> }) {
+type VoiceChangeMode = 'upload' | 'candidates' | 'ai';
+
+function VoiceChangeEditor({
+  persona,
+  creativeHistory,
+  onHistoryUpdated,
+}: {
+  persona: OwnerPortfolioPersonaDetail;
+  creativeHistory: CreativeAssetHistoryRecord[];
+  onHistoryUpdated: () => Promise<void>;
+}) {
+  const { locale, t } = useStudioI18n();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [mode, setMode] = useState<VoiceChangeMode | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [uploadedPreviewUrl, setUploadedPreviewUrl] = useState<string | null>(null);
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
+  const [voiceDraft, setVoiceDraft] = useState<VoiceDemoCandidateInput>(() => createVoiceDemoCandidateInput(persona));
+  const [synthesisResult, setSynthesisResult] = useState<RuntimeVoiceDemoSynthesisResult | null>(null);
+  const [isSynthesizing, setIsSynthesizing] = useState(false);
+
+  const voiceCandidates = useMemo(() => {
+    const seenUrls = new Set<string>();
+    const candidates: CreativeAssetHistoryRecord[] = [];
+    for (const record of creativeHistory) {
+      if (record.kind !== 'voice-demo-candidate' || !record.previewUrl || seenUrls.has(record.previewUrl)) continue;
+      seenUrls.add(record.previewUrl);
+      candidates.push(record);
+    }
+    return candidates;
+  }, [creativeHistory]);
+  const selectedCandidate = voiceCandidates.find((record) => record.id === selectedCandidateId) ?? null;
+  const voicePayload = useMemo(() => buildReviewedVoiceDemoCandidatePayload(voiceDraft, persona), [persona, voiceDraft]);
+  const synthesizedPreviewUrl = synthesisResult?.ok ? synthesisResult.runtime.previewUrls[0] || '' : '';
+
+  useEffect(() => () => {
+    if (uploadedPreviewUrl) URL.revokeObjectURL(uploadedPreviewUrl);
+  }, [uploadedPreviewUrl]);
+
+  function selectMode(nextMode: VoiceChangeMode) {
+    setMode(nextMode);
+    if (nextMode === 'upload') {
+      window.setTimeout(() => fileInputRef.current?.click(), 0);
+    }
+  }
+
+  function handleUploadChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0] ?? null;
+    event.currentTarget.value = '';
+    if (!file) return;
+    if (!file.type.toLowerCase().startsWith('audio/')) {
+      nimiToast.danger(t('assets.voiceChange.uploadInvalid'));
+      return;
+    }
+    const nextPreviewUrl = URL.createObjectURL(file);
+    setUploadedPreviewUrl((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return nextPreviewUrl;
+    });
+    setUploadedFile(file);
+    setSelectedCandidateId(null);
+    setSynthesisResult(null);
+  }
+
+  async function synthesizeVoiceDemo() {
+    if (!voicePayload.changed || isSynthesizing) return;
+    setIsSynthesizing(true);
+    setSynthesisResult(null);
+    try {
+      const result = await synthesizeReviewedVoiceDemo(voiceDraft, persona);
+      setSynthesisResult(result);
+      if (result.ok) {
+        const previewUrl = result.runtime.previewUrls[0];
+        await appendLocalCreativeAssetHistory(persona.id, {
+          sourceContentHash: persona.contentHash,
+          kind: 'voice-demo-candidate',
+          sourceKind: 'generated',
+          reviewState: 'candidate-only',
+          label: 'Voice demo candidate',
+          source: result.source,
+          ...(previewUrl ? { previewUrl } : {}),
+          detail: previewUrl || result.runtime.artifactIds[0] || result.runtime.jobId || 'voice artifact generated',
+          artifactIds: result.runtime.artifactIds,
+          ...(result.runtime.traceId ? { traceId: result.runtime.traceId } : {}),
+        });
+        await onHistoryUpdated();
+        nimiToast.success(t('assets.voiceGenerated'));
+      } else if (isMediaCapabilityUnavailable(result.failure)) {
+        nimiToast.info(translateVoiceCandidateFailure(result, t));
+      } else {
+        nimiToast.danger(translateVoiceCandidateFailure(result, t));
+      }
+    } finally {
+      setIsSynthesizing(false);
+    }
+  }
+
+  return (
+    <div className="ras-visual-change ras-voice-change">
+      <input
+        ref={fileInputRef}
+        className="ras-visual-change__file-input"
+        type="file"
+        accept="audio/*"
+        aria-label={t('assets.voiceChange.uploadAriaLabel')}
+        onChange={handleUploadChange}
+      />
+
+      <div className="ras-visual-change__methods" role="group" aria-label={t('assets.voiceChange.methodsAriaLabel')}>
+        <VisualIdentityMethodButton
+          active={mode === 'upload'}
+          icon={<Upload size={32} strokeWidth={1.7} />}
+          title={t('assets.voiceChange.upload')}
+          description={t('assets.voiceChange.uploadDescription')}
+          onClick={() => selectMode('upload')}
+        />
+        <VisualIdentityMethodButton
+          active={mode === 'candidates'}
+          icon={<AudioLines size={32} strokeWidth={1.7} />}
+          title={t('assets.voiceChange.candidates')}
+          description={t('assets.voiceChange.candidatesDescription')}
+          onClick={() => selectMode('candidates')}
+        />
+        <VisualIdentityMethodButton
+          active={mode === 'ai'}
+          icon={<Sparkles size={34} strokeWidth={1.7} />}
+          title={t('assets.voiceChange.ai')}
+          description={t('assets.voiceChange.aiDescription')}
+          onClick={() => selectMode('ai')}
+        />
+      </div>
+
+      {mode === 'upload' && uploadedPreviewUrl && uploadedFile ? (
+        <div className="ras-voice-change__selection" data-testid="voice-upload-selection">
+          <span className="ras-voice-change__selection-icon" aria-hidden="true">
+            <AudioLines size={22} strokeWidth={1.8} />
+          </span>
+          <div className="ras-voice-change__selection-copy">
+            <strong>{uploadedFile.name}</strong>
+            <span>{t('assets.voiceChange.localCandidate')}</span>
+          </div>
+          <StatusBadge tone="info">{t('common.candidate')}</StatusBadge>
+          <audio
+            className="ras-voice-change__player"
+            src={uploadedPreviewUrl}
+            controls
+            preload="auto"
+            aria-label={t('assets.playback')}
+          />
+        </div>
+      ) : null}
+
+      {mode === 'candidates' ? (
+        <div className="ras-voice-change__candidates" data-testid="voice-existing-candidates">
+          {voiceCandidates.length > 0 ? voiceCandidates.map((record) => {
+            const selected = selectedCandidateId === record.id;
+            return (
+              <button
+                key={record.id}
+                type="button"
+                className="ras-voice-change__candidate"
+                data-selected={selected}
+                aria-pressed={selected}
+                onClick={() => setSelectedCandidateId(record.id)}
+              >
+                <span className="ras-voice-change__candidate-icon" aria-hidden="true">
+                  <AudioLines size={18} strokeWidth={1.8} />
+                </span>
+                <span className="ras-voice-change__candidate-copy">
+                  <strong>{t(CREATIVE_HISTORY_LABEL_KEYS[record.kind])}</strong>
+                  <span>{formatActivityDate(record.createdAt, locale)}</span>
+                </span>
+                {selected ? <i aria-hidden="true"><Check size={14} strokeWidth={2.2} /></i> : null}
+              </button>
+            );
+          }) : (
+            <EmptyState
+              icon={<AudioLines size={22} strokeWidth={1.7} />}
+              title={t('assets.voiceChange.candidatesEmptyTitle')}
+              description={t('assets.voiceChange.candidatesEmptyDescription')}
+            />
+          )}
+          {selectedCandidate?.previewUrl ? (
+            <audio
+              className="ras-voice-change__player"
+              src={selectedCandidate.previewUrl}
+              controls
+              preload="auto"
+              aria-label={t('assets.playback')}
+            />
+          ) : null}
+        </div>
+      ) : null}
+
+      {mode === 'ai' ? (
+        <div className="ras-visual-change__ai" data-testid="voice-ai-composer">
+          <label htmlFor="voice-demo-script">{t('assets.voiceChange.scriptLabel')}</label>
+          <div className="ras-visual-change__composer">
+            <textarea
+              id="voice-demo-script"
+              rows={3}
+              maxLength={2000}
+              value={voiceDraft.scriptText}
+              placeholder={t('assets.voiceChange.scriptPlaceholder')}
+              onChange={(event) => {
+                setVoiceDraft({ scriptText: event.currentTarget.value });
+                setSynthesisResult(null);
+              }}
+            />
+            <div className="ras-visual-change__composer-actions">
+              <span className="ras-visual-change__intent-chip">
+                <AudioLines size={15} strokeWidth={1.8} aria-hidden="true" />
+                {t('assets.voiceChange.synthesize')}
+              </span>
+              <IconButton
+                type="button"
+                className="ras-visual-change__generate"
+                tone="primary"
+                size="sm"
+                aria-label={t('assets.voiceChange.generate')}
+                disabled={!voicePayload.changed || isSynthesizing}
+                aria-busy={isSynthesizing || undefined}
+                onClick={() => void synthesizeVoiceDemo()}
+                icon={isSynthesizing
+                  ? <RefreshCw size={15} strokeWidth={2} className="ras-visual-change__spin" aria-hidden="true" />
+                  : <ArrowUp size={16} strokeWidth={2} aria-hidden="true" />}
+              />
+            </div>
+          </div>
+          <InlineAlert tone={voicePayload.changed ? 'info' : 'warning'}>
+            {voicePayload.changed ? t('assets.voiceNotice') : t('assets.error.voiceDemoScriptMissing')}
+          </InlineAlert>
+          {synthesisResult && !synthesisResult.ok ? (
+            <InlineAlert tone="danger">
+              {translateVoiceCandidateFailure(synthesisResult, t)}
+            </InlineAlert>
+          ) : null}
+          {synthesizedPreviewUrl ? (
+            <div className="ras-voice-change__generated" data-testid="voice-generated-preview">
+              <div className="ras-voice-change__generated-label">{t('assets.playback')}</div>
+              <audio
+                className="ras-voice-change__player"
+                src={synthesizedPreviewUrl}
+                controls
+                preload="auto"
+                aria-label={t('assets.playback')}
+              />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function AdvancedAssetCandidateWorkspace({ persona, onPersonaWrite }: { persona: OwnerPortfolioPersonaDetail; onPersonaWrite: () => Promise<void> }) {
   const { t } = useStudioI18n();
   const [identityPack, setIdentityPack] = useState<IdentityPackBuildResult | null>(null);
   const [visualImageDraft, setVisualImageDraft] = useState(() => createVisualImageGenerationDraft());
@@ -1240,9 +1620,11 @@ function MediaVoiceCandidateEditor({ persona, onPersonaWrite }: { persona: Owner
                   </div>
                 </div>
               </div>
-              <InlineAlert tone="warning" className="mt-3">
-                {t('assets.avatarUrl.unavailable')}
-              </InlineAlert>
+              {!PERSONA_AVATAR_SELECTION_AVAILABLE ? (
+                <InlineAlert tone="warning" className="mt-3">
+                  {t('assets.avatarUrl.unavailable')}
+                </InlineAlert>
+              ) : null}
               {avatarResult ? (
                 <TechnicalReviewDetails title={t('assets.avatarUrl.response')}>
                   <pre className="ras-json-preview m-0 min-h-24 overflow-auto rounded-[var(--nimi-radius-field)] border border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-panel)] p-3 text-xs">

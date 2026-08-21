@@ -7,11 +7,13 @@ import {
   EmptyState,
   FieldShell,
   FieldTrigger,
+  IconButton,
   InlineAlert,
   NimiTabs,
   NimiText,
   NimiThemeProvider,
   NimiToaster,
+  OverlayShell,
   SelectField,
   StatusBadge,
   Surface,
@@ -20,7 +22,7 @@ import {
   TooltipProvider,
 } from '@nimiplatform/kit/ui';
 import { HashRouter, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Check, ChevronDown, ImageIcon, Scan } from 'lucide-react';
+import { ArrowLeft, Check, ChevronDown, ImageIcon, Scan, X } from 'lucide-react';
 import { StudioSidebar } from './app-shell/studio-sidebar/index.js';
 import { PersonaCockpit } from './features/persona-detail/persona-cockpit.js';
 import { PersonaWorkspaceFrame } from './features/persona-detail/persona-shell.js';
@@ -166,7 +168,7 @@ function PreviewCreateReferenceSources() {
                 className="ras-create-reference-card__preview"
                 aria-expanded={editorOpen}
                 aria-label={`${translateStudioCopy('create.referenceTitle')}: ${translateStudioCopy('create.reference.emptyTitle')}. ${translateStudioCopy('create.reference.sourceTitle')}`}
-                onClick={() => setEditorOpen((open) => !open)}
+                onClick={() => setEditorOpen(true)}
               >
                 <Scan className="ras-create-reference-card__corner" data-corner="top-left" strokeWidth={1.15} aria-hidden="true" />
                 <Scan className="ras-create-reference-card__corner" data-corner="top-right" strokeWidth={1.15} aria-hidden="true" />
@@ -180,8 +182,34 @@ function PreviewCreateReferenceSources() {
                   <span className="ras-create-reference-card__empty-description">{translateStudioCopy('create.reference.emptyDescription')}</span>
                 </span>
               </button>
-              {editorOpen ? (
-                <div className="ras-create-reference-card__editor">
+              <OverlayShell
+                open={editorOpen}
+                size="M"
+                onClose={() => setEditorOpen(false)}
+                title={(
+                  <div className="ras-visual-change__title-row">
+                    <span>{translateStudioCopy('create.referenceTitle')}</span>
+                    <IconButton
+                      tone="ghost"
+                      size="sm"
+                      className="ras-visual-change__close"
+                      aria-label={translateStudioCopy('common.close')}
+                      onClick={() => setEditorOpen(false)}
+                      icon={<X size={18} strokeWidth={1.8} aria-hidden="true" />}
+                    />
+                  </div>
+                )}
+                description={<span className="ras-visual-change__description">{translateStudioCopy('create.reference.emptyDescription')}</span>}
+                panelClassName="ras-visual-change-dialog"
+                contentClassName="ras-visual-change-dialog__content"
+                footer={(
+                  <div className="flex justify-end">
+                    <Button tone="secondary" onClick={() => setEditorOpen(false)}>{translateStudioCopy('common.cancel')}</Button>
+                  </div>
+                )}
+                dataTestId="create-reference-image-dialog"
+              >
+                <div className="ras-visual-change">
                   <input
                     ref={previewFileInputRef}
                     type="file"
@@ -238,7 +266,7 @@ function PreviewCreateReferenceSources() {
                   ) : null}
                   {mode === null && generationUnavailable ? <InlineAlert tone="info">{translateStudioCopy('create.reference.uploadUnavailable')}</InlineAlert> : null}
                 </div>
-              ) : null}
+              </OverlayShell>
             </Surface>
 
             <div className="ras-create-identity-grid">
