@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type {
+  NimiAIConfigSnapshot,
   NimiPortableAppAIConfig,
   NimiPortableAppAIConfigIntent,
 } from '@nimiplatform/sdk/ai';
@@ -19,7 +20,7 @@ function studioConfig(...capabilities: NimiPortableAppAIConfigIntent[]): NimiPor
 }
 
 function fakeClient(input: {
-  get: () => Promise<NimiPortableAppAIConfig>;
+  get: () => Promise<NimiAIConfigSnapshot>;
 }): StudioAIConfigClient {
   return {
     aiConfig: {
@@ -29,12 +30,12 @@ function fakeClient(input: {
 }
 
 describe('studio App AIConfig store on the Nimi App Access contract', () => {
-  it('treats AI_CONFIG_NOT_FOUND as one unconfigured App AIConfig projection', async () => {
+  it('treats a null canonical snapshot as unconfigured without swallowing transport failure', async () => {
     await expect(loadStudioAIConfig(fakeClient({
       async get() {
-        throw { reasonCode: 'AI_CONFIG_NOT_FOUND' };
+        return { config: null, revision: '0', effectiveSelections: [] };
       },
-    }))).resolves.toBeNull();
+    }))).resolves.toEqual({ config: null, revision: '0', effectiveSelections: [] });
 
     await expect(loadStudioAIConfig(fakeClient({
       async get() {
@@ -51,8 +52,12 @@ describe('studio App AIConfig store on the Nimi App Access contract', () => {
 
     const client = fakeClient({
       get: async () => ({
-        owner: { owner: { oneofKind: 'app', app: { appId: 'other.app' } } },
-        capabilities: [],
+        config: {
+          owner: { owner: { oneofKind: 'app', app: { appId: 'other.app' } } },
+          capabilities: [],
+        },
+        revision: '1',
+        effectiveSelections: [],
       }),
     });
     await expect(loadStudioAIConfig(client))

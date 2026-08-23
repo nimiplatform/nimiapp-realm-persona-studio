@@ -11,13 +11,10 @@ import {
 
 const STUDIO_AI_CONFIG_QUERY_KEY = ['realm-persona-studio', 'studio-ai-config'] as const;
 
-const ROUTE_KIND_LABEL_KEYS: Record<NimiPortableAppAIConfigIntent['route']['oneofKind'], StudioCopyKey> = {
-  local: 'aiConfig.route.local',
-  cloud: 'aiConfig.route.cloud',
-};
-
 function routeKindLabelKey(intent: NimiPortableAppAIConfigIntent): StudioCopyKey {
-  return ROUTE_KIND_LABEL_KEYS[intent.route.oneofKind];
+  if (intent.route.oneofKind === 'local') return 'aiConfig.route.local';
+  if (intent.route.oneofKind === 'cloud') return 'aiConfig.route.cloud';
+  throw new Error(`AIConfig route is missing for ${intent.capabilityContract}.`);
 }
 
 export function StudioAIConfigPage() {
@@ -32,7 +29,16 @@ export function StudioAIConfigPage() {
     mutationFn: () => openStudioAIConfigurationInDesktop(),
   });
 
-  const config = configQuery.data ?? null;
+  const snapshot = configQuery.data;
+  const config = snapshot?.config ?? null;
+  const intents = config?.capabilities ?? [];
+  const effectiveByCapability = new Map(
+    snapshot?.effectiveSelections.map((selection) => [selection.capabilityContract, selection]),
+  );
+  const configured = intents.length > 0;
+  const effectiveReady = configured && intents.every(
+    (intent) => effectiveByCapability.get(intent.capabilityContract)?.state === 'ready',
+  );
   const readErrorDetails = describeAIConfigFailure(configQuery.error);
   const navigationErrorDetails = describeAIConfigFailure(ownerConfigurationMutation.error);
 
@@ -47,15 +53,17 @@ export function StudioAIConfigPage() {
             </p>
           </div>
           <StatusBadge
-            tone={configQuery.isPending ? 'neutral' : configQuery.isError ? 'warning' : config ? 'success' : 'info'}
+            tone={configQuery.isPending ? 'neutral' : configQuery.isError || (configured && !effectiveReady) ? 'warning' : configured ? 'success' : 'info'}
             shape="dot"
           >
             {configQuery.isPending
               ? t('common.loading')
               : configQuery.isError
                 ? t('aiConfig.state.unavailable')
-                : config
+                : configured && effectiveReady
                   ? t('aiConfig.state.configured')
+                  : configured
+                    ? t('aiConfig.state.unavailable')
                   : t('aiConfig.state.notConfigured')}
           </StatusBadge>
         </div>
@@ -65,18 +73,25 @@ export function StudioAIConfigPage() {
             {t('aiConfig.unavailableDetail')}
           </InlineAlert>
         ) : null}
-        {configQuery.isSuccess && !config ? (
+        {configQuery.isSuccess && !configured ? (
           <InlineAlert tone="warning" className="mb-4">
             {t('aiConfig.notConfiguredDetail')}
           </InlineAlert>
         ) : null}
         {config ? (
           <div className="mb-4 grid gap-2">
-            {config.capabilities.map((intent) => (
+            {intents.map((intent) => (
               <Surface key={intent.capabilityContract} tone="card" padding="md">
                 <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
                   <div className="ras-break-anywhere font-medium">{intent.capabilityContract}</div>
-                  <StatusBadge tone="info">{t(routeKindLabelKey(intent))}</StatusBadge>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusBadge tone="info">{t(routeKindLabelKey(intent))}</StatusBadge>
+                    <StatusBadge tone={effectiveByCapability.get(intent.capabilityContract)?.state === 'ready' ? 'success' : 'warning'}>
+                      {t(effectiveByCapability.get(intent.capabilityContract)?.state === 'ready'
+                        ? 'aiConfig.state.configured'
+                        : 'aiConfig.state.unavailable')}
+                    </StatusBadge>
+                  </div>
                 </div>
               </Surface>
             ))}

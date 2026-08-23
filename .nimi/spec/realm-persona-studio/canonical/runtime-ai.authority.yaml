@@ -5,7 +5,7 @@ units:
   - id: definition.realm-persona-studio.runtime-ai.ai-config-operations
     kind: definition
     title: AI configuration operations
-    meaning: Studio may read its exact App AIConfig projection only through the Desktop-supervised protected standard bridge; Nimi Desktop owns App AIConfig mutation, and Studio may request only that Desktop open the Studio App configuration surface while Desktop independently resolves its canonical owner.
+    meaning: Studio accesses its exact Runtime-owned App AIConfig through the Desktop-supervised protected standard bridge. Its covered self-owner manager provides get, bounded options, and whole-object revision-CAS overwrite without an owner selector. Studio may configure in-App or request that Desktop open the same canonical App configuration; Desktop is a centralized but non-exclusive manager.
   - id: rule.realm-persona-studio.runtime-ai.r001
     kind: rule
     title: Runtime candidate generation
@@ -112,9 +112,9 @@ units:
     kind: rule
     title: AI configuration capability gate
     modality: must
-    statement: Studio reads only its exact App AIConfig projection through the admitted Desktop-supervised protected operation and requests configuration changes only by asking Nimi Desktop to open the Studio App configuration surface; the App id is a navigation target without authorization force, Desktop independently resolves the canonical owner, and Studio exposes no App AIConfig mutation. Studio may preserve persona prompts, preferences, drafts, candidates, and review state but creates no app-local provider token custody, model registry truth, configuration fallback, or model availability simulation.
-    condition: Whenever Studio reads AI provider or model configuration or requests that Desktop open configuration.
-    failure: Fail closed when the protected read or Desktop-owned configuration navigation is unadmitted while preserving only persona prompts, preferences, drafts, candidates, and review state.
+    statement: Studio uses only its covered self-owner AIConfig manager for canonical get, bounded options, and whole-object revision-CAS overwrite. It may expose direct App configuration, request that Nimi Desktop open the same canonical owner, or choose only the Desktop handoff as a UI composition; none of those choices creates authorization or makes Desktop a configuration precondition. The App id on Desktop navigation is only a target, Desktop independently resolves the projected owner, and Studio creates no app-local provider token custody, model registry truth, shadow configuration, implicit selection, fallback, or model availability simulation.
+    condition: Whenever Studio reads or changes AI provider or model configuration or requests that Desktop open configuration.
+    failure: Fail closed when the covered self-owner manager or an invoked optional Desktop navigation is unavailable; preserve owner drafts and canonical committed intent without creating a parallel configuration path.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.runtime-ai.ai-config-operations

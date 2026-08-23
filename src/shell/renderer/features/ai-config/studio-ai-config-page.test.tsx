@@ -18,16 +18,36 @@ describe('Studio AIConfig read-only page', () => {
     loadStudioAIConfigMock.mockReset();
     openStudioAIConfigurationInDesktopMock.mockReset();
     loadStudioAIConfigMock.mockResolvedValue({
-      owner: {
+      config: {
         owner: {
-          oneofKind: 'app',
-          app: { appId: 'nimi.realm-persona-studio' },
+          owner: {
+            oneofKind: 'app',
+            app: { appId: 'nimi.realm-persona-studio' },
+          },
         },
+        capabilities: [{
+          capabilityContract: 'text.generate',
+          requiredFeatures: [],
+          route: { oneofKind: 'local', local: { loadoutRef: 'text-local' } },
+        }],
       },
-      capabilities: [{
+      revision: '1',
+      effectiveSelections: [{
         capabilityContract: 'text.generate',
-        requiredFeatures: [],
-        route: { oneofKind: 'local', local: {} },
+        state: 'ready',
+        resource: {
+          oneofKind: 'local',
+          local: {
+            loadoutRef: 'text-local',
+            label: 'Text local',
+            capabilityContract: 'text.generate',
+            implementation: { implementationId: 'text-local', driverId: 'local', driverDialect: 'test/local/v1' },
+            supportedFeatures: [],
+            state: 'ready',
+            reasons: [],
+          },
+        },
+        reasons: [],
       }],
     });
   });
