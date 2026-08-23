@@ -6,15 +6,20 @@ import { getStudioLocalAppClient } from '@renderer/app-shell/studio-platform.js'
 
 /**
  * Studio App AIConfig access on the Nimi App Access contract. The covered
- * self-owner manager is canonical; this screen currently chooses a read-only
- * projection plus optional Desktop handoff as UI composition. Desktop is not
- * an authorization source or configuration prerequisite.
+ * self-owner manager is canonical and the screen edits it through the shared
+ * Kit surface; Desktop handoff remains optional resource-management UI.
  */
 
 export type StudioAIConfigClient = {
-  readonly aiConfig: Pick<NimiLocalAppClient['aiConfig'], 'get'>;
+  readonly aiConfig: Pick<NimiLocalAppClient['aiConfig'], 'get' | 'overwrite' | 'listOptions'>;
 };
 export type StudioDesktopIntentOpener = typeof openDesktopIntent;
+
+export function getStudioAIConfigManager(
+  client: StudioAIConfigClient = getStudioLocalAppClient(),
+): StudioAIConfigClient['aiConfig'] {
+  return client.aiConfig;
+}
 
 // @nimi-authority: rule.realm-persona-studio.runtime-ai.r011
 export async function loadStudioAIConfig(

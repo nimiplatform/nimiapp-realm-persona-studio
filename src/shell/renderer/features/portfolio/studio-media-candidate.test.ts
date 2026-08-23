@@ -159,6 +159,74 @@ describe('Studio media candidate Nimi AI consumption', () => {
     });
   });
 
+  it.each([
+    'AI_LOCAL_SELECTION_NOT_FOUND',
+    'AI_LOADOUT_NOT_FOUND',
+    'AI_LOCAL_CAPABILITY_MISMATCH',
+  ])('maps current Local admission reason %s to route-unbound', async (reasonCode) => {
+    const runners = createStudioMediaCandidateRunners({
+      client: fakeClient(),
+      createScenarioJobClient: fakeScenarioClientFactory,
+      imageGenerate: async () => ({
+        ok: false,
+        capabilityId: 'image.generate',
+        reason: 'runtime-call-failed',
+        message: 'The current on-device model cannot admit this request.',
+        error: createNimiError({
+          message: 'The current on-device model cannot admit this request.',
+          reasonCode,
+          actionHint: 'configure_machine_local_model',
+          source: 'runtime',
+        }),
+      }),
+    });
+
+    await expect(runners.image({
+      surfaceId: 'realm-persona-studio.test-image',
+      capability: 'image.generate',
+      prompt: 'A reviewed portrait.',
+      aspectRatio: '1:1',
+    })).resolves.toMatchObject({ ok: false, failure: 'runtime-route-unbound' });
+  });
+
+  it.each([
+    'AI_LOADOUT_DRIVER_UNAVAILABLE',
+    'AI_LOADOUT_MODEL_ASSET_NOT_FOUND',
+    'AI_LOADOUT_MODEL_ASSET_CONTENT_MISMATCH',
+    'AI_LOADOUT_MODEL_CONTRACT_FAILED',
+  ])('maps blocked Local Loadout reason %s to route-unbound for image and voice', async (reasonCode) => {
+    const blocked = {
+      ok: false as const,
+      capabilityId: 'image.generate' as const,
+      reason: 'runtime-call-failed' as const,
+      message: 'The current on-device model is blocked.',
+      error: createNimiError({
+        message: 'The current on-device model is blocked.',
+        reasonCode,
+        actionHint: 'repair_machine_local_model',
+        source: 'runtime',
+      }),
+    };
+    const runners = createStudioMediaCandidateRunners({
+      client: fakeClient(),
+      createScenarioJobClient: fakeScenarioClientFactory,
+      imageGenerate: async () => blocked,
+      speechSynthesize: async () => ({ ...blocked, capabilityId: 'audio.synthesize' as const }),
+    });
+
+    await expect(runners.image({
+      surfaceId: 'realm-persona-studio.test-image',
+      capability: 'image.generate',
+      prompt: 'A reviewed portrait.',
+      aspectRatio: '1:1',
+    })).resolves.toMatchObject({ ok: false, failure: 'runtime-route-unbound' });
+    await expect(runners.voice({
+      surfaceId: 'realm-persona-studio.test-voice',
+      capability: 'audio.synthesize',
+      text: 'Welcome in.',
+    })).resolves.toMatchObject({ ok: false, failure: 'runtime-route-unbound' });
+  });
+
   it('keeps Kit input rejection distinct from malformed Runtime output', async () => {
     const runners = createStudioMediaCandidateRunners({
       client: fakeClient(),

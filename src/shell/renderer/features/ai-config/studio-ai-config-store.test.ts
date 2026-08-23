@@ -25,6 +25,8 @@ function fakeClient(input: {
   return {
     aiConfig: {
       get: input.get,
+      overwrite: vi.fn(),
+      listOptions: vi.fn(),
     },
   };
 }

@@ -1,11 +1,14 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, InlineAlert, StatusBadge, Surface } from '@nimiplatform/kit/ui';
+import { ModelConfigAIConfigSurface } from '@nimiplatform/kit/features/model-config';
+import { CANONICAL_CAPABILITY_IDS } from '@nimiplatform/kit/core/runtime-capabilities';
 import type { NimiPortableAppAIConfigIntent } from '@nimiplatform/sdk/ai';
 import { TechnicalReviewDetails } from '@renderer/features/portfolio/OwnerPortfolio.shared.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
 import type { StudioCopyKey } from '@renderer/i18n/studio-copy.js';
 import {
   loadStudioAIConfig,
+  getStudioAIConfigManager,
   openStudioAIConfigurationInDesktop,
 } from './studio-ai-config-store.js';
 
@@ -19,6 +22,8 @@ function routeKindLabelKey(intent: NimiPortableAppAIConfigIntent): StudioCopyKey
 
 export function StudioAIConfigPage() {
   const { t } = useStudioI18n();
+  const queryClient = useQueryClient();
+  const aiConfigManager = getStudioAIConfigManager();
   const configQuery = useQuery({
     queryKey: STUDIO_AI_CONFIG_QUERY_KEY,
     queryFn: () => loadStudioAIConfig(),
@@ -78,6 +83,28 @@ export function StudioAIConfigPage() {
             {t('aiConfig.notConfiguredDetail')}
           </InlineAlert>
         ) : null}
+        <ModelConfigAIConfigSurface
+          className="mb-4"
+          context={{ owner: 'app-ai-config', appId: 'nimi.realm-persona-studio' }}
+          capabilityContracts={CANONICAL_CAPABILITY_IDS}
+          capabilities={snapshot?.config?.capabilities ?? (configQuery.isSuccess ? null : undefined)}
+          revision={snapshot?.revision}
+          effectiveSelections={snapshot?.effectiveSelections}
+          listOptions={(query) => aiConfigManager.listOptions(query)}
+          onOverwrite={async (input) => {
+            const result = await aiConfigManager.overwrite(input);
+            queryClient.setQueryData(STUDIO_AI_CONFIG_QUERY_KEY, {
+              config: result.config,
+              revision: result.revision,
+              effectiveSelections: [],
+            });
+            void configQuery.refetch();
+            return result;
+          }}
+          onOpenOwnerConfiguration={() => ownerConfigurationMutation.mutate()}
+          loadError={configQuery.isError ? t('aiConfig.unavailableDetail') : null}
+          onRetry={() => { void configQuery.refetch(); }}
+        />
         {config ? (
           <div className="mb-4 grid gap-2">
             {intents.map((intent) => (
