@@ -1,5 +1,6 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { type QueryClient, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getOwnerPortfolioPersonaDetail } from '@renderer/features/portfolio/portfolio-client.js';
+import type { OwnerPortfolioPersona } from '@renderer/features/portfolio/portfolio-data.js';
 
 export type PersonaDetailReadScope = 'owner';
 
@@ -43,4 +44,28 @@ export function useRefreshPersonaReads(personaId: string, scope: PersonaDetailRe
 
 export function useRefreshOwnerPersonaReads(personaId: string) {
   return useRefreshPersonaReads(personaId, 'owner');
+}
+
+// @nimi-authority: rule.realm-persona-studio.acceptance.r003
+export async function removeDeletedOwnerPersonaReads(
+  queryClient: QueryClient,
+  personaId: string,
+): Promise<void> {
+  await Promise.all([
+    queryClient.cancelQueries({ queryKey: ownerPersonaDetailQueryKey(personaId), exact: true }),
+    queryClient.cancelQueries({ queryKey: ownerPortfolioListQueryKey(), exact: true }),
+  ]);
+  queryClient.removeQueries({
+    queryKey: ownerPersonaDetailQueryKey(personaId),
+    exact: true,
+  });
+  queryClient.setQueryData<OwnerPortfolioPersona[]>(
+    ownerPortfolioListQueryKey(),
+    (current) => current?.filter((persona) => persona.id !== personaId),
+  );
+  void queryClient.invalidateQueries({
+    queryKey: ownerPortfolioListQueryKey(),
+    exact: true,
+    refetchType: 'active',
+  });
 }

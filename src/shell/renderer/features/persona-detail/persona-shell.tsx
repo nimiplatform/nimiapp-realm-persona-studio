@@ -1,5 +1,6 @@
 import { type ReactNode, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { Eye, PenLine, Trash2 } from 'lucide-react';
 import {
   Avatar,
@@ -18,7 +19,11 @@ import { deleteOwnerPortfolioPersona } from '@renderer/features/portfolio/portfo
 import { settingFieldDisplayValue } from '@renderer/features/portfolio/OwnerPortfolio.shared.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
 import type { StudioCopyKey } from '@renderer/i18n/studio-copy.js';
-import { type PersonaDetailReadScope, usePersonaDetailQuery } from './use-persona-detail-query.js';
+import {
+  removeDeletedOwnerPersonaReads,
+  type PersonaDetailReadScope,
+  usePersonaDetailQuery,
+} from './use-persona-detail-query.js';
 import type { PersonaWorkspaceVisualData } from './persona-workspace-visual-data.js';
 import { usePersonaVisualPreview } from './persona-visual-preview-context.js';
 
@@ -114,6 +119,7 @@ export function PersonaHeader({
 }) {
   const { t } = useStudioI18n();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [deleteFailure, setDeleteFailure] = useState<ReturnType<typeof classifyPersonaDetailFailure>['kind'] | null>(null);
   const [deletePending, setDeletePending] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -143,6 +149,7 @@ export function PersonaHeader({
         setDeleteConfirmOpen(false);
         return;
       }
+      await removeDeletedOwnerPersonaReads(queryClient, persona.id);
       navigate('/portfolio', { replace: true });
     } finally {
       setDeletePending(false);
