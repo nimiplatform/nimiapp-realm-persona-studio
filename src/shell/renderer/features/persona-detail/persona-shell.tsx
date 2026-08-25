@@ -4,6 +4,7 @@ import { Eye, PenLine, Trash2 } from 'lucide-react';
 import {
   Avatar,
   Button,
+  ConfirmDialog,
   EmptyState,
   InlineAlert,
   NimiTabs,
@@ -15,7 +16,6 @@ import type { OwnerPortfolioPersonaDetail } from '@renderer/features/portfolio/p
 import { classifyPersonaDetailFailure } from '@renderer/features/portfolio/portfolio-data.js';
 import { deleteOwnerPortfolioPersona } from '@renderer/features/portfolio/portfolio-client.js';
 import { settingFieldDisplayValue } from '@renderer/features/portfolio/OwnerPortfolio.shared.js';
-import { confirmDialog } from '@renderer/bridge/index.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
 import type { StudioCopyKey } from '@renderer/i18n/studio-copy.js';
 import { type PersonaDetailReadScope, usePersonaDetailQuery } from './use-persona-detail-query.js';
@@ -116,6 +116,7 @@ export function PersonaHeader({
   const navigate = useNavigate();
   const [deleteFailure, setDeleteFailure] = useState<ReturnType<typeof classifyPersonaDetailFailure>['kind'] | null>(null);
   const [deletePending, setDeletePending] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const name = settingFieldDisplayValue(persona.displayName, t('shared.displayNameNotSet'), t);
   const handle = persona.handle.value ? `@${persona.handle.value}` : settingFieldDisplayValue(persona.handle, t('shared.handleNotSet'), t);
   const world = settingFieldDisplayValue(persona.world, t('shared.worldNotSet'), t);
@@ -134,22 +135,12 @@ export function PersonaHeader({
 
   const deletePersona = async () => {
     setDeleteFailure(null);
-    try {
-      const confirmation = await confirmDialog({
-        title: t('persona.delete.confirmTitle'),
-        description: t('persona.delete.confirmDescription', { name }),
-        level: 'warning',
-      });
-      if (!confirmation.confirmed) return;
-    } catch {
-      setDeleteFailure('contract-invalid');
-      return;
-    }
     setDeletePending(true);
     try {
       const result = await deleteOwnerPortfolioPersona(persona.id);
       if (!result.ok) {
         setDeleteFailure(result.failure);
+        setDeleteConfirmOpen(false);
         return;
       }
       navigate('/portfolio', { replace: true });
@@ -209,7 +200,7 @@ export function PersonaHeader({
               leadingIcon={<Trash2 size={16} />}
               loading={deletePending}
               disabled={deletePending}
-              onClick={() => void deletePersona()}
+              onClick={() => setDeleteConfirmOpen(true)}
             >
               {t('persona.delete.action')}
             </Button>
@@ -223,6 +214,17 @@ export function PersonaHeader({
           <StatusBadge tone="neutral">{deleteFailure}</StatusBadge>
         </InlineAlert>
       ) : null}
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        title={t('persona.delete.confirmTitle')}
+        message={t('persona.delete.confirmDescription', { name })}
+        confirmLabel={t('common.confirm')}
+        cancelLabel={t('common.cancel')}
+        confirmTone="danger"
+        loading={deletePending}
+        onConfirm={() => void deletePersona()}
+        onClose={() => setDeleteConfirmOpen(false)}
+      />
     </section>
   );
 }

@@ -60,6 +60,8 @@ describe('PersonaCharacter App adoption hard cut', () => {
     expect(client).not.toContain('VITE_RPS_DEV_MOCK_PORTFOLIO');
     expect(list).not.toContain('DESIGN_PREVIEW_PERSONAS');
     expect(shell).not.toContain('persona-workspace.visual-fixture');
+    expect(shell).toContain('ConfirmDialog');
+    expect(shell).not.toContain('confirmDialog(');
     expect(preview).toContain('persona-workspace.visual-fixture');
     expect(preview).toContain('PersonaVisualPreviewProvider');
   });
