@@ -785,6 +785,12 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
   const oasisWorld = useMemo(() => selectOasisDefaultWorld(worlds), [worlds]);
   const selectedWorld = worlds.find((world) => world.id === draft.selectedWorldId) || null;
   const normalizedDraft = useMemo(() => normalizeCreateRealmPersonaDraft(draft), [draft]);
+  const draftHistoryLabel = useMemo(() => {
+    const label = (normalizedDraft.displayName || normalizedDraft.originalDescription)
+      .replace(/\s+/g, ' ')
+      .trim();
+    return label.length > 80 ? `${label.slice(0, 77)}...` : label;
+  }, [normalizedDraft.displayName, normalizedDraft.originalDescription]);
 
   const handleAvailabilityQuery = useQuery<RealmPersonaHandleAvailabilityResult>({
     queryKey: ['realm-persona-studio', 'create-persona-handle-availability', normalizedDraft.handle],
@@ -823,10 +829,10 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
           }
           return;
         }
-        if (normalizedDraft.displayName) {
+        if (draftHistoryLabel) {
           const historyResult = await upsertCreationDraftHistoryEntry({
             draftKey,
-            displayName: normalizedDraft.displayName,
+            displayName: draftHistoryLabel,
             ...(selectedWorld?.name ? { worldName: selectedWorld.name } : {}),
             ...(normalizedDraft.personaArchetype ? { archetype: normalizedDraft.personaArchetype } : {}),
             updatedAt: result.record.updatedAt,
@@ -847,7 +853,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
       });
     }, CREATION_DRAFT_AUTOSAVE_DEBOUNCE_MS);
     return () => window.clearTimeout(timeout);
-  }, [draft, draftKey, draftLoadState, normalizedDraft, selectedWorld?.name, t]);
+  }, [draft, draftHistoryLabel, draftKey, draftLoadState, normalizedDraft, selectedWorld?.name, t]);
 
   const refreshReferenceAssets = useCallback(async () => {
     setReferenceAssetLoadState('loading');

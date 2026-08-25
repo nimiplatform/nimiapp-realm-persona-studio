@@ -95,6 +95,8 @@ describe('Create Realm Persona workspace v2 shell', () => {
     expect(source).toContain('create.autosave.failed');
     expect(source).toContain('persistCreationDraft(draftKey, draft)');
     expect(source).toContain('upsertCreationDraftHistoryEntry');
+    expect(source).toContain('normalizedDraft.displayName || normalizedDraft.originalDescription');
+    expect(source).toContain('if (draftHistoryLabel)');
     expect(source).toContain("search.set('draft', draftKey)");
     expect(source).toContain("navigate({ pathname: location.pathname, search: `?${search.toString()}` }, { replace: true })");
     expect(store).toContain("'rps:creation-draft-history-updated'");
