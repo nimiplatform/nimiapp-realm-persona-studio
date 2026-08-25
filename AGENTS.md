@@ -38,14 +38,15 @@ guide; refresh with `pnpm exec nimicoding sync --apply` after bumping the
 package.
 
 The current spec-4 Nimi App Access surface admits owner PersonaCharacter
-portfolio, detail, create, and replace through the host-injected
-`client.realm.personaCharacter.listOwned/getOwned/create/replace` methods under
-`realm.data`; writes use the complete PersonaCharacter profile contract and
-`replace` uses `toProfileInput` plus the latest `baseContentHash`. The Studio UI
+portfolio, detail, create, replace, and private owner delete through the host-injected
+`client.realm.personaCharacter.listOwned/getOwned/create/replace/delete` methods under
+`realm.data`; writes use the complete PersonaCharacter profile contract,
+`replace` uses `toProfileInput` plus the latest `baseContentHash`, and ordinary
+delete is exposed only for private owner-created PersonaCharacters. The Studio UI
 may call this product object Realm Persona, but legacy RealmPersona DTO and
-controller names are not callable authority. Publication, media upload,
-materialization, friendCount, and delete gaps must fail closed until an exact
-operation exists. `/portfolio` must not call Forge-imported system,
+controller names are not callable authority. Publication lifecycle, unpublish
+or retirement, media upload, materialization, and friendCount gaps must fail
+closed until an exact operation exists. `/portfolio` must not call Forge-imported system,
 creator, world-maintainer, or dev surfaces. `/api/creator/agents`,
 `/api/agent/dev/my-agents`, and `/api/agent/forge-imported-system/**` are
 explicitly non-current legacy anti-targets.

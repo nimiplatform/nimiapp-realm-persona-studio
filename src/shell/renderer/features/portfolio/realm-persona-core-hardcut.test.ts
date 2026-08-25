@@ -34,6 +34,7 @@ describe('PersonaCharacter App adoption hard cut', () => {
     expect(client).toContain('nextAfterId');
     expect(client).toContain('realm.personaCharacter.getOwned');
     expect(client).toContain('realm.personaCharacter.create');
+    expect(client).toContain('realm.personaCharacter.delete');
     expect(settings).toContain('realm.personaCharacter.replace');
     expect(settings).toContain('toProfileInput');
     expect(settings).not.toContain('packetHash');

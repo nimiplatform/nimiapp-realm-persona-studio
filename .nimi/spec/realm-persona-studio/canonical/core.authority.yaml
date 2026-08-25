@@ -17,7 +17,7 @@ units:
   - id: definition.realm-persona-studio.core.realm-core-surfaces
     kind: definition
     title: Realm core surfaces
-    meaning: The admitted current Studio Realm data plane is client.realm.personaCharacter.listOwned, getOwned, create, and replace plus client.realm.worldCore.list and create through the host-injected App SDK under realm.data; post, media publication, materialization, friendCount, and delete remain unadmitted.
+    meaning: The admitted current Studio Realm data plane is client.realm.personaCharacter.listOwned, getOwned, create, replace, and delete plus client.realm.worldCore.list and create through the host-injected App SDK under realm.data; ordinary delete is shown only for an owner-created private PersonaCharacter and preserves Realm not-found, access-denied, and content-conflict failures, while post, media publication, materialization, friendCount, unpublish, retirement, and public lifecycle mutation remain unadmitted.
   - id: definition.realm-persona-studio.core.local-candidate
     kind: definition
     title: Local candidate

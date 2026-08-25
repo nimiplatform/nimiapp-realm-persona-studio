@@ -10,6 +10,10 @@ units:
     kind: definition
     title: Persona replace DTO
     meaning: The Studio replace input contains personaCharacterId, the latest lower-case sixty-four-hex baseContentHash, worldId, writable visibility, origin, and a complete profile produced from the latest detail through client.realm.personaCharacter.toProfileInput.
+  - id: definition.realm-persona-studio.persona.delete-result
+    kind: definition
+    title: Persona owner delete result
+    meaning: The Studio delete result is the exact App SDK acknowledgement containing the requested personaCharacterId plus deleted true after Realm transactionally deletes an owner-created private unpublished unreferenced PersonaCharacter; not-found, access-denied, and content-conflict remain typed failures and no public, unpublish, retirement, tombstone, or fallback semantics are inferred.
   - id: definition.realm-persona-studio.persona.world-character-core
     kind: definition
     title: World character core

@@ -53,6 +53,20 @@ export type RealmPersonaCreateResult =
     message: string;
   };
 
+export const REALM_PERSONA_DELETE_SOURCE = 'Nimi App Access realm.personaCharacter.delete' as const;
+
+export type RealmPersonaDeleteResult =
+  | {
+    ok: true;
+    source: typeof REALM_PERSONA_DELETE_SOURCE;
+    personaCharacterId: string;
+  }
+  | {
+    ok: false;
+    source: typeof REALM_PERSONA_DELETE_SOURCE;
+    failure: NimiLocalAppPersonaCharacterFailureReason;
+  };
+
 export type RealmPersonaCreateProfileSettingsCompletion =
   {
     status: 'not-applicable';
@@ -157,6 +171,24 @@ export async function getOwnerPortfolioPersonaDetail(
 ): Promise<OwnerPortfolioPersonaDetail> {
   const persona = await getStudioLocalAppClient().realm.personaCharacter.getOwned(personaId);
   return normalizeOwnerPortfolioPersonaDetail(persona);
+}
+
+// @nimi-authority: rule.realm-persona-studio.acceptance.r003
+export async function deleteOwnerPortfolioPersona(personaId: string): Promise<RealmPersonaDeleteResult> {
+  try {
+    const result = await getStudioLocalAppClient().realm.personaCharacter.delete(personaId);
+    return {
+      ok: true,
+      source: REALM_PERSONA_DELETE_SOURCE,
+      personaCharacterId: result.personaCharacterId,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      source: REALM_PERSONA_DELETE_SOURCE,
+      failure: personaCharacterFailureReason(error),
+    };
+  }
 }
 
 export async function listCreateRealmPersonaSelectableWorlds(): Promise<SelectableRealmWorld[]> {

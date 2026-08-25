@@ -5,6 +5,7 @@ const personaCharacter = vi.hoisted(() => ({
   getOwned: vi.fn(),
   create: vi.fn(),
   replace: vi.fn(),
+  delete: vi.fn(),
   toProfileInput: vi.fn(),
 }));
 
@@ -17,6 +18,7 @@ import {
   checkCreateRealmPersonaHandleAvailability,
   createReviewedRealmPersona,
   createReviewedRealmPersonaWithProfileSettings,
+  deleteOwnerPortfolioPersona,
   getOwnerPortfolioPersonaDetail,
   listOwnerPortfolioPersonas,
 } from './portfolio-client.js';
@@ -28,6 +30,28 @@ describe('owner PersonaCharacter portfolio client', () => {
     personaCharacter.listOwned.mockResolvedValue({ items: [] });
     personaCharacter.getOwned.mockResolvedValue(persona);
     personaCharacter.create.mockResolvedValue(persona);
+    personaCharacter.delete.mockResolvedValue({ personaCharacterId: persona.id, deleted: true });
+  });
+
+  it('deletes an owner private Persona through the exact App client acknowledgement', async () => {
+    await expect(deleteOwnerPortfolioPersona('persona-1')).resolves.toEqual({
+      ok: true,
+      source: 'Nimi App Access realm.personaCharacter.delete',
+      personaCharacterId: 'persona-1',
+    });
+    expect(personaCharacter.delete).toHaveBeenCalledWith('persona-1');
+  });
+
+  it('preserves referenced delete conflict as a typed owner failure', async () => {
+    personaCharacter.delete.mockRejectedValue(Object.assign(new Error('private Realm body'), {
+      reasonCode: 'content-conflict',
+    }));
+
+    await expect(deleteOwnerPortfolioPersona('persona-1')).resolves.toEqual({
+      ok: false,
+      source: 'Nimi App Access realm.personaCharacter.delete',
+      failure: 'content-conflict',
+    });
   });
 
   it('uses the host-injected owner client and follows every nextAfterId page', async () => {

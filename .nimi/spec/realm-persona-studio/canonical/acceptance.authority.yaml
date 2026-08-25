@@ -30,12 +30,14 @@ units:
     kind: rule
     title: Owner PersonaCharacter writes
     modality: must
-    statement: Persona create and replace writes use the exact host-injected App PersonaCharacter inputs only; replacement starts from toProfileInput on the latest owner detail and carries the latest baseContentHash.
-    condition: Whenever Studio creates or updates a persona.
-    failure: Reject the write and acceptance when the exact App input, latest owner detail, or latest baseContentHash is missing.
+    statement: Persona create, replace, and delete writes use the exact host-injected App PersonaCharacter methods only; replacement starts from toProfileInput on the latest owner detail and carries the latest baseContentHash, while ordinary delete is exposed only from a latest owner detail whose visibility is private and succeeds only after the exact acknowledgement matches the requested personaCharacterId.
+    condition: Whenever Studio creates, updates, or deletes a persona.
+    failure: Reject the write and acceptance when the exact App input, latest owner detail, latest baseContentHash, private delete eligibility, or matching delete acknowledgement is missing, and preserve not-found, access-denied, and content-conflict without fallback.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.persona.create-dto
+      - type: applies_to
+        target: definition.realm-persona-studio.persona.delete-result
       - type: applies_to
         target: definition.realm-persona-studio.persona.replace-dto
   - id: rule.realm-persona-studio.acceptance.r004
