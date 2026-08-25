@@ -40,10 +40,10 @@ const candidate: LocalPostScheduleCandidate = {
       sourceRef: {
         kind: 'personaCharacter',
         worldId: 'world-oasis',
-        sourceId: 'persona-1',
-        sourceContentHash: 'hash-persona-1',
+        id: 'persona-1',
+        sourceHash: 'source-hash-persona-1',
       },
-      sourceRefKey: 'personaCharacter:world-oasis:persona-1:hash-persona-1',
+      sourceRefKey: 'personaCharacter:world-oasis:persona-1:source-hash-persona-1',
       handle: 'mira',
       displayName: 'Mira',
     },

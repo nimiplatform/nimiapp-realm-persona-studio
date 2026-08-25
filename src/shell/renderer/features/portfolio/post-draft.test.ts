@@ -15,6 +15,7 @@ import {
 const persona: OwnerPortfolioPersonaDetail = {
   id: 'persona-1',
   contentHash: 'hash-persona-1',
+  sourceHash: 'source-hash-persona-1',
   contentRevision: 1,
   homeWorldId: 'world-oasis',
   displayName: {
@@ -163,10 +164,10 @@ describe('local post draft validation', () => {
         sourceRef: {
           kind: 'personaCharacter',
           worldId: 'world-oasis',
-          sourceId: 'persona-1',
-          sourceContentHash: 'hash-persona-1',
+          id: 'persona-1',
+          sourceHash: 'source-hash-persona-1',
         },
-        sourceRefKey: 'personaCharacter:world-oasis:persona-1:hash-persona-1',
+        sourceRefKey: 'personaCharacter:world-oasis:persona-1:source-hash-persona-1',
         handle: 'mira',
         displayName: 'Mira',
       },
@@ -183,7 +184,7 @@ describe('local post draft validation', () => {
       },
     } satisfies CandidatePostPayload);
     expect(collectKeys(result.payload?.realmCreatePost).has('worldId')).toBe(false);
-    expect(collectKeys(result.payload).has('id')).toBe(false);
+    expect(collectKeys(result.payload?.realmCreatePost).has('id')).toBe(false);
     expect(collectKeys(result.payload).has('authorId')).toBe(false);
   });
 
@@ -302,7 +303,7 @@ describe('app-local post schedule candidate', () => {
     expect(collectKeys(result.candidate).has('scheduleId')).toBe(false);
     expect(collectKeys(result.candidate?.postCandidate.realmCreatePost).has('worldId')).toBe(false);
     expect(collectKeys(result.candidate).has('authorId')).toBe(false);
-    expect(collectKeys(result.candidate).has('id')).toBe(false);
+    expect(collectKeys(result.candidate?.postCandidate.realmCreatePost).has('id')).toBe(false);
     expect(collectKeys(result.candidate).has('queue')).toBe(false);
     expect(collectKeys(result.candidate).has('campaign')).toBe(false);
     expect(collectKeys(result.candidate).has('recurrence')).toBe(false);

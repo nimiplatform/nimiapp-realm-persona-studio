@@ -152,6 +152,7 @@ export const PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS: Record<string, OwnerPortf
     visibility: field('visibility', 'Visibility', 'public'),
     avatarUrl: xiaomiAvatarUrl,
     contentHash: 'visual-fixture-xiaomi-content-hash',
+    sourceHash: 'visual-fixture-xiaomi-source-hash',
     contentRevision: 4,
     homeWorldId: 'OASIS',
     voice: {
@@ -179,6 +180,7 @@ export const PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS: Record<string, OwnerPortf
     visibility: field('visibility', 'Visibility', 'public'),
     avatarUrl: nanxingAvatarUrl,
     contentHash: 'visual-fixture-nanxing-content-hash',
+    sourceHash: 'visual-fixture-nanxing-source-hash',
     contentRevision: 2,
     homeWorldId: 'EDEN',
     voice: {
@@ -206,6 +208,7 @@ export const PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS: Record<string, OwnerPortf
     visibility: field('visibility', 'Visibility', 'private'),
     avatarUrl: null,
     contentHash: 'visual-fixture-chenwu-content-hash',
+    sourceHash: 'visual-fixture-chenwu-source-hash',
     contentRevision: 1,
     homeWorldId: 'AURORA',
     friendCount: { status: 'source-unavailable', label: 'friendCount source unavailable' },
@@ -224,6 +227,7 @@ export const PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS: Record<string, OwnerPortf
     visibility: field('visibility', 'Visibility', 'private'),
     avatarUrl: null,
     contentHash: 'visual-fixture-xinglan-content-hash',
+    sourceHash: 'visual-fixture-xinglan-source-hash',
     contentRevision: 1,
     homeWorldId: 'NEBULA',
     friendCount: { status: 'source-unavailable', label: 'friendCount source unavailable' },

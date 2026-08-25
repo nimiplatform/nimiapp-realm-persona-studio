@@ -164,6 +164,7 @@ export function ownerPersonaDetail(): OwnerPortfolioPersonaDetail {
     visibility: detailField('visibility', 'Visibility', 'public'),
     avatarUrl: null,
     contentHash: persona.contentHash,
+    sourceHash: persona.sourceHash,
     contentRevision: 1,
     homeWorldId: 'world-oasis',
     voice: {
@@ -198,10 +199,10 @@ export const candidatePayload: CandidatePostPayload = {
     sourceRef: {
       kind: 'personaCharacter',
       worldId: 'world-oasis',
-      sourceId: 'persona-1',
-      sourceContentHash: persona.contentHash,
+      id: 'persona-1',
+      sourceHash: persona.sourceHash,
     },
-    sourceRefKey: `personaCharacter:world-oasis:persona-1:${persona.contentHash}`,
+    sourceRefKey: `personaCharacter:world-oasis:persona-1:${persona.sourceHash}`,
     handle: 'mira',
     displayName: 'Mira',
   },

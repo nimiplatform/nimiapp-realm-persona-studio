@@ -17,6 +17,7 @@ function field(key: SettingField['key'], label: string, value: string, status: S
 const persona: OwnerPortfolioPersonaDetail = {
   id: 'persona-1',
   contentHash: 'hash-persona-1',
+  sourceHash: 'source-hash-persona-1',
   contentRevision: 1,
   homeWorldId: 'world-oasis',
   displayName: field('displayName', 'Display name', 'Mira Prime'),

@@ -36,8 +36,8 @@ function isPersonaCharacterSourceRef(value: unknown): boolean {
   }
   return value.kind === 'personaCharacter'
     && isNonEmptyString(value.worldId)
-    && isNonEmptyString(value.sourceId)
-    && isNonEmptyString(value.sourceContentHash);
+    && isNonEmptyString(value.id)
+    && isNonEmptyString(value.sourceHash);
 }
 
 function isLocalPostScheduleCandidate(value: unknown): value is LocalPostScheduleCandidate {
@@ -96,7 +96,7 @@ function normalizeRecord(value: unknown, personaId: string): LocalPostScheduleRe
     || !candidate
     || candidate.source !== 'realm-persona-studio.local-single-post-schedule'
     || candidate.appLocalOnly !== true
-    || candidate.postCandidate.personaRef.sourceRef.sourceId !== personaId
+    || candidate.postCandidate.personaRef.sourceRef.id !== personaId
   ) {
     return null;
   }
@@ -139,7 +139,7 @@ export function saveLocalPostSchedule(
   if (!isLocalPostScheduleCandidate(candidate)) {
     throw new Error('Local post schedule candidate requires typed PersonaCharacter sourceRef evidence.');
   }
-  if (candidate.postCandidate.personaRef.sourceRef.sourceId !== personaId) {
+  if (candidate.postCandidate.personaRef.sourceRef.id !== personaId) {
     throw new Error('Local post schedule persona identity does not match its PersonaCharacter sourceRef.');
   }
 

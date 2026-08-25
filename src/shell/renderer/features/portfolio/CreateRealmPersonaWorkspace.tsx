@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Button,
@@ -646,9 +646,12 @@ function WorldLoadingPanel() {
   return <EmptyState title={t('create.world.loadingTitle')} description={t('create.world.loadingDescription')} />;
 }
 
+// @nimi-authority: rule.realm-persona-studio.create-flow.r004
+// @nimi-authority: rule.realm-persona-studio.create-flow.r006
 export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }: CreateRealmPersonaWorkspaceProps) {
   const { t } = useStudioI18n();
   const location = useLocation();
+  const navigate = useNavigate();
   const initialDraftKey = useRef<string | null>(null);
   initialDraftKey.current ??= selectedDraftKey(location.search) || createCreationDraftKey();
   const [draftKey, setDraftKey] = useState(initialDraftKey.current);
@@ -695,6 +698,12 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
   const [localImportCapability] = useState<LocalImportCapabilityStatus>(() => getLocalAssetImportCapability());
 
   const selectedKey = selectedDraftKey(location.search);
+  useEffect(() => {
+    if (selectedKey) return;
+    const search = new URLSearchParams(location.search);
+    search.set('draft', draftKey);
+    navigate({ pathname: location.pathname, search: `?${search.toString()}` }, { replace: true });
+  }, [draftKey, location.pathname, location.search, navigate, selectedKey]);
   const lastLocationSearch = useRef(location.search);
   useEffect(() => {
     if (lastLocationSearch.current === location.search) return;

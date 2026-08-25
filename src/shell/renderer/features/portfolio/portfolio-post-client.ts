@@ -17,7 +17,6 @@ import {
   type RuntimePostCopyProposal,
 } from './post-draft.js';
 
-type RealmCreatePostInput = RealmModel<'CreatePostDto'>;
 type RealmCreatePostResponse = PostDto;
 type RealmCreateTextResourceInput = RealmModel<'CreateTextResourceDto'>;
 type RealmCreateTextResourceResponse = RealmModel<'ResourceDetailDto'>;
@@ -184,18 +183,6 @@ function isPostAttachmentResourceType(value: string): value is PostAttachmentRes
 
 function isDirectMediaResourceType(value: string): value is DirectMediaResourceType {
   return value === 'IMAGE' || value === 'VIDEO' || value === 'AUDIO';
-}
-
-export function buildRealmCreatePostInput(payload: CandidatePostPayload): RealmCreatePostInput {
-  return {
-    attachments: payload.realmCreatePost.attachments.map((attachment) => ({
-      targetType: attachment.targetType,
-      targetId: attachment.targetId,
-    })),
-    ...(payload.realmCreatePost.caption ? { caption: payload.realmCreatePost.caption } : {}),
-    ...(payload.realmCreatePost.tags && payload.realmCreatePost.tags.length > 0 ? { tags: [...payload.realmCreatePost.tags] } : {}),
-    sourceRef: { ...payload.personaRef.sourceRef },
-  };
 }
 
 function normalizeResourceTitle(value: string): string {

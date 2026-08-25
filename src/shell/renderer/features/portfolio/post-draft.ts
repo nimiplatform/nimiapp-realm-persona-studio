@@ -5,6 +5,8 @@ import { parseStrictRuntimeJsonObject } from './strict-runtime-json.js';
 export const ATTACHMENT_TARGET_TYPES = ['RESOURCE', 'ASSET', 'BUNDLE'] as const;
 export const POST_COPY_ASSISTANCE_SOURCE = 'Nimi App Access ai.text.generateCandidate';
 
+// @nimi-authority: rule.realm-persona-studio.post.r009
+
 export type AttachmentTargetType = typeof ATTACHMENT_TARGET_TYPES[number];
 
 export type LocalPostDraftInput = {
@@ -36,8 +38,8 @@ export type CandidatePostPayload = {
     sourceRef: {
       kind: 'personaCharacter';
       worldId: string;
-      sourceId: string;
-      sourceContentHash: string;
+      id: string;
+      sourceHash: string;
     };
     sourceRefKey: string;
     handle: string;
@@ -179,7 +181,7 @@ function assertNoForbiddenPayloadKeys(value: unknown): string | null {
 }
 
 function buildPersonaCharacterSourceRefKey(sourceRef: CandidatePostPayload['personaRef']['sourceRef']): string {
-  return `${sourceRef.kind}:${sourceRef.worldId}:${sourceRef.sourceId}:${sourceRef.sourceContentHash}`;
+  return `${sourceRef.kind}:${sourceRef.worldId}:${sourceRef.id}:${sourceRef.sourceHash}`;
 }
 
 function proposalValueToText(value: unknown): string | null {
@@ -242,9 +244,16 @@ export function validateLocalPostDraft(
   const sourceRef: CandidatePostPayload['personaRef']['sourceRef'] = {
     kind: 'personaCharacter',
     worldId: persona.homeWorldId,
-    sourceId: persona.id,
-    sourceContentHash: persona.contentHash,
+    id: persona.id,
+    sourceHash: persona.sourceHash,
   };
+  if (!sourceRef.sourceHash) {
+    return {
+      publishable: false,
+      errors: ['post candidate rejected: PersonaCharacter sourceHash unavailable'],
+      payload: null,
+    };
+  }
   const payload: CandidatePostPayload = {
     candidate: true,
     source: 'realm-persona-studio.local-post-draft',

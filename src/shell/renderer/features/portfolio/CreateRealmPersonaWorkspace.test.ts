@@ -73,7 +73,6 @@ describe('Create Realm Persona workspace v2 shell', () => {
     expect(source).not.toContain('create.boundaryLabel');
     expect(source).not.toContain('create.boundaryDescription');
     expect(source).not.toContain('create.generateFromDescription');
-    expect(source).not.toContain('useNavigate');
   });
 
   it('renders the creation choices as stacked primary and secondary buttons', () => {
@@ -96,6 +95,8 @@ describe('Create Realm Persona workspace v2 shell', () => {
     expect(source).toContain('create.autosave.failed');
     expect(source).toContain('persistCreationDraft(draftKey, draft)');
     expect(source).toContain('upsertCreationDraftHistoryEntry');
+    expect(source).toContain("search.set('draft', draftKey)");
+    expect(source).toContain("navigate({ pathname: location.pathname, search: `?${search.toString()}` }, { replace: true })");
     expect(store).toContain("'rps:creation-draft-history-updated'");
     expect(sidebar).toContain('listOwnerPortfolioPersonas');
     expect(sidebar).not.toContain('CREATION_DRAFT_HISTORY_UPDATED_EVENT');

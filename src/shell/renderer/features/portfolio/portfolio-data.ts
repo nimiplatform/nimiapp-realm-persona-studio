@@ -81,6 +81,7 @@ export type OwnerPortfolioPersonaDetail = {
   visibility: SettingField;
   avatarUrl: string | null;
   contentHash: string;
+  sourceHash: string;
   contentRevision: number;
   homeWorldId: string;
   voice?: PortfolioPersonaVoiceConfig;
@@ -343,6 +344,7 @@ export function normalizeOwnerPortfolioPersonaDetail(
     avatarUrl: readExternalAssetUri(core, 'avatar')
       || readExternalAssetUri(core, 'referenceImage'),
     contentHash: persona.contentHash,
+    sourceHash: persona.sourceHash,
     contentRevision: persona.contentRevision,
     homeWorldId: persona.worldId,
     friendCount: normalizeFriendCount(persona),

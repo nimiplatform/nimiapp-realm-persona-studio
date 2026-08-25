@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import {
-  buildRealmCreatePostInput,
   createReviewedPostTextResource,
   listReadyPostAttachmentResources,
   proposeReviewedPostCopy,
@@ -12,7 +11,6 @@ import {
 } from './portfolio-client.js';
 import {
   candidatePayload,
-  collectKeys,
   ownerPersonaDetail,
   ownerPersonaDetailWithWorldId,
   persona,
@@ -98,25 +96,9 @@ describe('owner portfolio publication hardcut', () => {
       attachmentTruth: false,
       submitted: {
         content: 'Published caption',
-        sourceRef: `personaCharacter:world-oasis:persona-1:${persona.contentHash}`,
+        sourceRef: `personaCharacter:world-oasis:persona-1:${persona.sourceHash}`,
       },
     });
-  });
-
-  it('keeps reviewed post payload construction free of caller-owned authority', () => {
-    const input = buildRealmCreatePostInput(candidatePayload);
-
-    expect(input).toEqual({
-      ...candidatePayload.realmCreatePost,
-      sourceRef: {
-        kind: 'personaCharacter',
-        worldId: 'world-oasis',
-        sourceId: 'persona-1',
-        sourceContentHash: persona.contentHash,
-      },
-    });
-    expect(collectKeys(input).has('authorId')).toBe(false);
-    expect(collectKeys(input).has('accessToken')).toBe(false);
   });
 
   it('contains no renderer direct-upload, signed-upload, or Realm publication call', () => {

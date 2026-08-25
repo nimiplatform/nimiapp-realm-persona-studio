@@ -52,7 +52,7 @@ function InsightsBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) {
           {friendCountAvailable ? (
             <Statistic
               className="mt-4"
-              tone="brand"
+              tone="primary"
               label={t('persona.insights.friendCountTitle')}
               value={friendCount}
             />

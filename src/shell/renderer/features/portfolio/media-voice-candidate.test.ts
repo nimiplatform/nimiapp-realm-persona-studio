@@ -32,6 +32,7 @@ function settingField(key: SettingField['key'], label: string, value: string): S
 const persona: OwnerPortfolioPersonaDetail = {
   id: 'persona-1',
   contentHash: 'hash-persona-1',
+  sourceHash: 'source-hash-persona-1',
   contentRevision: 1,
   homeWorldId: 'world-oasis',
   displayName: settingField('displayName', 'Display name', 'Mira'),
