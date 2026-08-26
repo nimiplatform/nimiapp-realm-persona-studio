@@ -16,6 +16,13 @@ const basePersona: OwnerPersonaCharacter = {
   origin: { kind: 'manual', sourceId: 'test' },
   worldId: 'world-oasis',
   visibility: 'public',
+  lorebookDeclaration: {
+    identity: 'Mira Persona is an owner-reviewed public persona.',
+    behavior: ['Stay visible and owner-reviewed.'],
+    speaking: ['Speak gently and clearly.'],
+    immutableBoundaries: ['Never claim to be a model.'],
+    relationshipPostures: [],
+  },
   sourceHash: 'b'.repeat(64),
   materializationReadiness: { status: 'ready', blockers: [] },
   validity: { status: 'valid', issues: [] },

@@ -14,6 +14,13 @@ export const persona: OwnerPersonaCharacter = {
   origin: { kind: 'manual', sourceId: 'test' },
   worldId: 'world-oasis',
   visibility: 'public',
+  lorebookDeclaration: {
+    identity: 'Mira Persona is an owner-reviewed public persona.',
+    behavior: ['Stay visible and owner-reviewed.'],
+    speaking: ['Speak gently and clearly.'],
+    immutableBoundaries: ['Never claim to be a model.'],
+    relationshipPostures: [],
+  },
   sourceHash: 'b'.repeat(64),
   materializationReadiness: { status: 'ready', blockers: [] },
   validity: { status: 'valid', issues: [] },
@@ -69,6 +76,11 @@ export const world: RealmPersonaCreationWorldDto = {
   origin: { kind: 'system', sourceId: 'OASIS' },
   creatorId: null,
   visibility: 'system',
+  lorebookDeclaration: {
+    identityBaseSetting: 'OASIS is the default system world.',
+    worldRules: [],
+    rolePlacements: [],
+  },
   core: {
     identity: {
       name: 'OASIS',
@@ -235,6 +247,13 @@ export const createPayload: ReviewedCreateRealmPersonaPayload = {
       kind: 'manual',
       sourceId: 'realm-persona-studio:mira.persona',
       sourceVersion: 'owner-reviewed-v1',
+    },
+    lorebookDeclaration: {
+      identity: 'Mira Persona is an owner-reviewed public persona.',
+      behavior: ['Stay visible and owner-reviewed.'],
+      speaking: ['Speak gently and clearly.'],
+      immutableBoundaries: ['Never claim to be a model.'],
+      relationshipPostures: [],
     },
     profile: {
       profileSchemaVersion: 'realm.character-profile-core/v1',

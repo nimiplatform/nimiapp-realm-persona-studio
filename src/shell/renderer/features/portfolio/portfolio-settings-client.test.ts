@@ -114,6 +114,7 @@ describe('owner PersonaCharacter settings client', () => {
       worldId: persona.worldId,
       visibility: 'unlisted',
       origin: persona.origin,
+      lorebookDeclaration: persona.lorebookDeclaration,
       profile: profileInput(),
     });
     expect(result).toMatchObject({ ok: true, settings: { visibility: 'unlisted' } });

@@ -23,6 +23,11 @@ const oasisWorld: RealmPersonaCreationWorldDto = {
   origin: { kind: 'system', sourceId: 'OASIS' },
   creatorId: null,
   visibility: 'system',
+  lorebookDeclaration: {
+    identityBaseSetting: 'OASIS is the shared source world.',
+    worldRules: [],
+    rolePlacements: [],
+  },
   core: {
     assets: { intents: [], resourceRefs: [] },
     authoring: { source: 'test' },
@@ -92,6 +97,8 @@ const baseInput: CreateRealmPersonaDraftInput = {
   referenceImageUrl: '',
   referenceImagePrompt: 'A precise Persona portrait.',
   originalDescription: '',
+  speechSupplement: 'Speak gently and clearly.',
+  boundarySupplement: 'Never claim to be a model.',
 };
 
 describe('create Realm Persona draft normalization', () => {
@@ -109,8 +116,8 @@ describe('create Realm Persona draft normalization', () => {
       referenceImageUrl: '',
       referenceImagePrompt: 'A precise Persona portrait.',
       originalDescription: '',
-      speechSupplement: '',
-      boundarySupplement: '',
+      speechSupplement: 'Speak gently and clearly.',
+      boundarySupplement: 'Never claim to be a model.',
       visualSupplement: '',
       referenceImageCandidates: [],
     });
@@ -292,6 +299,13 @@ describe('create Realm Persona readiness', () => {
           kind: 'manual',
           sourceId: 'realm-persona-studio:mira.persona',
           sourceVersion: 'owner-reviewed-v1',
+        },
+        lorebookDeclaration: {
+          identity: 'Durable public Realm Persona',
+          behavior: ['Stay visible and owner-reviewed.'],
+          speaking: ['Speak gently and clearly.'],
+          immutableBoundaries: ['Never claim to be a model.'],
+          relationshipPostures: [],
         },
         profile: {
           profileSchemaVersion: 'realm.character-profile-core/v1',

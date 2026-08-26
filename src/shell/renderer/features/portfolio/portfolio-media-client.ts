@@ -220,12 +220,14 @@ export async function selectReviewedPersonaAvatarUrl(
   try {
     const client = getStudioLocalAppClient().realm.personaCharacter;
     const profile = withSelectedAvatarExternalRef(client.toProfileInput(current.profile), submitted.avatarUrl);
+    if (!current.lorebookDeclaration) throw new Error('Character lorebook declaration is required before replace.');
     const replaced = await client.replace({
       personaCharacterId: current.id,
       baseContentHash: current.contentHash,
       worldId: current.worldId,
       visibility: current.visibility,
       origin: current.origin,
+      lorebookDeclaration: current.lorebookDeclaration,
       profile,
     });
     return normalizeRealmPersonaAvatarSelectResult(replaced, submitted);

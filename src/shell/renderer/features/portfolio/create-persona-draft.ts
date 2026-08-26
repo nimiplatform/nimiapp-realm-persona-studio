@@ -552,6 +552,15 @@ export function validateCreateRealmPersonaReadiness(
   if (!draft.concept) {
     errors.push('concept missing');
   }
+  if (!draft.ruleText) {
+    errors.push('behavior principle missing');
+  }
+  if (!draft.speechSupplement) {
+    errors.push('speaking principle missing');
+  }
+  if (!draft.boundarySupplement) {
+    errors.push('immutable boundary missing');
+  }
   if (!draft.selectedWorldId) {
     errors.push('selected world missing');
   }
@@ -616,6 +625,13 @@ export function validateCreateRealmPersonaReadiness(
       kind: 'manual',
       sourceId: `realm-persona-studio:${draft.handle}`,
       sourceVersion: 'owner-reviewed-v1',
+    },
+    lorebookDeclaration: {
+      identity: draft.concept,
+      behavior: [draft.ruleText],
+      speaking: [draft.speechSupplement],
+      immutableBoundaries: [draft.boundarySupplement],
+      relationshipPostures: [],
     },
     profile: buildRealmPersonaProfileV1(draft),
   };

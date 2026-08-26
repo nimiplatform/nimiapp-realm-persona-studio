@@ -211,12 +211,16 @@ export function buildPersonaCharacterReplaceInput(
   profile: NimiLocalAppPersonaCharacterProfileInput,
   visibility: NimiLocalAppPersonaCharacterWritableVisibility,
 ): NimiLocalAppPersonaCharacterReplaceInput {
+  if (!current.persona.lorebookDeclaration) {
+    throw new Error('Character lorebook declaration is required before replace.');
+  }
   return {
     personaCharacterId: current.id,
     baseContentHash: current.contentHash,
     worldId: current.homeWorldId,
     visibility,
     origin: current.origin,
+    lorebookDeclaration: current.persona.lorebookDeclaration,
     profile,
   };
 }
@@ -284,12 +288,14 @@ export async function updateReviewedPersonaVisibility(
   try {
     const client = getStudioLocalAppClient().realm.personaCharacter;
     const profile = client.toProfileInput(current.persona.profile);
+    if (!current.persona.lorebookDeclaration) throw new Error('Character lorebook declaration is required before replace.');
     const submitted: NimiLocalAppPersonaCharacterReplaceInput = {
       personaCharacterId: personaId,
       baseContentHash: current.persona.contentHash,
       worldId: current.persona.worldId,
       visibility: built.input.visibility,
       origin: current.persona.origin,
+      lorebookDeclaration: current.persona.lorebookDeclaration,
       profile,
     };
     const replaced = await client.replace(submitted);
