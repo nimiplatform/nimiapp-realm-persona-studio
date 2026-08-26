@@ -26,9 +26,9 @@ units:
     kind: rule
     title: "Story: create persona"
     modality: must
-    statement: Owner draft normalizes into the exact App PersonaCharacter create input with an explicit owner-selected writable visibility, defaults world from WorldCore, and succeeds only after the App client returns canonical id, worldId, contentHash, and contentRevision.
+    statement: Owner draft normalizes into the exact App PersonaCharacter create input with an explicit owner-selected writable visibility, required owner-reviewed CharacterLorebookDeclarationV1, and selected WorldCore, and succeeds only after the App client returns the canonical declaration, id, worldId, contentHash, and contentRevision.
     condition: Whenever the owner creates a persona.
-    failure: Reject create submission when normalization or WorldCore defaulting fails and present no success without a canonical Realm id.
+    failure: Reject create submission when normalization fails or the explicitly selected WorldCore is missing, unresolved, or invalid, and present no success without a canonical Realm id.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.persona.create-dto
@@ -36,7 +36,7 @@ units:
     kind: rule
     title: "Story: update settings"
     modality: must
-    statement: Owner-reviewed native profile settings merge into a toProfileInput round trip and save through client.realm.personaCharacter.replace with the latest baseContentHash.
+    statement: Owner-reviewed native profile settings and complete CharacterLorebookDeclarationV1 merge into one toProfileInput-based complete replacement and save through client.realm.personaCharacter.replace with the latest baseContentHash.
     condition: Whenever the owner updates persona settings.
     failure: Preserve the reviewed settings as a candidate and present no source-state success when merge or replacement fails.
     relations:
@@ -44,6 +44,8 @@ units:
         target: definition.realm-persona-studio.persona.replace-dto
       - type: applies_to
         target: definition.realm-persona-studio.setting.core-field-map
+      - type: applies_to
+        target: definition.realm-persona-studio.setting.lorebook-declaration-field-map
   - id: rule.realm-persona-studio.story.r005
     kind: rule
     title: "Story: review consistency"

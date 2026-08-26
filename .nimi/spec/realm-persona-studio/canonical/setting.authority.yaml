@@ -5,7 +5,11 @@ units:
   - id: definition.realm-persona-studio.setting.core-field-map
     kind: definition
     title: Persona core field map
-    meaning: The admitted owner-reviewed PersonaCharacter field map contains presentation.displayName, identity.name, identity.handle, identity.summary, presentation.profileLine, interactionProfile.greeting, narrative, top-level visibility, stable resource references, and display-safe HTTPS assets.externalRefs; Studio-specific ownerSettings or socialVisibility extensions are not canonical fields.
+    meaning: The admitted owner-reviewed PersonaCharacter field map contains presentation.displayName, identity.name, identity.handle, identity.summary, presentation.profileLine, interactionProfile.greeting, narrative, the required CharacterLorebookDeclarationV1 identity, behavior, speaking, immutable-boundary, and optional relationship-posture fields, top-level visibility, stable resource references, and display-safe HTTPS assets.externalRefs; Studio-specific ownerSettings or socialVisibility extensions are not canonical fields.
+  - id: definition.realm-persona-studio.setting.lorebook-declaration-field-map
+    kind: definition
+    title: Persona Character lorebook declaration field map
+    meaning: Persona Studio exposes the Realm-owned CharacterLorebookDeclarationV1 as owner-reviewed compact identity, behavior, speaking, immutable-boundary, and optional relationship-posture rows on PersonaCharacter create and replace; Realm exclusively owns canonical source persistence and Packet issuance, Forge owns the unique executable schema, bounds and reference validation, normalization, hash, readiness, and Packet contract behavior, and Studio owns neither authority.
   - id: rule.realm-persona-studio.setting.r001
     kind: rule
     title: Display name field
@@ -50,12 +54,14 @@ units:
     kind: rule
     title: Structured persona sections
     modality: must
-    statement: Archetype, traits, and narrative summary use profile.narrative, while Studio creative personality, communication, boundary, positioning, and natural-language intent fields remain local candidates unless a registered Realm extension envelope is separately admitted.
+    statement: Archetype, traits, and narrative summary use profile.narrative; owner-reviewed compact behavior, speaking, immutable-boundary, and relationship-posture source data use CharacterLorebookDeclarationV1; Studio creative personality, positioning, and other unmapped natural-language intent fields remain local candidates unless a registered Realm extension envelope is separately admitted.
     condition: Whenever Studio reads or writes a listed section.
     failure: Keep an unregistered or unmapped section local and omit it from PersonaCharacter replacement.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.setting.core-field-map
+      - type: applies_to
+        target: definition.realm-persona-studio.setting.lorebook-declaration-field-map
   - id: rule.realm-persona-studio.setting.r006
     kind: rule
     title: Canonical visibility field
@@ -90,7 +96,7 @@ units:
     kind: rule
     title: Complete setting replacement
     modality: must
-    statement: Every setting write uses the latest owner PersonaCharacter detail, calls client.realm.personaCharacter.toProfileInput, applies only canonical native field changes, and builds the complete exact replace input.
+    statement: Every setting write uses the latest owner PersonaCharacter detail, calls client.realm.personaCharacter.toProfileInput, applies only canonical native field changes including the complete owner-reviewed CharacterLorebookDeclarationV1, and builds the complete exact replace input.
     condition: Whenever Studio prepares a setting write.
     failure: Reject the setting write when the replacement DTO is incomplete or not built from the latest detail read.
     relations:
@@ -102,7 +108,7 @@ units:
     kind: rule
     title: Required replacement fields
     modality: must
-    statement: The setting write includes personaCharacterId, latest baseContentHash, worldId, writable visibility, origin, and complete profile input.
+    statement: The setting write includes personaCharacterId, latest baseContentHash, worldId, writable visibility, origin, complete profile input, and complete CharacterLorebookDeclarationV1 with explicit optional relationship-posture rows.
     condition: Whenever Studio submits a setting write.
     failure: Reject the write before submission when any listed field is missing.
     relations:
@@ -150,3 +156,23 @@ units:
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.setting.core-field-map
+  - id: rule.realm-persona-studio.setting.r015
+    kind: rule
+    title: Character lorebook declaration authoring is bounded
+    modality: must
+    statement: Persona Studio requires one compact identity statement, one to six behavior principles, one to four speaking principles, and one to six immutable boundaries, permits zero to four explicit relationship postures with a selected resolvable target or relationship, enforces the Realm-owned Unicode-scalar, row-count, and total declaration bounds, and treats an explicit empty optional relationship-posture list as valid source data.
+    condition: Whenever an owner creates, reviews, clears, or replaces a PersonaCharacter lorebook declaration.
+    failure: Keep the owner draft and reject create or replace before the Realm call when the declaration container or required content is missing, a reference is unresolved, or a bound is exceeded; never infer another profile or narrative field or inject a default.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.setting.lorebook-declaration-field-map
+  - id: rule.realm-persona-studio.setting.r016
+    kind: rule
+    title: Canonical save confirms lorebook declarations
+    modality: must
+    statement: Persona Studio reports Character lorebook declaration save success only from the canonical PersonaCharacter object returned by the existing Realm create or replace operation and reprojects the returned declaration without owning LocalAgent materialization, Cognition, prompt, or post-birth source adoption.
+    condition: Whenever a PersonaCharacter create or setting replacement includes a CharacterLorebookDeclarationV1.
+    failure: Preserve the reviewed draft and present the typed Realm validation, conflict, unavailable, or missing-canonical-object failure without local success or fallback.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.setting.lorebook-declaration-field-map

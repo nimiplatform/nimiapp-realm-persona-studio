@@ -50,6 +50,10 @@ units:
     kind: definition
     title: Setting replacement has no canonical object
     meaning: The typed failure state raised when setting replacement returns no canonical updated object.
+  - id: definition.realm-persona-studio.failure.lorebook-declaration-invalid
+    kind: definition
+    title: Character lorebook declaration invalid
+    meaning: The typed failure state raised when a required CharacterLorebookDeclarationV1 container or field is missing, a relationship reference is invalid, or a Unicode-scalar, row-count, or total bound is exceeded.
   - id: definition.realm-persona-studio.failure.runtime-transport-unavailable
     kind: definition
     title: Runtime transport unavailable
@@ -96,3 +100,15 @@ units:
         target: definition.realm-persona-studio.core.standard-shell
       - type: applies_to
         target: definition.realm-persona-studio.failure.failure-state
+  - id: rule.realm-persona-studio.failure.r003
+    kind: rule
+    title: Lorebook declaration failure preserves the draft
+    modality: must
+    statement: Missing, invalid, unresolved-reference, or over-bound CharacterLorebookDeclarationV1 content remains a typed source-write failure and never becomes an explicit-empty success, generated default, profile-field inference, local canonical object, or LocalAgent-ready claim.
+    condition: Whenever PersonaCharacter create or replace validation rejects the lorebook declaration.
+    failure: Preserve the owner-reviewed draft, render the typed declaration failure, and report no Realm save success.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.failure.failure-state
+      - type: applies_to
+        target: definition.realm-persona-studio.failure.lorebook-declaration-invalid

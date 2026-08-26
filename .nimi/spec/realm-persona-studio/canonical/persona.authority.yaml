@@ -5,11 +5,11 @@ units:
   - id: definition.realm-persona-studio.persona.create-dto
     kind: definition
     title: Persona create DTO
-    meaning: The Studio create input is the exact App SDK PersonaCharacter input containing worldId, writable visibility private, unlisted, or public, origin, and an owner-reviewed PersonaCharacter profile input without caller identity, id, profileHash, or profileCoverage.
+    meaning: The Studio create input is the exact App SDK PersonaCharacter input containing worldId, writable visibility private, unlisted, or public, origin, one independent required complete top-level CharacterLorebookDeclarationV1, and an owner-reviewed PersonaCharacter profile input without caller identity, id, profileHash, or profileCoverage; the declaration is never embedded in or inferred from the profile.
   - id: definition.realm-persona-studio.persona.replace-dto
     kind: definition
     title: Persona replace DTO
-    meaning: The Studio replace input contains personaCharacterId, the latest lower-case sixty-four-hex baseContentHash, worldId, writable visibility, origin, and a complete profile produced from the latest detail through client.realm.personaCharacter.toProfileInput.
+    meaning: The Studio replace input contains personaCharacterId, the latest lower-case sixty-four-hex baseContentHash, worldId, writable visibility, origin, one independent required complete top-level CharacterLorebookDeclarationV1, and a complete profile produced from the latest detail through client.realm.personaCharacter.toProfileInput; the declaration is never embedded in or inferred from the profile.
   - id: definition.realm-persona-studio.persona.delete-result
     kind: definition
     title: Persona owner delete result
