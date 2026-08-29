@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Checkbox, EmptyState, FieldShell, InlineAlert, nimiToast, SelectField, StatusBadge, Surface, TextareaField, TextField } from '@nimiplatform/kit/ui';
 import { personaCharacterFailureReason, type OwnerPortfolioPersonaDetail } from './portfolio-data.js';
+import { failureKindCopyKey } from './failure-copy.js';
 import {
   PERSONA_VISIBILITY_VALUES,
   createPersonaVisibilityDraft,
@@ -51,7 +52,7 @@ const PERSONA_FAILURE_REASONS = new Set([
 ]);
 
 function translateSettingsFixedMessage(message: string, t: StudioTranslator): string {
-  if (PERSONA_FAILURE_REASONS.has(message)) return t('persona.failure.sanitized', { reason: message });
+  if (PERSONA_FAILURE_REASONS.has(message)) return t('persona.failure.sanitized', { reason: t(failureKindCopyKey(message)) });
   const enumInvalid = message.match(/^(formality|response length|sentiment) must be one of:/);
   if (enumInvalid) {
     const fieldKey: StudioCopyKey = enumInvalid[1] === 'formality'
@@ -180,7 +181,7 @@ export function SettingProposalWorkspace({ persona, onPersonaWrite }: { persona:
           {settingsFailure ? (
             <InlineAlert tone="danger">
               {t('settings.unavailable', {
-                message: t('persona.failure.sanitized', { reason: settingsFailure }),
+                message: t('persona.failure.sanitized', { reason: t(failureKindCopyKey(settingsFailure)) }),
               })}
             </InlineAlert>
           ) : null}
@@ -426,7 +427,7 @@ export function VisibilitySettingsWorkspace({ persona, onPersonaWrite }: { perso
       {visibilityFailure ? (
         <InlineAlert tone="danger">
           {t('visibility.unavailable', {
-            message: t('persona.failure.sanitized', { reason: visibilityFailure }),
+            message: t('persona.failure.sanitized', { reason: t(failureKindCopyKey(visibilityFailure)) }),
           })}
         </InlineAlert>
       ) : null}

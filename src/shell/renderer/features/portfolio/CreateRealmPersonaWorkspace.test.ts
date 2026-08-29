@@ -1,9 +1,18 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const workspaceSource = () =>
-  readFileSync(join(process.cwd(), 'src/shell/renderer/features/portfolio/CreateRealmPersonaWorkspace.tsx'), 'utf8');
+const workspaceSource = () => {
+  const moduleDir = join(process.cwd(), 'src/shell/renderer/features/portfolio/create-realm-persona-workspace');
+  const moduleFiles = readdirSync(moduleDir)
+    .filter((file) => /\.tsx?$/.test(file))
+    .sort()
+    .map((file) => readFileSync(join(moduleDir, file), 'utf8'));
+  return [
+    readFileSync(join(process.cwd(), 'src/shell/renderer/features/portfolio/CreateRealmPersonaWorkspace.tsx'), 'utf8'),
+    ...moduleFiles,
+  ].join('\n');
+};
 
 const stylesSource = () =>
   readFileSync(join(process.cwd(), 'src/shell/renderer/styles.css'), 'utf8');
@@ -26,9 +35,9 @@ describe('Create Realm Persona workspace v2 shell', () => {
     const source = workspaceSource();
 
     expect(source).toContain("type CreateStage = 'describe' | 'review'");
-    expect(source).toContain("const [stage, setStage] = useState<CreateStage>('describe')");
-    expect(source).toContain("setStage('review')");
-    expect(source).toContain("setStage('describe')");
+    expect(source).toContain("stage: 'describe'");
+    expect(source).toContain("stage: 'review'");
+    expect(source).toContain("'return-to-describe'");
     expect(source).toContain("create.oneLineLabel");
     expect(source).toContain("create.review.basicInfo");
     expect(source).not.toContain("t('create.review.title')");
@@ -44,7 +53,7 @@ describe('Create Realm Persona workspace v2 shell', () => {
     expect(source).toContain('speechSupplement');
     expect(source).toContain('boundarySupplement');
     expect(source).toContain('visualSupplement');
-    expect(source).toContain('generatePersonaSeedFromDescription(seedDescription, undefined, supplements)');
+    expect(source).toContain('generatePersonaSeedFromDescription(seedDescription, undefined, supplements, { locale })');
     expect(source).toContain('create.supplement.speech');
     expect(source).toContain('create.supplement.boundary');
     expect(source).toContain('create.supplement.visual');
@@ -62,7 +71,7 @@ describe('Create Realm Persona workspace v2 shell', () => {
     expect(styles).toContain('.ras-create-describe-divider {');
     expect(styles).toContain('.ras-create-ai-button {');
     expect(styles).toContain('.ras-create-manual-button {');
-    expect(source).toContain("t('create.oneLineRequired')");
+    expect(source).toContain("t('create.oneLineOptional')");
     expect(source).toContain("t('create.supplement.hint')");
     expect(source).toContain("t('create.aiButton.helper')");
     expect(source).not.toContain("t('create.estimatedTime')");
@@ -84,6 +93,35 @@ describe('Create Realm Persona workspace v2 shell', () => {
     expect(source).toContain('leadingIcon={<Pencil size={18} aria-hidden="true" />}');
     expect(source).not.toContain('AppCardSurface');
     expect(source).not.toContain('create.manualRow.text');
+  });
+
+  it('keeps AI completion open to zero input with owner-input precedence on merge', () => {
+    const source = workspaceSource();
+
+    expect(source).not.toContain('disabled={!normalizedDraft.originalDescription}');
+    expect(source).not.toContain('if (!seedDescription) return;');
+    expect(source).toContain('current.handle.trim() ? current.handle : result.seed.handle');
+    expect(source).toContain('current.displayName.trim() ? current.displayName : result.seed.displayName');
+    expect(source).toContain('current.concept.trim() ? current.concept : result.seed.concept');
+    expect(source).toContain('current.description.trim() ? current.description : result.seed.description');
+    expect(source).toContain('current.ruleText.trim() ? current.ruleText : result.seed.ruleText');
+    expect(source).toContain('current.personaArchetype.trim() ? current.personaArchetype : result.seed.personaArchetype');
+    expect(source).toContain('current.personaTraits.length > 0 ? current.personaTraits : result.seed.personaTraits');
+    expect(source).toContain('current.speechSupplement?.trim() ? current.speechSupplement : result.seed.speechStyle');
+    expect(source).toContain('current.boundarySupplement?.trim() ? current.boundarySupplement : result.seed.behaviorBoundary');
+    expect(source).not.toContain('fill-default-world');
+  });
+
+  it('offers a description reroll that only rewrites the owner-editable describe input', () => {
+    const source = workspaceSource();
+
+    expect(source).toContain("t('create.descriptionReroll.label')");
+    expect(source).toContain("t('create.descriptionReroll.generating')");
+    expect(source).toContain('generatePersonaDescriptionCandidate({');
+    expect(source).toContain('updateDraft({ originalDescription: result.description })');
+    expect(source).toContain('create.descriptionGenerationFailed');
+    expect(source).toContain('disabled={isGeneratingDescription}');
+    expect(source).toContain('disabled={isGeneratingSeed}');
   });
 
   it('renders typed autosave state without coupling the persona roster to draft-history events', () => {
@@ -155,18 +193,23 @@ describe('Create Realm Persona workspace v2 shell', () => {
     const styles = stylesSource();
 
     expect(source).not.toContain('xl:grid-cols-[380px_minmax(0,1fr)]');
-    expect(source).toMatch(/create\.review\.basicInfo[\s\S]*ras-create-reference-card[\s\S]*ras-create-identity-grid/);
+    // DOM order matches visual order: the identity fields come before the
+    // reference card inside the two-column review-form containers.
+    expect(source).toMatch(/create\.review\.basicInfo[\s\S]*ras-create-identity-grid[\s\S]*ReferenceImageCard/);
+    expect(source).toContain('ras-create-review-form__fields');
+    expect(source).toContain('ras-create-review-form__aside');
     expect(source).toContain('setReferenceImageEditorOpen(true)');
     expect(source).toContain('aria-expanded={referenceImageEditorOpen}');
     expect(source).toContain('open={referenceImageEditorOpen}');
     expect(source).toContain('panelClassName="ras-visual-change-dialog"');
     expect(source).toContain('dataTestId="create-reference-image-dialog"');
     expect(styles).toContain('grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.82fr);');
-    expect(styles).toContain('.ras-create-review-form > .ras-create-reference-card {');
-    expect(styles).toContain('grid-row: 1 / span 3;');
+    expect(styles).toContain('.ras-create-review-form__aside {');
+    expect(styles).not.toContain('.ras-create-review-form > .ras-create-reference-card {');
+    expect(styles).not.toContain('grid-row: 1 / span 3;');
     expect(source).toContain('className="ras-create-personality-grid"');
     expect(styles).toContain('.ras-create-personality-grid {');
-    expect(styles).toContain('grid-template-columns: minmax(260px, 0.72fr) minmax(0, 1.28fr);');
+    expect(styles).toContain('grid-template-columns: repeat(2, minmax(0, 1fr));');
   });
 
   it('shows inline danger feedback without a required asterisk and restores normal focus color on focus', () => {
@@ -201,13 +244,18 @@ describe('Create Realm Persona workspace v2 shell', () => {
 
     expect(source).toContain('PERSONA_TRAIT_MAX');
     expect(source).toContain('ras-create-trait-trigger');
-    expect(source).toContain('aria-expanded={traitPickerOpen}');
-    expect(source).toContain('className="ras-create-trait-popover"');
+    expect(source).toContain('<Popover');
+    expect(source).toContain('PopoverTrigger');
+    expect(source).toContain('PopoverContent');
+    expect(source).toContain('Checkbox');
+    expect(source).toContain('ScrollArea');
     expect(source).toContain('create.personaTraitsSelectedCount');
     expect(source).toContain('create.personaTraitsClear');
     expect(source).toContain('disabled={disabled}');
+    expect(source).not.toContain('ras-create-trait-popover');
+    expect(source).not.toContain('ras-create-trait-option');
     expect(source).not.toContain('create.personaTraitsHardLimit');
-    expect(draft).toContain('persona traits exceed hard maximum of 3');
+    expect(draft).toContain("'persona-traits-too-many'");
     expect(draft).not.toContain(retiredTraitLimitName);
   });
 
@@ -249,8 +297,8 @@ describe('Create Realm Persona workspace v2 shell', () => {
     const source = workspaceSource();
 
     expect(source).toContain('ReferenceImageSourceChooser');
-    expect(source).toContain("useState<ReferenceImageSourceMode | null>('ai')");
-    expect(source).toContain("setReferenceImageSourceMode('ai')");
+    expect(source).toContain('DEFAULT_REFERENCE_IMAGE_SOURCE_MODE');
+    expect(source).toContain('set-reference-source-mode');
     const chooser = readFileSync(join(process.cwd(), 'src/shell/renderer/features/portfolio/reference-image-source-chooser.tsx'), 'utf8');
     expect(chooser).toContain("export type ReferenceImageSourceMode = 'assets' | 'ai'");
     expect(chooser).toContain("t('assets.visualChange.upload')");

@@ -7,6 +7,10 @@ import type {
   RealmModel,
 } from '@nimiplatform/sdk/realm/generated';
 import { normalizeDisplaySafeHttpsUrl } from './persona-external-ref.js';
+import {
+  createFlowFailure,
+  type CreateFlowFailure,
+} from './create-flow-failure.js';
 
 export type RealmPersonaCreationWorldDto = RealmModel<'WorldCoreDto'>;
 export type RealmPersonaCreationWorldDetailDto = RealmModel<'WorldCoreDto'>;
@@ -186,7 +190,7 @@ export type ReviewedCreateRealmPersonaPayload = {
 export type CreateRealmPersonaReadiness =
   | {
     ready: false;
-    errors: string[];
+    errors: CreateFlowFailure[];
     source: typeof REALM_PERSONA_CREATE_SOURCE;
     payload: null;
   }
@@ -537,75 +541,75 @@ export function validateCreateRealmPersonaReadiness(
   options: CreateRealmPersonaReadinessOptions = {},
 ): CreateRealmPersonaReadiness {
   const draft = normalizeCreateRealmPersonaDraft(input);
-  const errors: string[] = [];
+  const errors: CreateFlowFailure[] = [];
   const selectableWorldIds = options.selectableWorldIds
     ? new Set(options.selectableWorldIds.map((worldId) => worldId.trim()).filter(Boolean))
     : null;
   const handleAvailability = options.handleAvailability;
 
   if (!draft.handle) {
-    errors.push('handle missing');
+    errors.push(createFlowFailure('handle-missing', { field: 'handle' }));
   }
   if (!draft.displayName) {
-    errors.push('display name missing');
+    errors.push(createFlowFailure('display-name-missing', { field: 'displayName' }));
   }
   if (!draft.concept) {
-    errors.push('concept missing');
+    errors.push(createFlowFailure('concept-missing', { field: 'concept' }));
   }
   if (!draft.ruleText) {
-    errors.push('behavior principle missing');
+    errors.push(createFlowFailure('rule-text-missing'));
   }
   if (!draft.speechSupplement) {
-    errors.push('speaking principle missing');
+    errors.push(createFlowFailure('speech-supplement-missing'));
   }
   if (!draft.boundarySupplement) {
-    errors.push('immutable boundary missing');
+    errors.push(createFlowFailure('boundary-supplement-missing'));
   }
   if (!draft.selectedWorldId) {
-    errors.push('selected world missing');
+    errors.push(createFlowFailure('selected-world-missing', { field: 'selectedWorldId' }));
   }
   if (!draft.visibility) {
-    errors.push('visibility missing');
+    errors.push(createFlowFailure('visibility-missing', { field: 'visibility' }));
   }
   const rawArchetype = typeof input.personaArchetype === 'string' ? input.personaArchetype.trim().toUpperCase() : '';
   if (rawArchetype && !(PERSONA_ARCHETYPES as readonly string[]).includes(rawArchetype)) {
-    errors.push('persona archetype outside closed value set');
+    errors.push(createFlowFailure('persona-archetype-outside-closed-set', { field: 'personaArchetype' }));
   } else if (!draft.personaArchetype) {
-    errors.push('persona archetype missing');
+    errors.push(createFlowFailure('persona-archetype-missing', { field: 'personaArchetype' }));
   }
 
   const rawTraits = Array.isArray(input.personaTraits) ? input.personaTraits : [];
   const normalizedRawTraits = rawTraits.map((trait) => String(trait || '').trim().toUpperCase());
   const hasUnknownTrait = normalizedRawTraits.some((trait) => !(PERSONA_TRAITS as readonly string[]).includes(trait));
   if (hasUnknownTrait) {
-    errors.push('persona trait outside closed value set');
+    errors.push(createFlowFailure('persona-traits-outside-closed-set', { field: 'personaTraits' }));
   }
   if (new Set(normalizedRawTraits).size > PERSONA_TRAIT_MAX) {
-    errors.push('persona traits exceed hard maximum of 3');
+    errors.push(createFlowFailure('persona-traits-too-many', { field: 'personaTraits' }));
   }
 
   const selectedReferenceCandidates = draft.referenceImageCandidates
     .filter((candidate) => candidate.reviewState === 'owner-selected');
   if (selectedReferenceCandidates.length > 1) {
-    errors.push('more than one reference image candidate is owner-selected');
+    errors.push(createFlowFailure('reference-selection-invalid', { field: 'referenceImage' }));
   }
   if (
     draft.referenceImageUrl
     && !selectedReferenceCandidates.some((candidate) => candidate.url === draft.referenceImageUrl)
   ) {
-    errors.push('reference image candidate is not owner-selected');
+    errors.push(createFlowFailure('reference-selection-invalid', { field: 'referenceImage' }));
   }
 
   if (draft.selectedWorldId && selectableWorldIds && !selectableWorldIds.has(draft.selectedWorldId)) {
-    errors.push('selected world not source-backed by Nimi App Access realm.worldCore.list');
+    errors.push(createFlowFailure('selected-world-not-source-backed', { field: 'selectedWorldId' }));
   }
   if (draft.handle) {
     if (!handleAvailability) {
-      errors.push('handle availability not checked against owner PersonaCharacter portfolio');
+      errors.push(createFlowFailure('handle-availability-missing', { field: 'handle' }));
     } else if (handleAvailability.handle !== draft.handle && handleAvailability.normalized !== draft.handle) {
-      errors.push('handle availability not checked for the current normalized handle');
+      errors.push(createFlowFailure('handle-availability-stale', { field: 'handle' }));
     } else if (!handleAvailability.available) {
-      errors.push(`handle unavailable: ${handleAvailability.message}`);
+      errors.push(createFlowFailure('handle-unavailable', { field: 'handle', detail: handleAvailability.message }));
     }
   }
 

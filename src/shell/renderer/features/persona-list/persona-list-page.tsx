@@ -5,6 +5,7 @@ import { AlertTriangle, ChevronRight, FilePenLine, Info, LayoutGrid, Plus, Refre
 import {
   Avatar,
   Button,
+  EmptyState,
   FieldShell,
   InlineAlert,
   LoadingSkeleton,
@@ -22,6 +23,7 @@ import {
   type OwnerPortfolioSort,
   type PortfolioFailureKind,
 } from '@renderer/features/portfolio/portfolio-data.js';
+import { failureKindCopyKey } from '@renderer/features/portfolio/failure-copy.js';
 import { listOwnerPortfolioPersonas } from '@renderer/features/portfolio/portfolio-client.js';
 import {
   PersonaCard,
@@ -204,7 +206,7 @@ function PortfolioSourceNotice({
       <div className="ras-portfolio-source-notice__copy">
         <h2>{t(PORTFOLIO_FAILURE_TITLE_KEYS[failure])}</h2>
         <p>{t(PORTFOLIO_FAILURE_DETAIL_KEYS[failure])}</p>
-        <StatusBadge tone="neutral">{failure}</StatusBadge>
+        <StatusBadge tone="neutral">{t(failureKindCopyKey(failure))}</StatusBadge>
       </div>
       <Button tone="secondary" loading={loading} onClick={onRetry}>
         {t('common.retry')}
@@ -459,23 +461,21 @@ export function PersonaListPage() {
             {portfolioQuery.isLoading ? (
               <PortfolioLoadingState />
             ) : portfolioFailure ? null : personas.length === 0 ? (
-              <div className="ras-hero-empty">
-                <div className="ras-hero-empty__icon">
-                  <LayoutGrid size={28} strokeWidth={1.8} />
-                </div>
-                <div className="ras-stack-tight">
-                  <h2 className="ras-hero-empty__title">{t('portfolio.emptyTitle')}</h2>
-                  <p className="ras-hero-empty__description">{t('portfolio.emptyDescription')}</p>
-                </div>
-                <Button
-                  tone="primary"
-                  size="lg"
-                  leadingIcon={<Plus size={16} strokeWidth={2} />}
-                  onClick={openCreate}
-                >
-                  {t('portfolio.createButton')}
-                </Button>
-              </div>
+              <EmptyState
+                icon={<LayoutGrid size={22} strokeWidth={1.6} />}
+                title={t('portfolio.emptyTitle')}
+                description={t('portfolio.emptyDescription')}
+                action={(
+                  <Button
+                    tone="primary"
+                    size="lg"
+                    leadingIcon={<Plus size={16} strokeWidth={2} />}
+                    onClick={openCreate}
+                  >
+                    {t('portfolio.createButton')}
+                  </Button>
+                )}
+              />
             ) : (
               <>
                 <FilterCard
@@ -499,10 +499,10 @@ export function PersonaListPage() {
                 ) : null}
 
                 {visiblePersonas.length === 0 ? (
-                  <div className="ras-hero-empty">
-                    <h2 className="ras-hero-empty__title">{t('portfolio.noLocalMatchTitle')}</h2>
-                    <p className="ras-hero-empty__description">{t('portfolio.noLocalMatchDescription')}</p>
-                  </div>
+                  <EmptyState
+                    title={t('portfolio.noLocalMatchTitle')}
+                    description={t('portfolio.noLocalMatchDescription')}
+                  />
                 ) : (
                   <div className="ras-persona-grid">
                     {visiblePersonas.map((persona) => {

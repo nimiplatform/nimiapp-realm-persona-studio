@@ -64,8 +64,8 @@ describe('Studio AIConfig self-owner page', () => {
   it('keeps a persistent refresh path and mounts the direct App editor', async () => {
     renderPage();
 
-    await screen.findByText('text.generate');
-    await screen.findByText('local route (current machine selection)');
+    await screen.findByText('1/10 Configured');
+    await screen.findByRole('button', { name: /Text Generate/u });
     expect(screen.getByRole('button', { name: 'Refresh' })).toBeTruthy();
     expect(document.querySelector('[data-nimi-model-config-capability-grid="true"]')).toBeTruthy();
 
@@ -77,13 +77,15 @@ describe('Studio AIConfig self-owner page', () => {
     openStudioAIConfigurationInDesktopMock.mockResolvedValue(undefined);
     renderPage();
 
-    await screen.findByText('text.generate');
+    await screen.findByRole('button', { name: /Text Generate/u });
     fireEvent.click(screen.getByRole('button', { name: 'Open AI models in Nimi Desktop' }));
 
     await screen.findByText('Nimi Desktop accepted the request and opened Realm Persona Studio’s AI models. Complete the configuration there, then return and refresh.');
   });
 
-  it('shows Desktop navigation rejection independently with typed details', async () => {
+  it('shows Desktop navigation rejection with typed copy and clipboard diagnostics', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
     openStudioAIConfigurationInDesktopMock.mockRejectedValue(Object.assign(
       new Error('Desktop is not ready.'),
       {
@@ -93,13 +95,18 @@ describe('Studio AIConfig self-owner page', () => {
     ));
     renderPage();
 
-    await screen.findByText('text.generate');
+    await screen.findByRole('button', { name: /Text Generate/u });
     fireEvent.click(screen.getByRole('button', { name: 'Open AI models in Nimi Desktop' }));
 
     await screen.findByText('Nimi Desktop could not open Realm Persona Studio’s AI models. No configuration was changed.');
-    const details = screen.getByText('Desktop navigation details').closest('details');
-    expect(details?.textContent).toContain('desktop-open-desktop-not-ready');
-    expect(details?.textContent).toContain('wait_for_desktop_ready');
+    await screen.findByText('The operation failed. Try again.');
+    expect(document.querySelector('details')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy diagnostics' }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    const payload = String(writeText.mock.calls[0]?.[0]);
+    expect(payload).toContain('desktop-open-desktop-not-ready');
+    expect(payload).toContain('wait_for_desktop_ready');
   });
 
   it('uses the mutation acknowledgement revision before background effective refresh completes', async () => {

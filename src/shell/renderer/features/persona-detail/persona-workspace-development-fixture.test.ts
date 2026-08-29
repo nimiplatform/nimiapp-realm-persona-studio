@@ -65,7 +65,7 @@ describe('persona workspace development fixture', () => {
     expect(portfolioClient).not.toContain('PERSONA_WORKSPACE_VISUAL_FIXTURE');
     expect(portfolioClient).not.toContain('VITE_RPS_DEV_MOCK_PORTFOLIO');
     expect(personaList).not.toContain('DESIGN_PREVIEW_PERSONAS');
-    expect(detailPage).toContain('<PersonaCockpit persona={persona} visualData={visualData} />');
-    expect(postsPage).toContain('<PersonaPostEditor persona={persona} visualData={visualData} />');
+    expect(detailPage).toContain('<PersonaCockpit persona={persona} />');
+    expect(postsPage).toContain('<PersonaPostEditor persona={persona} />');
   });
 });

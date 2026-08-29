@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { Surface } from '@nimiplatform/kit/ui';
+import { LoadingSkeleton, Surface } from '@nimiplatform/kit/ui';
 import {
   AnimatePresence,
   motion,
@@ -66,8 +66,8 @@ const AssetsLibraryPage = lazy(() =>
 function PageFallback() {
   const { t } = useStudioI18n();
   return (
-    <Surface tone="canvas" padding="none" className="flex h-full items-center justify-center border-0 ras-text-muted">
-      {t('common.loadingEllipsis')}
+    <Surface tone="canvas" padding="lg" className="flex h-full items-center justify-center border-0">
+      <LoadingSkeleton lines={3} label={t('common.loadingEllipsis')} className="w-full max-w-md" />
     </Surface>
   );
 }

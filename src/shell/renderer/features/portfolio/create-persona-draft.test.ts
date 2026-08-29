@@ -415,14 +415,19 @@ describe('create Realm Persona readiness', () => {
     });
 
     expect(result.ready).toBe(false);
-    expect(result.errors).toContain('reference image candidate is not owner-selected');
+    expect(result.errors.map((error) => error.kind)).toContain('reference-selection-invalid');
   });
 
   it('fails readiness when required local draft fields are missing', () => {
     const result = validateCreateRealmPersonaReadiness({ ...baseInput, handle: ' ', concept: ' ', selectedWorldId: '', visibility: '' });
 
     expect(result.ready).toBe(false);
-    expect(result.errors).toEqual(['handle missing', 'concept missing', 'selected world missing', 'visibility missing']);
+    expect(result.errors).toEqual([
+      expect.objectContaining({ kind: 'handle-missing', field: 'handle' }),
+      expect.objectContaining({ kind: 'concept-missing', field: 'concept' }),
+      expect.objectContaining({ kind: 'selected-world-missing', field: 'selectedWorldId' }),
+      expect.objectContaining({ kind: 'visibility-missing', field: 'visibility' }),
+    ]);
     expect(result.source).toBe(REALM_PERSONA_CREATE_SOURCE);
     expect(result.payload).toBeNull();
   });
@@ -440,7 +445,7 @@ describe('create Realm Persona readiness', () => {
 
     expect(PERSONA_TRAIT_MAX).toBe(3);
     expect(result.ready).toBe(false);
-    expect(result.errors).toEqual(['persona traits exceed hard maximum of 3']);
+    expect(result.errors.map((error) => error.kind)).toEqual(['persona-traits-too-many']);
     expect(result.payload).toBeNull();
   });
 
@@ -456,7 +461,7 @@ describe('create Realm Persona readiness', () => {
     });
 
     expect(result.ready).toBe(false);
-    expect(result.errors).toEqual(['persona archetype outside closed value set']);
+    expect(result.errors.map((error) => error.kind)).toEqual(['persona-archetype-outside-closed-set']);
   });
 
   it('hard-fails when a selected trait is outside the closed vocabulary', () => {
@@ -471,7 +476,7 @@ describe('create Realm Persona readiness', () => {
     });
 
     expect(result.ready).toBe(false);
-    expect(result.errors).toEqual(['persona trait outside closed value set']);
+    expect(result.errors.map((error) => error.kind)).toEqual(['persona-traits-outside-closed-set']);
   });
 
   it('fails readiness when selected world is not source-backed by the current world list', () => {
@@ -484,7 +489,7 @@ describe('create Realm Persona readiness', () => {
     });
 
     expect(result.ready).toBe(false);
-    expect(result.errors).toEqual(['selected world not source-backed by Nimi App Access realm.worldCore.list']);
+    expect(result.errors.map((error) => error.kind)).toEqual(['selected-world-not-source-backed']);
     expect(result.payload).toBeNull();
   });
 
@@ -505,10 +510,12 @@ describe('create Realm Persona readiness', () => {
     });
 
     expect(unchecked.ready).toBe(false);
-    expect(unchecked.errors).toEqual(['handle availability not checked against owner PersonaCharacter portfolio']);
+    expect(unchecked.errors.map((error) => error.kind)).toEqual(['handle-availability-missing']);
     expect(unavailable.ready).toBe(false);
-    expect(unavailable.errors).toEqual(['handle unavailable: Handle already taken.']);
+    expect(unavailable.errors.map((error) => error.kind)).toEqual(['handle-unavailable']);
+    expect(unavailable.errors[0]?.field).toBe('handle');
+    expect(unavailable.errors[0]?.detail).toBe('Handle already taken.');
     expect(stale.ready).toBe(false);
-    expect(stale.errors).toEqual(['handle availability not checked for the current normalized handle']);
+    expect(stale.errors.map((error) => error.kind)).toEqual(['handle-availability-stale']);
   });
 });

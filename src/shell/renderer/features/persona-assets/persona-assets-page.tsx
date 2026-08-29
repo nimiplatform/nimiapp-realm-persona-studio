@@ -20,11 +20,10 @@ function PersonaAssetsPageForScope() {
 
   return (
     <PersonaShell personaId={personaId} current="assets">
-      {(persona, visualData) => (
+      {(persona) => (
         <MediaVoiceCandidateWorkspace
           persona={persona}
           onPersonaWrite={refreshPersonaReads}
-          developmentVisualData={visualData}
         />
       )}
     </PersonaShell>

@@ -49,7 +49,7 @@ describe('visual identity change dialog', () => {
     expect(component).toContain('buildRealmSelectAvatarInput(avatarUrlDraft)');
     expect(component).toContain('selectReviewedPersonaAvatarUrl(persona, avatarUrlDraft)');
     expect(component).toContain('await onPersonaWrite()');
-    expect(component).toContain("t('persona.failure.sanitized', { reason: result.failure })");
+    expect(component).toContain("t('persona.failure.sanitized', { reason: t(failureKindCopyKey(result.failure)) })");
   });
 
   it('renders the selected development voice file as a playable local candidate', () => {

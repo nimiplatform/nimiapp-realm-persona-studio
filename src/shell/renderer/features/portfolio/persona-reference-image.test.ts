@@ -26,12 +26,13 @@ describe('persona reference image generation', () => {
   it('fails closed when the prompt is empty', async () => {
     const invalid = buildPersonaReferenceImagePayload({ prompt: ' ' });
     expect(invalid.ok).toBe(false);
-    expect(invalid.errors).toEqual(['reference image prompt empty']);
+    expect(invalid.errors.map((error) => error.kind)).toEqual(['reference-prompt-empty']);
 
     const result = await generatePersonaReferenceImage({ prompt: ' ' });
     expect(result).toMatchObject({
       ok: false,
       failure: 'persona-reference-image-payload-invalid',
+      cause: { kind: 'reference-prompt-empty' },
       source: 'Runtime ScenarioService.submitScenarioJob image.generate',
       submitted: null,
     });
@@ -44,7 +45,7 @@ describe('persona reference image generation', () => {
     });
 
     expect(invalid.ok).toBe(false);
-    expect(invalid.errors).toEqual(['reference image generation count must be 1']);
+    expect(invalid.errors.map((error) => error.kind)).toEqual(['reference-count-invalid']);
   });
 
   it('uses a reviewed Nimi image candidate only when Runtime returns a display-safe HTTPS URI', async () => {

@@ -22,7 +22,7 @@ import {
   TooltipProvider,
 } from '@nimiplatform/kit/ui';
 import { HashRouter, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Check, ChevronDown, ImageIcon, Scan, X } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ImageIcon, Scan, X } from 'lucide-react';
 import { StudioSidebar } from './app-shell/studio-sidebar/index.js';
 import { PersonaCockpit } from './features/persona-detail/persona-cockpit.js';
 import { PersonaWorkspaceFrame } from './features/persona-detail/persona-shell.js';
@@ -40,11 +40,11 @@ import { PersonaCard } from './features/portfolio/OwnerPortfolio.shared.js';
 import { MediaVoiceCandidateWorkspace } from './features/portfolio/OwnerPortfolio.assets.js';
 import {
   PERSONA_ARCHETYPES,
-  PERSONA_TRAITS,
   PERSONA_TRAIT_MAX,
   type PersonaArchetype,
   type PersonaTrait,
 } from './features/portfolio/create-persona-draft.js';
+import { TraitsMultiSelect } from './features/portfolio/create-realm-persona-workspace/traits-multi-select.js';
 import {
   ReferenceImageSourceChooser,
   type ReferenceImageSourceMode,
@@ -53,7 +53,6 @@ import { studioQueryClient } from './infra/query-client.js';
 import {
   ensureStudioI18nInitialized,
   translatePersonaArchetypeLabel,
-  translatePersonaTraitLabel,
   translateStudioCopy,
 } from './i18n/studio-i18n.js';
 import './styles.css';
@@ -70,17 +69,16 @@ function PreviewWorkspace({ tab }: { tab: 'detail' | 'posts' | 'assets' }) {
   return (
     <PersonaWorkspaceFrame persona={persona} current={tab}>
       {tab === 'posts' ? (
-        <PersonaPostEditor persona={persona} visualData={visualData} />
+        <PersonaPostEditor persona={persona} />
       ) : tab === 'assets' ? (
         <MediaVoiceCandidateWorkspace
           persona={persona}
-          developmentVisualData={visualData}
           onPersonaWrite={async () => {
             throw new Error('Development visual fixture does not expose Realm writes.');
           }}
         />
       ) : (
-        <PersonaCockpit persona={persona} visualData={visualData} />
+        <PersonaCockpit persona={persona} />
       )}
     </PersonaWorkspaceFrame>
   );
@@ -132,14 +130,7 @@ function PreviewCreateReferenceSources() {
   const [concept, setConcept] = useState('');
   const [archetype, setArchetype] = useState<PersonaArchetype | ''>('');
   const [traits, setTraits] = useState<PersonaTrait[]>(['HUMOROUS', 'REBELLIOUS']);
-  const [traitPickerOpen, setTraitPickerOpen] = useState(true);
   const previewFileInputRef = useRef<HTMLInputElement>(null);
-
-  const toggleTrait = (trait: PersonaTrait) => {
-    setTraits((current) => current.includes(trait)
-      ? current.filter((value) => value !== trait)
-      : current.length < PERSONA_TRAIT_MAX ? [...current, trait] : current);
-  };
 
   return (
     <div className="ras-page ras-create-page">
@@ -304,55 +295,7 @@ function PreviewCreateReferenceSources() {
 
             <div className="min-w-0" data-create-field="personaTraits">
               <FieldShell label={translateStudioCopy('create.personaTraitsLabel', { max: PERSONA_TRAIT_MAX })}>
-                <div className="ras-create-trait-picker" data-open={traitPickerOpen || undefined}>
-                  <button
-                    type="button"
-                    className="ras-create-trait-trigger"
-                    aria-expanded={traitPickerOpen}
-                    onClick={() => setTraitPickerOpen((open) => !open)}
-                  >
-                    <span className="ras-create-trait-trigger__selection">
-                      {traits.length > 0 ? traits.map((trait) => (
-                        <span key={trait} className="ras-create-trait-chip">
-                          {translatePersonaTraitLabel(trait).split(' · ')[0]}
-                        </span>
-                      )) : (
-                        <span className="ras-create-trait-trigger__placeholder">
-                          {translateStudioCopy('create.personaTraitsPlaceholder', { max: PERSONA_TRAIT_MAX })}
-                        </span>
-                      )}
-                    </span>
-                    <ChevronDown className="ras-create-trait-trigger__chevron" size={15} aria-hidden="true" />
-                  </button>
-                  {traitPickerOpen ? (
-                    <div className="ras-create-trait-popover">
-                      <div className="ras-create-trait-grid">
-                        {PERSONA_TRAITS.map((trait) => {
-                          const active = traits.includes(trait);
-                          return (
-                            <button
-                              key={trait}
-                              type="button"
-                              className="ras-create-trait-option"
-                              aria-pressed={active}
-                              disabled={!active && traits.length >= PERSONA_TRAIT_MAX}
-                              onClick={() => toggleTrait(trait)}
-                            >
-                              {active ? <Check size={13} strokeWidth={2.2} aria-hidden="true" /> : null}
-                              {translatePersonaTraitLabel(trait)}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <div className="ras-create-trait-popover__footer">
-                        <span>{translateStudioCopy('create.personaTraitsSelectedCount', { count: traits.length, max: PERSONA_TRAIT_MAX })}</span>
-                        <button type="button" disabled={traits.length === 0} onClick={() => setTraits([])}>
-                          {translateStudioCopy('create.personaTraitsClear')}
-                        </button>
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
+                <TraitsMultiSelect value={traits} error={null} onChange={setTraits} />
               </FieldShell>
             </div>
             </div>

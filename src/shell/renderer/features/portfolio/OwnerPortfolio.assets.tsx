@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Button, Checkbox, EmptyState, FieldShell, IconButton, InlineAlert, nimiToast, OverlayShell, SelectField, StatusBadge, Surface, TextareaField, TextField } from '@nimiplatform/kit/ui';
 import type { OwnerPortfolioPersonaDetail } from './portfolio-data.js';
+import { failureKindCopyKey } from './failure-copy.js';
 import {
   generateReviewedAvatarPackageCandidate,
   generateReviewedVisualImageCandidate,
@@ -64,7 +65,7 @@ import { CandidateFactGrid, TechnicalReviewDetails } from './OwnerPortfolio.shar
 import { useStudioI18n } from '../../i18n/use-studio-i18n.js';
 import type { StudioCopyKey } from '../../i18n/studio-copy.js';
 import type { StudioTranslateOptions } from '../../i18n/studio-i18n.js';
-import type { PersonaWorkspaceVisualData } from '../persona-detail/persona-workspace-visual-data.js';
+import { usePersonaVisualPreview } from '../persona-detail/persona-visual-preview-context.js';
 import {
   formatVoiceDuration,
   formatVoiceFileSize,
@@ -169,7 +170,7 @@ const PERSONA_FAILURE_REASONS = new Set([
 ]);
 
 function translateFixedAssetMessage(message: string, t: StudioTranslator): string {
-  if (PERSONA_FAILURE_REASONS.has(message)) return t('persona.failure.sanitized', { reason: message });
+  if (PERSONA_FAILURE_REASONS.has(message)) return t('persona.failure.sanitized', { reason: t(failureKindCopyKey(message)) });
   const key = FIXED_ASSET_MESSAGE_KEYS[message];
   return key ? t(key) : t('common.operationFailed');
 }
@@ -252,13 +253,12 @@ function formatActivityDate(value: string, locale: 'en' | 'zh'): string {
 export function MediaVoiceCandidateWorkspace({
   persona,
   onPersonaWrite,
-  developmentVisualData,
 }: {
   persona: OwnerPortfolioPersonaDetail;
   onPersonaWrite: () => Promise<void>;
-  developmentVisualData?: PersonaWorkspaceVisualData;
 }) {
   const { locale, t } = useStudioI18n();
+  const developmentVisualData = usePersonaVisualPreview()?.visualData[persona.id];
   const [visualEditorOpen, setVisualEditorOpen] = useState(false);
   const [voiceEditorOpen, setVoiceEditorOpen] = useState(false);
   const [advancedEditorOpen, setAdvancedEditorOpen] = useState(false);
@@ -747,7 +747,7 @@ function VisualIdentityChangeEditor({
         nimiToast.success(t('assets.avatarUrl.saved'));
         await onPersonaWrite();
       } else {
-        nimiToast.danger(t('persona.failure.sanitized', { reason: result.failure }));
+        nimiToast.danger(t('persona.failure.sanitized', { reason: t(failureKindCopyKey(result.failure)) }));
       }
     } catch {
       nimiToast.info(t('assets.avatarUrl.unavailable'));
@@ -921,7 +921,7 @@ function VisualIdentityChangeEditor({
         ) : null}
         {avatarResult && !avatarResult.ok ? (
           <InlineAlert tone="danger" className="mt-3">
-            {t('persona.failure.sanitized', { reason: avatarResult.failure })}
+            {t('persona.failure.sanitized', { reason: t(failureKindCopyKey(avatarResult.failure)) })}
           </InlineAlert>
         ) : null}
       </Surface>

@@ -118,7 +118,7 @@ describe('creation draft protected persistence', () => {
     });
     expect(await loadCreationDraft(draftKey, storage)).toMatchObject({
       ok: false,
-      failure: 'creation-draft-load-failed',
+      failure: { kind: 'draft-stored-invalid' },
     });
   });
 
@@ -130,23 +130,22 @@ describe('creation draft protected persistence', () => {
     };
     expect(await persistCreationDraft(draftKey, draft, throwingStorage)).toMatchObject({
       ok: false,
-      failure: 'creation-draft-not-persistable',
-      message: 'Draft could not be persisted through protected storage.',
+      failure: { kind: 'draft-persist-failed', detail: 'Draft could not be persisted through protected storage.' },
     });
     expect(await persistCreationDraft('invalid', draft, storage)).toMatchObject({
       ok: false,
-      failure: 'creation-draft-not-persistable',
+      failure: { kind: 'draft-key-invalid' },
     });
     expect(await persistCreationDraft(draftKey, { ...draft, personaTraits: ['WISE', 'DIRECT', 'GENTLE', 'REALISTIC'] }, storage)).toMatchObject({
       ok: false,
-      failure: 'creation-draft-not-persistable',
+      failure: { kind: 'persona-traits-too-many' },
     });
     expect(await persistCreationDraft(draftKey, {
       ...draft,
       referenceImageCandidates: draft.referenceImageCandidates?.map((candidate) => ({ ...candidate, reviewState: 'candidate-only' })),
     }, storage)).toMatchObject({
       ok: false,
-      message: 'Draft reference image is not an owner-selected candidate.',
+      failure: { kind: 'reference-selection-invalid' },
     });
   });
 
@@ -166,7 +165,7 @@ describe('creation draft protected persistence', () => {
 
     expect(await persistCreationDraft(draftKey, duplicateSlotDraft, storage)).toMatchObject({
       ok: false,
-      message: 'Draft contains more than one reference image candidate in the same slot.',
+      failure: { kind: 'draft-candidate-slot-conflict' },
     });
   });
 });

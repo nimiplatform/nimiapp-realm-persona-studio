@@ -18,7 +18,7 @@ export function PersonaPostsPage() {
 
   return (
     <PersonaShell personaId={personaId} current="posts">
-      {(persona, visualData) => <PersonaPostEditor persona={persona} visualData={visualData} />}
+      {(persona) => <PersonaPostEditor persona={persona} />}
     </PersonaShell>
   );
 }

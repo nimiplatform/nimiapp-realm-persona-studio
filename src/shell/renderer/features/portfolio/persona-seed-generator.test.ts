@@ -55,7 +55,7 @@ describe('persona seed Runtime output parser', () => {
 });
 
 describe('persona seed generation through the injected text candidate runner', () => {
-  it('submits the owner-reviewed prompt and supplements to the injected runner', async () => {
+  it('submits the owner-reviewed prompt and supplements to the injected runner in completion mode', async () => {
     const runner = vi.fn(fakeTextCandidateRunner(JSON.stringify(validSeed)));
 
     const result = await generatePersonaSeedFromDescription(
@@ -66,6 +66,7 @@ describe('persona seed generation through the injected text candidate runner', (
         boundarySupplement: 'Do not claim private memory.',
         visualSupplement: 'Use a cool night palette.',
       },
+      { locale: 'en' },
     );
 
     expect(runner).toHaveBeenCalledTimes(1);
@@ -75,6 +76,7 @@ describe('persona seed generation through the injected text candidate runner', (
       params: { maxTokens: 1200, temperature: 0.7, topP: 1 },
     });
     expect(submitted?.systemText).toContain('owner-reviewed Realm Persona draft');
+    expect(submitted?.userText).toContain('"mode":"completion"');
     expect(submitted?.userText).toContain('A calm artifact review guide.');
     expect(submitted?.userText).toContain('Speak in calm, direct sentences.');
     expect(submitted?.userText).toContain('Do not claim private memory.');
@@ -94,17 +96,49 @@ describe('persona seed generation through the injected text candidate runner', (
     });
   });
 
-  it('fails closed before calling the runner when the description is empty', async () => {
+  it('runs zero-input generation in creative mode with locale-bound output language', async () => {
+    const runner = vi.fn(fakeTextCandidateRunner(JSON.stringify({
+      ...validSeed,
+      displayName: '安静守夜人',
+      speechStyle: '话很少，语速慢。',
+      behaviorBoundary: '绝不泄露守夜路线。',
+    })));
+
+    const result = await generatePersonaSeedFromDescription('   ', runner, {}, { locale: 'zh' });
+
+    expect(runner).toHaveBeenCalledTimes(1);
+    const submitted = runner.mock.calls[0]?.[0];
+    expect(submitted).toMatchObject({
+      surfaceId: 'realm-persona-studio.persona-seed',
+      params: { maxTokens: 1200, temperature: 0.9, topP: 1 },
+    });
+    expect(submitted?.systemText).toContain('invent an original, complete Realm Persona draft from scratch');
+    expect(submitted?.systemText).toContain('write in Chinese');
+    expect(submitted?.userText).toContain('"mode":"creative"');
+    expect(result).toMatchObject({
+      ok: true,
+      seed: {
+        displayName: '安静守夜人',
+        speechStyle: '话很少，语速慢。',
+        behaviorBoundary: '绝不泄露守夜路线。',
+      },
+    });
+  });
+
+  it('treats supplements without a description as creative-mode hard constraints', async () => {
     const runner = vi.fn(fakeTextCandidateRunner(JSON.stringify(validSeed)));
 
-    const result = await generatePersonaSeedFromDescription('   ', runner);
+    await generatePersonaSeedFromDescription(
+      '',
+      runner,
+      { speechSupplement: 'Speak in calm, direct sentences.' },
+      { locale: 'en' },
+    );
 
-    expect(runner).not.toHaveBeenCalled();
-    expect(result).toMatchObject({
-      ok: false,
-      failure: 'persona-seed-description-empty',
-      submitted: null,
-    });
+    const submitted = runner.mock.calls[0]?.[0];
+    expect(submitted?.userText).toContain('"mode":"creative"');
+    expect(submitted?.userText).toContain('Speak in calm, direct sentences.');
+    expect(submitted?.systemText).toContain('hard constraints');
   });
 
   it('maps runner failures without inventing a seed', async () => {
@@ -112,7 +146,7 @@ describe('persona seed generation through the injected text candidate runner', (
       throw new Error('local app surface unavailable');
     };
 
-    const result = await generatePersonaSeedFromDescription('A calm artifact review guide.', runner);
+    const result = await generatePersonaSeedFromDescription('A calm artifact review guide.', runner, {}, { locale: 'en' });
 
     expect(result).toMatchObject({
       ok: false,
@@ -124,6 +158,8 @@ describe('persona seed generation through the injected text candidate runner', (
     const result = await generatePersonaSeedFromDescription(
       'A calm artifact review guide.',
       fakeTextCandidateRunner('not json at all'),
+      {},
+      { locale: 'en' },
     );
 
     expect(result).toMatchObject({

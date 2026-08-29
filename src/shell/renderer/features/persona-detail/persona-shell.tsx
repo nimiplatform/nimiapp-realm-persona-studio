@@ -6,8 +6,8 @@ import {
   Avatar,
   Button,
   ConfirmDialog,
-  EmptyState,
   InlineAlert,
+  LoadingSkeleton,
   NimiTabs,
   ScrollArea,
   StatusBadge,
@@ -15,6 +15,7 @@ import {
 } from '@nimiplatform/kit/ui';
 import type { OwnerPortfolioPersonaDetail } from '@renderer/features/portfolio/portfolio-data.js';
 import { classifyPersonaDetailFailure } from '@renderer/features/portfolio/portfolio-data.js';
+import { failureKindCopyKey } from '@renderer/features/portfolio/failure-copy.js';
 import { deleteOwnerPortfolioPersona } from '@renderer/features/portfolio/portfolio-client.js';
 import { settingFieldDisplayValue } from '@renderer/features/portfolio/OwnerPortfolio.shared.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
@@ -24,7 +25,6 @@ import {
   type PersonaDetailReadScope,
   usePersonaDetailQuery,
 } from './use-persona-detail-query.js';
-import type { PersonaWorkspaceVisualData } from './persona-workspace-visual-data.js';
 import { usePersonaVisualPreview } from './persona-visual-preview-context.js';
 
 export type PersonaShellTabKey = 'detail' | 'settings' | 'assets' | 'posts' | 'insights' | 'launch';
@@ -218,7 +218,7 @@ export function PersonaHeader({
         <InlineAlert tone="danger">
           <strong>{t('persona.delete.failedTitle')}</strong>
           <div>{t(deleteFailureKey)}</div>
-          <StatusBadge tone="neutral">{deleteFailure}</StatusBadge>
+          <StatusBadge tone="neutral">{t(failureKindCopyKey(deleteFailure))}</StatusBadge>
         </InlineAlert>
       ) : null}
       <ConfirmDialog
@@ -306,16 +306,13 @@ export function PersonaShell({
   personaId: string;
   current?: PersonaShellTabKey;
   mode?: PersonaShellMode;
-  children: (persona: OwnerPortfolioPersonaDetail, visualData?: PersonaWorkspaceVisualData) => ReactNode;
+  children: (persona: OwnerPortfolioPersonaDetail) => ReactNode;
 }) {
   const { t } = useStudioI18n();
   const location = useLocation();
   const activeTab = current ?? deriveCurrentTab(location.pathname, personaId);
   const visualPreview = usePersonaVisualPreview();
   const developmentFixturePersona = visualPreview?.details[personaId];
-  const developmentVisualData = developmentFixturePersona
-    ? visualPreview?.visualData[personaId]
-    : undefined;
   const detailQuery = usePersonaDetailQuery(personaId, mode, {
     enabled: developmentFixturePersona === undefined,
   });
@@ -325,10 +322,10 @@ export function PersonaShell({
       <ScrollArea className="flex-1" viewportClassName="bg-transparent">
         <div className="ras-page">
           <Surface tone="panel" material="glass-regular" padding="lg" className="ras-radius-xl">
-            <EmptyState
-              title={t('persona.loading.title')}
-              description={t('persona.loading.description')}
-            />
+            <div className="grid gap-4" aria-label={t('persona.loading.description')}>
+              <LoadingSkeleton lines={2} label={t('persona.loading.title')} />
+              <LoadingSkeleton lines={4} />
+            </div>
           </Surface>
         </div>
       </ScrollArea>
@@ -374,7 +371,7 @@ export function PersonaShell({
             <InlineAlert tone={failure.kind === 'capability-unavailable' ? 'info' : 'danger'}>
               <strong>{t(titleKeyByKind[failure.kind])}</strong>
               <div>{t(detailKeyByKind[failure.kind])}</div>
-              <StatusBadge tone="neutral">{failure.kind}</StatusBadge>
+              <StatusBadge tone="neutral">{t(failureKindCopyKey(failure.kind))}</StatusBadge>
             </InlineAlert>
             <div>
               <Button
@@ -398,7 +395,7 @@ export function PersonaShell({
     <ScrollArea className="flex-1" viewportClassName="bg-transparent">
       <div className="ras-page ras-persona-workspace-page">
         <PersonaWorkspaceFrame persona={persona} current={activeTab} mode={mode}>
-          {children(persona, developmentVisualData)}
+          {children(persona)}
         </PersonaWorkspaceFrame>
       </div>
     </ScrollArea>

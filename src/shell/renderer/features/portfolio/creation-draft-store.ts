@@ -13,6 +13,11 @@ import {
   PERSONA_ARCHETYPES,
   PERSONA_TRAITS,
 } from './create-persona-draft.js';
+import {
+  createFlowFailure,
+  type CreateFlowFailure,
+  type CreateFlowFailureKind,
+} from './create-flow-failure.js';
 import { normalizeDisplaySafeHttpsUrl } from './persona-external-ref.js';
 
 export const CREATION_DRAFT_STORAGE_PATH_PREFIX = 'creation/drafts/';
@@ -25,16 +30,14 @@ export type CreationDraftPersistResult =
   | { ok: true; record: CreationDraftAutosaveRecord }
   | {
     ok: false;
-    failure: 'creation-draft-not-persistable';
-    message: string;
+    failure: CreateFlowFailure;
   };
 
 export type CreationDraftLoadResult =
   | { ok: true; record: CreationDraftAutosaveRecord | null }
   | {
     ok: false;
-    failure: 'creation-draft-load-failed';
-    message: string;
+    failure: CreateFlowFailure;
   };
 
 export type CreationDraftStorage = Pick<StudioProtectedJsonStorage, 'readJson' | 'writeJson'>;
@@ -175,11 +178,10 @@ function normalizeStoredDraft(value: unknown, expectedDraftKey: string): Creatio
   };
 }
 
-function persistFailure(message: string): CreationDraftPersistResult {
+function persistFailure(kind: CreateFlowFailureKind, detail: string): CreationDraftPersistResult {
   return {
     ok: false,
-    failure: 'creation-draft-not-persistable',
-    message,
+    failure: createFlowFailure(kind, { detail }),
   };
 }
 
@@ -200,12 +202,12 @@ export async function loadCreationDraft(
   storage?: CreationDraftStorage | null,
 ): Promise<CreationDraftLoadResult> {
   if (!isValidDraftKey(draftKey)) {
-    return { ok: false, failure: 'creation-draft-load-failed', message: 'Draft key must be a valid ULID.' };
+    return { ok: false, failure: createFlowFailure('draft-key-invalid', { detail: 'Draft key must be a valid ULID.' }) };
   }
   const normalizedDraftKey = draftKey.trim();
   const targetStorage = resolveStorage(storage);
   if (!targetStorage) {
-    return { ok: false, failure: 'creation-draft-load-failed', message: 'Draft storage is unavailable.' };
+    return { ok: false, failure: createFlowFailure('draft-storage-unavailable', { detail: 'Draft storage is unavailable.' }) };
   }
 
   try {
@@ -213,10 +215,10 @@ export async function loadCreationDraft(
     const record = normalizeStoredDraft(document.value, normalizedDraftKey);
     return record
       ? { ok: true, record }
-      : { ok: false, failure: 'creation-draft-load-failed', message: 'Stored draft is invalid.' };
+      : { ok: false, failure: createFlowFailure('draft-stored-invalid', { detail: 'Stored draft is invalid.' }) };
   } catch (error) {
     if (isStudioStorageNotFoundError(error)) return { ok: true, record: null };
-    return { ok: false, failure: 'creation-draft-load-failed', message: 'Draft storage read failed.' };
+    return { ok: false, failure: createFlowFailure('draft-read-failed', { detail: 'Draft storage read failed.' }) };
   }
 }
 
@@ -227,46 +229,46 @@ export async function persistCreationDraft(
   now = new Date(),
 ): Promise<CreationDraftPersistResult> {
   if (!isValidDraftKey(draftKey)) {
-    return persistFailure('Draft key must be a valid ULID.');
+    return persistFailure('draft-key-invalid', 'Draft key must be a valid ULID.');
   }
 
   let normalized: NormalizedCreateRealmPersonaDraft;
   try {
     normalized = normalizeCreateRealmPersonaDraft(draft);
   } catch {
-    return persistFailure('Draft fields could not be normalized.');
+    return persistFailure('draft-fields-invalid', 'Draft fields could not be normalized.');
   }
 
   if (!Array.isArray(draft.personaTraits)) {
-    return persistFailure('Draft fields could not be normalized.');
+    return persistFailure('draft-fields-invalid', 'Draft fields could not be normalized.');
   }
   if (normalized.personaTraits.length > 3) {
-    return persistFailure('Draft contains more than 3 persona traits.');
+    return persistFailure('persona-traits-too-many', 'Draft contains more than 3 persona traits.');
   }
   if (draft.personaTraits.some((trait) => !isKnownTrait(trait))) {
-    return persistFailure('Draft contains a persona trait outside the closed value set.');
+    return persistFailure('persona-traits-outside-closed-set', 'Draft contains a persona trait outside the closed value set.');
   }
   if (!Array.isArray(draft.referenceImageCandidates)) {
-    return persistFailure('Draft contains an invalid reference image candidate.');
+    return persistFailure('draft-candidate-invalid', 'Draft contains an invalid reference image candidate.');
   }
   const candidates = draft.referenceImageCandidates.map((candidate) => normalizeCandidate(candidate, draftKey.trim()));
   if (candidates.some((candidate) => candidate === null)) {
-    return persistFailure('Draft contains an invalid reference image candidate.');
+    return persistFailure('draft-candidate-invalid', 'Draft contains an invalid reference image candidate.');
   }
   if (new Set(candidates.map((candidate) => candidate?.slot)).size !== candidates.length) {
-    return persistFailure('Draft contains more than one reference image candidate in the same slot.');
+    return persistFailure('draft-candidate-slot-conflict', 'Draft contains more than one reference image candidate in the same slot.');
   }
   const selectedCandidates = candidates.filter((candidate) => candidate?.reviewState === 'owner-selected');
   if (selectedCandidates.length > 1) {
-    return persistFailure('Draft contains more than one owner-selected reference image candidate.');
+    return persistFailure('reference-selection-invalid', 'Draft contains more than one owner-selected reference image candidate.');
   }
   if (normalized.referenceImageUrl && !selectedCandidates.some((candidate) => candidate?.url === normalized.referenceImageUrl)) {
-    return persistFailure('Draft reference image is not an owner-selected candidate.');
+    return persistFailure('reference-selection-invalid', 'Draft reference image is not an owner-selected candidate.');
   }
 
   const targetStorage = resolveStorage(storage);
   if (!targetStorage) {
-    return persistFailure('Draft storage is unavailable.');
+    return persistFailure('draft-storage-unavailable', 'Draft storage is unavailable.');
   }
 
   const record: CreationDraftAutosaveRecord = {
@@ -279,7 +281,7 @@ export async function persistCreationDraft(
     await targetStorage.writeJson(getCreationDraftStoragePath(draftKey), record);
     return { ok: true, record };
   } catch {
-    return persistFailure('Draft could not be persisted through protected storage.');
+    return persistFailure('draft-persist-failed', 'Draft could not be persisted through protected storage.');
   }
 }
 

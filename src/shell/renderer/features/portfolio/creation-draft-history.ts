@@ -5,6 +5,7 @@ import {
   type StudioProtectedJsonStorage,
 } from '../../app-shell/studio-storage.js';
 import { isAppUlid } from '../../app-shell/app-ulid.js';
+import { createFlowFailure, type CreateFlowFailure } from './create-flow-failure.js';
 
 export const CREATION_DRAFT_HISTORY_STORAGE_PATH = 'creation/history.json';
 export const CREATION_DRAFT_HISTORY_LIMIT = 50;
@@ -29,8 +30,7 @@ export type CreationDraftHistoryLoadResult =
   | { ok: true; entries: CreationDraftHistoryEntry[]; unavailableCount: number }
   | {
     ok: false;
-    failure: 'creation-draft-history-unavailable';
-    message: string;
+    failure: CreateFlowFailure;
     entries: [];
     unavailableCount: 0;
   };
@@ -39,8 +39,7 @@ export type CreationDraftHistoryPersistResult =
   | { ok: true; entries: CreationDraftHistoryEntry[] }
   | {
     ok: false;
-    failure: 'creation-draft-history-unavailable';
-    message: string;
+    failure: CreateFlowFailure;
     entries: CreationDraftHistoryEntry[];
   };
 
@@ -123,8 +122,7 @@ export async function loadCreationDraftHistory(
   if (!targetStorage) {
     return {
       ok: false,
-      failure: 'creation-draft-history-unavailable',
-      message: 'Creation draft history protected storage is unavailable.',
+      failure: createFlowFailure('draft-history-unavailable', { detail: 'Creation draft history protected storage is unavailable.' }),
       entries: [],
       unavailableCount: 0,
     };
@@ -137,8 +135,7 @@ export async function loadCreationDraftHistory(
       ? { ok: true, ...normalized }
       : {
         ok: false,
-        failure: 'creation-draft-history-unavailable',
-        message: 'Creation draft history document is invalid.',
+        failure: createFlowFailure('draft-history-unavailable', { detail: 'Creation draft history document is invalid.' }),
         entries: [],
         unavailableCount: 0,
       };
@@ -146,8 +143,7 @@ export async function loadCreationDraftHistory(
     if (isStudioStorageNotFoundError(error)) return { ok: true, entries: [], unavailableCount: 0 };
     return {
       ok: false,
-      failure: 'creation-draft-history-unavailable',
-      message: 'Creation draft history protected storage read failed.',
+      failure: createFlowFailure('draft-history-unavailable', { detail: 'Creation draft history protected storage read failed.' }),
       entries: [],
       unavailableCount: 0,
     };
@@ -162,8 +158,7 @@ export async function upsertCreationDraftHistoryEntry(
   if (!targetStorage) {
     return {
       ok: false,
-      failure: 'creation-draft-history-unavailable',
-      message: 'Creation draft history protected storage is unavailable.',
+      failure: createFlowFailure('draft-history-unavailable', { detail: 'Creation draft history protected storage is unavailable.' }),
       entries: [],
     };
   }
@@ -173,8 +168,7 @@ export async function upsertCreationDraftHistoryEntry(
   if (!normalized) {
     return {
       ok: false,
-      failure: 'creation-draft-history-unavailable',
-      message: 'Creation draft history entry is invalid.',
+      failure: createFlowFailure('draft-history-unavailable', { detail: 'Creation draft history entry is invalid.' }),
       entries: loaded.entries,
     };
   }
@@ -189,8 +183,7 @@ export async function upsertCreationDraftHistoryEntry(
   } catch {
     return {
       ok: false,
-      failure: 'creation-draft-history-unavailable',
-      message: 'Creation draft history protected storage write failed.',
+      failure: createFlowFailure('draft-history-unavailable', { detail: 'Creation draft history protected storage write failed.' }),
       entries: loaded.entries,
     };
   }
@@ -204,8 +197,7 @@ export async function removeCreationDraftHistoryEntry(
   if (!targetStorage) {
     return {
       ok: false,
-      failure: 'creation-draft-history-unavailable',
-      message: 'Creation draft history protected storage is unavailable.',
+      failure: createFlowFailure('draft-history-unavailable', { detail: 'Creation draft history protected storage is unavailable.' }),
       entries: [],
     };
   }
@@ -214,8 +206,7 @@ export async function removeCreationDraftHistoryEntry(
   if (!isUlid(draftKey)) {
     return {
       ok: false,
-      failure: 'creation-draft-history-unavailable',
-      message: 'Creation draft history key is invalid.',
+      failure: createFlowFailure('draft-history-unavailable', { detail: 'Creation draft history key is invalid.' }),
       entries: loaded.entries,
     };
   }
@@ -230,8 +221,7 @@ export async function removeCreationDraftHistoryEntry(
   } catch {
     return {
       ok: false,
-      failure: 'creation-draft-history-unavailable',
-      message: 'Creation draft history protected storage write failed.',
+      failure: createFlowFailure('draft-history-unavailable', { detail: 'Creation draft history protected storage write failed.' }),
       entries: loaded.entries,
     };
   }

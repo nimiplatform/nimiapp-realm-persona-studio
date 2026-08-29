@@ -15,7 +15,8 @@ import type { OwnerPortfolioPersonaDetail } from '@renderer/features/portfolio/p
 import { settingFieldDisplayValue } from '@renderer/features/portfolio/OwnerPortfolio.shared.js';
 import { useLocalCreativeAssetHistory } from '@renderer/features/portfolio/use-local-creative-asset-history.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
-import type { PersonaWorkspaceCandidate, PersonaWorkspaceVisualData } from './persona-workspace-visual-data.js';
+import type { PersonaWorkspaceCandidate } from './persona-workspace-visual-data.js';
+import { usePersonaVisualPreview } from './persona-visual-preview-context.js';
 
 function mapHistoryCandidate(record: CreativeAssetHistoryRecord): PersonaWorkspaceCandidate {
   const voiceCandidate = record.kind === 'voice-demo-candidate';
@@ -35,13 +36,12 @@ function mapHistoryCandidate(record: CreativeAssetHistoryRecord): PersonaWorkspa
 
 export function PersonaCockpit({
   persona,
-  visualData,
 }: {
   persona: OwnerPortfolioPersonaDetail;
-  visualData?: PersonaWorkspaceVisualData;
 }) {
   const { t } = useStudioI18n();
   const navigate = useNavigate();
+  const visualData = usePersonaVisualPreview()?.visualData[persona.id];
   const creativeHistoryState = useLocalCreativeAssetHistory(persona.id);
   const [localDraft, setLocalDraft] = useState<LocalPostDraftRecord | null>(null);
   const [localDraftUnavailable, setLocalDraftUnavailable] = useState(false);

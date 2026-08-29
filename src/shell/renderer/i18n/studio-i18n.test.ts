@@ -25,7 +25,8 @@ describe('studio i18n resources', () => {
     expect(studioChineseCopy['create.describe.hint']).toBe('简单描述即可，不需要一次想完整');
     expect(studioChineseCopy['create.oneLineLabel']).toBe('简单描述一下这个角色');
     expect(studioChineseCopy['create.aiButton.label']).toBe('让 AI 帮我完善角色');
-    expect(studioChineseCopy['create.aiButton.helper']).toBe('生成后可以自由修改');
+    expect(studioChineseCopy['create.descriptionReroll.label']).toBe('随机生成描述');
+    expect(studioChineseCopy['create.aiButton.helper']).toBe('给的信息越多，AI 越贴合你的想法；什么都不写，AI 会自由发挥。生成后可以自由修改');
     expect(studioChineseCopy['create.manualButton.label']).toBe('我想自己填写');
     expect(studioChineseCopy['create.review.basicInfo']).toBe('角色基本信息');
     expect(studioChineseCopy['create.displayNameLabel']).toBe('角色名称');

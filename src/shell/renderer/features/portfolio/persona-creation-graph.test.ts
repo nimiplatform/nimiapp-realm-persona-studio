@@ -60,7 +60,7 @@ describe('Persona Creation Graph', () => {
     expect(validatePersonaCreationGraphForRealmCreate(graph, null)).toMatchObject({
       canAccept: true,
       ready: false,
-      reviewErrors: ['Persona Creation Graph review missing or stale (R-RPS-GRAPH-019).'],
+      reviewErrors: [{ kind: 'graph-review-stale' }],
     });
 
     const accepted = acceptPersonaCreationGraphForRealmCreate(graph);
@@ -84,7 +84,7 @@ describe('Persona Creation Graph', () => {
     expect(validatePersonaCreationGraphForRealmCreate(graph, accepted)).toMatchObject({
       canAccept: false,
       ready: false,
-      shapeErrors: ['Persona Creation Graph write plan is blocked for Realm create (R-RPS-GRAPH-017).'],
+      shapeErrors: [{ kind: 'graph-write-plan-blocked' }],
     });
   });
 
@@ -101,8 +101,8 @@ describe('Persona Creation Graph', () => {
     };
     const accepted = acceptPersonaCreationGraphForRealmCreate(invalid);
 
-    expect(validatePersonaCreationGraphForRealmCreate(invalid, accepted).shapeErrors).toContain(
-      'Persona Creation Graph section missing: identity (R-RPS-GRAPH-016).',
+    expect(validatePersonaCreationGraphForRealmCreate(invalid, accepted).shapeErrors).toContainEqual(
+      expect.objectContaining({ kind: 'graph-section-missing', section: 'identity' }),
     );
   });
 });

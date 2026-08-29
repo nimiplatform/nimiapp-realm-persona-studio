@@ -11,6 +11,13 @@ import {
   type StudioTextCandidateRunner,
 } from './studio-text-candidate.js';
 import { parseStrictRuntimeJsonObject } from './strict-runtime-json.js';
+import {
+  CreateFlowFailureError,
+  createFlowFailureFromUnknown,
+  isCreateFlowFailureError,
+  type CreateFlowFailure,
+} from './create-flow-failure.js';
+import type { StudioLocale } from '../../i18n/studio-i18n.js';
 
 export const PERSONA_SEED_SOURCE = 'Nimi App Access ai.text.generateCandidate' as const;
 
@@ -21,14 +28,38 @@ export type PersonaSeedPromptSupplements = {
 };
 
 /**
+ * AI seed generation is one feature on a continuum: the less the owner wrote,
+ * the more the candidate invents (creative); the more the owner wrote, the
+ * more it completes (completion). The mode is derived from owner input volume
+ * and is never a separate owner-facing switch.
+ */
+export type PersonaSeedGenerationMode = 'creative' | 'completion';
+
+export function derivePersonaSeedMode(description: string): PersonaSeedGenerationMode {
+  return description.trim() ? 'completion' : 'creative';
+}
+
+export type PersonaSeedGenerationOptions = {
+  /** Active Studio UI locale. Creative mode writes the persona draft texts in this language. */
+  locale: StudioLocale;
+};
+
+/**
  * Subset of CreateRealmPersonaDraftInput populated by the candidate. World
  * selection and handle availability stay manual; the generated handle remains
- * an owner-reviewed suggestion.
+ * an owner-reviewed suggestion. speechStyle and behaviorBoundary are candidate
+ * lines gap-filled into the owner supplements only where the owner wrote
+ * nothing; owner-written supplements always win.
+ *
+ * @nimi-authority: rule.realm-persona-studio.create-flow.r014
  */
 export type GeneratedPersonaSeed = Pick<
   CreateRealmPersonaDraftInput,
   'handle' | 'displayName' | 'concept' | 'description' | 'ruleText' | 'personaArchetype' | 'personaTraits'
->;
+> & {
+  speechStyle: string;
+  behaviorBoundary: string;
+};
 
 export type PersonaSeedGenerationResult =
   | {
@@ -46,10 +77,10 @@ export type PersonaSeedGenerationResult =
     ok: false;
     source: typeof PERSONA_SEED_SOURCE;
     failure:
-      | 'persona-seed-description-empty'
       | 'persona-seed-generate-failed'
       | 'persona-seed-invalid-output';
-    message: string;
+    /** Typed failure carrier consumed by the UI; `detail` is log-only. */
+    cause: CreateFlowFailure;
     submitted: StudioTextCandidatePrompt | null;
   };
 
@@ -61,65 +92,74 @@ const PERSONA_SEED_OUTPUT_KEYS = [
   'ruleText',
   'personaArchetype',
   'personaTraits',
+  'speechStyle',
+  'behaviorBoundary',
   'rationale',
 ] as const;
 
 function buildPersonaSeedPayload(
   description: string,
   supplements: PersonaSeedPromptSupplements = {},
-): {
-  ok: boolean;
-  errors: string[];
-  payload: StudioTextCandidatePrompt | null;
-} {
+  options: PersonaSeedGenerationOptions,
+): StudioTextCandidatePrompt {
   const trimmed = description.trim();
-  const errors: string[] = [];
-  if (!trimmed) errors.push('persona description empty');
-  if (errors.length > 0) {
-    return { ok: false, errors, payload: null };
-  }
+  const mode = derivePersonaSeedMode(trimmed);
+  const outputLanguage = options.locale === 'zh' ? 'Chinese' : 'English';
   const ownerPromptParts = [
-    `Owner description:\n${trimmed}`,
+    trimmed ? `Owner description:\n${trimmed}` : '',
     supplements.speechSupplement?.trim() ? `Speech style supplement:\n${supplements.speechSupplement.trim()}` : '',
     supplements.boundarySupplement?.trim() ? `Behavior boundary supplement:\n${supplements.boundarySupplement.trim()}` : '',
     supplements.visualSupplement?.trim() ? `Visual style supplement:\n${supplements.visualSupplement.trim()}` : '',
   ].filter(Boolean).join('\n\n');
 
+  const introLine = mode === 'creative'
+    ? 'You invent an original, complete Realm Persona draft from scratch. The owner provided no description, so be creative, specific, and internally consistent; avoid generic results.'
+    : 'You generate an owner-reviewed Realm Persona draft from a one-line user description.';
+  const displayNameRule = mode === 'creative'
+    ? `displayName: 2-32 chars; write in ${outputLanguage}.`
+    : 'displayName: 2-32 chars; match the user\'s described language (Chinese, English, etc).';
+  const creativeNotes = mode === 'creative'
+    ? [
+      `concept, description, ruleText, speechStyle, behaviorBoundary: write in ${outputLanguage}.`,
+      'userDescription may be empty; any supplements present inside it are hard constraints the draft must respect.',
+    ]
+    : [];
+
   return {
-    ok: true,
-    errors: [],
-    payload: {
-      surfaceId: 'realm-persona-studio.persona-seed',
-      params: {
-        maxTokens: 1200,
-        temperature: 0.7,
-        topP: 1,
-      },
-      systemText: [
-        'You generate an owner-reviewed Realm Persona draft from a one-line user description.',
-        'Return ONE JSON object. No prose before or after. No code fences.',
-        'Required keys: handle, displayName, concept, description, ruleText, personaArchetype, personaTraits, rationale.',
-        '',
-        '— Field rules —',
-        'handle: short kebab-case latin suggestion (3-20 chars), no leading @, lowercase letters/digits/hyphens only.',
-        'displayName: 2-32 chars; match the user\'s described language (Chinese, English, etc).',
-        'concept: 1-2 sentences naming the core creative concept.',
-        'description: 1 short public profile description (≤500 chars).',
-        'ruleText: optional behavior/boundary lines, one per line; empty string if nothing meaningful.',
-        `personaArchetype: EXACTLY ONE of ${PERSONA_ARCHETYPES.join(' | ')}`,
-        `personaTraits: array of 1-3 traits from ${PERSONA_TRAITS.join(' | ')}`,
-        'rationale: 1-2 sentences explaining the design choice (English).',
-        '',
-        '— Hard prohibitions —',
-        'Never include: handle prefix @, provider, model, lifecycle, state, worldId, ownerId, dna (full JSON), avatarUrl, profileCoverUrl, personaRule, personaRules, LocalAgent.',
-        'Never include code fences, comments, or trailing text outside the JSON object.',
-      ].join('\n'),
-      userText: JSON.stringify({
-        userDescription: ownerPromptParts,
-        personaArchetypeAllowed: PERSONA_ARCHETYPES,
-        personaTraitsAllowed: PERSONA_TRAITS,
-      }),
+    surfaceId: 'realm-persona-studio.persona-seed',
+    params: {
+      maxTokens: 1200,
+      temperature: mode === 'creative' ? 0.9 : 0.7,
+      topP: 1,
     },
+    systemText: [
+      introLine,
+      'Return ONE JSON object. No prose before or after. No code fences.',
+      'Required keys: handle, displayName, concept, description, ruleText, personaArchetype, personaTraits, speechStyle, behaviorBoundary, rationale.',
+      '',
+      '— Field rules —',
+      'handle: short kebab-case latin suggestion (3-20 chars), no leading @, lowercase letters/digits/hyphens only.',
+      displayNameRule,
+      'concept: 1-2 sentences naming the core creative concept.',
+      'description: 1 short public profile description (≤500 chars).',
+      'ruleText: optional behavior/boundary lines, one per line; empty string if nothing meaningful.',
+      'speechStyle: 1-3 lines describing how the persona speaks (tone, pacing, register), one per line; empty string if nothing meaningful.',
+      'behaviorBoundary: 1-3 immutable behavior boundary lines the persona never crosses, one per line; empty string if nothing meaningful.',
+      `personaArchetype: EXACTLY ONE of ${PERSONA_ARCHETYPES.join(' | ')}`,
+      `personaTraits: array of 1-3 traits from ${PERSONA_TRAITS.join(' | ')}`,
+      'rationale: 1-2 sentences explaining the design choice (English).',
+      ...creativeNotes,
+      '',
+      '— Hard prohibitions —',
+      'Never include: handle prefix @, provider, model, lifecycle, state, worldId, ownerId, dna (full JSON), avatarUrl, profileCoverUrl, personaRule, personaRules, LocalAgent.',
+      'Never include code fences, comments, or trailing text outside the JSON object.',
+    ].join('\n'),
+    userText: JSON.stringify({
+      mode,
+      userDescription: ownerPromptParts,
+      personaArchetypeAllowed: PERSONA_ARCHETYPES,
+      personaTraitsAllowed: PERSONA_TRAITS,
+    }),
   };
 }
 
@@ -173,15 +213,17 @@ export function parsePersonaSeedOutput(raw: string): { seed: GeneratedPersonaSee
     ruleText: readString(obj.ruleText),
     personaArchetype: readPersonaArchetype(obj.personaArchetype),
     personaTraits: readPersonaTraits(obj.personaTraits),
+    speechStyle: readString(obj.speechStyle),
+    behaviorBoundary: readString(obj.behaviorBoundary),
   };
   if (!seed.displayName || !seed.concept) {
-    throw new Error('LLM output missing required `displayName` or `concept`.');
+    throw new CreateFlowFailureError({ kind: 'seed-required-output-missing', detail: 'LLM output missing required `displayName` or `concept`.' });
   }
   if (!seed.personaArchetype) {
-    throw new Error('LLM output personaArchetype missing or outside the supported archetypes.');
+    throw new CreateFlowFailureError({ kind: 'seed-archetype-invalid', detail: 'LLM output personaArchetype missing or outside the supported archetypes.' });
   }
   if (!Array.isArray(obj.personaTraits) || obj.personaTraits.length > 3 || seed.personaTraits.length !== obj.personaTraits.length) {
-    throw new Error('LLM output personaTraits must contain at most 3 values from the supported trait vocabulary.');
+    throw new CreateFlowFailureError({ kind: 'seed-traits-invalid', detail: 'LLM output personaTraits must contain at most 3 values from the supported trait vocabulary.' });
   }
   const rationale = readString(obj.rationale);
   return { seed, rationale };
@@ -191,19 +233,11 @@ export async function generatePersonaSeedFromDescription(
   description: string,
   runner: StudioTextCandidateRunner = runStudioTextCandidate,
   supplements: PersonaSeedPromptSupplements = {},
+  options: PersonaSeedGenerationOptions,
 ): Promise<PersonaSeedGenerationResult> {
-  const built = buildPersonaSeedPayload(description, supplements);
-  if (!built.ok || !built.payload) {
-    return {
-      ok: false,
-      source: PERSONA_SEED_SOURCE,
-      failure: 'persona-seed-description-empty',
-      message: built.errors.join('; ') || 'Persona seed payload invalid.',
-      submitted: null,
-    };
-  }
+  const payload = buildPersonaSeedPayload(description, supplements, options);
   try {
-    const output = await runner(built.payload);
+    const output = await runner(payload);
     try {
       const parsed = parsePersonaSeedOutput(output.text);
       return {
@@ -222,7 +256,9 @@ export async function generatePersonaSeedFromDescription(
         ok: false,
         source: PERSONA_SEED_SOURCE,
         failure: 'persona-seed-invalid-output',
-        message: error instanceof Error ? error.message : 'Persona seed output invalid.',
+        cause: isCreateFlowFailureError(error)
+          ? error.failure
+          : createFlowFailureFromUnknown('seed-output-invalid', error),
         submitted: output.submitted,
       };
     }
@@ -231,8 +267,8 @@ export async function generatePersonaSeedFromDescription(
       ok: false,
       source: PERSONA_SEED_SOURCE,
       failure: 'persona-seed-generate-failed',
-      message: `Nimi text candidate generation failed: ${error instanceof Error ? error.message : 'operation failed.'}`,
-      submitted: built.payload,
+      cause: createFlowFailureFromUnknown('seed-generate-failed', error),
+      submitted: payload,
     };
   }
 }

@@ -2,6 +2,10 @@ import {
   normalizeCreateRealmPersonaDraft,
   type CreateRealmPersonaDraftInput,
 } from './create-persona-draft.js';
+import {
+  createFlowFailure,
+  type CreateFlowFailure,
+} from './create-flow-failure.js';
 
 export type PersonaCreationGraphSourceMode =
   | 'description'
@@ -86,9 +90,9 @@ export type PersonaCreationGraph = {
 export type PersonaCreationGraphCreateReview = {
   canAccept: boolean;
   ready: boolean;
-  errors: string[];
-  shapeErrors: string[];
-  reviewErrors: string[];
+  errors: CreateFlowFailure[];
+  shapeErrors: CreateFlowFailure[];
+  reviewErrors: CreateFlowFailure[];
 };
 
 export type BuildPersonaCreationGraphOptions = {
@@ -441,10 +445,10 @@ export function validatePersonaCreationGraphForRealmCreate(
   graph: PersonaCreationGraph | null,
   acceptedForCreateFingerprint: string | null,
 ): PersonaCreationGraphCreateReview {
-  const shapeErrors: string[] = [];
-  const reviewErrors: string[] = [];
+  const shapeErrors: CreateFlowFailure[] = [];
+  const reviewErrors: CreateFlowFailure[] = [];
   if (!graph) {
-    shapeErrors.push('Persona Creation Graph missing (R-RPS-GRAPH-003).');
+    shapeErrors.push(createFlowFailure('graph-missing', { detail: 'Persona Creation Graph missing (R-RPS-GRAPH-003).' }));
     return {
       canAccept: false,
       ready: false,
@@ -457,26 +461,26 @@ export function validatePersonaCreationGraphForRealmCreate(
   const sections = new Map(graph.normalizedGraph.sections.map((section) => [section.key, section]));
   for (const sectionKey of REQUIRED_CREATE_SECTIONS) {
     if (!sections.has(sectionKey)) {
-      shapeErrors.push(`Persona Creation Graph section missing: ${sectionKey} (R-RPS-GRAPH-016).`);
+      shapeErrors.push(createFlowFailure('graph-section-missing', { section: sectionKey, detail: `Persona Creation Graph section missing: ${sectionKey} (R-RPS-GRAPH-016).` }));
     }
   }
 
   const createPlan = graph.writePlan.items.find((item) => item.target === 'realm-create');
   if (!createPlan) {
-    shapeErrors.push('Persona Creation Graph write plan missing Realm create target (R-RPS-GRAPH-017).');
+    shapeErrors.push(createFlowFailure('graph-write-plan-missing', { detail: 'Persona Creation Graph write plan missing Realm create target (R-RPS-GRAPH-017).' }));
   } else if (createPlan.status !== 'ready') {
-    shapeErrors.push('Persona Creation Graph write plan is blocked for Realm create (R-RPS-GRAPH-017).');
+    shapeErrors.push(createFlowFailure('graph-write-plan-blocked', { detail: 'Persona Creation Graph write plan is blocked for Realm create (R-RPS-GRAPH-017).' }));
   }
 
   for (const sectionKey of ['identity', 'personaStyle', 'worldview'] as const) {
     const section = sections.get(sectionKey);
     if (section?.status === 'blocked') {
-      shapeErrors.push(`Persona Creation Graph ${section.title} section is blocked (R-RPS-GRAPH-027).`);
+      shapeErrors.push(createFlowFailure('graph-section-blocked', { section: sectionKey, detail: `Persona Creation Graph ${section.title} section is blocked (R-RPS-GRAPH-027).` }));
     }
   }
 
   if (acceptedForCreateFingerprint !== graph.fingerprint) {
-    reviewErrors.push('Persona Creation Graph review missing or stale (R-RPS-GRAPH-019).');
+    reviewErrors.push(createFlowFailure('graph-review-stale', { detail: 'Persona Creation Graph review missing or stale (R-RPS-GRAPH-019).' }));
   }
 
   return {

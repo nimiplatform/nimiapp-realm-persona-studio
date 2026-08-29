@@ -400,6 +400,12 @@ a {
   font-weight: 400;
 }
 
+.ras-create-describe-field-label__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .ras-create-describe-textarea {
   border-radius: 14px;
 }
@@ -467,17 +473,48 @@ a {
 .ras-create-review-form {
   display: grid;
   min-width: 0;
+  gap: 20px;
+  align-items: start;
+  padding: 24px;
+}
+
+.ras-create-review-form__top {
+  display: grid;
+  min-width: 0;
   grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.82fr);
   gap: 20px 28px;
   align-items: start;
-  padding: 24px;
+}
+
+.ras-create-review-form__fields {
+  display: grid;
+  min-width: 0;
+  gap: 20px;
+  align-items: start;
+}
+
+.ras-create-review-form__aside {
+  min-width: 0;
+  padding-left: 28px;
+  border-left: 1px solid var(--nimi-border-subtle);
+}
+
+.ras-create-review-form__aside--error {
+  border-left-color: var(--nimi-status-danger);
+}
+
+.ras-create-placement-grid {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px;
+  padding-top: 22px;
+  border-top: 1px solid var(--nimi-border-subtle);
 }
 
 .ras-create-review-card__heading {
   display: flex;
   min-width: 0;
-  grid-column: 1;
-  grid-row: 1;
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
@@ -494,53 +531,17 @@ a {
 .ras-create-identity-grid {
   display: grid;
   min-width: 0;
-  grid-column: 1;
-  grid-row: 2;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
-}
-
-.ras-create-review-form > [data-create-field='concept'] {
-  grid-column: 1;
-  grid-row: 3;
 }
 
 .ras-create-personality-grid {
   display: grid;
   min-width: 0;
-  grid-column: 1 / -1;
-  grid-row: 4;
-  grid-template-columns: minmax(260px, 0.72fr) minmax(0, 1.28fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 28px;
   padding-top: 22px;
   border-top: 1px solid var(--nimi-border-subtle);
-}
-
-.ras-create-review-form > [data-create-field='selectedWorldId'] {
-  grid-column: 1 / -1;
-  grid-row: 5;
-  padding-top: 2px;
-}
-
-.ras-create-trait-grid {
-  display: grid;
-  min-width: 0;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  padding: 9px;
-  border: 1px solid var(--nimi-border-subtle);
-  border-radius: var(--nimi-radius-field);
-  background: color-mix(in srgb, var(--nimi-surface-panel) 80%, transparent);
-}
-
-.ras-create-trait-picker {
-  position: relative;
-  z-index: 1;
-  min-width: 0;
-}
-
-.ras-create-trait-picker[data-open='true'] {
-  z-index: 40;
 }
 
 .ras-create-trait-trigger {
@@ -619,103 +620,6 @@ a {
   transform: rotate(180deg);
 }
 
-.ras-create-trait-popover {
-  position: absolute;
-  z-index: 50;
-  top: calc(100% + 8px);
-  right: 0;
-  left: 0;
-  overflow: hidden;
-  border: 1px solid var(--nimi-border-subtle);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--nimi-surface-card) 98%, white);
-  box-shadow: 0 14px 34px color-mix(in srgb, var(--nimi-text-primary) 16%, transparent);
-}
-
-.ras-create-trait-popover .ras-create-trait-grid {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-}
-
-.ras-create-trait-popover__footer {
-  display: flex;
-  min-height: 34px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  border-top: 1px solid var(--nimi-border-subtle);
-  padding: 7px 10px;
-  color: var(--nimi-text-muted);
-  font-size: 11px;
-}
-
-.ras-create-trait-popover__footer button {
-  border: 0;
-  background: transparent;
-  padding: 2px;
-  color: var(--nimi-text-secondary);
-  font: inherit;
-  font-weight: 620;
-  cursor: pointer;
-}
-
-.ras-create-trait-popover__footer button:disabled {
-  cursor: not-allowed;
-  opacity: var(--nimi-opacity-disabled);
-}
-
-.ras-create-trait-grid--error {
-  border-color: var(--nimi-status-danger);
-}
-
-.ras-create-trait-option {
-  display: inline-flex;
-  min-width: 0;
-  min-height: 34px;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 6px;
-  overflow: hidden;
-  border: 1px solid var(--nimi-border-subtle);
-  border-radius: 9px;
-  background: var(--nimi-surface-card);
-  padding: 6px 9px;
-  color: var(--nimi-text-secondary);
-  font: inherit;
-  font-size: 11px;
-  font-weight: 620;
-  line-height: 1.25;
-  text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  cursor: pointer;
-  transition:
-    border-color var(--nimi-motion-fast) var(--nimi-motion-ease-standard),
-    background-color var(--nimi-motion-fast) var(--nimi-motion-ease-standard),
-    color var(--nimi-motion-fast) var(--nimi-motion-ease-standard);
-}
-
-.ras-create-trait-option:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--nimi-action-primary-bg) 56%, var(--nimi-border-subtle));
-}
-
-.ras-create-trait-option[aria-pressed='true'] {
-  border-color: color-mix(in srgb, var(--nimi-action-primary-bg) 72%, white);
-  background: color-mix(in srgb, var(--nimi-action-primary-bg) 9%, var(--nimi-surface-card));
-  color: var(--nimi-text-primary);
-}
-
-.ras-create-trait-option:focus-visible {
-  outline: 2px solid var(--nimi-action-primary-bg);
-  outline-offset: 2px;
-}
-
-.ras-create-trait-option:disabled {
-  cursor: not-allowed;
-  opacity: var(--nimi-opacity-disabled);
-}
-
 .ras-create-prompt-panel,
 .ras-create-created-card {
   margin: 0 24px 20px;
@@ -731,39 +635,33 @@ a {
 
 @media (max-width: 980px) {
   .ras-create-review-form {
+    gap: 18px;
+  }
+
+  .ras-create-review-form__top {
     grid-template-columns: minmax(0, 1fr) minmax(260px, 0.78fr);
     gap: 18px 22px;
   }
 
-  .ras-create-identity-grid,
-  .ras-create-trait-grid {
+  .ras-create-identity-grid {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 780px) {
   .ras-create-review-form {
-    grid-template-columns: minmax(0, 1fr);
     padding: 20px;
   }
 
-  .ras-create-review-card__heading,
-  .ras-create-identity-grid,
-  .ras-create-review-form > [data-create-field='concept'],
-  .ras-create-personality-grid,
-  .ras-create-review-form > [data-create-field='selectedWorldId'] {
-    grid-column: 1;
-    grid-row: auto;
+  .ras-create-review-form__top {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .ras-create-personality-grid {
+  .ras-create-personality-grid,
+  .ras-create-placement-grid {
     grid-template-columns: minmax(0, 1fr);
     gap: 18px;
     padding-top: 18px;
-  }
-
-  .ras-create-trait-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .ras-create-prompt-panel,
@@ -845,50 +743,6 @@ a {
   gap: 6px;
   flex-wrap: wrap;
   padding-bottom: 6px;
-}
-
-/* ─────────────────────────────────────────────────────────────
- * Empty / hero state inside content area
- * ───────────────────────────────────────────────────────────── */
-
-.ras-hero-empty {
-  display: grid;
-  place-items: center;
-  gap: 18px;
-  min-height: 320px;
-  padding: 56px 28px;
-  border-radius: 24px;
-  border: 1px dashed color-mix(in srgb, var(--nimi-border-subtle) 90%, white);
-  background:
-    radial-gradient(600px 320px at 50% 0%, color-mix(in srgb, var(--nimi-action-primary-bg) 10%, transparent), transparent 70%),
-    color-mix(in srgb, var(--nimi-surface-card) 60%, transparent);
-  text-align: center;
-}
-
-.ras-hero-empty__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 56px;
-  height: 56px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--nimi-action-primary-bg) 22%, white), color-mix(in srgb, var(--nimi-action-primary-bg) 8%, white));
-  color: color-mix(in srgb, var(--nimi-action-primary-bg) 80%, var(--nimi-text-primary));
-}
-
-.ras-hero-empty__title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--nimi-text-primary);
-}
-
-.ras-hero-empty__description {
-  margin: 0;
-  max-width: 56ch;
-  color: var(--nimi-text-secondary);
-  font-size: 14px;
-  line-height: 1.55;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -1960,54 +1814,50 @@ a {
   margin-top: 12px;
 }
 
-.ras-create-review-form > .ras-create-reference-card {
+.ras-create-prompt-field {
+  position: relative;
+}
+
+.ras-create-prompt-field--optimizing::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 15px;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 25%,
+    color-mix(in srgb, var(--nimi-action-primary-bg) 16%, transparent) 50%,
+    transparent 75%
+  );
+  background-size: 240% 100%;
+  animation: ras-create-prompt-sweep 1.4s ease-in-out infinite;
+}
+
+@keyframes ras-create-prompt-sweep {
+  from { background-position: 130% 0; }
+  to { background-position: -130% 0; }
+}
+
+.ras-create-review-form__aside .ras-create-reference-card {
   width: 100%;
-  grid-column: 2;
-  grid-row: 1 / span 3;
   justify-self: stretch;
-  padding: 0 0 0 28px;
+  padding: 0;
   border: 0 !important;
-  border-left: 1px solid var(--nimi-border-subtle) !important;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
 }
 
-.ras-create-review-form > .ras-create-reference-card.ras-create-reference-card--error {
-  border-left-color: var(--nimi-status-danger) !important;
-}
-
-.ras-create-review-form > .ras-create-reference-card .ras-create-reference-card__preview {
+.ras-create-review-form__aside .ras-create-reference-card__preview {
   aspect-ratio: 4 / 3;
 }
 
 @media (max-width: 780px) {
-  .ras-create-review-form > .ras-create-reference-card {
-    grid-column: 1;
-    grid-row: 4;
+  .ras-create-review-form__aside {
     padding: 20px 0 0;
-    border-left: 0 !important;
-    border-top: 1px solid var(--nimi-border-subtle) !important;
-  }
-
-  .ras-create-review-card__heading {
-    grid-row: 1;
-  }
-
-  .ras-create-identity-grid {
-    grid-row: 2;
-  }
-
-  .ras-create-review-form > [data-create-field='concept'] {
-    grid-row: 3;
-  }
-
-  .ras-create-personality-grid {
-    grid-row: 5;
-  }
-
-  .ras-create-review-form > [data-create-field='selectedWorldId'] {
-    grid-row: 6;
+    border-top: 1px solid var(--nimi-border-subtle);
+    border-left: 0;
   }
 }
 
@@ -2031,81 +1881,9 @@ a {
   white-space: nowrap;
 }
 
-.ras-create-visual-source__methods {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.ras-create-visual-source__method {
-  position: relative;
-  display: grid;
-  min-width: 0;
-  min-height: 92px;
-  place-content: center;
-  justify-items: center;
-  gap: 7px;
-  padding: 14px 8px 11px;
-  border: 1px solid var(--nimi-border-subtle);
-  border-radius: 13px;
-  background: color-mix(in srgb, var(--nimi-surface-card) 96%, white);
-  color: var(--nimi-text-secondary);
-  font-size: 12px;
-  font-weight: 650;
-  line-height: 1.25;
-  text-align: center;
-  cursor: pointer;
-  transition:
-    border-color var(--nimi-motion-fast) var(--nimi-motion-ease-standard),
-    background-color var(--nimi-motion-fast) var(--nimi-motion-ease-standard),
-    box-shadow var(--nimi-motion-fast) var(--nimi-motion-ease-standard),
-    color var(--nimi-motion-fast) var(--nimi-motion-ease-standard);
-}
-
-.ras-create-visual-source__method:not(:disabled):hover {
-  border-color: var(--nimi-border-strong);
-  box-shadow: var(--nimi-elevation-base);
-}
-
-.ras-create-visual-source__method:disabled {
-  cursor: wait;
-  opacity: var(--nimi-opacity-disabled);
-}
-
-.ras-create-visual-source__method:focus-visible,
 .ras-create-visual-source__asset:focus-visible {
   outline: 2px solid var(--nimi-action-primary-bg);
   outline-offset: 2px;
-}
-
-.ras-create-visual-source__method[data-active='true'] {
-  border-color: var(--nimi-action-primary-bg);
-  background: color-mix(in srgb, var(--nimi-action-primary-bg) 6%, white);
-  color: var(--nimi-text-primary);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--nimi-action-primary-bg) 12%, transparent);
-}
-
-.ras-create-visual-source__method-icon {
-  display: grid;
-  place-items: center;
-  color: var(--nimi-text-muted);
-}
-
-.ras-create-visual-source__method[data-active='true'] .ras-create-visual-source__method-icon {
-  color: var(--nimi-action-primary-bg);
-}
-
-.ras-create-visual-source__method-check {
-  position: absolute;
-  top: 7px;
-  right: 7px;
-  display: grid;
-  width: 17px;
-  height: 17px;
-  place-items: center;
-  border-radius: var(--nimi-radius-full);
-  background: var(--nimi-action-primary-bg);
-  color: var(--nimi-action-primary-text);
 }
 
 .ras-create-visual-source__assets {

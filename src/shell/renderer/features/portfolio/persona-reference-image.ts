@@ -4,6 +4,10 @@ import {
   type StudioImageCandidateRunner,
   type StudioMediaCandidateFailure,
 } from './studio-media-candidate.js';
+import {
+  createFlowFailure,
+  type CreateFlowFailure,
+} from './create-flow-failure.js';
 import { normalizeDisplaySafeHttpsUrl } from './persona-external-ref.js';
 
 export const PERSONA_REFERENCE_IMAGE_SOURCE = 'Runtime ScenarioService.submitScenarioJob image.generate' as const;
@@ -35,20 +39,21 @@ export type PersonaReferenceImageResult =
       | 'persona-reference-image-payload-invalid'
       | 'persona-reference-image-public-uri-unavailable'
       | StudioMediaCandidateFailure;
-    message: string;
+    /** Typed failure carrier consumed by the UI; `detail` is log-only. */
+    cause: CreateFlowFailure;
     submitted: StudioImageCandidatePreview | null;
   };
 
 export function buildPersonaReferenceImagePayload(input: PersonaReferenceImageInput): {
   ok: boolean;
-  errors: string[];
+  errors: CreateFlowFailure[];
   payload: StudioImageCandidatePreview | null;
 } {
   const prompt = input.prompt.trim();
   const count = input.count ?? 1;
-  const errors: string[] = [];
-  if (!prompt) errors.push('reference image prompt empty');
-  if (count !== 1) errors.push('reference image generation count must be 1');
+  const errors: CreateFlowFailure[] = [];
+  if (!prompt) errors.push(createFlowFailure('reference-prompt-empty', { detail: 'reference image prompt empty' }));
+  if (count !== 1) errors.push(createFlowFailure('reference-count-invalid', { detail: 'reference image generation count must be 1' }));
   if (errors.length > 0) {
     return { ok: false, errors, payload: null };
   }
@@ -72,11 +77,12 @@ export async function generatePersonaReferenceImage(
 ): Promise<PersonaReferenceImageResult> {
   const built = buildPersonaReferenceImagePayload(input);
   if (!built.ok || !built.payload) {
+    const firstError = built.errors[0];
     return {
       ok: false,
       source: PERSONA_REFERENCE_IMAGE_SOURCE,
       failure: 'persona-reference-image-payload-invalid',
-      message: built.errors.join('; ') || 'Reference image payload invalid.',
+      cause: firstError ?? createFlowFailure('reference-payload-invalid', { detail: 'Reference image payload invalid.' }),
       submitted: null,
     };
   }
@@ -87,7 +93,7 @@ export async function generatePersonaReferenceImage(
       ok: false,
       source: PERSONA_REFERENCE_IMAGE_SOURCE,
       failure: result.failure,
-      message: result.message,
+      cause: createFlowFailure(result.failure, { detail: result.message }),
       submitted: built.payload,
     };
   }
@@ -101,7 +107,7 @@ export async function generatePersonaReferenceImage(
       ok: false,
       source: PERSONA_REFERENCE_IMAGE_SOURCE,
       failure: 'persona-reference-image-public-uri-unavailable',
-      message: 'Runtime image.generate produced a local candidate but no display-safe HTTPS URI that Realm can store as a public reference image.',
+      cause: createFlowFailure('reference-local-artifact-no-url', { detail: 'Runtime image.generate produced a local candidate but no display-safe HTTPS URI that Realm can store as a public reference image.' }),
       submitted: built.payload,
     };
   }

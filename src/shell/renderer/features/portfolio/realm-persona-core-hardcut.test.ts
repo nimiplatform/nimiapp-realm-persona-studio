@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -6,16 +6,26 @@ function readPortfolioFile(path: string): string {
   return readFileSync(resolve(import.meta.dirname, path), 'utf8');
 }
 
+function readCreateWorkspaceModule(): string {
+  const dir = resolve(import.meta.dirname, './create-realm-persona-workspace');
+  return [
+    readPortfolioFile('./CreateRealmPersonaWorkspace.tsx'),
+    ...readdirSync(dir)
+      .filter((file) => /\.tsx?$/.test(file))
+      .sort()
+      .map((file) => readFileSync(resolve(dir, file), 'utf8')),
+  ].join('\n');
+}
+
 describe('PersonaCharacter App adoption hard cut', () => {
   it('keeps creation draft, graph, and copy on personaStyle naming', () => {
     const surface = [
       './create-persona-draft.ts',
-      './CreateRealmPersonaWorkspace.tsx',
       './persona-creation-graph.ts',
       './persona-seed-generator.ts',
       './persona-reference-image.ts',
       '../../i18n/studio-copy.ts',
-    ].map(readPortfolioFile).join('\n');
+    ].map(readPortfolioFile).join('\n') + `\n${readCreateWorkspaceModule()}`;
 
     expect(surface).toContain('personaArchetype');
     expect(surface).toContain('personaTraits');

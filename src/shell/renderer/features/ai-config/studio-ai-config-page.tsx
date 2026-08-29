@@ -1,11 +1,12 @@
+import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, InlineAlert, StatusBadge, Surface } from '@nimiplatform/kit/ui';
-import { ModelConfigAIConfigSurface } from '@nimiplatform/kit/features/model-config';
+import { Button, InlineAlert, StatusBadge, Surface, nimiToast } from '@nimiplatform/kit/ui';
+import { ModelConfigAIConfigSurface, type ModelConfigCopy } from '@nimiplatform/kit/features/model-config';
 import { CANONICAL_CAPABILITY_IDS } from '@nimiplatform/kit/core/runtime-capabilities';
-import type { NimiPortableAppAIConfigIntent } from '@nimiplatform/sdk/ai';
-import { TechnicalReviewDetails } from '@renderer/features/portfolio/OwnerPortfolio.shared.js';
+import { failureKindCopyKey } from '@renderer/features/portfolio/failure-copy.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
 import type { StudioCopyKey } from '@renderer/i18n/studio-copy.js';
+import type { StudioCopyTranslator } from '@renderer/i18n/studio-i18n.js';
 import {
   loadStudioAIConfig,
   getStudioAIConfigManager,
@@ -14,10 +15,100 @@ import {
 
 const STUDIO_AI_CONFIG_QUERY_KEY = ['realm-persona-studio', 'studio-ai-config'] as const;
 
-function routeKindLabelKey(intent: NimiPortableAppAIConfigIntent): StudioCopyKey {
-  if (intent.route.oneofKind === 'local') return 'aiConfig.route.local';
-  if (intent.route.oneofKind === 'cloud') return 'aiConfig.route.cloud';
-  throw new Error(`AIConfig route is missing for ${intent.capabilityContract}.`);
+const CAPABILITY_LABEL_KEYS: Readonly<Record<string, StudioCopyKey>> = {
+  'audio.synthesize': 'ModelConfig.surface.capability.audioSynthesize',
+  'audio.transcribe': 'ModelConfig.surface.capability.audioTranscribe',
+  'image.generate': 'ModelConfig.surface.capability.imageGenerate',
+  'music.generate': 'ModelConfig.surface.capability.musicGenerate',
+  'realtime.interact': 'ModelConfig.surface.capability.realtimeInteract',
+  'text.embed': 'ModelConfig.surface.capability.textEmbed',
+  'text.generate': 'ModelConfig.surface.capability.textGenerate',
+  'video.generate': 'ModelConfig.surface.capability.videoGenerate',
+  'voice.create': 'ModelConfig.surface.capability.voiceCreate',
+  'world.generate': 'ModelConfig.surface.capability.worldGenerate',
+};
+
+function buildStudioModelConfigCopy(t: StudioCopyTranslator): ModelConfigCopy {
+  return {
+    title: t('ModelConfig.surface.title'),
+    description: t('ModelConfig.surface.description'),
+    backLabel: t('ModelConfig.surface.backLabel'),
+    detailTitle: (capabilityLabel) => t('ModelConfig.surface.detailTitle', { capability: capabilityLabel }),
+    activeModelLabel: t('ModelConfig.surface.activeModelLabel'),
+    activeModelHint: t('ModelConfig.surface.activeModelHint'),
+    activeModelConfiguredLabel: t('ModelConfig.surface.activeModelConfiguredLabel'),
+    activeModelSetupPendingLabel: t('ModelConfig.surface.activeModelSetupPendingLabel'),
+    modelPickerTitle: t('ModelConfig.surface.modelPickerTitle'),
+    modelPickerSearchPlaceholder: t('ModelConfig.surface.modelPickerSearchPlaceholder'),
+    modelPickerLoadingLabel: t('ModelConfig.surface.modelPickerLoadingLabel'),
+    modelPickerEmptyLabel: t('ModelConfig.surface.modelPickerEmptyLabel'),
+    configuredSummary: t('ModelConfig.surface.configuredSummary'),
+    emptySummary: t('ModelConfig.surface.emptySummary'),
+    routeLabel: t('ModelConfig.surface.routeLabel'),
+    localLabel: t('ModelConfig.surface.localLabel'),
+    cloudLabel: t('ModelConfig.surface.cloudLabel'),
+    saveLocalLabel: t('ModelConfig.surface.saveLabel'),
+    saveCloudLabel: t('ModelConfig.surface.saveLabel'),
+    savingLabel: t('ModelConfig.surface.savingLabel'),
+    clearLabel: t('ModelConfig.surface.clearLabel'),
+    clearingLabel: t('ModelConfig.surface.clearingLabel'),
+    conflictLabel: t('ModelConfig.surface.conflictLabel'),
+    conflictDescription: t('ModelConfig.surface.conflictDescription'),
+    conflictCurrentLabel: (revision, summary) => t('ModelConfig.surface.conflictCurrentLabel', { revision, summary }),
+    advancedLabel: t('ModelConfig.surface.advancedLabel'),
+    advancedHint: t('ModelConfig.surface.advancedHint'),
+    requiredFeaturesLabel: t('ModelConfig.surface.requiredFeaturesLabel'),
+    requiredFeaturesPlaceholder: t('ModelConfig.surface.requiredFeaturesPlaceholder'),
+    defaultsLabel: t('ModelConfig.surface.defaultsLabel'),
+    defaultsPlaceholder: t('ModelConfig.surface.defaultsPlaceholder'),
+    defaultsUnsetLabel: t('ModelConfig.surface.defaultsUnsetLabel'),
+    defaultsTrueLabel: t('ModelConfig.surface.defaultsTrueLabel'),
+    defaultsFalseLabel: t('ModelConfig.surface.defaultsFalseLabel'),
+    defaultsListPlaceholder: t('ModelConfig.surface.defaultsListPlaceholder'),
+    defaultsLocalEffectivePlaceholder: (value) => t('ModelConfig.surface.defaultsLocalEffectivePlaceholder', { value }),
+    defaultsCloudEffectivePlaceholder: t('ModelConfig.surface.defaultsCloudEffectivePlaceholder'),
+    defaultsRandomValue: t('ModelConfig.surface.defaultsRandomValue'),
+    localChoiceDescription: t('ModelConfig.surface.localChoiceDescription'),
+    localSelectedLabel: t('ModelConfig.surface.localSelectedLabel'),
+    localMissingLabel: t('ModelConfig.surface.localMissingLabel'),
+    localBrokenLabel: t('ModelConfig.surface.localBrokenLabel'),
+    localUnavailableLabel: t('ModelConfig.surface.localUnavailableLabel'),
+    localMismatchLabel: (features) => t('ModelConfig.surface.localMismatchLabel', { features }),
+    openMachineLabel: t('ModelConfig.surface.openMachineLabel'),
+    cloudConnectorPickerLabel: t('ModelConfig.surface.cloudConnectorPickerLabel'),
+    cloudConnectorPickerPlaceholder: t('ModelConfig.surface.cloudConnectorPickerPlaceholder'),
+    cloudConnectorSelectionRequired: t('ModelConfig.surface.cloudConnectorSelectionRequired'),
+    cloudNoConnectorsLabel: t('ModelConfig.surface.cloudNoConnectorsLabel'),
+    openCloudConnectorsLabel: t('ModelConfig.surface.openCloudConnectorsLabel'),
+    cloudImplementationLabel: t('ModelConfig.surface.cloudImplementationLabel'),
+    cloudImplementationPlaceholder: t('ModelConfig.surface.cloudImplementationPlaceholder'),
+    cloudTargetLabel: t('ModelConfig.surface.cloudTargetLabel'),
+    cloudTargetPlaceholder: t('ModelConfig.surface.cloudTargetPlaceholder'),
+    cloudTargetDialogTitle: t('ModelConfig.surface.cloudTargetDialogTitle'),
+    cloudTargetDialogDescription: t('ModelConfig.surface.cloudTargetDialogDescription'),
+    cloudNoticeLabel: t('ModelConfig.surface.cloudNoticeLabel'),
+    cloudNoticeDescription: t('ModelConfig.surface.cloudNoticeDescription'),
+    cloudConnectorLabel: t('ModelConfig.surface.cloudConnectorLabel'),
+    cloudConnectorPlaceholder: t('ModelConfig.surface.cloudConnectorPlaceholder'),
+    cloudLoadFailed: t('ModelConfig.surface.cloudLoadFailed'),
+    retryLabel: t('ModelConfig.surface.retryLabel'),
+    loadFailed: t('ModelConfig.surface.loadFailed'),
+    saveFailed: t('ModelConfig.surface.saveFailed'),
+    technicalDetailsLabel: t('ModelConfig.surface.technicalDetailsLabel'),
+    unsupportedCapabilityLabel: t('ModelConfig.surface.unsupportedCapabilityLabel'),
+    notConfiguredLabel: t('ModelConfig.surface.notConfiguredLabel'),
+    configuredLabel: t('ModelConfig.surface.configuredLabel'),
+    selectionRequiredLabel: t('ModelConfig.surface.selectionRequiredLabel'),
+    blockedLabel: t('ModelConfig.surface.blockedLabel'),
+    unavailableLabel: t('ModelConfig.surface.unavailableLabel'),
+    mismatchLabel: t('ModelConfig.surface.mismatchLabel'),
+    cancelLabel: t('ModelConfig.surface.cancelLabel'),
+    confirmSelectionLabel: t('ModelConfig.surface.confirmSelectionLabel'),
+    capabilityLabel: (capability, fallback) => {
+      const labelKey = CAPABILITY_LABEL_KEYS[capability];
+      return labelKey ? t(labelKey) : fallback;
+    },
+  };
 }
 
 export function StudioAIConfigPage() {
@@ -35,8 +126,7 @@ export function StudioAIConfigPage() {
   });
 
   const snapshot = configQuery.data;
-  const config = snapshot?.config ?? null;
-  const intents = config?.capabilities ?? [];
+  const intents = snapshot?.config?.capabilities ?? [];
   const effectiveByCapability = new Map(
     snapshot?.effectiveSelections.map((selection) => [selection.capabilityContract, selection]),
   );
@@ -46,6 +136,7 @@ export function StudioAIConfigPage() {
   );
   const readErrorDetails = describeAIConfigFailure(configQuery.error);
   const navigationErrorDetails = describeAIConfigFailure(ownerConfigurationMutation.error);
+  const modelConfigCopy = useMemo(() => buildStudioModelConfigCopy(t), [t]);
 
   return (
     <div className="ras-page">
@@ -69,7 +160,7 @@ export function StudioAIConfigPage() {
                   ? t('aiConfig.state.configured')
                   : configured
                     ? t('aiConfig.state.unavailable')
-                  : t('aiConfig.state.notConfigured')}
+                    : t('aiConfig.state.notConfigured')}
           </StatusBadge>
         </div>
 
@@ -104,26 +195,8 @@ export function StudioAIConfigPage() {
           onOpenOwnerConfiguration={() => ownerConfigurationMutation.mutate()}
           loadError={configQuery.isError ? t('aiConfig.unavailableDetail') : null}
           onRetry={() => { void configQuery.refetch(); }}
+          copy={modelConfigCopy}
         />
-        {config ? (
-          <div className="mb-4 grid gap-2">
-            {intents.map((intent) => (
-              <Surface key={intent.capabilityContract} tone="card" padding="md">
-                <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-                  <div className="ras-break-anywhere font-medium">{intent.capabilityContract}</div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <StatusBadge tone="info">{t(routeKindLabelKey(intent))}</StatusBadge>
-                    <StatusBadge tone={effectiveByCapability.get(intent.capabilityContract)?.state === 'ready' ? 'success' : 'warning'}>
-                      {t(effectiveByCapability.get(intent.capabilityContract)?.state === 'ready'
-                        ? 'aiConfig.state.configured'
-                        : 'aiConfig.state.unavailable')}
-                    </StatusBadge>
-                  </div>
-                </div>
-              </Surface>
-            ))}
-          </div>
-        ) : null}
 
         <div className="flex flex-wrap gap-3">
           <Button
@@ -154,14 +227,10 @@ export function StudioAIConfigPage() {
           </InlineAlert>
         ) : null}
         {navigationErrorDetails ? (
-          <TechnicalReviewDetails title={t('aiConfig.handoffErrorDetails')}>
-            <AIConfigFailureDetails details={navigationErrorDetails} />
-          </TechnicalReviewDetails>
+          <AIConfigFailureAlert details={navigationErrorDetails} />
         ) : null}
         {readErrorDetails ? (
-          <TechnicalReviewDetails title={t('aiConfig.errorDetails')}>
-            <AIConfigFailureDetails details={readErrorDetails} />
-          </TechnicalReviewDetails>
+          <AIConfigFailureAlert details={readErrorDetails} />
         ) : null}
       </Surface>
     </div>
@@ -191,10 +260,30 @@ function describeAIConfigFailure(error: unknown): AIConfigFailureDetail | null {
   };
 }
 
-function AIConfigFailureDetails({ details }: { details: AIConfigFailureDetail }) {
+function AIConfigFailureAlert({ details }: { details: AIConfigFailureDetail }) {
+  const { t } = useStudioI18n();
+
+  const copyDiagnostics = async () => {
+    if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+      nimiToast.danger(t('aiConfig.diagnosticsCopyFailed'));
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(details, null, 2));
+      nimiToast.success(t('aiConfig.diagnosticsCopied'));
+    } catch {
+      nimiToast.danger(t('aiConfig.diagnosticsCopyFailed'));
+    }
+  };
+
   return (
-    <pre className="ras-json-preview m-0 min-h-16 overflow-auto rounded-[var(--nimi-radius-field)] border border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-panel)] p-3 text-xs">
-      {JSON.stringify(details, null, 2)}
-    </pre>
+    <InlineAlert tone="danger" className="mt-3">
+      <div>{t(failureKindCopyKey(details.reasonCode ?? ''))}</div>
+      <div className="mt-2">
+        <Button tone="secondary" size="sm" onClick={() => void copyDiagnostics()}>
+          {t('aiConfig.copyDiagnostics')}
+        </Button>
+      </div>
+    </InlineAlert>
   );
 }

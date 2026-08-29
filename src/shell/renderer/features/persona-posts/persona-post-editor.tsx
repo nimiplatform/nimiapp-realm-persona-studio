@@ -15,7 +15,8 @@ import {
   type LocalPostDraftRecord,
 } from '@renderer/features/portfolio/local-post-draft-store.js';
 import { settingFieldDisplayValue } from '@renderer/features/portfolio/OwnerPortfolio.shared.js';
-import type { PersonaWorkspaceQueueItem, PersonaWorkspaceVisualData } from '@renderer/features/persona-detail/persona-workspace-visual-data.js';
+import type { PersonaWorkspaceQueueItem } from '@renderer/features/persona-detail/persona-workspace-visual-data.js';
+import { usePersonaVisualPreview } from '@renderer/features/persona-detail/persona-visual-preview-context.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
 
 function queueStateTone(item: PersonaWorkspaceQueueItem): 'warning' | 'info' | 'neutral' {
@@ -26,12 +27,11 @@ function queueStateTone(item: PersonaWorkspaceQueueItem): 'warning' | 'info' | '
 
 export function PersonaPostEditor({
   persona,
-  visualData,
 }: {
   persona: OwnerPortfolioPersonaDetail;
-  visualData?: PersonaWorkspaceVisualData;
 }) {
   const { t } = useStudioI18n();
+  const visualData = usePersonaVisualPreview()?.visualData[persona.id];
   const [caption, setCaption] = useState(visualData?.initialPostCaption ?? '');
   const [tagsText, setTagsText] = useState(visualData?.initialPostTags ?? '');
   const [loading, setLoading] = useState(!visualData);
