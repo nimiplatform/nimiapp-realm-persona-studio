@@ -35,6 +35,14 @@ units:
     kind: definition
     title: Reference image prompt input
     meaning: An owner-editable local image-generation input initialized from the prior describe-stage owner prompt, persisted with the local creation draft, and snapshotted into each generated image candidate.
+  - id: definition.realm-persona-studio.create-flow.ai-seed-generation-mode
+    kind: definition
+    title: AI seed generation mode
+    meaning: A single AI draft-generation capability whose behavior sits on a continuum derived from owner input volume; with no owner input it invents a complete draft (creative), with owner input it completes around that input (completion), and the mode is derived rather than an owner-facing switch.
+  - id: definition.realm-persona-studio.create-flow.ai-description-candidate
+    kind: definition
+    title: AI description candidate
+    meaning: A candidate character description text generated on explicit owner reroll action and written back into the owner-editable describe input, optionally constrained by owner-written supplements and directed away from the previously shown idea; it is idea material only and carries no substantive persona fields.
   - id: rule.realm-persona-studio.create-flow.r001
     kind: rule
     title: Closed persona archetype validation
@@ -135,3 +143,43 @@ units:
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.create-flow.reference-image-prompt-input
+  - id: rule.realm-persona-studio.create-flow.r012
+    kind: rule
+    title: AI seed output stays candidate
+    modality: must
+    statement: AI seed output at any input volume, including zero input, is candidate material and enters the reviewed create stage only as an owner-editable local draft; generation is never blocked solely because the owner provided no input.
+    condition: Whenever AI seed generation runs in the creation flow.
+    failure: Treating unreviewed AI output as submittable truth, auto-submitting it, or refusing to run on empty owner input is a defect.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.create-flow.ai-seed-generation-mode
+  - id: rule.realm-persona-studio.create-flow.r013
+    kind: rule
+    title: Owner input precedence over AI seed
+    modality: must
+    statement: Owner-written description and supplements are generation constraints and are never overwritten by AI seed output; candidate text fills only the fields the owner left empty.
+    condition: When merging AI seed output into the local creation draft.
+    failure: Overwriting owner-written input with candidate output is a defect.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.create-flow.ai-seed-generation-mode
+  - id: rule.realm-persona-studio.create-flow.r014
+    kind: rule
+    title: AI seed must not replace source-backed decisions
+    modality: must_not
+    statement: AI seed output decides world selection, handle availability, visibility, or reference image adoption on the owner's behalf.
+    condition: Always.
+    failure: Auto-selecting a world, bypassing the owner-portfolio handle availability check, or submitting without the reviewed checks is a defect.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.create-flow.ai-seed-generation-mode
+  - id: rule.realm-persona-studio.create-flow.r015
+    kind: rule
+    title: Description reroll stays owner-controlled
+    modality: must
+    statement: An AI description candidate replaces the describe-input text only on an explicit owner reroll action, remains owner-editable, and never populates substantive persona fields or advances the creation stage by itself; a generation failure preserves the owner's current text.
+    condition: Whenever AI description reroll runs in the creation flow.
+    failure: Silent replacement without an owner action, writing candidate persona fields, auto-advancing the stage, or destroying the owner's text on failure is a defect.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.create-flow.ai-description-candidate

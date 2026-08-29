@@ -104,6 +104,7 @@ operations delivered through the protected standard bridge.
 | `/portfolio/:personaId/posts` | Persona-authored post draft, attachment, publish |
 | `/portfolio/:personaId/posts/schedule` | Single app-local foreground-only post schedule |
 | `/portfolio/:personaId/insights` | friendCount, source availability, stale warnings |
+| `/ai-config` | Canonical App AI capability intents and effective state via the kit ModelConfig surface, with Nimi Desktop handoff |
 
 ## Spec Authority
 
