@@ -1,12 +1,11 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import {
   Button,
   FieldShell,
   InlineAlert,
-  Surface,
   TextareaField,
 } from '@nimiplatform/kit/ui';
-import { Dices, Pencil, Sparkles } from 'lucide-react';
+import { ArrowRight, Check, ChevronDown, Dices, MessageCircle, Pencil, ScanFace, Shield, Sparkles } from 'lucide-react';
 import type {
   NormalizedCreateRealmPersonaDraft,
 } from '../create-persona-draft.js';
@@ -38,10 +37,12 @@ export function DescribeStage({
   onSkipSeed: () => void;
 }) {
   const { t } = useStudioI18n();
+  const id = useId();
+  const busy = isGeneratingSeed || isGeneratingDescription;
   const [expandedSupplements, setExpandedSupplements] = useState<Record<SupplementKey, boolean>>({
-    speechSupplement: false,
-    boundarySupplement: false,
-    visualSupplement: false,
+    speechSupplement: Boolean(normalizedDraft.speechSupplement),
+    boundarySupplement: Boolean(normalizedDraft.boundarySupplement),
+    visualSupplement: Boolean(normalizedDraft.visualSupplement),
   });
 
   const supplementButtons: Array<{ key: SupplementKey; labelKey: StudioCopyKey }> = [
@@ -55,19 +56,23 @@ export function DescribeStage({
     visualSupplement: { labelKey: 'create.supplement.visualLabel', placeholderKey: 'create.supplement.visualPlaceholder' },
   };
 
+  const supplementIcons = { speechSupplement: MessageCircle, boundarySupplement: Shield, visualSupplement: ScanFace };
+
   return (
-    <Surface tone="card" material="glass-thick" padding="none" className="ras-create-describe-card">
-      <div className="ras-create-describe-card__body">
-      <FieldShell
-        label={(
-          <span className="ras-create-describe-field-label">
-            <span>{t('create.oneLineLabel')}</span>
-            <span className="ras-create-describe-field-label__actions">
-              <span className="ras-create-describe-field-label__hint">{t('create.oneLineOptional')}</span>
+    <section className="ras-create-studio" aria-labelledby={`${id}-heading`}>
+      <div className="ras-create-studio__intro">
+        <h2 id={`${id}-heading`}>{t('create.studio.heading')}</h2>
+        <p>{t('create.studio.intro')}</p>
+      </div>
+
+      <div className="ras-create-describe-card">
+        <div className="ras-create-describe-card__body">
+          <div className="ras-create-composer">
+            <div className="ras-create-describe-field-label">
+              <label htmlFor={`${id}-description`}>{t('create.oneLineLabel')}</label>
               <Button
-                tone="secondary"
+                tone="ghost"
                 size="sm"
-                className="rounded-full"
                 disabled={isGeneratingSeed}
                 loading={isGeneratingDescription}
                 leadingIcon={isGeneratingDescription ? undefined : <Dices size={14} aria-hidden="true" />}
@@ -75,81 +80,109 @@ export function DescribeStage({
               >
                 {isGeneratingDescription ? t('create.descriptionReroll.generating') : t('create.descriptionReroll.label')}
               </Button>
-            </span>
-          </span>
-        )}
-      >
-        <TextareaField
-          rows={5}
-          className="ras-create-describe-textarea"
-          value={originalDescription}
-          placeholder={t('create.oneLinePlaceholder')}
-          onChange={(event) => updateDraft({ originalDescription: event.currentTarget.value })}
-        />
-      </FieldShell>
-      <div className="grid gap-2">
-        <p className="m-0 text-xs text-[var(--nimi-text-muted)]">{t('create.supplement.hint')}</p>
-        <div className="ras-create-supplement-chips flex flex-wrap gap-2">
-          {supplementButtons.map(({ key, labelKey }) => (
+            </div>
+            <TextareaField
+              id={`${id}-description`}
+              rows={8}
+              tone="quiet"
+              className="ras-create-describe-textarea"
+              value={originalDescription}
+              readOnly={busy}
+              placeholder={t('create.oneLinePlaceholder')}
+              onChange={(event) => updateDraft({ originalDescription: event.currentTarget.value })}
+            />
+            <div className="ras-create-composer__note">
+              <Pencil size={14} aria-hidden="true" />
+              <span>{t('create.studio.writingHint')}</span>
+            </div>
+          </div>
+
+          <aside className="ras-create-directions" aria-labelledby={`${id}-details`}>
+            <div className="ras-create-directions__heading">
+              <h3 id={`${id}-details`}>{t('create.supplement.hint')}</h3>
+              <span>{t('create.studio.optional')}</span>
+            </div>
+            <p className="ras-create-directions__intro">{t('create.studio.detailsHint')}</p>
+            <div className="ras-create-directions__list">
+              {supplementButtons.map(({ key, labelKey }) => {
+                const Icon = supplementIcons[key];
+                const expanded = expandedSupplements[key];
+                return (
+                  <div key={key} className="ras-create-direction" data-expanded={expanded}>
+                    <button
+                      type="button"
+                      className="ras-create-direction__toggle"
+                      aria-expanded={expanded}
+                      aria-controls={`${id}-${key}`}
+                      onClick={() => setExpandedSupplements((current) => ({ ...current, [key]: !current[key] }))}
+                    >
+                      <Icon size={18} aria-hidden="true" />
+                      <span>{t(labelKey)}</span>
+                      {normalizedDraft[key].trim() ? <Check size={14} className="ras-create-direction__check" aria-hidden="true" /> : null}
+                      <ChevronDown size={15} className="ras-create-direction__chevron" aria-hidden="true" />
+                    </button>
+                    <div id={`${id}-${key}`} hidden={!expanded} className="ras-create-direction__field">
+                      <FieldShell label={t(supplementLabels[key].labelKey)}>
+                        <TextareaField
+                          id={`${id}-${key}-input`}
+                          rows={3}
+                          readOnly={busy}
+                          value={normalizedDraft[key]}
+                          placeholder={t(supplementLabels[key].placeholderKey)}
+                          onChange={(event) => updateDraft({ [key]: event.currentTarget.value })}
+                        />
+                      </FieldShell>
+                    </div>
+                    {!expanded ? <p className="ras-create-direction__hint">{normalizedDraft[key].trim() || t(supplementLabels[key].placeholderKey)}</p> : null}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="ras-create-directions__next">
+              <ArrowRight size={16} aria-hidden="true" />
+              <p>{t('create.studio.nextHint')}</p>
+            </div>
+          </aside>
+        </div>
+
+        {seedResult && !seedResult.ok ? (
+          <div className="ras-create-studio__failure" role="status">
+            <InlineAlert tone={seedResult.cause.kind === 'runtime-route-unbound' ? 'info' : 'danger'}>
+              {seedResult.cause.kind === 'runtime-route-unbound'
+                ? translateCreateFlowFailure(seedResult.cause, t)
+                : t('create.seedGenerationFailed', { message: translateCreateFlowFailure(seedResult.cause, t) })}
+            </InlineAlert>
+          </div>
+        ) : null}
+
+        <div className="ras-create-describe-divider" aria-hidden="true" />
+        <footer className="ras-create-describe-actions">
+          <p className="ras-create-describe-actions__helper">{t('create.aiButton.helper')}</p>
+          <div className="ras-create-describe-actions__buttons">
             <Button
-              key={key}
-              tone="secondary"
-              size="sm"
-              className="rounded-full"
-              aria-expanded={expandedSupplements[key]}
-              onClick={() => setExpandedSupplements((current) => ({ ...current, [key]: !current[key] }))}
+              tone="ghost"
+              size="md"
+              className="ras-create-manual-button"
+              disabled={busy}
+              leadingIcon={<Pencil size={18} aria-hidden="true" />}
+              onClick={onSkipSeed}
             >
-              {t(labelKey)}
+              {t('create.manualButton.label')}
             </Button>
-          ))}
-        </div>
+            <Button
+              tone="primary"
+              size="lg"
+              className="ras-create-ai-button"
+              disabled={isGeneratingDescription}
+              loading={isGeneratingSeed}
+              leadingIcon={isGeneratingSeed ? undefined : <Sparkles size={18} aria-hidden="true" />}
+              onClick={onRunSeedGeneration}
+            >
+              {isGeneratingSeed ? t('create.aiButton.generating') : t('create.aiButton.label')}
+            </Button>
+          </div>
+        </footer>
       </div>
-      {seedResult && !seedResult.ok ? (
-        <InlineAlert tone="danger">
-          {t('create.seedGenerationFailed', { message: translateCreateFlowFailure(seedResult.cause, t) })}
-        </InlineAlert>
-      ) : null}
-      {supplementButtons.map(({ key }) => expandedSupplements[key] ? (
-        <FieldShell key={key} label={t(supplementLabels[key].labelKey)}>
-          <TextareaField
-            rows={3}
-            value={normalizedDraft[key]}
-            placeholder={t(supplementLabels[key].placeholderKey)}
-            onChange={(event) => updateDraft({ [key]: event.currentTarget.value })}
-          />
-        </FieldShell>
-      ) : null)}
-
-      <div className="ras-create-describe-divider" aria-hidden="true" />
-
-      <div className="grid gap-3">
-        <div className="grid gap-1.5">
-          <Button
-            tone="primary"
-            size="lg"
-            fullWidth
-            className="ras-create-ai-button min-h-14 rounded-xl"
-            disabled={isGeneratingDescription}
-            loading={isGeneratingSeed}
-            leadingIcon={isGeneratingSeed ? undefined : <Sparkles size={18} aria-hidden="true" />}
-            onClick={onRunSeedGeneration}
-          >
-            {isGeneratingSeed ? t('create.aiButton.generating') : t('create.aiButton.label')}
-          </Button>
-          <p className="m-0 text-center text-xs text-[var(--nimi-text-muted)]">{t('create.aiButton.helper')}</p>
-        </div>
-        <Button
-          tone="secondary"
-          size="lg"
-          fullWidth
-          className="ras-create-manual-button min-h-14 rounded-xl"
-          leadingIcon={<Pencil size={18} aria-hidden="true" />}
-          onClick={onSkipSeed}
-        >
-          {t('create.manualButton.label')}
-        </Button>
-      </div>
-      </div>
-    </Surface>
+    </section>
   );
 }

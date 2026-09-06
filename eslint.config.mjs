@@ -13,6 +13,8 @@ export default defineConfig([
     'src-tauri/gen/**',
     'node_modules/**',
     '.nimi/local/**',
+    '.playwright-cli/**',
+    'output/**',
     'design/**/*.js',
     '*.config.ts',
     '*.config.mjs',

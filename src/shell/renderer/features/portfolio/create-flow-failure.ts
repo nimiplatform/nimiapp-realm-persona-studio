@@ -6,6 +6,9 @@ export type CreateValidationField =
   | 'concept'
   | 'personaArchetype'
   | 'personaTraits'
+  | 'ruleText'
+  | 'speechSupplement'
+  | 'boundarySupplement'
   | 'selectedWorldId'
   | 'visibility'
   | 'referenceImage';
@@ -171,7 +174,7 @@ const CREATE_FLOW_FAILURE_COPY_KEYS: Record<CreateFlowFailureKind, StudioCopyKey
   'reference-local-artifact-no-url': 'create.error.referenceLocalArtifactNoUrl',
   'runtime-payload-invalid': 'create.error.referencePayloadInvalid',
   'runtime-capability-unavailable': 'create.error.referenceCandidateUnavailable',
-  'runtime-route-unbound': 'create.error.referenceCandidateUnavailable',
+  'runtime-route-unbound': 'create.error.aiRouteUnbound',
   'runtime-transport-unavailable': 'create.error.referenceTransportUnavailable',
   'runtime-output-malformed': 'create.error.referenceNoArtifact',
   'runtime-call-failed': 'create.error.referenceGenerateFailed',

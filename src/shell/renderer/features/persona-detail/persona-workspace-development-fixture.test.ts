@@ -12,11 +12,12 @@ function source(path: string): string {
 }
 
 describe('persona workspace development fixture', () => {
-  it('exposes four clearly marked personas without inventing friendCount', () => {
-    expect(PERSONA_WORKSPACE_VISUAL_FIXTURE_LIST.map((persona) => persona.displayName)).toEqual(['小米', '南星', '晨雾', '星澜']);
+  it('exposes five clearly marked personas without inventing friendCount', () => {
+    expect(PERSONA_WORKSPACE_VISUAL_FIXTURE_LIST.map((persona) => persona.displayName)).toEqual(['小米', '南星', '梦琦·拾光', '晨雾', '星澜']);
     expect(Object.keys(PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS)).toEqual([
       'visual-xiaomi',
       'visual-nanxing',
+      'visual-mengqi',
       'visual-chenwu',
       'visual-xinglan',
     ]);
@@ -53,7 +54,9 @@ describe('persona workspace development fixture', () => {
     const preview = source('src/shell/renderer/visual-preview.tsx');
     const portfolioClient = source('src/shell/renderer/features/portfolio/portfolio-client.ts');
     const personaList = source('src/shell/renderer/features/persona-list/persona-list-page.tsx');
-    const detailPage = source('src/shell/renderer/features/persona-detail/persona-detail-page.tsx');
+    const settingsPage = source('src/shell/renderer/features/persona-settings/persona-settings-page.tsx');
+    const settingsOverview = source('src/shell/renderer/features/persona-settings/persona-settings-overview.tsx');
+    const settingsModal = source('src/shell/renderer/features/persona-settings/persona-settings-modal.tsx');
     const postsPage = source('src/shell/renderer/features/persona-posts/persona-posts-page.tsx');
 
     expect(sidebar).not.toContain('developmentFixtureFallback');
@@ -65,7 +68,13 @@ describe('persona workspace development fixture', () => {
     expect(portfolioClient).not.toContain('PERSONA_WORKSPACE_VISUAL_FIXTURE');
     expect(portfolioClient).not.toContain('VITE_RPS_DEV_MOCK_PORTFOLIO');
     expect(personaList).not.toContain('DESIGN_PREVIEW_PERSONAS');
-    expect(detailPage).toContain('<PersonaCockpit persona={persona} />');
+    expect(settingsPage).toContain('<PersonaSettingsOverview persona={persona} />');
+    expect(settingsOverview).toContain('<PersonaAttentionStrip persona={persona} />');
+    expect(settingsModal).toContain('<OverlayShell');
+    expect(settingsModal).toContain('<PersonaSettingsForm');
+    expect(shell).toContain('PersonaSettingsModal');
+    expect(shell).toContain('useOpenPersonaSettingsEditor');
+    expect(preview).not.toContain('settings/edit');
     expect(postsPage).toContain('<PersonaPostEditor persona={persona} />');
   });
 });

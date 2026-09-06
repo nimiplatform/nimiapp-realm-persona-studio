@@ -7,6 +7,7 @@ import {
   EmptyState,
   IconToggleAction,
   InlineAlert,
+  NimiText,
   nimiToast,
   OverlayShell,
   PillTabs,
@@ -566,72 +567,74 @@ export function AssetsLibraryPage() {
   const activeEntries = activeTab === 'images' ? data.images : activeTab === 'audio' ? data.audio : data.uploads;
 
   return (
-    <div className="ras-page">
-      <Surface tone="panel" material="glass-regular" padding="lg" className="ras-radius-xl">
-        <div className="grid gap-6">
-          <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h2 className="m-0 text-3xl font-semibold">{t('assetsLibrary.title')}</h2>
-              <p className="m-0 mt-2 text-[length:var(--nimi-type-body-sm-size)] text-[var(--nimi-text-muted)]">
-                {t('assetsLibrary.description')}
-              </p>
-            </div>
-            <StatusBadge tone="warning">{t('common.localOnly')}</StatusBadge>
-          </div>
-
-          <PillTabs
-            value={activeTab}
-            onValueChange={(value) => setActiveTab(value as AssetLibraryTab)}
-            ariaLabel={t('assetsLibrary.tabs.ariaLabel')}
-            items={[
-              { value: 'images', label: t('assetsLibrary.tabs.images') },
-              { value: 'audio', label: t('assetsLibrary.tabs.audio') },
-              { value: 'uploads', label: t('assetsLibrary.tabs.uploads') },
-            ]}
-          />
-
-          {data.unavailableCount > 0 ? (
-            <InlineAlert tone="warning">
-              {t('assetsLibrary.unavailableCount', { count: data.unavailableCount })}
-            </InlineAlert>
-          ) : null}
-          {sourceStorageUnavailable ? <InlineAlert tone="warning">{t('assetsLibrary.storageUnavailable')}</InlineAlert> : null}
-          {importFailure ? (
-            <InlineAlert tone={importFailure.informational ? 'info' : 'danger'}>
-              {importFailure.message}
-            </InlineAlert>
-          ) : null}
-
-          {activeTab === 'images' ? (
-            activeEntries.length > 0
-              ? <AssetImageGrid entries={activeEntries} onSelect={setSelectedEntry} />
-              : <EmptyTabState tab="images" />
-          ) : null}
-          {activeTab === 'audio' ? (
-            activeEntries.length > 0
-              ? <AudioAssetList entries={activeEntries} />
-              : <EmptyTabState tab="audio" />
-          ) : null}
-          {activeTab === 'uploads' ? (
-            <UploadTab
-              data={data}
-              capability={capability}
-              isImporting={isImporting}
-              onChooseFile={() => fileInputRef.current?.click()}
-              onSelect={setSelectedEntry}
-              onRemove={(entry) => void handleRemove(entry)}
-            />
-          ) : null}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*,audio/*"
-            className="hidden"
-            onChange={(event) => void handleFileChange(event)}
-          />
-
+    <div className="ras-page ras-assets-library">
+      <header className="ras-page-header ras-assets-library__header">
+        <div className="min-w-0">
+          <NimiText as="h1" role="page-title" className="m-0">
+            {t('assetsLibrary.title')}
+          </NimiText>
+          <p className="ras-page-header__description">
+            {t('assetsLibrary.description')}
+          </p>
         </div>
-      </Surface>
+        <div className="ras-page-header__actions">
+          <StatusBadge tone="warning">{t('common.localOnly')}</StatusBadge>
+        </div>
+      </header>
+
+      <div className="grid gap-6">
+        <PillTabs
+          value={activeTab}
+          onValueChange={(value) => setActiveTab(value as AssetLibraryTab)}
+          ariaLabel={t('assetsLibrary.tabs.ariaLabel')}
+          items={[
+            { value: 'images', label: t('assetsLibrary.tabs.images') },
+            { value: 'audio', label: t('assetsLibrary.tabs.audio') },
+            { value: 'uploads', label: t('assetsLibrary.tabs.uploads') },
+          ]}
+        />
+
+        {data.unavailableCount > 0 ? (
+          <InlineAlert tone="warning">
+            {t('assetsLibrary.unavailableCount', { count: data.unavailableCount })}
+          </InlineAlert>
+        ) : null}
+        {sourceStorageUnavailable ? <InlineAlert tone="warning">{t('assetsLibrary.storageUnavailable')}</InlineAlert> : null}
+        {importFailure ? (
+          <InlineAlert tone={importFailure.informational ? 'info' : 'danger'}>
+            {importFailure.message}
+          </InlineAlert>
+        ) : null}
+
+        {activeTab === 'images' ? (
+          activeEntries.length > 0
+            ? <AssetImageGrid entries={activeEntries} onSelect={setSelectedEntry} />
+            : <EmptyTabState tab="images" />
+        ) : null}
+        {activeTab === 'audio' ? (
+          activeEntries.length > 0
+            ? <AudioAssetList entries={activeEntries} />
+            : <EmptyTabState tab="audio" />
+        ) : null}
+        {activeTab === 'uploads' ? (
+          <UploadTab
+            data={data}
+            capability={capability}
+            isImporting={isImporting}
+            onChooseFile={() => fileInputRef.current?.click()}
+            onSelect={setSelectedEntry}
+            onRemove={(entry) => void handleRemove(entry)}
+          />
+        ) : null}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,audio/*"
+          className="hidden"
+          onChange={(event) => void handleFileChange(event)}
+        />
+
+      </div>
       <AssetPreviewOverlay entry={selectedEntry} onClose={() => setSelectedEntry(null)} />
     </div>
   );

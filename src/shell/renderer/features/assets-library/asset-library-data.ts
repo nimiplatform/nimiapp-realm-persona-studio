@@ -106,7 +106,12 @@ function normalizeRequiredText(value: unknown): string | null {
 
 function mediaKindForHistoryKind(value: unknown): AssetLibraryMediaKind | null {
   if (value === 'voice-demo-candidate') return 'audio';
-  if (value === 'runtime-image-candidate' || value === 'avatar-package-candidate' || value === 'identity-resource-upload') {
+  if (
+    value === 'runtime-image-candidate'
+    || value === 'avatar-package-candidate'
+    || value === 'identity-resource-upload'
+    || value === 'local-image-edit-candidate'
+  ) {
     return 'image';
   }
   return null;

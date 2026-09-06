@@ -9,6 +9,8 @@ export type OwnerPersonaSettingsSnapshot = {
   displayName?: string | null;
   description?: string | null;
   greeting?: string | null;
+  handle?: string | null;
+  homeWorldId?: string | null;
   naturalLanguageIntent?: string | null;
   identity?: {
     publicRole?: string | null;
@@ -40,6 +42,8 @@ export type OwnerPersonaSettingsDraft = {
   displayName: string;
   description: string;
   greeting: string;
+  handle: string;
+  worldId: string;
   naturalLanguageIntent: string;
   publicRole: string;
   worldview: string;
@@ -110,6 +114,8 @@ export type OwnerPersonaSettingsUpdateInput = {
   displayName?: string | null;
   description?: string | null;
   greeting?: string | null;
+  handle?: string | null;
+  worldId?: string;
   naturalLanguageIntent?: string | null;
   identity?: {
     publicRole?: string | null;
@@ -168,9 +174,28 @@ export type OwnerSettingsUpdateBuildResult =
     rawRuleTextCandidate?: string;
   };
 
-const FORBIDDEN_SETTING_KEYS = new Set([
+// Runtime AI proposal output must never carry these keys. handle and worldId
+// stay forbidden there: proposals are bounded to the visible text fields.
+const FORBIDDEN_PROPOSAL_SETTING_KEYS = new Set([
   'handle',
   'worldId',
+  'avatarUrl',
+  'profileCoverUrl',
+  'provider',
+  'model',
+  'localAgent',
+  'lifecycle',
+  'state',
+  'dna',
+  'personaRule',
+  'personaRules',
+  'ruleText',
+]);
+
+// Owner-reviewed replace input admits handle (profile.identity.handle,
+// setting.r002) and worldId (top-level replace DTO field); the remaining keys
+// are still never submittable through the settings path.
+const FORBIDDEN_UPDATE_SETTING_KEYS = new Set([
   'avatarUrl',
   'profileCoverUrl',
   'provider',
@@ -258,6 +283,8 @@ export function createOwnerPersonaSettingsDraft(settings: OwnerPersonaSettingsSn
     displayName: settings.displayName ?? '',
     description: settings.description ?? '',
     greeting: settings.greeting ?? '',
+    handle: settings.handle ?? '',
+    worldId: settings.homeWorldId ?? '',
     naturalLanguageIntent: settings.naturalLanguageIntent ?? '',
     publicRole: settings.identity?.publicRole ?? '',
     worldview: settings.identity?.worldview ?? '',
@@ -277,11 +304,17 @@ export function createOwnerPersonaSettingsDraft(settings: OwnerPersonaSettingsSn
   };
 }
 
+function normalizeHandleText(value: string): string {
+  return compactProfileText(value).replace(/^@+/u, '').toLocaleLowerCase();
+}
+
 export function normalizeOwnerPersonaSettingsDraft(draft: OwnerPersonaSettingsDraft): NormalizedOwnerPersonaSettingsDraft {
   return {
     displayName: compactProfileText(draft.displayName),
     description: normalizeLineText(draft.description),
     greeting: normalizeLineText(draft.greeting),
+    handle: normalizeHandleText(draft.handle),
+    worldId: compactProfileText(draft.worldId),
     naturalLanguageIntent: normalizeLineText(draft.naturalLanguageIntent),
     publicRole: compactProfileText(draft.publicRole),
     worldview: normalizeLineText(draft.worldview),
@@ -305,16 +338,19 @@ export function normalizeOwnerPersonaSettingsDraft(draft: OwnerPersonaSettingsDr
   };
 }
 
-export function assertNoForbiddenOwnerSettingsFields(value: unknown): string | null {
+export function assertNoForbiddenOwnerSettingsFields(
+  value: unknown,
+  forbiddenKeys: ReadonlySet<string> = FORBIDDEN_PROPOSAL_SETTING_KEYS,
+): string | null {
   if (!value || typeof value !== 'object') {
     return null;
   }
 
   for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
-    if (FORBIDDEN_SETTING_KEYS.has(key)) {
+    if (forbiddenKeys.has(key)) {
       return key;
     }
-    const nestedViolation = assertNoForbiddenOwnerSettingsFields(nested);
+    const nestedViolation = assertNoForbiddenOwnerSettingsFields(nested, forbiddenKeys);
     if (nestedViolation) {
       return nestedViolation;
     }
@@ -439,6 +475,33 @@ export function applyRuntimeOwnerSettingsProposal(
   };
 }
 
+export type ConsistencySuggestionPartition = {
+  visible: Partial<Pick<OwnerPersonaSettingsDraft, 'displayName' | 'description' | 'greeting'>>;
+  deferredKeys: string[];
+};
+
+const CONSISTENCY_VISIBLE_FIELDS = ['displayName', 'description', 'greeting'] as const;
+
+export function partitionConsistencySuggestions(
+  patch: RuntimeOwnerSettingsProposalPatch,
+): ConsistencySuggestionPartition {
+  const visible: ConsistencySuggestionPartition['visible'] = {};
+  const deferredKeys: string[] = [];
+
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === undefined) {
+      continue;
+    }
+    if ((CONSISTENCY_VISIBLE_FIELDS as readonly string[]).includes(key)) {
+      visible[key as keyof ConsistencySuggestionPartition['visible']] = value;
+    } else {
+      deferredKeys.push(key);
+    }
+  }
+
+  return { visible, deferredKeys };
+}
+
 export function buildRealmOwnerPersonaSettingsUpdateInput(
   draft: OwnerPersonaSettingsDraft,
   current: OwnerPersonaSettingsSnapshot,
@@ -451,6 +514,14 @@ export function buildRealmOwnerPersonaSettingsUpdateInput(
   addNullableChange(input, 'displayName', normalizeNullableSingleLine(normalized.displayName), current.displayName);
   addNullableChange(input, 'description', normalizeNullableText(normalized.description), current.description);
   addNullableChange(input, 'greeting', normalizeNullableText(normalized.greeting), current.greeting);
+  addNullableChange(input, 'handle', normalizeNullableSingleLine(normalized.handle), current.handle);
+  if (normalized.worldId !== (compactProfileText(current.homeWorldId ?? ''))) {
+    if (!normalized.worldId) {
+      errors.push('worldId cannot be empty because PersonaCharacter replace requires a home world');
+    } else {
+      input.worldId = normalized.worldId;
+    }
+  }
   if (Object.prototype.hasOwnProperty.call(input, 'displayName') && input.displayName === null) {
     errors.push('displayName cannot be empty because PersonaCharacter profile.presentation.displayName is required');
   }
@@ -460,7 +531,7 @@ export function buildRealmOwnerPersonaSettingsUpdateInput(
 
   changedSettingKeys.push(...Object.keys(input));
 
-  const forbiddenKey = assertNoForbiddenOwnerSettingsFields(input);
+  const forbiddenKey = assertNoForbiddenOwnerSettingsFields(input, FORBIDDEN_UPDATE_SETTING_KEYS);
   if (forbiddenKey) {
     errors.push(`owner settings update rejected: forbidden ${forbiddenKey} present`);
   }

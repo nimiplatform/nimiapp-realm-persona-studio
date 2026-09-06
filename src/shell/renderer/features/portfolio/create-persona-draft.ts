@@ -557,13 +557,13 @@ export function validateCreateRealmPersonaReadiness(
     errors.push(createFlowFailure('concept-missing', { field: 'concept' }));
   }
   if (!draft.ruleText) {
-    errors.push(createFlowFailure('rule-text-missing'));
+    errors.push(createFlowFailure('rule-text-missing', { field: 'ruleText' }));
   }
   if (!draft.speechSupplement) {
-    errors.push(createFlowFailure('speech-supplement-missing'));
+    errors.push(createFlowFailure('speech-supplement-missing', { field: 'speechSupplement' }));
   }
   if (!draft.boundarySupplement) {
-    errors.push(createFlowFailure('boundary-supplement-missing'));
+    errors.push(createFlowFailure('boundary-supplement-missing', { field: 'boundarySupplement' }));
   }
   if (!draft.selectedWorldId) {
     errors.push(createFlowFailure('selected-world-missing', { field: 'selectedWorldId' }));

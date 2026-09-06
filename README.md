@@ -1,5 +1,7 @@
 # nimiapp-realm-persona-studio
 
+角色IP的孵化中心
+
 Realm Persona Studio — Owner-facing creation and operation desktop app for user-owned public Realm Personas. Packaged as a Tauri 2 / Electron 42 + React 19 desktop app.
 
 > Migrated from the `apps/realm-persona-studio` workspace in the `nimi-realm`

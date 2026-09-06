@@ -277,7 +277,7 @@ describe('owner portfolio detail normalization', () => {
       value: 'Quiet strategist',
     });
     expect(detail.greeting.status).toBe('source-unavailable');
-    expect(detail.profileCoverUrl.status).toBe('source-unavailable');
+    expect(detail.profileCoverUrl.status).toBe('available-empty');
     expect(detail.ownership.status).toBe('available');
     expect(detail.world.status).toBe('available');
     expect(detail.visibility.value).toBe('public');
@@ -317,11 +317,31 @@ describe('owner portfolio detail normalization', () => {
       emptyLabel: 'not set',
     });
     expect(detail.greeting.status).toBe('available-empty');
-    expect(detail.profileCoverUrl.status).toBe('source-unavailable');
+    expect(detail.profileCoverUrl.status).toBe('available-empty');
     expect(detail.world.status).toBe('available');
     expect(detail.ownership.status).toBe('available');
     expect(detail.visibility.value).toBe('public');
     expect(detail.bio).not.toHaveProperty('unavailableLabel');
+  });
+
+  it('keeps an unusable profile cover ref fail-closed as source unavailable', () => {
+    const detail = normalizeOwnerPortfolioPersonaDetail({
+      ...basePersona,
+      profile: {
+        ...basePersona.profile,
+        assets: {
+          resourceRefs: [],
+          externalRefs: [{
+            refId: 'cover-1',
+            kind: 'profileCover',
+            uri: 'http://cdn.example.test/cover.png?token=secret',
+          }],
+          intents: [],
+        },
+      },
+    });
+
+    expect(detail.profileCoverUrl.status).toBe('source-unavailable');
   });
 
   it('does not treat world display names as write-safe world id evidence', () => {

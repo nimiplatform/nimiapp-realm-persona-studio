@@ -8,6 +8,8 @@ export default defineConfig({
     include: ['src/**/*.test.{ts,tsx}', 'scripts/**/*.test.ts'],
     setupFiles: ['src/test/setup.ts'],
     env: { TZ: 'UTC' },
+    // Apply this app's React aliases to linked Kit's UI dependencies too.
+    server: { deps: { inline: [/@radix-ui/, /motion/] } },
   },
   resolve: {
     dedupe: ['react', 'react-dom', 'scheduler'],

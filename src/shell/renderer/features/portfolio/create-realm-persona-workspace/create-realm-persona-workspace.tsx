@@ -9,6 +9,7 @@ import {
 } from '@nimiplatform/kit/ui';
 import {
   normalizeCreateRealmPersonaDraft,
+  selectOasisDefaultWorld,
   validateCreateRealmPersonaReadiness,
   type ReviewedCreateRealmPersonaPayload,
 } from '../create-persona-draft.js';
@@ -141,6 +142,16 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
   const worlds = worldsQuery.data || [];
   const selectableWorldIds = useMemo(() => worlds.map((world) => world.id), [worlds]);
   const selectedWorld = worlds.find((world) => world.id === draft.selectedWorldId) || null;
+  // OASIS is the local default world: once the source-backed world list is
+  // available and the hydrated draft has no explicit selection, pre-select it.
+  // This is a system-derived default, not an owner edit — it must not flip the
+  // dirty guard or trigger autosave on a pristine draft.
+  useEffect(() => {
+    if (draftLoadState !== 'ready' || draft.selectedWorldId || worlds.length === 0) return;
+    const oasisDefaultWorld = selectOasisDefaultWorld(worlds);
+    if (!oasisDefaultWorld) return;
+    actions.applyDefaultWorld(oasisDefaultWorld.id);
+  }, [actions, draft.selectedWorldId, draftLoadState, worlds]);
   const normalizedDraft = useMemo(() => normalizeCreateRealmPersonaDraft(draft), [draft]);
   const draftHistoryLabel = useMemo(() => {
     const label = (normalizedDraft.displayName || normalizedDraft.originalDescription)
@@ -240,13 +251,13 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
             message: t('persona.failure.sanitized', { reason: t(failureKindCopyKey(reason)) }),
             created: t('create.createdPersonaId', { id: result.canonical.id }),
           }));
-          onOpenCreatedPersona?.(result.canonical.id, 'detail');
+          onOpenCreatedPersona?.(result.canonical.id);
           return;
         }
         nimiToast.success(t('create.createdSuccess', { id: result.canonical.id }));
         onCreated?.(context);
         if (onOpenCreatedPersona) {
-          onOpenCreatedPersona(result.canonical.id, 'detail');
+          onOpenCreatedPersona(result.canonical.id);
         } else {
           actions.setCreatedContext(context);
         }
@@ -313,7 +324,6 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
   if (stage === 'describe') {
     return (
       <div className="ras-page ras-create-page ras-create-page--describe">
-        {renderHeader()}
         <DescribeStage
           originalDescription={draft.originalDescription}
           normalizedDraft={normalizedDraft}
@@ -325,6 +335,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
           onRunDescriptionReroll={() => void runDescriptionReroll()}
           onSkipSeed={actions.skipSeedAndCreateManually}
         />
+        <AutosaveIndicator state={autosaveState} failureMessage={autosaveFailureMessage} idle={!edited && autosaveState === 'saved'} />
       </div>
     );
   }

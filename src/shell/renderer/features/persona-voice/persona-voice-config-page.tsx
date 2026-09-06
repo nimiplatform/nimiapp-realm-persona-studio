@@ -92,8 +92,8 @@ function VoiceConfigBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) 
             <Button tone="secondary" onClick={() => navigate(`/portfolio/${persona.id}/preview`)}>
               {t('voiceConfig.openPreview')}
             </Button>
-            <Button tone="ghost" onClick={() => navigate(`/portfolio/${persona.id}/assets`)}>
-              {t('voiceConfig.backToIdentity')}
+            <Button tone="ghost" onClick={() => navigate(`/portfolio/${persona.id}/settings`)}>
+              {t('voiceConfig.backToSettings')}
             </Button>
           </>
         }
@@ -178,7 +178,7 @@ export function PersonaVoiceConfigPage() {
   }
 
   return (
-    <PersonaShell personaId={personaId} current="assets">
+    <PersonaShell personaId={personaId} current="settings">
       {(persona) => <VoiceConfigBody persona={persona} />}
     </PersonaShell>
   );

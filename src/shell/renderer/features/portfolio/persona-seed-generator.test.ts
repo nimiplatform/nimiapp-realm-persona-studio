@@ -151,6 +151,21 @@ describe('persona seed generation through the injected text candidate runner', (
     expect(result).toMatchObject({
       ok: false,
       failure: 'persona-seed-generate-failed',
+      cause: { kind: 'seed-generate-failed' },
+    });
+  });
+
+  it('maps an unbound AI route to the configure-first failure kind', async () => {
+    const runner: StudioTextCandidateRunner = async () => {
+      throw Object.assign(new Error('AI route is not configured.'), { reasonCode: 'AI_CONFIG_NOT_FOUND' });
+    };
+
+    const result = await generatePersonaSeedFromDescription('A calm artifact review guide.', runner, {}, { locale: 'en' });
+
+    expect(result).toMatchObject({
+      ok: false,
+      failure: 'persona-seed-generate-failed',
+      cause: { kind: 'runtime-route-unbound' },
     });
   });
 

@@ -1,30 +1,24 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Button, Checkbox, EmptyState, FieldShell, InlineAlert, nimiToast, SelectField, StatusBadge, Surface, TextareaField, TextField } from '@nimiplatform/kit/ui';
+import { Sparkles } from 'lucide-react';
+import { Avatar, Button, EmptyState, FieldShell, InlineAlert, nimiToast, SelectField, StatusBadge, Surface, TextareaField, TextField } from '@nimiplatform/kit/ui';
 import { personaCharacterFailureReason, type OwnerPortfolioPersonaDetail } from './portfolio-data.js';
 import { failureKindCopyKey } from './failure-copy.js';
 import {
-  PERSONA_VISIBILITY_VALUES,
-  createPersonaVisibilityDraft,
-  getPersonaVisibilitySettings,
   getPortfolioPersonaSettings,
+  listCreateRealmPersonaSelectableWorlds,
   proposeReviewedPortfolioPersonaSettings,
-  updateReviewedPersonaVisibility,
   updateReviewedPortfolioPersonaSettings,
-  type PersonaVisibilityDraft,
-  type RealmPersonaVisibilityUpdateResult,
   type RealmOwnerPersonaSettings,
-  type RealmOwnerPersonaSettingsUpdateResult,
   type RuntimeOwnerSettingsProposalResult,
 } from './portfolio-client.js';
 import {
   RAW_RULE_REVIEW_DEFERRED_REASON,
-  applyRuntimeOwnerSettingsProposal,
   buildRealmOwnerPersonaSettingsUpdateInput,
   createOwnerPersonaSettingsDraft,
+  partitionConsistencySuggestions,
   type OwnerPersonaSettingsDraft,
 } from './setting-proposal.js';
-import { TechnicalReviewDetails } from './OwnerPortfolio.shared.js';
 import { useStudioI18n } from '../../i18n/use-studio-i18n.js';
 import type { StudioCopyKey } from '../../i18n/studio-copy.js';
 import type { StudioTranslateOptions } from '../../i18n/studio-i18n.js';
@@ -37,10 +31,10 @@ const SETTINGS_FIXED_MESSAGE_KEYS: Record<string, StudioCopyKey> = {
   'natural-language setting intent missing': 'settings.error.intentMissing',
   'Runtime settings proposal payload invalid.': 'settings.error.runtimeProposalPayloadInvalid',
   'Runtime settings proposal output invalid.': 'settings.error.runtimeProposalOutputInvalid',
-  'Nimi App Access does not provide Runtime source materialization for Persona Studio yet.': 'runtimeProjection.error.unavailable',
   'visibility settings have no reviewed changes': 'visibility.noChanges',
   'displayName cannot be empty because PersonaCharacter profile.presentation.displayName is required': 'settings.error.displayNameRequired',
   'description cannot be empty because PersonaCharacter profile.identity.summary is required': 'settings.error.descriptionRequired',
+  'worldId cannot be empty because PersonaCharacter replace requires a home world': 'settings.error.worldIdRequired',
   'Runtime settings proposal returned no supported setting changes.': 'settings.error.proposalNoChanges',
   'PersonaCharacter settings context identity mismatch.': 'common.operationFailed',
 };
@@ -70,22 +64,23 @@ function translateSettingsFixedMessage(message: string, t: StudioTranslator): st
   return key ? t(key) : t('common.operationFailed');
 }
 
-function translateSettingsFixedMessages(messages: string[], t: StudioTranslator): string {
-  return messages.map((message) => translateSettingsFixedMessage(message, t)).join('; ');
-}
+const CONSISTENCY_FIELD_LABEL_KEYS = {
+  displayName: 'settingField.displayName',
+  description: 'settings.descriptionLabel',
+  greeting: 'settingField.greeting',
+} as const satisfies Record<string, StudioCopyKey>;
 
-export function SettingProposalWorkspace({ persona, onPersonaWrite }: { persona: OwnerPortfolioPersonaDetail; onPersonaWrite: () => Promise<void> }) {
+function useOwnerSettingsWorkspace(persona: OwnerPortfolioPersonaDetail, onPersonaWrite: () => Promise<void>) {
   const { t } = useStudioI18n();
   const settingsQuery = useQuery({
     queryKey: ['realm-persona-studio', 'persona-settings', persona.ownerScope, persona.id],
     queryFn: () => getPortfolioPersonaSettings(persona),
   });
   const [draft, setDraft] = useState<OwnerPersonaSettingsDraft | null>(null);
-  const [ownerReviewed, setOwnerReviewed] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [result, setResult] = useState<RealmOwnerPersonaSettingsUpdateResult | null>(null);
-  const [runtimeProposal, setRuntimeProposal] = useState<RuntimeOwnerSettingsProposalResult | null>(null);
-  const [isProposing, setIsProposing] = useState(false);
+  const [reviewResult, setReviewResult] = useState<RuntimeOwnerSettingsProposalResult | null>(null);
+  const [appliedKeys, setAppliedKeys] = useState<ReadonlySet<string>>(new Set());
+  const [isReviewing, setIsReviewing] = useState(false);
   const settingsFailure = settingsQuery.isError ? personaCharacterFailureReason(settingsQuery.error) : null;
   const proposal = useMemo(() => (
     draft && settingsQuery.data
@@ -96,26 +91,74 @@ export function SettingProposalWorkspace({ persona, onPersonaWrite }: { persona:
   useEffect(() => {
     if (settingsQuery.data) {
       setDraft(createOwnerPersonaSettingsDraft(settingsQuery.data));
-      setOwnerReviewed(false);
-      setResult(null);
-      setRuntimeProposal(null);
-      setIsProposing(false);
     }
   }, [persona.id, settingsQuery.data]);
 
+  useEffect(() => {
+    setReviewResult(null);
+    setAppliedKeys(new Set());
+  }, [persona.id]);
+
   function updateDraft(patch: Partial<OwnerPersonaSettingsDraft>) {
     setDraft((current) => current ? { ...current, ...patch } : current);
-    setOwnerReviewed(false);
-    setResult(null);
-    setRuntimeProposal(null);
   }
 
-  function useInstructionAsRuleCandidate() {
-    const instruction = draft?.naturalLanguageIntent.trim() ?? '';
-    if (!instruction) {
+  async function runConsistencyReview() {
+    if (!draft || !settingsQuery.data) {
       return;
     }
-    updateDraft({ rawRuleTextCandidate: instruction });
+    setIsReviewing(true);
+    setReviewResult(null);
+    setAppliedKeys(new Set());
+    try {
+      const review = await proposeReviewedPortfolioPersonaSettings(
+        persona,
+        { ...draft, naturalLanguageIntent: t('settings.consistency.defaultIntent') },
+        settingsQuery.data as RealmOwnerPersonaSettings,
+      );
+      setReviewResult(review);
+    } finally {
+      setIsReviewing(false);
+    }
+  }
+
+  function applyConsistencySuggestion(key: 'displayName' | 'description' | 'greeting') {
+    if (!reviewResult?.ok) {
+      return;
+    }
+    const { visible } = partitionConsistencySuggestions(reviewResult.proposal.draftPatch);
+    const value = visible[key];
+    if (value === undefined) {
+      return;
+    }
+    if (key === 'displayName') {
+      updateDraft({ displayName: value });
+    } else if (key === 'description') {
+      updateDraft({ description: value });
+    } else {
+      updateDraft({ greeting: value });
+    }
+    setAppliedKeys((current) => new Set(current).add(key));
+    nimiToast.success(t('settings.consistency.applied'));
+  }
+
+  function applyAllConsistencySuggestions() {
+    if (!reviewResult?.ok) {
+      return;
+    }
+    const { visible } = partitionConsistencySuggestions(reviewResult.proposal.draftPatch);
+    const keys = Object.keys(visible);
+    if (keys.length === 0) {
+      return;
+    }
+    updateDraft(visible);
+    setAppliedKeys((current) => new Set([...current, ...keys]));
+    nimiToast.success(t('settings.consistency.applied'));
+  }
+
+  function dismissConsistencyReview() {
+    setReviewResult(null);
+    setAppliedKeys(new Set());
   }
 
   async function saveOwnerSettings() {
@@ -123,12 +166,11 @@ export function SettingProposalWorkspace({ persona, onPersonaWrite }: { persona:
       return;
     }
     setIsSaving(true);
-    setResult(null);
     try {
       const updateResult = await updateReviewedPortfolioPersonaSettings(persona, draft, settingsQuery.data);
-      setResult(updateResult);
       if (updateResult.ok) {
         nimiToast.success(t('settings.saved'));
+        dismissConsistencyReview();
         await settingsQuery.refetch();
         await onPersonaWrite();
       } else {
@@ -139,378 +181,298 @@ export function SettingProposalWorkspace({ persona, onPersonaWrite }: { persona:
     }
   }
 
-  async function proposeRuntimeSettings() {
-    if (!draft || !settingsQuery.data) {
-      return;
-    }
-    setIsProposing(true);
-    setRuntimeProposal(null);
-    try {
-      const proposalResult = await proposeReviewedPortfolioPersonaSettings(persona, draft, settingsQuery.data);
-      setRuntimeProposal(proposalResult);
-    } finally {
-      setIsProposing(false);
-    }
-  }
+  return {
+    persona,
+    settingsQuery,
+    settingsFailure,
+    draft,
+    proposal,
+    isSaving,
+    reviewResult,
+    appliedKeys,
+    isReviewing,
+    updateDraft,
+    runConsistencyReview,
+    applyConsistencySuggestion,
+    applyAllConsistencySuggestions,
+    dismissConsistencyReview,
+    saveOwnerSettings,
+  };
+}
 
-  function applyRuntimeProposal() {
-    if (!draft || !runtimeProposal?.ok) {
-      return;
+type OwnerSettingsWorkspaceState = ReturnType<typeof useOwnerSettingsWorkspace>;
+
+export function SettingsSection({ muted = false, children }: { muted?: boolean; children: ReactNode }) {
+  return (
+    <section className={muted ? 'ras-settings-section ras-settings-section--muted' : 'ras-settings-section'}>
+      {children}
+    </section>
+  );
+}
+
+export function SettingsSectionHead({
+  icon,
+  title,
+  description,
+  badges,
+  actions,
+}: {
+  icon: ReactNode;
+  title: string;
+  description?: string;
+  badges?: ReactNode;
+  actions?: ReactNode;
+}) {
+  return (
+    <header className="ras-settings-section__head">
+      <span className="ras-settings-section__icon" aria-hidden="true">{icon}</span>
+      <div className="ras-settings-section__heading">
+        <h3 className="ras-settings-section__title">{title}</h3>
+        {description ? <p className="ras-settings-section__description">{description}</p> : null}
+      </div>
+      {badges || actions ? (
+        <div className="ras-settings-section__badges">
+          {badges}
+          {actions}
+        </div>
+      ) : null}
+    </header>
+  );
+}
+
+function OwnerProfileSection({ settings }: { settings: OwnerSettingsWorkspaceState }) {
+  const { t } = useStudioI18n();
+  const {
+    persona,
+    settingsQuery,
+    settingsFailure,
+    draft,
+    proposal,
+    isSaving,
+    isReviewing,
+    reviewResult,
+    appliedKeys,
+    updateDraft,
+    saveOwnerSettings,
+    runConsistencyReview,
+    applyConsistencySuggestion,
+    applyAllConsistencySuggestions,
+    dismissConsistencyReview,
+  } = settings;
+  const consistency = reviewResult?.ok ? partitionConsistencySuggestions(reviewResult.proposal.draftPatch) : null;
+  const suggestionRows = consistency
+    ? (Object.keys(CONSISTENCY_FIELD_LABEL_KEYS) as Array<keyof typeof CONSISTENCY_FIELD_LABEL_KEYS>).flatMap((key) => {
+      const value = consistency.visible[key];
+      return value === undefined ? [] : [{ key, labelKey: CONSISTENCY_FIELD_LABEL_KEYS[key], value }];
+    })
+    : [];
+  // Home-world selection is WorldCore-backed (scope.r003); the select stays
+  // disabled and the world unchanged when the source list is unavailable.
+  const worldsQuery = useQuery({
+    queryKey: ['realm-persona-studio', 'create-persona-worlds'],
+    queryFn: () => listCreateRealmPersonaSelectableWorlds(),
+  });
+  const worldOptions = useMemo(() => {
+    const options = (worldsQuery.data || []).map((world) => ({ value: world.id, label: world.name }));
+    const currentWorldId = draft?.worldId || '';
+    if (currentWorldId && !options.some((option) => option.value === currentWorldId)) {
+      options.unshift({ value: currentWorldId, label: currentWorldId });
     }
-    setDraft(applyRuntimeOwnerSettingsProposal(draft, runtimeProposal.proposal));
-    setOwnerReviewed(false);
-    setResult(null);
-  }
+    return options;
+  }, [worldsQuery.data, draft?.worldId]);
 
   return (
-    <Surface tone="panel" padding="lg" className="mt-5">
-      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_280px]">
-        <div className="min-w-0">
-          <div className="flex min-w-0 flex-wrap items-center gap-3">
-            <h3 className="m-0 text-xl font-semibold">{t('persona.settings.title')}</h3>
-            <StatusBadge tone="success">{t('common.realmSave')}</StatusBadge>
-            <StatusBadge tone="neutral">{t('common.ownerReviewed')}</StatusBadge>
-          </div>
-          <p className="m-0 mt-1 text-[length:var(--nimi-type-body-sm-size)] text-[var(--nimi-text-muted)]">
-            {t('settings.workspace.description')}
-          </p>
-
-          {settingsQuery.isLoading ? (
-            <EmptyState title={t('settings.loadingTitle')} description={t('settings.loadingDescription')} />
-          ) : null}
-          {settingsFailure ? (
-            <InlineAlert tone="danger">
-              {t('settings.unavailable', {
-                message: t('persona.failure.sanitized', { reason: t(failureKindCopyKey(settingsFailure)) }),
-              })}
-            </InlineAlert>
-          ) : null}
-          {draft && settingsQuery.data ? (
-            <div className="mt-4 grid gap-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <FieldShell label={t('settingField.displayName')} message={t('settings.displayNameMessage')}>
+    <div className="ras-settings-dialog__section">
+      <div className="ras-settings-dialog__head">
+        <div className="ras-settings-dialog__heading">
+          <h3 className="ras-settings-dialog__title">{t('settings.section.profile')}</h3>
+          <p className="ras-settings-dialog__subtitle">{t('settings.profileDialog.description')}</p>
+        </div>
+        <Button
+          tone="secondary"
+          size="sm"
+          leadingIcon={<Sparkles size={15} />}
+          onClick={() => void runConsistencyReview()}
+          disabled={settingsQuery.isLoading || Boolean(settingsFailure) || !draft || isReviewing}
+          loading={isReviewing}
+        >
+          {t('settings.consistency.run')}
+        </Button>
+      </div>
+      {settingsQuery.isLoading ? (
+        <EmptyState title={t('settings.loadingTitle')} description={t('settings.loadingDescription')} />
+      ) : null}
+      {settingsFailure ? (
+        <InlineAlert tone="danger">
+          {t('settings.unavailable', {
+            message: t('persona.failure.sanitized', { reason: t(failureKindCopyKey(settingsFailure)) }),
+          })}
+        </InlineAlert>
+      ) : null}
+      {draft && settingsQuery.data ? (
+        <>
+          <div className="ras-profile-editor">
+            <div className="ras-profile-editor__identity">
+              <Avatar
+                src={persona.avatarUrl}
+                alt={draft.displayName || persona.displayName.value || t('persona.header.personaCharacterAlt')}
+                size="lg"
+                shape="circle"
+                tone="accent"
+                fallback={<span className="text-xl font-semibold">{(draft.displayName || persona.displayName.value || '?').charAt(0).toUpperCase()}</span>}
+              />
+              <div className="ras-profile-editor__identity-main">
+                <FieldShell label={t('settingField.displayName')}>
                   <TextField
                     value={draft.displayName}
                     placeholder={t('settings.displayNamePlaceholder')}
                     onChange={(event) => updateDraft({ displayName: event.currentTarget.value })}
                   />
                 </FieldShell>
-                <FieldShell label={t('settingField.greeting')} message={t('settings.greetingMessage')}>
-                  <TextField
-                    value={draft.greeting}
-                    placeholder={t('settings.greetingPlaceholder')}
-                    onChange={(event) => updateDraft({ greeting: event.currentTarget.value })}
-                  />
-                </FieldShell>
-              </div>
-              <FieldShell label={t('settings.descriptionLabel')} message={t('settings.descriptionMessage')}>
-                <TextareaField
-                  value={draft.description}
-                  placeholder={t('settings.descriptionPlaceholder')}
-                  onChange={(event) => updateDraft({ description: event.currentTarget.value })}
-                />
-              </FieldShell>
-              <InlineAlert tone="info">{t('settings.nativeProfileBoundary')}</InlineAlert>
-              <FieldShell label={t('settings.intentLabel')} message={t('settings.intentMessage')}>
-                <TextareaField
-                  value={draft.naturalLanguageIntent}
-                  placeholder={t('settings.intentPlaceholder')}
-                  onChange={(event) => updateDraft({ naturalLanguageIntent: event.currentTarget.value })}
-                />
-              </FieldShell>
-              <div className="flex flex-wrap gap-3">
-                <Button disabled={!draft.naturalLanguageIntent.trim()} onClick={useInstructionAsRuleCandidate}>
-                  {t('settings.useAsRuleNote')}
-                </Button>
-                <Button
-                  tone="secondary"
-                  disabled={!draft.naturalLanguageIntent.trim() || isProposing}
-                  loading={isProposing}
-                  onClick={() => void proposeRuntimeSettings()}
-                >
-                  {t('settings.askRuntime')}
-                </Button>
-              </div>
-              {runtimeProposal ? (
-                <Surface tone="card" padding="md">
-                  <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="font-medium">{t('settings.runtimeProposalTitle')}</div>
-                      <div className="ras-break-anywhere mt-1 text-[length:var(--nimi-type-body-sm-size)] text-[var(--nimi-text-muted)]">
-                        {runtimeProposal.ok
-                          ? runtimeProposal.proposal.rationale
-                          : translateSettingsFixedMessage(runtimeProposal.message, t)}
-                      </div>
-                    </div>
-                    <StatusBadge tone={runtimeProposal.ok ? 'info' : 'danger'}>
-                      {runtimeProposal.ok ? t('common.candidate') : t('common.sourceUnavailable')}
-                    </StatusBadge>
-                  </div>
-                  {runtimeProposal.ok ? (
-                    <>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {runtimeProposal.proposal.changedSettingKeys.map((key) => (
-                          <StatusBadge key={key} tone="neutral">{key}</StatusBadge>
-                        ))}
-                      </div>
-                      <InlineAlert tone="info" className="mt-3">
-                        {t('settings.runtimeCandidateBoundary')}
-                      </InlineAlert>
-                      <div className="mt-3">
-                        <Button onClick={applyRuntimeProposal}>{t('settings.applyProposal')}</Button>
-                      </div>
-                    </>
-                  ) : (
-                    <InlineAlert tone="danger" className="mt-3">
-                      {t('settings.runtimeUnavailableDetail')}
-                    </InlineAlert>
-                  )}
-                </Surface>
-              ) : null}
-              <FieldShell label={t('settings.ruleReviewNoteLabel')} message={t('settings.ruleReviewNoteMessage')}>
-                <TextareaField
-                  value={draft.rawRuleTextCandidate}
-                  placeholder={t('settings.ruleReviewNotePlaceholder')}
-                  onChange={(event) => updateDraft({ rawRuleTextCandidate: event.currentTarget.value })}
-                />
-              </FieldShell>
-              <FieldShell label={t('settingField.profileCoverUrl')} message={t('settings.profileCoverMessage')}>
-                <TextField readOnly value={persona.profileCoverUrl.value} placeholder={t('settings.profileCoverUnavailable')} />
-              </FieldShell>
-              {proposal?.ok ? (
-                <InlineAlert tone="info">
-                  {t('settings.readyForSave', { keys: proposal.changedSettingKeys.join(', ') })}
-                </InlineAlert>
-              ) : (
-                <InlineAlert tone="warning">
-                  {proposal ? translateSettingsFixedMessages(proposal.errors, t) : t('settings.payloadUnavailable')}
-                </InlineAlert>
-              )}
-              {draft.rawRuleTextCandidate.trim() ? (
-                <InlineAlert tone="warning">
-                  {t('settings.error.rawRuleReviewDeferred')}
-                </InlineAlert>
-              ) : null}
-              <Checkbox
-                checked={ownerReviewed}
-                onChange={(event) => setOwnerReviewed(event.currentTarget.checked)}
-                label={t('common.humanReviewComplete')}
-              />
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  disabled={!proposal?.ok || !ownerReviewed || isSaving}
-                  loading={isSaving}
-                  onClick={() => void saveOwnerSettings()}
-                >
-                  {t('settings.save')}
-                </Button>
-                <Button
-                  tone="secondary"
-                  disabled={isSaving}
-                  onClick={() => {
-                    setDraft(createOwnerPersonaSettingsDraft(settingsQuery.data as RealmOwnerPersonaSettings));
-                    setOwnerReviewed(false);
-                    setResult(null);
-                  }}
-                >
-                  {t('settings.reset')}
-                </Button>
+                <div className="ras-profile-editor__identity-fields">
+                  <FieldShell label={t('settingField.handle')} message={t('settings.handleHint')}>
+                    <TextField
+                      value={draft.handle}
+                      leading={<span aria-hidden="true">@</span>}
+                      placeholder={t('settings.handlePlaceholder')}
+                      onChange={(event) => updateDraft({ handle: event.currentTarget.value })}
+                    />
+                  </FieldShell>
+                  <FieldShell label={t('settings.worldLabel')}>
+                    <SelectField
+                      value={draft.worldId}
+                      options={worldOptions}
+                      disabled={worldsQuery.isLoading || worldsQuery.isError}
+                      contentLayer="dialog"
+                      onValueChange={(value) => updateDraft({ worldId: value })}
+                    />
+                  </FieldShell>
+                </div>
               </div>
             </div>
-          ) : null}
-        </div>
-        <div className="grid min-w-0 content-start gap-4">
-          <Surface tone="card" padding="md">
-            <div className="font-medium">{t('create.referenceTitle')}</div>
-            {persona.avatarUrl ? (
-              <div className="mt-3 overflow-hidden rounded-[var(--nimi-radius-field)] border border-[var(--nimi-border-subtle)]">
-                <img src={persona.avatarUrl} alt={draft?.displayName || persona.displayName.value} className="aspect-square w-full object-cover" />
-              </div>
-            ) : (
-              <div className="mt-3 grid aspect-square place-items-center rounded-[var(--nimi-radius-field)] border border-dashed border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-card)] p-4 text-center text-[length:var(--nimi-type-body-sm-size)] text-[var(--nimi-text-muted)]">
-                {t('create.reference.emptyTitle')}
-              </div>
-            )}
-          </Surface>
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h4 className="m-0 text-base font-semibold">{t('settings.reviewSummary')}</h4>
-            <StatusBadge tone={proposal?.ok ? 'success' : 'warning'}>{proposal?.ok ? t('settings.ready') : t('settings.notReady')}</StatusBadge>
-          </div>
-          <TechnicalReviewDetails title={t('settings.technicalReview')}>
-            <pre className="ras-json-preview m-0 min-h-80 overflow-auto rounded-[var(--nimi-radius-field)] border border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-card)] p-3 text-xs">
-              {proposal?.ok ? JSON.stringify(proposal.preview, null, 2) : proposal?.errors.join('; ') || t('settings.noLoaded')}
-            </pre>
-          </TechnicalReviewDetails>
-          {result ? (
-            <TechnicalReviewDetails title={t('settings.saveResponse')}>
-              <pre className="ras-json-preview m-0 min-h-24 overflow-auto rounded-[var(--nimi-radius-field)] border border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-card)] p-3 text-xs">
-                {JSON.stringify(result, null, 2)}
-              </pre>
-            </TechnicalReviewDetails>
-          ) : null}
-        </div>
-      </div>
-    </Surface>
-  );
-}
-
-export function VisibilitySettingsWorkspace({ persona, onPersonaWrite }: { persona: OwnerPortfolioPersonaDetail; onPersonaWrite: () => Promise<void> }) {
-  const { t } = useStudioI18n();
-  const visibilityQuery = useQuery({
-    queryKey: ['realm-persona-studio', 'owner-persona-visibility', persona.id],
-    queryFn: () => getPersonaVisibilitySettings(persona.id),
-  });
-  const [draft, setDraft] = useState<PersonaVisibilityDraft | null>(null);
-  const [humanReviewed, setHumanReviewed] = useState(false);
-  const [result, setResult] = useState<RealmPersonaVisibilityUpdateResult | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const visibilityFailure = visibilityQuery.isError ? personaCharacterFailureReason(visibilityQuery.error) : null;
-
-  useEffect(() => {
-    if (visibilityQuery.data) {
-      setDraft(createPersonaVisibilityDraft(visibilityQuery.data));
-      setHumanReviewed(false);
-      setResult(null);
-      setIsSaving(false);
-    }
-  }, [persona.id, visibilityQuery.data]);
-
-  const hasChanges = useMemo(() => {
-    if (!draft || !visibilityQuery.data) {
-      return false;
-    }
-    return draft.visibility !== visibilityQuery.data.visibility;
-  }, [draft, visibilityQuery.data]);
-
-  function updateDraft(value: string) {
-    setDraft((current) => current ? { ...current, visibility: value } : current);
-    setHumanReviewed(false);
-    setResult(null);
-  }
-
-  async function saveVisibility() {
-    if (!draft || !visibilityQuery.data) {
-      return;
-    }
-
-    setIsSaving(true);
-    setResult(null);
-    try {
-      const updateResult = await updateReviewedPersonaVisibility(persona.id, draft, visibilityQuery.data);
-      setResult(updateResult);
-      if (updateResult.ok) {
-        nimiToast.success(t('visibility.saved'));
-        await visibilityQuery.refetch();
-        await onPersonaWrite();
-      } else {
-        nimiToast.danger(translateSettingsFixedMessage(updateResult.message, t));
-      }
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  return (
-    <Surface tone="panel" padding="lg" className="mt-5">
-      <div className="flex min-w-0 flex-wrap items-center gap-3">
-        <h3 className="m-0 text-xl font-semibold">{t('visibility.title')}</h3>
-        <StatusBadge tone="info">{t('common.realmSave')}</StatusBadge>
-        <StatusBadge tone="neutral">{t('common.notLifecycle')}</StatusBadge>
-      </div>
-      <p className="m-0 mt-1 text-[length:var(--nimi-type-body-sm-size)] text-[var(--nimi-text-muted)]">
-        {t('visibility.description')}
-      </p>
-
-      {visibilityQuery.isLoading ? (
-        <EmptyState title={t('visibility.loadingTitle')} description={t('visibility.loadingDescription')} />
-      ) : null}
-      {visibilityFailure ? (
-        <InlineAlert tone="danger">
-          {t('visibility.unavailable', {
-            message: t('persona.failure.sanitized', { reason: t(failureKindCopyKey(visibilityFailure)) }),
-          })}
-        </InlineAlert>
-      ) : null}
-      {draft && visibilityQuery.data ? (
-        <div className="mt-4 grid gap-4">
-          {visibilityQuery.data.visibility === 'system' ? (
-            <InlineAlert tone="warning">{t('visibility.systemReadOnly')}</InlineAlert>
-          ) : (
-            <FieldShell label={t('settingField.visibility')} message={t('visibility.allowedValues')}>
-              <SelectField
-                value={draft.visibility}
-                options={PERSONA_VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility.value.${value}` as StudioCopyKey) }))}
-                onValueChange={updateDraft}
+            {worldsQuery.isError ? (
+              <InlineAlert tone="warning">{t('settings.worldUnavailable')}</InlineAlert>
+            ) : null}
+            <FieldShell label={t('settingField.greeting')} message={t('settings.greetingHint')}>
+              <TextareaField
+                tone="quiet"
+                className="ras-greeting-editor"
+                textareaClassName="ras-greeting-editor__input"
+                value={draft.greeting}
+                placeholder={t('settings.greetingPlaceholder')}
+                rows={3}
+                onChange={(event) => updateDraft({ greeting: event.currentTarget.value })}
               />
             </FieldShell>
-          )}
-          <Checkbox
-            checked={humanReviewed}
-            onChange={(event) => setHumanReviewed(event.currentTarget.checked)}
-            label={t('common.humanReviewComplete')}
-          />
-          {!hasChanges ? (
-            <InlineAlert tone="warning">
-              {t('visibility.noChanges')}
-            </InlineAlert>
+            <FieldShell label={t('settings.descriptionLabel')}>
+              <TextareaField
+                value={draft.description}
+                placeholder={t('settings.descriptionPlaceholder')}
+                rows={4}
+                onChange={(event) => updateDraft({ description: event.currentTarget.value })}
+              />
+            </FieldShell>
+          </div>
+          {reviewResult ? (
+            <Surface tone="panel" padding="md">
+              <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="font-medium">{t('settings.consistency.title')}</div>
+                  {reviewResult.ok ? (
+                    <div className="ras-break-anywhere mt-1 text-[length:var(--nimi-type-body-sm-size)] text-[var(--nimi-text-muted)]">
+                      {reviewResult.proposal.rationale}
+                    </div>
+                  ) : null}
+                </div>
+                <StatusBadge tone={reviewResult.ok ? 'info' : 'danger'}>
+                  {reviewResult.ok ? t('common.candidate') : t('common.sourceUnavailable')}
+                </StatusBadge>
+              </div>
+              {reviewResult.ok ? (
+                <>
+                  {suggestionRows.length > 0 ? (
+                    <div className="mt-3 grid gap-2">
+                      {suggestionRows.map((row) => (
+                        <div
+                          key={row.key}
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--nimi-radius-field)] border border-[var(--nimi-border-subtle)] p-2.5"
+                        >
+                          <div className="min-w-0">
+                            <div className="text-[length:var(--nimi-type-body-sm-size)] font-medium">{t(row.labelKey)}</div>
+                            <div className="ras-break-anywhere text-[length:var(--nimi-type-body-sm-size)] text-[var(--nimi-text-muted)]">{row.value}</div>
+                          </div>
+                          {appliedKeys.has(row.key) ? (
+                            <StatusBadge tone="success">{t('common.ownerReviewed')}</StatusBadge>
+                          ) : (
+                            <Button tone="secondary" onClick={() => applyConsistencySuggestion(row.key)}>
+                              {t('settings.consistency.apply')}
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  {consistency && consistency.deferredKeys.length > 0 ? (
+                    <InlineAlert tone="info" className="mt-3">
+                      {t('settings.consistency.deferredNote')}
+                    </InlineAlert>
+                  ) : null}
+                  <InlineAlert tone="info" className="mt-3">
+                    {t('settings.consistency.description')}
+                  </InlineAlert>
+                  <div className="mt-3 flex flex-wrap gap-2.5">
+                    {suggestionRows.length > 1 ? (
+                      <Button onClick={applyAllConsistencySuggestions}>{t('settings.consistency.applyAll')}</Button>
+                    ) : null}
+                    <Button tone="ghost" onClick={dismissConsistencyReview}>
+                      {t('settings.consistency.dismiss')}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <InlineAlert tone="danger" className="mt-3">
+                  {translateSettingsFixedMessage(reviewResult.message, t)}
+                </InlineAlert>
+              )}
+            </Surface>
           ) : null}
-          <div className="flex flex-wrap gap-3">
+          <div className="ras-settings-actions">
             <Button
-              disabled={visibilityQuery.data.visibility === 'system' || !hasChanges || !humanReviewed || isSaving}
+              tone="primary"
+              disabled={!proposal?.ok || isSaving}
               loading={isSaving}
-              onClick={() => void saveVisibility()}
+              onClick={() => void saveOwnerSettings()}
             >
-              {t('visibility.save')}
-            </Button>
-            <Button
-              disabled={!visibilityQuery.data || isSaving}
-              onClick={() => {
-                if (visibilityQuery.data) {
-                  setDraft(createPersonaVisibilityDraft(visibilityQuery.data));
-                  setHumanReviewed(false);
-                  setResult(null);
-                }
-              }}
-            >
-              {t('visibility.resetDraft')}
+              {t('settings.save')}
             </Button>
           </div>
-          <TechnicalReviewDetails title={t('visibility.technicalReview')}>
-            <pre className="ras-json-preview m-0 min-h-24 overflow-auto rounded-[var(--nimi-radius-field)] border border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-card)] p-3 text-xs">
-              {result ? JSON.stringify(result, null, 2) : JSON.stringify({ current: visibilityQuery.data, draft }, null, 2)}
-            </pre>
-          </TechnicalReviewDetails>
-        </div>
+        </>
       ) : null}
-    </Surface>
+    </div>
   );
 }
 
-export function RuntimeProjectionWorkspace() {
-  const { t } = useStudioI18n();
+/**
+ * Editable owner settings form (public profile) rendered inside the settings
+ * editor dialog. Visibility is changed directly from the settings workspace
+ * page select, so the dialog only carries the profile fields. Layout mirrors
+ * the public profile instead of an admin table: an identity row (avatar +
+ * display name), the owner-reviewed handle and WorldCore-backed home-world
+ * selection under it, the greeting edited inside a quote bubble that matches
+ * the read-only greeting card, then the description.
+ */
+export function PersonaSettingsForm({
+  persona,
+  onPersonaWrite,
+}: {
+  persona: OwnerPortfolioPersonaDetail;
+  onPersonaWrite: () => Promise<void>;
+}) {
+  const settings = useOwnerSettingsWorkspace(persona, onPersonaWrite);
 
   return (
-    <Surface tone="panel" padding="lg" className="mt-5">
-      <div className="flex min-w-0 flex-wrap items-center gap-3">
-        <h3 className="m-0 text-xl font-semibold">{t('runtimeProjection.title')}</h3>
-        <StatusBadge tone="info">{t('common.aiContext')}</StatusBadge>
-        <StatusBadge tone="warning">{t('common.sourceUnavailable')}</StatusBadge>
-        <StatusBadge tone="warning">{t('common.readOnly')}</StatusBadge>
-      </div>
-      <p className="m-0 mt-1 text-[length:var(--nimi-type-body-sm-size)] text-[var(--nimi-text-muted)]">
-        {t('runtimeProjection.description')}
-      </p>
-      <div className="mt-4 flex flex-wrap gap-3">
-        <Button disabled>
-          {t('runtimeProjection.generateContext')}
-        </Button>
-        <Button disabled>
-          {t('runtimeProjection.generateChatReadiness')}
-        </Button>
-      </div>
-      <InlineAlert tone="warning" className="mt-3">
-        {t('runtimeProjection.error.unavailable')}
-      </InlineAlert>
-    </Surface>
+    <div className="ras-settings ras-settings--dialog">
+      <OwnerProfileSection settings={settings} />
+    </div>
   );
 }

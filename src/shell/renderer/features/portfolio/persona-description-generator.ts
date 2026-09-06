@@ -1,4 +1,5 @@
 import {
+  isStudioTextRouteUnboundError,
   runStudioTextCandidate,
   type StudioTextCandidatePrompt,
   type StudioTextCandidateRunner,
@@ -142,7 +143,10 @@ export async function generatePersonaDescriptionCandidate(
       ok: false,
       source: PERSONA_DESCRIPTION_SOURCE,
       failure: 'persona-description-generate-failed',
-      cause: createFlowFailureFromUnknown('description-generate-failed', error),
+      cause: createFlowFailureFromUnknown(
+        isStudioTextRouteUnboundError(error) ? 'runtime-route-unbound' : 'description-generate-failed',
+        error,
+      ),
       submitted: payload,
     };
   }

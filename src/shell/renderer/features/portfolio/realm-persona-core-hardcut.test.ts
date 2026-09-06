@@ -64,14 +64,16 @@ describe('PersonaCharacter App adoption hard cut', () => {
     const client = readPortfolioFile('./portfolio-client.ts');
     const list = readPortfolioFile('../persona-list/persona-list-page.tsx');
     const shell = readPortfolioFile('../persona-detail/persona-shell.tsx');
+    const settingsModal = readPortfolioFile('../persona-settings/persona-settings-modal.tsx');
     const preview = readPortfolioFile('../../visual-preview.tsx');
 
     expect(client).not.toContain('persona-workspace.visual-fixture');
     expect(client).not.toContain('VITE_RPS_DEV_MOCK_PORTFOLIO');
     expect(list).not.toContain('DESIGN_PREVIEW_PERSONAS');
     expect(shell).not.toContain('persona-workspace.visual-fixture');
-    expect(shell).toContain('ConfirmDialog');
-    expect(shell).not.toContain('confirmDialog(');
+    expect(settingsModal).toContain('ConfirmDialog');
+    expect(settingsModal).toContain('removeDeletedOwnerPersonaReads');
+    expect(settingsModal).not.toContain('confirmDialog(');
     expect(preview).toContain('persona-workspace.visual-fixture');
     expect(preview).toContain('PersonaVisualPreviewProvider');
   });

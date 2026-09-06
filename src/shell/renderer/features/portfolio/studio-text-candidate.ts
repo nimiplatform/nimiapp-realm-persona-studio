@@ -30,6 +30,37 @@ export type StudioTextCandidateRunner = (
   prompt: StudioTextCandidatePrompt,
 ) => Promise<StudioTextCandidateOutput>;
 
+const STUDIO_TEXT_ROUTE_UNBOUND_REASON_CODES: readonly string[] = [
+  'AI_CONFIG_NOT_FOUND',
+  'AI_LOCAL_CONFIGURATION_NOT_CONFIGURED',
+  'AI_LOCAL_SELECTION_NOT_FOUND',
+  'AI_LOCAL_CAPABILITY_MISMATCH',
+  'AI_LOADOUT_NOT_FOUND',
+  'AI_LOADOUT_DRIVER_UNAVAILABLE',
+  'AI_LOADOUT_MODEL_ASSET_NOT_FOUND',
+  'AI_LOADOUT_MODEL_ASSET_CONTENT_MISMATCH',
+  'AI_LOADOUT_MODEL_CONTRACT_FAILED',
+  'AI_LOADOUT_NOT_CONFIGURED',
+  'AI_MODEL_NOT_READY',
+  'AI_ROUTE_UNSUPPORTED',
+];
+
+/**
+ * True when the protected text operation rejected the call because no
+ * text-generation route is bound yet (owner AI configuration missing), as
+ * opposed to a live transport or output failure.
+ */
+export function isStudioTextRouteUnboundError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const record = error as Record<string, unknown>;
+  const value = typeof record.reasonCode === 'string'
+    ? record.reasonCode
+    : typeof record.code === 'string'
+      ? record.code
+      : '';
+  return STUDIO_TEXT_ROUTE_UNBOUND_REASON_CODES.includes(value.trim().toUpperCase().replaceAll('-', '_'));
+}
+
 export async function runStudioTextCandidate(
   prompt: StudioTextCandidatePrompt,
 ): Promise<StudioTextCandidateOutput> {

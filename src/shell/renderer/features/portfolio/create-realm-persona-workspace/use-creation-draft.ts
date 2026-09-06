@@ -54,6 +54,7 @@ export type CreationDraftAction =
   | { type: 'hydrate'; draft: CreateRealmPersonaDraftInput }
   | { type: 'hydrate-failed'; failureMessage: string }
   | { type: 'patch'; patch: CreateRealmPersonaDraftPatchInput }
+  | { type: 'apply-default-world'; worldId: string }
   | { type: 'prepare-seed-run' }
   | { type: 'apply-seed'; result: Extract<PersonaSeedGenerationResult, { ok: true }>; seedDescription: string }
   | { type: 'set-seed-result'; result: PersonaSeedGenerationResult | null }
@@ -149,6 +150,12 @@ function creationDraftReducer(
         referenceImageLoadFailed: false,
         fieldErrors,
       };
+    }
+    case 'apply-default-world': {
+      // System-derived default, not an owner edit: the pristine dirty guard
+      // must stay intact so autosave does not write an untouched draft back.
+      if (state.draft.selectedWorldId) return state;
+      return { ...state, draft: { ...state.draft, selectedWorldId: action.worldId } };
     }
     case 'prepare-seed-run':
       return resetCreateOutcome({
@@ -249,6 +256,9 @@ export function useCreationDraft(initialDraftKey: string) {
   const actions = useMemo(() => ({
     updateDraft(patch: CreateRealmPersonaDraftPatchInput) {
       dispatch({ type: 'patch', patch });
+    },
+    applyDefaultWorld(worldId: string) {
+      dispatch({ type: 'apply-default-world', worldId });
     },
     setStageReviewViaSeed(result: Extract<PersonaSeedGenerationResult, { ok: true }>, seedDescription: string) {
       dispatch({ type: 'apply-seed', result, seedDescription });

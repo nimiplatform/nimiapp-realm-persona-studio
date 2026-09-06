@@ -6,6 +6,7 @@ import {
   type PersonaTrait,
 } from './create-persona-draft.js';
 import {
+  isStudioTextRouteUnboundError,
   runStudioTextCandidate,
   type StudioTextCandidatePrompt,
   type StudioTextCandidateRunner,
@@ -267,7 +268,10 @@ export async function generatePersonaSeedFromDescription(
       ok: false,
       source: PERSONA_SEED_SOURCE,
       failure: 'persona-seed-generate-failed',
-      cause: createFlowFailureFromUnknown('seed-generate-failed', error),
+      cause: createFlowFailureFromUnknown(
+        isStudioTextRouteUnboundError(error) ? 'runtime-route-unbound' : 'seed-generate-failed',
+        error,
+      ),
       submitted: payload,
     };
   }

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Image, MessageSquareText, Mic2, UserRound } from 'lucide-react';
 import { Button, EmptyState, InlineAlert, StatusBadge, Surface } from '@nimiplatform/kit/ui';
-import { PersonaShell, WorkspaceIntro } from '@renderer/features/persona-detail/persona-shell.js';
+import { PersonaShell, WorkspaceIntro, useOpenPersonaSettingsEditor } from '@renderer/features/persona-detail/persona-shell.js';
 import type { CreativeAssetHistoryRecord } from '@renderer/features/portfolio/creative-asset-history.js';
 import { useLocalCreativeAssetHistory } from '@renderer/features/portfolio/use-local-creative-asset-history.js';
 import { loadLocalPostSchedule } from '@renderer/features/portfolio/local-post-schedule-store.js';
@@ -21,6 +21,7 @@ function latestHistory(records: readonly CreativeAssetHistoryRecord[], kind: Cre
 function PreviewBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) {
   const { t } = useStudioI18n();
   const navigate = useNavigate();
+  const openSettingsEditor = useOpenPersonaSettingsEditor();
   const creativeHistoryState = useLocalCreativeAssetHistory(persona.id);
   const creativeHistory = creativeHistoryState.records;
   const localSchedule = useMemo(() => loadLocalPostSchedule(persona.id), [persona.id]);
@@ -43,11 +44,8 @@ function PreviewBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) {
         description={t('preview.description')}
         actions={
           <>
-            <Button tone="secondary" onClick={() => navigate(`/portfolio/${persona.id}/settings`)}>
+            <Button tone="secondary" onClick={openSettingsEditor}>
               {t('preview.editProfile')}
-            </Button>
-            <Button tone="ghost" onClick={() => navigate(`/portfolio/${persona.id}/launch`)}>
-              {t('preview.backToLaunch')}
             </Button>
           </>
         }
@@ -124,7 +122,7 @@ function PreviewBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) {
             ) : (
               <>
                 <EmptyState title={t('preview.voice.emptyTitle')} description={t('preview.voice.emptyDescription')} />
-                <Button tone="secondary" className="mt-3" onClick={() => navigate(`/portfolio/${persona.id}/assets/voice`)}>
+                <Button tone="secondary" className="mt-3" onClick={() => navigate(`/portfolio/${persona.id}/settings/voice`)}>
                   {t('preview.voice.configure')}
                 </Button>
               </>
@@ -187,7 +185,7 @@ export function PersonaPublicPreviewPage() {
   }
 
   return (
-    <PersonaShell personaId={personaId} current="detail">
+    <PersonaShell personaId={personaId} current="settings">
       {(persona) => <PreviewBody persona={persona} />}
     </PersonaShell>
   );

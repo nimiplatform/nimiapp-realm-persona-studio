@@ -1,19 +1,12 @@
-import { useNavigate, useParams } from 'react-router-dom';
-import { Button, InlineAlert, Surface } from '@nimiplatform/kit/ui';
-import { PersonaShell, WorkspaceIntro } from '@renderer/features/persona-detail/persona-shell.js';
-import { useRefreshPersonaReads } from '@renderer/features/persona-detail/use-persona-detail-query.js';
-import {
-  RuntimeProjectionWorkspace,
-  SettingProposalWorkspace,
-  VisibilitySettingsWorkspace,
-} from '@renderer/features/portfolio/OwnerPortfolio.settings.js';
+import { useParams } from 'react-router-dom';
+import { InlineAlert, Surface } from '@nimiplatform/kit/ui';
+import { PersonaShell } from '@renderer/features/persona-detail/persona-shell.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
+import { PersonaSettingsOverview } from './persona-settings-overview.js';
 
 function PersonaSettingsPageForScope() {
   const { t } = useStudioI18n();
   const { personaId } = useParams<{ personaId: string }>();
-  const navigate = useNavigate();
-  const refreshPersonaReads = useRefreshPersonaReads(personaId ?? '');
 
   if (!personaId) {
     return (
@@ -25,23 +18,7 @@ function PersonaSettingsPageForScope() {
 
   return (
     <PersonaShell personaId={personaId} current="settings">
-      {(persona) => (
-        <>
-          <WorkspaceIntro
-            title={t('persona.settings.title')}
-            description={t('persona.settings.description')}
-            actions={(
-              <Button tone="secondary" onClick={() => navigate(`/portfolio/${personaId}/settings/review`)}>
-                {t('persona.settings.openReview')}
-              </Button>
-            )}
-          />
-
-          <SettingProposalWorkspace persona={persona} onPersonaWrite={refreshPersonaReads} />
-          <VisibilitySettingsWorkspace persona={persona} onPersonaWrite={refreshPersonaReads} />
-          <RuntimeProjectionWorkspace />
-        </>
-      )}
+      {(persona) => <PersonaSettingsOverview persona={persona} />}
     </PersonaShell>
   );
 }

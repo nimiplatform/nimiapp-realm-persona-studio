@@ -6,12 +6,8 @@ export function PersonaCreatePage() {
 
   return (
     <CreateRealmPersonaWorkspace
-      onOpenCreatedPersona={(personaId, target) => {
-        if (target === 'settings') {
-          navigate(`/portfolio/${personaId}/settings`);
-          return;
-        }
-        navigate(`/portfolio/${personaId}`);
+      onOpenCreatedPersona={(personaId) => {
+        navigate(`/portfolio/${personaId}/settings`);
       }}
     />
   );

@@ -167,6 +167,7 @@ export function readPersonaSettings(persona: RealmPersonaCharacterDto): RealmOwn
     displayName: profile.presentation.displayName || profile.identity.name || null,
     description: profile.identity.summary || profile.presentation.profileLine || null,
     greeting: profile.interactionProfile.greeting ?? null,
+    handle: profile.identity.handle ?? null,
     naturalLanguageIntent: null,
     identity: {},
     personality: {},
@@ -203,6 +204,15 @@ export function mergeOwnerSettingsProfile(
     }
   }
 
+  if (Object.prototype.hasOwnProperty.call(patch, 'handle')) {
+    if (patch.handle === null) {
+      const { handle: _handle, ...identity } = readRecord(next.identity);
+      next = { ...next, identity };
+    } else {
+      next = writeRecordSection(next, 'identity', { handle: patch.handle });
+    }
+  }
+
   return next as NimiLocalAppPersonaCharacterProfileInput;
 }
 
@@ -210,6 +220,7 @@ export function buildPersonaCharacterReplaceInput(
   current: RealmOwnerPersonaSettings,
   profile: NimiLocalAppPersonaCharacterProfileInput,
   visibility: NimiLocalAppPersonaCharacterWritableVisibility,
+  reviewedWorldId?: string,
 ): NimiLocalAppPersonaCharacterReplaceInput {
   if (!current.persona.lorebookDeclaration) {
     throw new Error('Character lorebook declaration is required before replace.');
@@ -217,7 +228,7 @@ export function buildPersonaCharacterReplaceInput(
   return {
     personaCharacterId: current.id,
     baseContentHash: current.contentHash,
-    worldId: current.homeWorldId,
+    worldId: reviewedWorldId || current.homeWorldId,
     visibility,
     origin: current.origin,
     lorebookDeclaration: current.persona.lorebookDeclaration,
@@ -437,6 +448,7 @@ export async function updateReviewedOwnerPersonaSettings(
       current,
       profile,
       current.visibility,
+      built.preview.submitted.worldId,
     );
     const replaced = await client.replace(submitted);
     return {

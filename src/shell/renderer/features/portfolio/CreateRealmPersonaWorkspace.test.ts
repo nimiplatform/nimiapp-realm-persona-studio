@@ -71,7 +71,7 @@ describe('Create Realm Persona workspace v2 shell', () => {
     expect(styles).toContain('.ras-create-describe-divider {');
     expect(styles).toContain('.ras-create-ai-button {');
     expect(styles).toContain('.ras-create-manual-button {');
-    expect(source).toContain("t('create.oneLineOptional')");
+    expect(source).not.toContain("t('create.oneLineOptional')");
     expect(source).toContain("t('create.supplement.hint')");
     expect(source).toContain("t('create.aiButton.helper')");
     expect(source).not.toContain("t('create.estimatedTime')");
@@ -84,7 +84,7 @@ describe('Create Realm Persona workspace v2 shell', () => {
     expect(source).not.toContain('create.generateFromDescription');
   });
 
-  it('renders the creation choices as stacked primary and secondary buttons', () => {
+  it('renders the creation choices as a right-aligned footer action group', () => {
     const source = workspaceSource();
 
     expect(source).toContain("t('create.aiButton.label')");
@@ -155,7 +155,7 @@ describe('Create Realm Persona workspace v2 shell', () => {
     expect(source).toContain('!readiness.ready');
     expect(source).toContain('queryClient.fetchQuery({');
     expect(source).toContain('getOwnerPortfolioPersonaDetail(result.canonical.id)');
-    expect(source).toContain("onOpenCreatedPersona(result.canonical.id, 'detail')");
+    expect(source).toContain("onOpenCreatedPersona(result.canonical.id)");
     expect(source).not.toContain('!creationGraphReview.canAccept');
     expect(source).not.toContain('handleCheckBlocking');
   });
@@ -273,6 +273,16 @@ describe('Create Realm Persona workspace v2 shell', () => {
     expect(source).toContain('create.world.recommended');
     expect(source).toContain('create.world.all');
     expect(source).toContain('groupSelectableRealmWorldsForPicker');
+  });
+
+  it('pre-selects the source-backed OASIS default world when the draft has no explicit selection', () => {
+    const source = workspaceSource();
+
+    expect(source).toContain('selectOasisDefaultWorld(worlds)');
+    expect(source).toContain("draftLoadState !== 'ready'");
+    expect(source).toContain('actions.applyDefaultWorld(oasisDefaultWorld.id)');
+    expect(source).not.toContain('actions.updateDraft({ selectedWorldId: oasisDefaultWorld.id })');
+    expect(source).not.toContain('fill-default-world');
   });
 
   it('keeps image generation actual, owner-reviewed, local, and fail-closed without the candidate-slot module', () => {

@@ -130,8 +130,23 @@ function readFirstStringField(
   return { present: false };
 }
 
-function stringFieldFromValue(value: string | null): StringFieldRead {
-  return value === null ? { present: false } : { present: true, value };
+/**
+ * The profile cover is optional: no `profileCover` external ref means the owner
+ * never set one (a legitimate empty state), while a ref whose URI is not a
+ * display-safe HTTPS URL stays fail-closed as source-unavailable.
+ */
+function readProfileCoverField(core: Record<string, unknown>): StringFieldRead {
+  const assets = readCoreSection(core, 'assets');
+  const refs = Array.isArray(assets?.externalRefs) ? assets.externalRefs : [];
+  for (const ref of refs) {
+    const record = readOptionalRecord(ref);
+    if (readString(record?.kind) !== 'profileCover') {
+      continue;
+    }
+    const uri = normalizeDisplaySafeHttpsUrl(readString(record?.uri));
+    return uri ? { present: true, value: uri } : { present: false };
+  }
+  return { present: true, value: '' };
 }
 
 function readPersonaCore(persona: OwnerPersonaCharacter): Record<string, unknown> {
@@ -335,7 +350,7 @@ export function normalizeOwnerPortfolioPersonaDetail(
     profileCoverUrl: settingField(
       'profileCoverUrl',
       'Profile cover URL',
-      stringFieldFromValue(readExternalAssetUri(core, 'profileCover')),
+      readProfileCoverField(core),
       source,
     ),
     ownership: settingField('ownership', 'Ownership evidence', { present: true, value: 'owner-scoped PersonaCharacter' }, source),

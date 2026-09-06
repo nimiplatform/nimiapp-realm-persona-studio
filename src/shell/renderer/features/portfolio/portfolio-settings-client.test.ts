@@ -46,6 +46,7 @@ function currentSettings(): RealmOwnerPersonaSettings {
     displayName: 'Mira',
     description: 'Quiet strategist',
     greeting: 'Welcome in.',
+    handle: 'mira',
     naturalLanguageIntent: null,
     identity: {},
     personality: {},
@@ -141,6 +142,37 @@ describe('owner PersonaCharacter settings client', () => {
     expect(JSON.stringify(submitted.profile)).not.toContain('ownerSettings');
     expect(JSON.stringify(submitted.profile)).not.toContain('socialVisibility');
     expect(JSON.stringify(submitted.profile)).not.toContain('must remain local');
+  });
+
+  it('writes a reviewed handle change and home-world change through replace', async () => {
+    const settings = currentSettings();
+    const draft = {
+      ...createOwnerPersonaSettingsDraft(settings),
+      handle: ' @Mira-Prime ',
+      worldId: 'world-eden',
+    };
+
+    const result = await updateReviewedOwnerPersonaSettings('persona-1', draft, settings);
+    const submitted = personaCharacter.replace.mock.calls[0]?.[0];
+
+    expect(result.ok).toBe(true);
+    expect(submitted.worldId).toBe('world-eden');
+    expect(submitted.profile.identity.handle).toBe('mira-prime');
+  });
+
+  it('drops identity.handle from the replacement profile when the owner clears it', async () => {
+    const settings = currentSettings();
+    const draft = {
+      ...createOwnerPersonaSettingsDraft(settings),
+      handle: '',
+    };
+
+    const result = await updateReviewedOwnerPersonaSettings('persona-1', draft, settings);
+    const submitted = personaCharacter.replace.mock.calls[0]?.[0];
+
+    expect(result.ok).toBe(true);
+    expect(submitted.profile.identity).not.toHaveProperty('handle');
+    expect(submitted.worldId).toBe(persona.worldId);
   });
 
   it('preserves sanitized content-conflict without upstream text', async () => {

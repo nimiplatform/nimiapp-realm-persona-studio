@@ -14,7 +14,7 @@ export function createEmptyDraft(): CreateRealmPersonaDraftInput {
     description: '',
     ruleText: '',
     selectedWorldId: '',
-    visibility: '',
+    visibility: 'public',
     personaArchetype: '',
     personaTraits: [],
     referenceImageUrl: '',

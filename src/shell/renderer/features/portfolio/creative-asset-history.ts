@@ -4,6 +4,7 @@ export type CreativeAssetHistoryKind =
   | 'runtime-image-candidate'
   | 'avatar-package-candidate'
   | 'identity-resource-upload'
+  | 'local-image-edit-candidate'
   | 'voice-demo-candidate';
 
 export type CreativeAssetSourceKind = 'generated' | 'imported';
@@ -92,6 +93,7 @@ function isHistoryKind(value: unknown): value is CreativeAssetHistoryKind {
   return value === 'runtime-image-candidate'
     || value === 'avatar-package-candidate'
     || value === 'identity-resource-upload'
+    || value === 'local-image-edit-candidate'
     || value === 'voice-demo-candidate';
 }
 

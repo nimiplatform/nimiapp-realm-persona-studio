@@ -4,7 +4,7 @@ import type { OwnerPortfolioPersonaDetail, SettingField } from '@renderer/featur
 
 export type MaintenanceSuggestionStatus = 'ready' | 'blocked' | 'unavailable';
 export type MaintenanceSuggestionPriority = 'high' | 'medium' | 'low';
-export type MaintenanceSuggestionRoute = 'settings' | 'assets' | 'posts' | 'schedule' | 'insights';
+export type MaintenanceSuggestionRoute = 'settings' | 'assets' | 'posts' | 'schedule';
 export type MaintenanceSuggestionKind = 'profile' | 'identity' | 'content' | 'schedule' | 'adoption';
 
 export type MaintenanceSuggestionSource =
@@ -93,7 +93,7 @@ export function deriveMaintenanceSuggestions(context: MaintenanceSuggestionConte
       title: 'Profile source unavailable',
       rationale: 'Realm detail did not return the profile fields needed for reliable maintenance.',
       evidence: profileUnavailable.map((field) => `${field}: source unavailable`),
-      action: { label: 'Inspect source', route: 'insights' },
+      action: { label: 'Inspect source', route: 'settings' },
       sources: ['Nimi App Access realm.personaCharacter.getOwned'],
       candidate: true,
       publicTruth: false,
@@ -131,7 +131,7 @@ export function deriveMaintenanceSuggestions(context: MaintenanceSuggestionConte
       title: 'Identity media source unavailable',
       rationale: 'Realm did not return enough profile media state to judge public identity readiness.',
       evidence: identityUnavailable.map((field) => `${field}: source unavailable`),
-      action: { label: 'Inspect source', route: 'insights' },
+      action: { label: 'Inspect source', route: 'settings' },
       sources: ['Nimi App Access realm.personaCharacter.getOwned'],
       candidate: true,
       publicTruth: false,
@@ -187,7 +187,7 @@ export function deriveMaintenanceSuggestions(context: MaintenanceSuggestionConte
       title: 'Content voice source unavailable',
       rationale: 'Post variants need source-backed profile voice fields; Studio will not infer them from private or missing state.',
       evidence: contentUnavailable.map((field) => `${field}: source unavailable`),
-      action: { label: 'Inspect source', route: 'insights' },
+      action: { label: 'Inspect source', route: 'settings' },
       sources: ['Nimi App Access realm.personaCharacter.getOwned'],
       candidate: true,
       publicTruth: false,
@@ -254,7 +254,7 @@ export function deriveMaintenanceSuggestions(context: MaintenanceSuggestionConte
       title: 'Adoption source unavailable',
       rationale: 'friendCount is not present on the Realm detail projection, so Studio shows no fallback engagement metric.',
       evidence: ['friendCount: source unavailable'],
-      action: { label: 'Inspect source', route: 'insights' },
+      action: { label: 'Inspect source', route: 'settings' },
       sources: ['Nimi App Access realm.personaCharacter.getOwned'],
       candidate: true,
       publicTruth: false,

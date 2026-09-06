@@ -8,6 +8,7 @@ import {
   createOwnerPersonaSettingsDraft,
   normalizeOwnerPersonaSettingsDraft,
   normalizeRuntimeOwnerSettingsProposal,
+  partitionConsistencySuggestions,
   type OwnerPersonaSettingsSnapshot,
 } from './setting-proposal.js';
 
@@ -90,6 +91,55 @@ describe('owner settings proposal normalization', () => {
     expect(result.ok ? result.preview.rawRuleReview?.reason : '').toBe(RAW_RULE_REVIEW_DEFERRED_REASON);
     expect(result.ok ? result.preview.submitted : {}).not.toHaveProperty('profileCoverUrl');
     expect(result.ok ? result.preview.submitted : {}).not.toHaveProperty('personaRules');
+  });
+
+  it('submits an owner-reviewed handle normalized to profile.identity.handle', () => {
+    const withHandle: OwnerPersonaSettingsSnapshot = { ...settings, handle: 'mira' };
+    const result = buildRealmOwnerPersonaSettingsUpdateInput({
+      ...createOwnerPersonaSettingsDraft(withHandle),
+      handle: '  @Mira-Prime  ',
+    }, withHandle);
+
+    expect(result).toMatchObject({
+      ok: true,
+      changed: true,
+      input: { handle: 'mira-prime' },
+    });
+  });
+
+  it('clears an owner-reviewed handle to null without a forbidden-field rejection', () => {
+    const withHandle: OwnerPersonaSettingsSnapshot = { ...settings, handle: 'mira' };
+    const result = buildRealmOwnerPersonaSettingsUpdateInput({
+      ...createOwnerPersonaSettingsDraft(withHandle),
+      handle: '',
+    }, withHandle);
+
+    expect(result).toMatchObject({
+      ok: true,
+      changed: true,
+      input: { handle: null },
+    });
+  });
+
+  it('submits a reviewed home-world change and rejects an empty one', () => {
+    const withWorld: OwnerPersonaSettingsSnapshot = { ...settings, homeWorldId: 'world-oasis' };
+    expect(buildRealmOwnerPersonaSettingsUpdateInput({
+      ...createOwnerPersonaSettingsDraft(withWorld),
+      worldId: 'world-eden',
+    }, withWorld)).toMatchObject({
+      ok: true,
+      changed: true,
+      input: { worldId: 'world-eden' },
+    });
+    expect(buildRealmOwnerPersonaSettingsUpdateInput({
+      ...createOwnerPersonaSettingsDraft(withWorld),
+      worldId: '   ',
+    }, withWorld)).toMatchObject({
+      ok: false,
+      failure: 'owner-settings-invalid',
+      errors: ['worldId cannot be empty because PersonaCharacter replace requires a home world'],
+      input: null,
+    });
   });
 
   it('fails closed when only raw rule review changed', () => {
@@ -207,5 +257,44 @@ describe('owner settings proposal normalization', () => {
       description: 'Allowed text.',
       personaRule: 'unsupported',
     }), baseDraft)).toThrow('unknown field personaRule');
+  });
+});
+
+describe('partitionConsistencySuggestions', () => {
+  it('keeps editable profile fields visible', () => {
+    expect(partitionConsistencySuggestions({
+      displayName: 'New name',
+      description: 'New description',
+      greeting: 'New greeting',
+    })).toEqual({
+      visible: {
+        displayName: 'New name',
+        description: 'New description',
+        greeting: 'New greeting',
+      },
+      deferredKeys: [],
+    });
+  });
+
+  it('defers patch keys without a visible settings field', () => {
+    expect(partitionConsistencySuggestions({
+      greeting: 'New greeting',
+      rawRuleTextCandidate: 'Rule text',
+      publicRole: 'Guide',
+    })).toEqual({
+      visible: { greeting: 'New greeting' },
+      deferredKeys: ['rawRuleTextCandidate', 'publicRole'],
+    });
+  });
+
+  it('skips undefined patch values and empty patches', () => {
+    expect(partitionConsistencySuggestions({
+      displayName: undefined,
+      description: 'New description',
+    })).toEqual({
+      visible: { description: 'New description' },
+      deferredKeys: [],
+    });
+    expect(partitionConsistencySuggestions({})).toEqual({ visible: {}, deferredKeys: [] });
   });
 });

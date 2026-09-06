@@ -9,7 +9,6 @@ import {
   FieldTrigger,
   IconButton,
   InlineAlert,
-  NimiTabs,
   NimiText,
   NimiThemeProvider,
   NimiToaster,
@@ -21,10 +20,9 @@ import {
   TextField,
   TooltipProvider,
 } from '@nimiplatform/kit/ui';
-import { HashRouter, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
+import { HashRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { ArrowLeft, ChevronDown, ImageIcon, Scan, X } from 'lucide-react';
 import { StudioSidebar } from './app-shell/studio-sidebar/index.js';
-import { PersonaCockpit } from './features/persona-detail/persona-cockpit.js';
 import { PersonaWorkspaceFrame } from './features/persona-detail/persona-shell.js';
 import { PersonaVisualPreviewProvider } from './features/persona-detail/persona-visual-preview-context.js';
 import {
@@ -34,16 +32,20 @@ import {
   PERSONA_WORKSPACE_VISUAL_FIXTURE_PENDING_REVIEWS,
 } from './features/persona-detail/persona-workspace.visual-fixture.js';
 import { PersonaPostEditor } from './features/persona-posts/persona-post-editor.js';
-import { PersonaInsightsPage } from './features/persona-insights/persona-insights-page.js';
-import { PersonaLaunchPage } from './features/persona-launch/persona-launch-page.js';
-import { PersonaCard } from './features/portfolio/OwnerPortfolio.shared.js';
-import { MediaVoiceCandidateWorkspace } from './features/portfolio/OwnerPortfolio.assets.js';
+import { PersonaSettingsOverview } from './features/persona-settings/persona-settings-overview.js';
+import { PersonaListPage } from './features/persona-list/persona-list-page.js';
+import { ownerPortfolioListQueryKey } from './features/persona-detail/use-persona-detail-query.js';
 import {
   PERSONA_ARCHETYPES,
   PERSONA_TRAIT_MAX,
+  normalizeCreateRealmPersonaDraft,
+  type CreateRealmPersonaDraftInput,
   type PersonaArchetype,
   type PersonaTrait,
 } from './features/portfolio/create-persona-draft.js';
+import { AutosaveIndicator } from './features/portfolio/create-realm-persona-workspace/autosave-indicator.js';
+import { DescribeStage } from './features/portfolio/create-realm-persona-workspace/describe-stage.js';
+import { createEmptyDraft } from './features/portfolio/create-realm-persona-workspace/draft-utils.js';
 import { TraitsMultiSelect } from './features/portfolio/create-realm-persona-workspace/traits-multi-select.js';
 import {
   ReferenceImageSourceChooser,
@@ -60,63 +62,60 @@ import './styles.css';
 const previewI18n = ensureStudioI18nInitialized();
 void previewI18n.changeLanguage('zh');
 
-function PreviewWorkspace({ tab }: { tab: 'detail' | 'posts' | 'assets' }) {
+function useSeedPreviewSettingsCaches() {
+  const seeded = useRef(false);
+  if (seeded.current) {
+    return;
+  }
+  seeded.current = true;
+  // Development preview: seed read caches so the settings editor dialog renders
+  // its editable state without a protected bridge. Writes still fail closed.
+  studioQueryClient.setQueryDefaults(['realm-persona-studio', 'persona-settings'], { staleTime: Infinity, retry: false });
+  studioQueryClient.setQueryDefaults(['realm-persona-studio', 'owner-persona-visibility'], { staleTime: Infinity, retry: false });
+  studioQueryClient.setQueryDefaults(['realm-persona-studio', 'create-persona-worlds'], { staleTime: Infinity, retry: false });
+  // Seed the owner portfolio list so the real PersonaListPage renders the visual
+  // fixture personas; world banners stay empty so cards fall back to persona data.
+  studioQueryClient.setQueryDefaults(ownerPortfolioListQueryKey(), { staleTime: Infinity, retry: false });
+  studioQueryClient.setQueryDefaults(['realm-world-core', 'portfolio-card-banners'], { staleTime: Infinity, retry: false });
+  studioQueryClient.setQueryData(ownerPortfolioListQueryKey(), PERSONA_WORKSPACE_VISUAL_FIXTURE_LIST);
+  studioQueryClient.setQueryData(['realm-world-core', 'portfolio-card-banners'], []);
+  const previewWorlds = [...new Set(PERSONA_WORKSPACE_VISUAL_FIXTURE_LIST.map((persona) => persona.worldName).filter(Boolean))]
+    .map((worldName) => ({ id: worldName as string, name: worldName as string }));
+  studioQueryClient.setQueryData(['realm-persona-studio', 'create-persona-worlds'], previewWorlds);
+  for (const persona of Object.values(PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS)) {
+    studioQueryClient.setQueryData(
+      ['realm-persona-studio', 'persona-settings', persona.ownerScope, persona.id],
+      {
+        id: persona.id,
+        contentHash: persona.contentHash,
+        homeWorldId: persona.homeWorldId,
+        displayName: persona.displayName.value,
+        description: persona.bio.value,
+        greeting: persona.greeting.value,
+        handle: persona.handle.value,
+      },
+    );
+    studioQueryClient.setQueryData(
+      ['realm-persona-studio', 'owner-persona-visibility', persona.id],
+      { visibility: persona.visibility.status === 'available' ? persona.visibility.value : 'private' },
+    );
+  }
+}
+
+function PreviewWorkspace({ tab }: { tab: 'posts' | 'settings' }) {
   const { personaId = 'visual-xiaomi' } = useParams();
   const persona = PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS[personaId];
   const visualData = PERSONA_WORKSPACE_VISUAL_FIXTURE_DATA[personaId];
-  if (!persona || !visualData) return <Navigate to="/portfolio/visual-xiaomi" replace />;
+  if (!persona || !visualData) return <Navigate to="/portfolio/visual-xiaomi/settings" replace />;
 
   return (
-    <PersonaWorkspaceFrame persona={persona} current={tab}>
+    <PersonaWorkspaceFrame key={persona.id} persona={persona} current={tab}>
       {tab === 'posts' ? (
         <PersonaPostEditor persona={persona} />
-      ) : tab === 'assets' ? (
-        <MediaVoiceCandidateWorkspace
-          persona={persona}
-          onPersonaWrite={async () => {
-            throw new Error('Development visual fixture does not expose Realm writes.');
-          }}
-        />
       ) : (
-        <PersonaCockpit persona={persona} />
+        <PersonaSettingsOverview persona={persona} />
       )}
     </PersonaWorkspaceFrame>
-  );
-}
-
-function PreviewPersonaLibrary() {
-  const navigate = useNavigate();
-  return (
-    <div className="ras-page ras-persona-library">
-      <header className="ras-page-header ras-persona-library__header">
-        <NimiText as="h1" role="page-title" className="m-0">
-          {translateStudioCopy('portfolio.title')}
-        </NimiText>
-      </header>
-      <NimiTabs
-        items={[
-          { value: 'personas', label: translateStudioCopy('portfolio.tabs.personas') },
-          { value: 'local-drafts', label: translateStudioCopy('portfolio.tabs.localDrafts') },
-        ]}
-        value="personas"
-        onValueChange={() => undefined}
-        ariaLabel={translateStudioCopy('portfolio.tabs.ariaLabel')}
-      />
-      <div className="ras-persona-library__persona-panel">
-        <div className="ras-persona-grid">
-          {PERSONA_WORKSPACE_VISUAL_FIXTURE_LIST.map((persona) => (
-            <PersonaCard
-              key={persona.id}
-              persona={persona}
-              worldBannerUrl={persona.coverUrl}
-              worldName={persona.worldName}
-              active={false}
-              onSelect={() => navigate(`/portfolio/${persona.id}`)}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -331,8 +330,34 @@ function PreviewCreateReferenceSources() {
   );
 }
 
+function PreviewCreateDescribe() {
+  const [draft, setDraft] = useState<CreateRealmPersonaDraftInput>(() => createEmptyDraft());
+  return (
+    <div className="ras-page ras-create-page ras-create-page--describe">
+      <header className="flex min-w-0 flex-wrap items-start justify-between gap-4">
+        <NimiText as="h1" role="page-title" className="m-0">
+          {translateStudioCopy('create.title')}
+        </NimiText>
+        <AutosaveIndicator state="saved" failureMessage={null} idle />
+      </header>
+      <DescribeStage
+        originalDescription={draft.originalDescription}
+        normalizedDraft={normalizeCreateRealmPersonaDraft(draft)}
+        seedResult={null}
+        isGeneratingSeed={false}
+        isGeneratingDescription={false}
+        updateDraft={(patch) => setDraft((current) => ({ ...current, ...patch }))}
+        onRunSeedGeneration={() => undefined}
+        onRunDescriptionReroll={() => undefined}
+        onSkipSeed={() => undefined}
+      />
+    </div>
+  );
+}
+
 function PreviewShell() {
   const [collapsed, setCollapsed] = useState(false);
+  useSeedPreviewSettingsCaches();
   return (
     <AmbientBackground variant="mesh" className="ras-shell">
       <div className="ras-shell__body">
@@ -344,14 +369,14 @@ function PreviewShell() {
         />
         <main className="ras-main">
           <Routes>
-            <Route path="/portfolio" element={<PreviewPersonaLibrary />} />
-            <Route path="/portfolio/:personaId" element={<PreviewWorkspace tab="detail" />} />
+            <Route path="/portfolio" element={<PersonaListPage />} />
+            <Route path="/portfolio/create" element={<PreviewCreateDescribe />} />
+            <Route path="/portfolio/:personaId" element={<Navigate to="settings" replace />} />
             <Route path="/portfolio/:personaId/posts" element={<PreviewWorkspace tab="posts" />} />
-            <Route path="/portfolio/:personaId/assets" element={<PreviewWorkspace tab="assets" />} />
-            <Route path="/portfolio/:personaId/insights" element={<PersonaInsightsPage />} />
-            <Route path="/portfolio/:personaId/launch" element={<PersonaLaunchPage />} />
+            <Route path="/portfolio/:personaId/settings" element={<PreviewWorkspace tab="settings" />} />
             <Route path="/preview/create-reference-sources" element={<PreviewCreateReferenceSources />} />
-            <Route path="*" element={<Navigate to="/portfolio/visual-xiaomi" replace />} />
+            <Route path="/preview/create-describe" element={<PreviewCreateDescribe />} />
+            <Route path="*" element={<Navigate to="/portfolio/visual-xiaomi/settings" replace />} />
           </Routes>
         </main>
       </div>

@@ -55,8 +55,8 @@ export function buildDraftBoxEntries(input: {
     source: record.source,
     createdAt: record.createdAt,
     actionPath: destinationForHistory(record) === 'voice'
-      ? `/portfolio/${input.personaId}/assets/voice`
-      : `/portfolio/${input.personaId}/assets`,
+      ? `/portfolio/${input.personaId}/settings/voice`
+      : `/portfolio/${input.personaId}/settings`,
   }));
 
   const scheduleEntry = input.localSchedule

@@ -92,6 +92,21 @@ describe('persona description reroll through the injected text candidate runner'
     expect(result).toMatchObject({
       ok: false,
       failure: 'persona-description-generate-failed',
+      cause: { kind: 'description-generate-failed' },
+    });
+  });
+
+  it('maps an unbound AI route to the configure-first failure kind', async () => {
+    const runner: StudioTextCandidateRunner = async () => {
+      throw Object.assign(new Error('AI route is not configured.'), { reasonCode: 'AI_LOCAL_CONFIGURATION_NOT_CONFIGURED' });
+    };
+
+    const result = await generatePersonaDescriptionCandidate({ locale: 'en' }, runner);
+
+    expect(result).toMatchObject({
+      ok: false,
+      failure: 'persona-description-generate-failed',
+      cause: { kind: 'runtime-route-unbound' },
     });
   });
 });

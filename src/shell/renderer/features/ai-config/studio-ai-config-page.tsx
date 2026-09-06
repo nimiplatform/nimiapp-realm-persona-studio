@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, InlineAlert, StatusBadge, Surface, nimiToast } from '@nimiplatform/kit/ui';
+import { Button, InlineAlert, NimiText, StatusBadge, Surface, nimiToast } from '@nimiplatform/kit/ui';
 import { ModelConfigAIConfigSurface, type ModelConfigCopy } from '@nimiplatform/kit/features/model-config';
 import { CANONICAL_CAPABILITY_IDS } from '@nimiplatform/kit/core/runtime-capabilities';
 import { failureKindCopyKey } from '@renderer/features/portfolio/failure-copy.js';
@@ -143,7 +143,9 @@ export function StudioAIConfigPage() {
       <Surface tone="card" padding="lg" className="ras-radius-xl">
         <div className="mb-5 flex min-w-0 flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="m-0 text-2xl font-semibold">{t('aiConfig.title')}</h2>
+            <NimiText as="h1" role="page-title" className="m-0">
+              {t('aiConfig.title')}
+            </NimiText>
             <p className="m-0 mt-1 text-[length:var(--nimi-type-body-sm-size)] text-[var(--nimi-text-muted)]">
               {t('aiConfig.description')}
             </p>

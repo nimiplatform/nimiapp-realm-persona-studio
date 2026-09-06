@@ -11,7 +11,7 @@ describe('visual identity change dialog', () => {
     const component = source('src/shell/renderer/features/portfolio/OwnerPortfolio.assets.tsx');
 
     expect(component).toContain('dataTestId="persona-visual-identity-dialog"');
-    expect(component).toContain("type VisualIdentityMode = 'upload' | 'assets' | 'ai'");
+    expect(component).toContain("type VisualIdentityMode = 'upload' | 'assets' | 'ai' | 'url'");
     expect(component).toContain('fileInputRef.current?.click()');
     expect(component).toContain('data-testid="visual-existing-assets"');
     expect(component).toContain('data-testid="visual-ai-composer"');
@@ -34,14 +34,6 @@ describe('visual identity change dialog', () => {
     expect(copy).not.toContain(removedCopy);
   });
 
-  it('keeps only the current-use status in the visual summary', () => {
-    const component = source('src/shell/renderer/features/portfolio/OwnerPortfolio.assets.tsx');
-
-    expect(component).toContain("persona.avatarUrl ? 'assets.overview.currentlyUsed' : 'assets.overview.notConfigured'");
-    expect(component).not.toContain('ras-asset-summary-card__facts');
-    expect(component).not.toContain('formatImageAspectRatio');
-  });
-
   it('preserves the admitted HTTPS avatar replace inside the refreshed visual editor', () => {
     const component = source('src/shell/renderer/features/portfolio/OwnerPortfolio.assets.tsx');
 
@@ -51,20 +43,81 @@ describe('visual identity change dialog', () => {
     expect(component).toContain('await onPersonaWrite()');
     expect(component).toContain("t('persona.failure.sanitized', { reason: t(failureKindCopyKey(result.failure)) })");
   });
+});
 
-  it('renders the selected development voice file as a playable local candidate', () => {
+describe('persona hero visual identity entry', () => {
+  it('opens the visual identity dialog from the hero avatar edit button', () => {
+    const shell = source('src/shell/renderer/features/persona-detail/persona-shell.tsx');
     const component = source('src/shell/renderer/features/portfolio/OwnerPortfolio.assets.tsx');
     const styles = source('src/shell/renderer/styles.css');
 
-    expect(component).toContain('data-testid="selected-voice-summary"');
-    expect(component).toContain('data-development-fixture="true"');
-    expect(component).toContain('voiceSummary.fileName');
-    expect(component).toContain('voiceSummary.previewUrl');
-    expect(component).toContain('preload="auto"');
-    expect(component).toContain("'assets.overview.voice.localCandidate'");
-    expect(styles).toContain('.ras-voice-summary__file');
-    expect(styles).toContain('.ras-voice-summary__player');
-    expect(styles).toContain('.ras-voice-summary__facts');
+    expect(shell).toContain('data-testid="persona-avatar-edit"');
+    expect(shell).toContain('ras-persona-hero__avatar-edit');
+    expect(shell).toContain('useOpenPersonaVisualIdentityEditor');
+    expect(shell).toContain('<PersonaVisualIdentityDialog');
+    expect(component).toContain('export function PersonaVisualIdentityDialog');
+    expect(styles).toContain('.ras-persona-hero__avatar-edit');
+  });
+
+  it('drops the old visual identity panel from the settings workspace', () => {
+    const component = source('src/shell/renderer/features/portfolio/OwnerPortfolio.assets.tsx');
+    const copy = source('src/shell/renderer/i18n/studio-copy.ts');
+
+    expect(component).not.toContain('ras-asset-block__visual-preview');
+    expect(component).not.toContain('visual-preview-open-create');
+    expect(component).not.toContain('assets.overview.visual.');
+    expect(copy).not.toContain("'assets.overview.visual.");
+  });
+
+  it('keeps the local image editor one click away inside the visual dialog', () => {
+    const component = source('src/shell/renderer/features/portfolio/OwnerPortfolio.assets.tsx');
+    const copy = source('src/shell/renderer/i18n/studio-copy.ts');
+
+    expect(component).toContain('dataTestId="persona-visual-image-editor-dialog"');
+    expect(component).toContain('onClick={() => setImageEditorOpen(true)}');
+    expect(component).toContain("t('assets.visualChange.editImage')");
+    expect(component).toContain('<VisualImageEditorWorkspace persona={persona} onHistoryUpdated={refreshCreativeHistory} />');
+    expect(copy).toContain("'assets.visualChange.editImage': '编辑当前图片'");
+  });
+});
+
+describe('persona hero voice entry', () => {
+  it('drops the settings-rail voice panel and opens the voice dialog from the hero avatar voice button', () => {
+    const shell = source('src/shell/renderer/features/persona-detail/persona-shell.tsx');
+    const component = source('src/shell/renderer/features/portfolio/OwnerPortfolio.assets.tsx');
+    const overview = source('src/shell/renderer/features/persona-settings/persona-settings-overview.tsx');
+    const styles = source('src/shell/renderer/styles.css');
+
+    expect(overview).not.toContain('PersonaVoiceAssetEntry');
+    expect(component).not.toContain('PersonaVoiceAssetEntry');
+    expect(component).not.toContain('ras-voice-row');
+    expect(styles).not.toContain('.ras-voice-row');
+    expect(shell).toContain('data-testid="persona-avatar-voice"');
+    expect(shell).toContain('ras-persona-hero__avatar-voice');
+    expect(shell).toContain('useOpenPersonaVoiceEditor');
+    expect(shell).toContain('resolvePersonaVoiceSummary');
+    expect(shell).toContain('<PersonaVoiceEditorDialog');
+    expect(component).toContain('export function PersonaVoiceEditorDialog');
+    expect(component).toContain('dataTestId="persona-voice-editor-dialog"');
+    expect(styles).toContain('.ras-persona-hero__avatar-voice');
+  });
+
+  it('offers play and replace actions for a selected voice from the avatar voice menu', () => {
+    const shell = source('src/shell/renderer/features/persona-detail/persona-shell.tsx');
+    const copy = source('src/shell/renderer/i18n/studio-copy.ts');
+
+    expect(shell).toContain("voiceSummary.kind === 'development-selected' ? voiceSummary.previewUrl : null");
+    expect(shell).toContain('<Popover open={voiceMenuOpen} onOpenChange={setVoiceMenuOpen}>');
+    expect(shell).toContain('PopoverTrigger');
+    expect(shell).toContain('new Audio(voicePreviewUrl)');
+    expect(shell).toContain("t('assets.overview.voice.play')");
+    expect(shell).toContain("t('assets.overview.voice.pause')");
+    expect(shell).toContain("t('assets.overview.replaceVoice')");
+    expect(shell).toContain("nimiToast.info(t('assets.overview.voice.previewUnavailable'))");
+    expect(shell).toContain("t('assets.overview.createVoice')");
+    expect(shell).toContain("t('assets.overview.editVoice')");
+    expect(copy).toContain("'assets.overview.voice.play': '播放声音'");
+    expect(copy).toContain("'assets.overview.replaceVoice': '更换声音'");
   });
 });
 

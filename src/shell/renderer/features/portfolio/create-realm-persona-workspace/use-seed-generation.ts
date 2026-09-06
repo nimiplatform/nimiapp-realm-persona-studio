@@ -62,7 +62,11 @@ export function useSeedGeneration({
       } else {
         actions.setSeedResult(result);
         logCreateFlowFailure('create-flow.seed-generation', result.cause);
-        nimiToast.danger(t('create.seedGenerationFailed', { message: translateCreateFlowFailure(result.cause, t) }));
+        if (result.cause.kind === 'runtime-route-unbound') {
+          nimiToast.info(translateCreateFlowFailure(result.cause, t));
+        } else {
+          nimiToast.danger(t('create.seedGenerationFailed', { message: translateCreateFlowFailure(result.cause, t) }));
+        }
       }
     } finally {
       setIsGeneratingSeed(false);
@@ -109,7 +113,11 @@ export function useDescriptionReroll({
         updateDraft({ originalDescription: result.description });
       } else {
         logCreateFlowFailure('create-flow.description-reroll', result.cause);
-        nimiToast.danger(t('create.descriptionGenerationFailed', { message: translateCreateFlowFailure(result.cause, t) }));
+        if (result.cause.kind === 'runtime-route-unbound') {
+          nimiToast.info(translateCreateFlowFailure(result.cause, t));
+        } else {
+          nimiToast.danger(t('create.descriptionGenerationFailed', { message: translateCreateFlowFailure(result.cause, t) }));
+        }
       }
     } finally {
       setIsGeneratingDescription(false);

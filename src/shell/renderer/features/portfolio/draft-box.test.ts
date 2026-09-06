@@ -46,7 +46,7 @@ describe('Draft Box model', () => {
       detail: 'artifact-voice-1',
       source: 'Runtime audio.synthesize',
       createdAt: '2026-06-18T01:00:00.000Z',
-      actionPath: '/portfolio/persona-1/assets/voice',
+      actionPath: '/portfolio/persona-1/settings/voice',
     }, {
       id: 'creative:image-1',
       kind: 'identity-image',
@@ -57,7 +57,7 @@ describe('Draft Box model', () => {
       detail: 'artifact-image-1',
       source: 'Runtime image.generate',
       createdAt: '2026-06-18T00:00:00.000Z',
-      actionPath: '/portfolio/persona-1/assets',
+      actionPath: '/portfolio/persona-1/settings',
     }]);
   });
 

@@ -9,7 +9,7 @@ import {
   TextareaField,
   TextField,
 } from '@nimiplatform/kit/ui';
-import { ArrowLeft, ChevronDown } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Globe } from 'lucide-react';
 import {
   PERSONA_ARCHETYPES,
   PERSONA_TRAIT_MAX,
@@ -29,6 +29,7 @@ import {
   translateCreateFlowFailure,
 } from './create-flow-copy.js';
 import { countCompletedCreationDraftFields, worldOptionLabel } from './draft-utils.js';
+import { BehaviorFields } from './behavior-fields.js';
 import { HandleField } from './handle-field.js';
 import { PromptDisclosure } from './prompt-disclosure.js';
 import { ReferenceImageCard } from './reference-image-card.js';
@@ -98,7 +99,7 @@ export function ReviewStage({
   onReturnToDescribe: () => void;
   onRetryWorlds: () => void;
   onSubmit: () => void;
-  onOpenCreatedPersona?: (personaId: string, target: 'detail' | 'settings') => void;
+  onOpenCreatedPersona?: (personaId: string) => void;
 }) {
   const { t } = useStudioI18n();
   const [worldModalOpen, setWorldModalOpen] = useState(false);
@@ -186,7 +187,7 @@ export function ReviewStage({
                       required
                       value={draft.personaArchetype || SELECT_UNSET_VALUE}
                       className={personaArchetypeError ? '!border-[var(--nimi-status-danger)] focus:!border-[var(--nimi-field-focus)] focus:!ring-[var(--nimi-focus-ring-color)]' : undefined}
-                      options={[{ value: SELECT_UNSET_VALUE, label: t('create.personaArchetypePlaceholder') }, ...PERSONA_ARCHETYPES.map((archetype) => ({ value: archetype, label: `${translatePersonaArchetypeLabel(archetype, t)} — ${t(PERSONA_ARCHETYPE_DESCRIPTION_KEYS[archetype])}` }))]}
+                      options={[{ value: SELECT_UNSET_VALUE, label: <span className="text-xs font-normal text-[var(--nimi-text-muted)]">{t('create.personaArchetypePlaceholder')}</span> }, ...PERSONA_ARCHETYPES.map((archetype) => ({ value: archetype, label: `${translatePersonaArchetypeLabel(archetype, t)} — ${t(PERSONA_ARCHETYPE_DESCRIPTION_KEYS[archetype])}` }))]}
                       onValueChange={(value) => updateDraft({ personaArchetype: value === SELECT_UNSET_VALUE ? '' : value as PersonaArchetype })}
                     />
                   </FieldShell>
@@ -201,6 +202,7 @@ export function ReviewStage({
                   </FieldShell>
                 </div>
                 </div>
+                <BehaviorFields draft={draft} fieldErrors={fieldErrors} updateDraft={updateDraft} />
                 <div className="ras-create-placement-grid">
                 <div className="min-w-0" data-create-field="selectedWorldId">
                   <FieldShell label={t('create.worldLabel')} message={selectedWorldError} messageTone={selectedWorldError ? 'danger' : 'neutral'}>
@@ -212,8 +214,8 @@ export function ReviewStage({
                       aria-haspopup="dialog"
                       aria-expanded={worldModalOpen}
                     >
-                      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-[var(--nimi-radius-sm)] bg-[var(--nimi-action-primary-bg)] text-xs font-semibold text-[var(--nimi-action-primary-text)]">{selectedWorld?.name.charAt(0).toUpperCase() || '?'}</span>
-                      <span className="min-w-0 flex-1"><span className="block truncate font-medium">{selectedWorld?.name || t('create.world.select')}</span><span className="block truncate text-xs text-[var(--nimi-text-muted)]">{selectedWorld ? worldOptionLabel(selectedWorld) : t('create.worldPreview.noneDescription')}</span></span>
+                      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-[var(--nimi-radius-sm)] bg-[var(--nimi-action-primary-bg)] text-xs font-semibold text-[var(--nimi-action-primary-text)]">{selectedWorld ? selectedWorld.name.charAt(0).toUpperCase() : <Globe size={14} aria-hidden="true" />}</span>
+                      <span className="min-w-0 flex-1"><span className={`block truncate ${selectedWorld ? 'font-medium' : 'text-xs font-normal text-[var(--nimi-text-muted)]'}`}>{selectedWorld?.name || t('create.world.select')}</span><span className="block truncate text-xs text-[var(--nimi-text-muted)]">{selectedWorld ? worldOptionLabel(selectedWorld) : t('create.worldPreview.noneDescription')}</span></span>
                       <span className="flex shrink-0 items-center gap-1 text-xs text-[var(--nimi-text-secondary)]">{t('create.world.change')}<ChevronDown size={14} aria-hidden="true" /></span>
                     </FieldTrigger>
                   </FieldShell>
@@ -221,18 +223,18 @@ export function ReviewStage({
                 <div className="min-w-0" data-create-field="visibility">
                   <FieldShell
                     label={t('create.visibilityLabel')}
-                    message={visibilityError || t('create.visibilityMessage')}
+                    message={visibilityError}
                     messageTone={visibilityError ? 'danger' : 'neutral'}
                   >
                     <SelectField
                       value={draft.visibility || SELECT_UNSET_VALUE}
                       options={[
-                        { value: SELECT_UNSET_VALUE, label: t('create.visibilityPlaceholder') },
+                        ...(!draft.visibility ? [{ value: SELECT_UNSET_VALUE, label: t('create.error.visibilityMissing'), disabled: true }] : []),
                         { value: 'private', label: t('visibility.value.private') },
                         { value: 'unlisted', label: t('visibility.value.unlisted') },
                         { value: 'public', label: t('visibility.value.public') },
                       ]}
-                      onValueChange={(value) => updateDraft({ visibility: value === SELECT_UNSET_VALUE ? '' : value as CreateRealmPersonaDraftInput['visibility'] })}
+                      onValueChange={(value) => updateDraft({ visibility: value as CreateRealmPersonaDraftInput['visibility'] })}
                     />
                   </FieldShell>
                 </div>
@@ -244,7 +246,7 @@ export function ReviewStage({
               {createdContext ? (
                 <Surface tone="card" padding="md" className="ras-create-created-card">
                   <div className="flex min-w-0 flex-wrap items-center justify-between gap-3"><div className="min-w-0"><div className="font-medium">{t('create.createdCardTitle')}</div><div className="ras-break-anywhere mt-1 text-sm text-[var(--nimi-text-muted)]">@{createdContext.handle} · {createdContext.personaId}</div></div><StatusBadge tone="success">{t(`visibility.value.${createdContext.visibility}` as StudioCopyKey)}</StatusBadge></div>
-                  <div className="mt-3 flex flex-wrap gap-3"><Button tone="secondary" onClick={() => onOpenCreatedPersona?.(createdContext.personaId, 'detail')}>{t('create.openCockpit')}</Button><Button tone="ghost" onClick={() => onOpenCreatedPersona?.(createdContext.personaId, 'settings')}>{t('create.openSettings')}</Button></div>
+                  <div className="mt-3 flex flex-wrap gap-3"><Button tone="secondary" onClick={() => onOpenCreatedPersona?.(createdContext.personaId)}>{t('create.openSettings')}</Button></div>
                 </Surface>
               ) : null}
               <div className="ras-create-review-actions">

@@ -22,7 +22,7 @@ describe('Studio shell kit boundary', () => {
     expect(shell).toContain('AmbientBackground');
     expect(shell).toContain('variant="mesh"');
     expect(sidebar).toContain('Surface');
-    expect(sidebar).toContain('material="glass-chrome"');
+    expect(sidebar).toContain('material="solid"');
     expect(sidebar).toContain('SidebarHeader');
     expect(sidebar).toContain('SidebarSection');
     expect(sidebar).toContain('SidebarItem');
@@ -59,7 +59,7 @@ describe('Studio shell kit boundary', () => {
     expect(sidebar).not.toContain('ShieldCheck');
   });
 
-  it('uses the kit glass material and accent tokens without the design primary color or hand-written sidebar blur', () => {
+  it('uses the kit surface material and accent tokens without the design primary color or hand-written sidebar blur', () => {
     const sidebar = sidebarSource();
     const styles = rendererStylesSource();
 
@@ -147,7 +147,7 @@ describe('Studio shell kit boundary', () => {
     expect(sidebar).not.toContain("t('persona.workspace.fixtureBadge')");
     expect(sidebar).not.toContain("t('shell.sidebar.creationHistory')");
     expect(sidebar).not.toContain('isPortfolioLibrary');
-    expect(styles).toMatch(/\.ras-shell__body\s*\{[^}]*padding: 12px;/);
+    expect(styles).toMatch(/\.ras-shell__body\s*\{[^}]*padding: 0;/);
     expect(styles).not.toContain('padding: 70px 14px 14px 14px;');
     expect(styles).not.toContain('data-compact-chrome');
   });

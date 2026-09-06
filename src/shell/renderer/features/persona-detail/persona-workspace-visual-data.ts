@@ -22,6 +22,12 @@ export type PersonaWorkspaceQueueItem = {
   title: string;
   state: 'needs-review' | 'local-draft' | 'local-schedule';
   editedLabel: string;
+  body?: string;
+  tagsText?: string;
+  categoryLabel?: string;
+  /** Stable id of the persisted local draft behind this item, when one exists. */
+  draftId?: string;
+  attachmentCount?: number;
 };
 
 export type PersonaWorkspaceVisualData = {

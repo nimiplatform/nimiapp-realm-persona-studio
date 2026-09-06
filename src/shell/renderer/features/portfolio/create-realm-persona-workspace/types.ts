@@ -23,7 +23,7 @@ export type CreatedRealmPersonaContext = {
 
 export type CreateRealmPersonaWorkspaceProps = {
   onCreated?: (context: CreatedRealmPersonaContext) => void;
-  onOpenCreatedPersona?: (personaId: string, target: 'detail' | 'settings') => void;
+  onOpenCreatedPersona?: (personaId: string) => void;
 };
 
 export type StudioTranslator = (key: StudioCopyKey, options?: StudioTranslateOptions) => string;

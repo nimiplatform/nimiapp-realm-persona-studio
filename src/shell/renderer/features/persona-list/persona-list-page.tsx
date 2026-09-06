@@ -6,7 +6,6 @@ import {
   Avatar,
   Button,
   EmptyState,
-  FieldShell,
   InlineAlert,
   LoadingSkeleton,
   NimiTabs,
@@ -108,7 +107,7 @@ export function formatDraftUpdatedAt(updatedAt: string, locale: 'en' | 'zh'): st
   }).format(updatedDate);
 }
 
-function FilterCard({
+function PortfolioToolbar({
   queryText,
   filter,
   sort,
@@ -138,34 +137,38 @@ function FilterCard({
   }));
 
   return (
-    <section className="ras-card">
+    <div className="ras-portfolio-toolbar">
       <SearchField
+        className="ras-portfolio-toolbar__search"
         value={queryText}
         placeholder={t('portfolio.search.placeholder')}
         aria-label={t('portfolio.search.ariaLabel')}
         onChange={(event) => onQueryChange(event.currentTarget.value)}
       />
-      <div className="ras-filter-grid">
-        <FieldShell label={t('portfolio.filter.label')}>
+      <div className="ras-portfolio-toolbar__controls">
+        <div className="ras-portfolio-toolbar__field">
+          <span className="ras-portfolio-toolbar__field-label">{t('portfolio.filter.label')}</span>
           <SelectField
+            aria-label={t('portfolio.filter.label')}
             value={filter}
             options={filterOptions}
             onValueChange={(value) => onFilterChange(value as OwnerPortfolioFilter)}
           />
-        </FieldShell>
-        <FieldShell label={t('portfolio.sort.label')}>
+        </div>
+        <div className="ras-portfolio-toolbar__field">
+          <span className="ras-portfolio-toolbar__field-label">{t('portfolio.sort.label')}</span>
           <SelectField
+            aria-label={t('portfolio.sort.label')}
             value={sort}
             options={sortOptions}
             onValueChange={(value) => onSortChange(value as OwnerPortfolioSort)}
           />
-        </FieldShell>
-        <div className="ras-filter-status">
-          <StatusBadge tone="neutral">{visibleCount} / {totalCount}</StatusBadge>
-          <StatusBadge tone="info">{t('portfolio.localView')}</StatusBadge>
         </div>
+        <p className="ras-portfolio-toolbar__count">
+          {visibleCount} / {totalCount} · {t('portfolio.localView')}
+        </p>
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -478,7 +481,7 @@ export function PersonaListPage() {
               />
             ) : (
               <>
-                <FilterCard
+                <PortfolioToolbar
                   queryText={queryText}
                   filter={filter}
                   sort={sort}
@@ -516,7 +519,7 @@ export function PersonaListPage() {
                           worldBannerUrl={worldPresentation?.bannerUrl || null}
                           worldName={worldPresentation?.worldName || persona.worldName}
                           active={false}
-                          onSelect={() => navigate(`/portfolio/${persona.id}`)}
+                          onSelect={() => navigate(`/portfolio/${persona.id}/settings`)}
                         />
                       );
                     })}

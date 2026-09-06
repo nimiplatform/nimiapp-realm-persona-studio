@@ -28,6 +28,7 @@ import {
   Tooltip,
 } from '@nimiplatform/kit/ui';
 import { motion, NIMI_PRESSED_SCALE, useNimiReducedMotion } from '@nimiplatform/kit/ui/motion';
+import studioLogoUrl from '@renderer/assets/brand/studio-logo.png?url';
 import { listOwnerPortfolioPersonas } from '../../features/portfolio/portfolio-client.js';
 import type { OwnerPortfolioPersona } from '../../features/portfolio/portfolio-data.js';
 import { useStudioI18n } from '../../i18n/use-studio-i18n.js';
@@ -76,6 +77,7 @@ function SidebarBrand({ collapsed, onCollapsedChange }: StudioSidebarProps) {
               <span className="ras-sidebar-brand-switcher__logo">
                 <Avatar
                   alt={t('app.name')}
+                  src={studioLogoUrl}
                   size="sm"
                   shape="rounded"
                   tone="accent"
@@ -96,6 +98,7 @@ function SidebarBrand({ collapsed, onCollapsedChange }: StudioSidebarProps) {
           <div className="flex min-w-0 items-center gap-2">
             <Avatar
               alt={t('app.name')}
+              src={studioLogoUrl}
               size="sm"
               shape="rounded"
               tone="accent"
@@ -194,7 +197,7 @@ function PersonaRosterItem({
         alt={label}
         src={persona.avatarUrl}
         size="md"
-        shape="circle"
+        shape="rounded"
         tone="accent"
         fallback={<span className="text-sm font-semibold">{label.charAt(0).toUpperCase()}</span>}
       />
@@ -322,7 +325,7 @@ function workspaceSuffix(pathname: string, personaId: string | null): string {
   if (!personaId) return '';
   const prefix = `/portfolio/${encodeURIComponent(personaId)}`;
   const suffix = pathname.startsWith(prefix) ? pathname.slice(prefix.length) : '';
-  return suffix.startsWith('/posts') || suffix.startsWith('/assets') || suffix.startsWith('/settings') ? suffix : '';
+  return suffix.startsWith('/posts') || suffix.startsWith('/settings') ? suffix : '';
 }
 
 export function StudioSidebar({
@@ -348,15 +351,15 @@ export function StudioSidebar({
   return (
     <Surface
       as="aside"
-      material="glass-chrome"
+      material="solid"
       tone="panel"
       padding="none"
       data-collapsed={collapsed}
       data-titlebar-interactive="true"
       aria-label={t('shell.nav.appNavigation')}
-      className="ras-studio-sidebar h-full min-h-0 overflow-hidden"
+      className="ras-studio-sidebar h-full min-h-0 overflow-hidden rounded-none border-0 bg-[color-mix(in_srgb,var(--nimi-surface-card)_60%,transparent)] shadow-none"
     >
-      <div className="flex h-full min-h-0 flex-col gap-2 p-3">
+      <div className="flex h-full min-h-0 flex-col gap-1 px-3 pb-3 pt-8">
         <SidebarBrand collapsed={collapsed} onCollapsedChange={onCollapsedChange} />
 
         <SidebarSection className="shrink-0 !px-0 !py-1">
@@ -364,20 +367,22 @@ export function StudioSidebar({
             <Tooltip content={t('shell.sidebar.createPersona')} placement="right">
               <IconButton
                 icon={<Plus size={18} strokeWidth={1.8} />}
-                tone="primary"
+                tone="ghost"
                 aria-label={t('shell.sidebar.createPersona')}
+                className="ras-sidebar-create"
                 onClick={() => navigate('/portfolio/create')}
               />
             </Tooltip>
           ) : (
-            <Button
-              tone="primary"
-              fullWidth
-              leadingIcon={<Plus size={17} strokeWidth={1.8} />}
+            <SidebarItem
+              kind="nav-row"
+              icon={<Plus size={18} strokeWidth={1.8} />}
+              label={t('shell.sidebar.createPersona')}
+              aria-label={t('shell.sidebar.createPersona')}
+              data-titlebar-interactive="true"
+              className="ras-sidebar-create"
               onClick={() => navigate('/portfolio/create')}
-            >
-              {t('shell.sidebar.createPersona')}
-            </Button>
+            />
           )}
         </SidebarSection>
 
@@ -446,7 +451,7 @@ export function StudioSidebar({
           </div>
         </SidebarSection>
 
-        <div className={`flex shrink-0 flex-col gap-2 border-t border-[var(--nimi-border-subtle)] pt-3 ${collapsed ? 'items-center' : ''}`}>
+        <div className={`flex shrink-0 flex-col gap-2 pt-1 ${collapsed ? 'items-center' : ''}`}>
           <AccountMenu collapsed={collapsed} />
         </div>
       </div>
