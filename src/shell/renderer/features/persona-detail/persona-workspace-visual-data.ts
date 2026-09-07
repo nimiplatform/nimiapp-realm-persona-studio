@@ -34,15 +34,6 @@ export type PersonaWorkspaceVisualData = {
   developmentFixture: true;
   traits: string[];
   candidates: PersonaWorkspaceCandidate[];
-  recentDraft: {
-    title: string;
-    savedLabel: string;
-    imageUrl?: string;
-  } | null;
-  localPlan: {
-    title: string;
-    runLabel: string;
-  } | null;
   initialPostCaption: string;
   initialPostTags: string;
   postQueue: PersonaWorkspaceQueueItem[];

@@ -91,10 +91,6 @@ export function DescribeStage({
               placeholder={t('create.oneLinePlaceholder')}
               onChange={(event) => updateDraft({ originalDescription: event.currentTarget.value })}
             />
-            <div className="ras-create-composer__note">
-              <Pencil size={14} aria-hidden="true" />
-              <span>{t('create.studio.writingHint')}</span>
-            </div>
           </div>
 
           <aside className="ras-create-directions" aria-labelledby={`${id}-details`}>

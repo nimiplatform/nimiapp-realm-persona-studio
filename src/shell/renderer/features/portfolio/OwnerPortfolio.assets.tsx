@@ -312,22 +312,19 @@ export function PersonaVisualIdentityDialog({
         description={<span className="ras-visual-change__description">{t('assets.visualChange.description')}</span>}
         panelClassName="ras-visual-change-dialog"
         contentClassName="ras-visual-change-dialog__content"
-        footer={(
+        footer={persona.avatarUrl ? (
           <div className="flex flex-wrap items-center justify-end gap-3">
-            {persona.avatarUrl ? (
-              <Button
-                tone="ghost"
-                size="sm"
-                className="mr-auto"
-                leadingIcon={<Crop size={15} strokeWidth={1.8} />}
-                onClick={() => setImageEditorOpen(true)}
-              >
-                {t('assets.visualChange.editImage')}
-              </Button>
-            ) : null}
-            <Button tone="secondary" onClick={onClose}>{t('common.cancel')}</Button>
+            <Button
+              tone="ghost"
+              size="sm"
+              className="mr-auto"
+              leadingIcon={<Crop size={15} strokeWidth={1.8} />}
+              onClick={() => setImageEditorOpen(true)}
+            >
+              {t('assets.visualChange.editImage')}
+            </Button>
           </div>
-        )}
+        ) : undefined}
         dataTestId="persona-visual-identity-dialog"
       >
         <VisualIdentityChangeEditor
@@ -660,7 +657,6 @@ function VisualIdentityChangeEditor({
       <div className="ras-visual-change__methods ras-visual-change__methods--four" role="group" aria-label={t('assets.visualChange.methodsAriaLabel')}>
         <VisualIdentityMethodButton
           active={mode === 'upload'}
-          tone="blue"
           icon={<Upload size={32} strokeWidth={1.7} />}
           title={t('assets.visualChange.upload')}
           description={t('assets.visualChange.uploadDescription')}
@@ -668,7 +664,6 @@ function VisualIdentityChangeEditor({
         />
         <VisualIdentityMethodButton
           active={mode === 'assets'}
-          tone="violet"
           icon={<Images size={32} strokeWidth={1.7} />}
           title={t('assets.visualChange.assets')}
           description={t('assets.visualChange.assetsDescription')}
@@ -676,7 +671,6 @@ function VisualIdentityChangeEditor({
         />
         <VisualIdentityMethodButton
           active={mode === 'ai'}
-          tone="amber"
           icon={<Sparkles size={34} strokeWidth={1.7} />}
           title={t('assets.visualChange.ai')}
           description={t('assets.visualChange.aiDescription')}
@@ -684,7 +678,6 @@ function VisualIdentityChangeEditor({
         />
         <VisualIdentityMethodButton
           active={mode === 'url'}
-          tone="teal"
           icon={<Link size={32} strokeWidth={1.7} />}
           title={t('assets.visualChange.url')}
           description={t('assets.visualChange.urlDescription')}
@@ -838,14 +831,12 @@ function VisualIdentityChangeEditor({
 
 function VisualIdentityMethodButton({
   active,
-  tone,
   icon,
   title,
   description,
   onClick,
 }: {
   active: boolean;
-  tone: 'blue' | 'violet' | 'amber' | 'teal';
   icon: ReactNode;
   title: string;
   description: string;
@@ -856,7 +847,6 @@ function VisualIdentityMethodButton({
       type="button"
       className="ras-visual-change__method"
       data-active={active}
-      data-tone={tone}
       aria-pressed={active}
       onClick={onClick}
     >
@@ -979,7 +969,6 @@ function VoiceChangeEditor({
       <div className="ras-visual-change__methods" role="group" aria-label={t('assets.voiceChange.methodsAriaLabel')}>
         <VisualIdentityMethodButton
           active={mode === 'upload'}
-          tone="blue"
           icon={<Upload size={32} strokeWidth={1.7} />}
           title={t('assets.voiceChange.upload')}
           description={t('assets.voiceChange.uploadDescription')}
@@ -987,7 +976,6 @@ function VoiceChangeEditor({
         />
         <VisualIdentityMethodButton
           active={mode === 'candidates'}
-          tone="violet"
           icon={<AudioLines size={32} strokeWidth={1.7} />}
           title={t('assets.voiceChange.candidates')}
           description={t('assets.voiceChange.candidatesDescription')}
@@ -995,7 +983,6 @@ function VoiceChangeEditor({
         />
         <VisualIdentityMethodButton
           active={mode === 'ai'}
-          tone="amber"
           icon={<Sparkles size={34} strokeWidth={1.7} />}
           title={t('assets.voiceChange.ai')}
           description={t('assets.voiceChange.aiDescription')}

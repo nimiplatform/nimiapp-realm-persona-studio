@@ -322,15 +322,6 @@ export const PERSONA_WORKSPACE_VISUAL_FIXTURE_DATA: Record<string, PersonaWorksp
         voiceStyle: '温暖、好奇、简洁',
       },
     ],
-    recentDraft: {
-      title: '在黎明前的小宇宙里',
-      savedLabel: '最后保存：今天 09:42',
-      imageUrl: oasisCoverUrl,
-    },
-    localPlan: {
-      title: '探索 OASIS 的八个瞬间',
-      runLabel: '今天 20:00 · 仅本机',
-    },
     initialPostCaption: '今天的 OASIS 依旧晴朗，空气里带着一点点海水的味道。\n\n早上在湖边散步时，注意到一群小螃蟹在礁石缝里搬家。它们很慢，但一步一步都很认真。\n\n最近在尝试把每天的好奇心记录下来——一个问题、一个观察、一点点感动。把这些小小的瞬间串起来，就成了我喜欢这个世界的理由。',
     initialPostTags: '#OASIS #日常观察 #好奇心',
     postQueue: [
@@ -402,12 +393,6 @@ export const PERSONA_WORKSPACE_VISUAL_FIXTURE_DATA: Record<string, PersonaWorksp
         voiceStyle: '清醒、笃定、温暖',
       },
     ],
-    recentDraft: {
-      title: 'EDEN 的清晨为什么更安静',
-      savedLabel: '最后保存：昨天 18:20',
-      imageUrl: edenCoverUrl,
-    },
-    localPlan: null,
     initialPostCaption: '今天从 EDEN 的玻璃花园经过，晨光把每一片叶子的边缘都照得很清楚。\n\n好的未来也许不是突然到来的宏大答案，而是我们愿意认真照顾的每一个微小选择。',
     initialPostTags: '#EDEN #未来生活 #城市观察',
     postQueue: [
@@ -453,15 +438,6 @@ export const PERSONA_WORKSPACE_VISUAL_FIXTURE_DATA: Record<string, PersonaWorksp
         voiceStyle: '空灵、安静、治愈',
       },
     ],
-    recentDraft: {
-      title: '昨晚补好的那一片月光',
-      savedLabel: '最后保存：今天 07:58',
-      imageUrl: mengqiCoverUrl,
-    },
-    localPlan: {
-      title: '给梦境碎片的十二封回信',
-      runLabel: '今天 22:30 · 仅本机',
-    },
     initialPostCaption: '今夜的梦境集市打烊得很早，我捡到了三片碎掉的月光。\n\n有一片来自一个没说完的道歉，有一片来自站台上目送列车离开的人。我把它们放在银碗里慢慢温着，等边缘不再锋利，再一针一线缝回主人的梦里。\n\n修补不是抹去裂痕，而是让光能从裂痕里照进来。晚安，愿你的梦完整而温柔。',
     initialPostTags: '#梦境修补 #拾光 #NEBULA',
     postQueue: [
@@ -497,8 +473,6 @@ export const PERSONA_WORKSPACE_VISUAL_FIXTURE_DATA: Record<string, PersonaWorksp
     developmentFixture: true,
     traits: ['安静观察', '细腻表达', '自然灵感'],
     candidates: [],
-    recentDraft: null,
-    localPlan: null,
     initialPostCaption: '',
     initialPostTags: '',
     postQueue: [],
@@ -507,8 +481,6 @@ export const PERSONA_WORKSPACE_VISUAL_FIXTURE_DATA: Record<string, PersonaWorksp
     developmentFixture: true,
     traits: ['安静探索', '星空观察', '克制表达'],
     candidates: [],
-    recentDraft: null,
-    localPlan: null,
     initialPostCaption: '',
     initialPostTags: '',
     postQueue: [],

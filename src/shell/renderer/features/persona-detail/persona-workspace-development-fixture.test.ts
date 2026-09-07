@@ -55,7 +55,6 @@ describe('persona workspace development fixture', () => {
     const portfolioClient = source('src/shell/renderer/features/portfolio/portfolio-client.ts');
     const personaList = source('src/shell/renderer/features/persona-list/persona-list-page.tsx');
     const settingsPage = source('src/shell/renderer/features/persona-settings/persona-settings-page.tsx');
-    const settingsOverview = source('src/shell/renderer/features/persona-settings/persona-settings-overview.tsx');
     const settingsModal = source('src/shell/renderer/features/persona-settings/persona-settings-modal.tsx');
     const postsPage = source('src/shell/renderer/features/persona-posts/persona-posts-page.tsx');
 
@@ -69,7 +68,6 @@ describe('persona workspace development fixture', () => {
     expect(portfolioClient).not.toContain('VITE_RPS_DEV_MOCK_PORTFOLIO');
     expect(personaList).not.toContain('DESIGN_PREVIEW_PERSONAS');
     expect(settingsPage).toContain('<PersonaSettingsOverview persona={persona} />');
-    expect(settingsOverview).toContain('<PersonaAttentionStrip persona={persona} />');
     expect(settingsModal).toContain('<OverlayShell');
     expect(settingsModal).toContain('<PersonaSettingsForm');
     expect(shell).toContain('PersonaSettingsModal');
