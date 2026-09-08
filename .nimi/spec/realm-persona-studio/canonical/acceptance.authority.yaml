@@ -5,12 +5,12 @@ units:
   - id: definition.realm-persona-studio.acceptance.studio-app
     kind: definition
     title: Realm Persona Studio app
-    meaning: The Realm Persona Studio installed app identity spans package metadata, Tauri identity, routes, README, and spec.
+    meaning: The Realm Persona Studio installed app identity spans package metadata, Electron identity, routes, README, and spec.
   - id: rule.realm-persona-studio.acceptance.r001
     kind: rule
     title: Consistent app identity
     modality: must
-    statement: App identity is Realm Persona Studio across package metadata, Tauri identity, routes, README, and spec.
+    statement: App identity is Realm Persona Studio across package metadata, Electron identity, routes, README, and spec.
     condition: Always.
     failure: Reject acceptance when any listed surface carries a different app identity.
     relations:
@@ -94,7 +94,7 @@ units:
     kind: rule
     title: Acceptance gate set
     modality: must
-    statement: pnpm run spec:authority:check, typecheck, test, validate, local-audit, build, and check must pass before acceptance.
+    statement: pnpm run spec:authority:check, typecheck, test, validate, build, and lint must pass before acceptance.
     condition: Before product acceptance.
     failure: Reject acceptance when any named gate does not pass.
     relations:

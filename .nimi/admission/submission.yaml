@@ -1,22 +1,30 @@
 app_id: nimi.realm-persona-studio
 display_name: Realm Persona Studio
+version: 0.1.0
 profile: standalone
+npm_package_name: nimiapp-realm-persona-studio
+cargo_package_name: nimiapp-realm-persona-studio-shell
+tauri_identifier: ai.nimi.apps.nimi.realm-persona-studio
+package_author: null
 submission_role: developer-submitted-input
-publish_readiness:
-  install_command: pnpm install
-  dev_command: pnpm dev
-  dev_renderer_command: pnpm dev:renderer
-  dev_electron_command: pnpm dev:electron
-  typecheck_command: pnpm typecheck
-  lint_command: pnpm lint
-  test_command: pnpm test
-  spec_consistency_command: pnpm check:spec-consistency
-  build_command: pnpm build
-  validate_command: pnpm run validate
-  local_audit_command: pnpm run local-audit
-  pack_command: pnpm run pack
+capability_contract_refs: []
+required_standardized_feature_refs: []
+storage_policy:
+  kind: nimi-mediated-default
+support_manifest:
+  diagnostics_bundle_fields:
+    - app_version
+    - runtime_status
+  redaction_rules:
+    - credentials
+  user_visible_issue_categories:
+    - startup
+    - runtime
+  escalation_path: README.md#support
+  kill_switch_visibility: visible
+  recovery_instructions: Restart the App from Nimi. If the problem persists, reinstall the current admitted release.
 review_inputs:
   manifest: nimi.app.yaml
-  build_profile: .nimi/admission/build-profile.yaml
-  spec_authority_root: .nimi/spec/realm-persona-studio/canonical
+  build_profile: .nimi/config/build-profile.yaml
+  scaffold_boundary: .nimi/contracts/scaffold-boundary.yaml
 admission_truth: platform-owned-after-review

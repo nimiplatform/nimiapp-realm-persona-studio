@@ -2,7 +2,7 @@
 
 角色IP的孵化中心
 
-Realm Persona Studio — Owner-facing creation and operation desktop app for user-owned public Realm Personas. Packaged as a Tauri 2 / Electron 42 + React 19 desktop app.
+Realm Persona Studio — Owner-facing creation and operation desktop app for user-owned public Realm Personas. Packaged as a Electron 42 + React 19 desktop app.
 
 > Migrated from the `apps/realm-persona-studio` workspace in the `nimi-realm`
 > monorepo. The nimi-realm copy remains in place pending manual removal;
@@ -30,7 +30,7 @@ Normative product authority lives under
 
 | Layer | Technology | Location |
 |-------|-----------|----------|
-| Desktop shell | Tauri 2 + Electron 42 | `src-tauri/`, `src-electron/` |
+| Desktop shell | Desktop-supervised Electron 42 | `src-electron/` |
 | Renderer | React 19 + Vite 7 + Tailwind 4 | `src/shell/renderer/` |
 | Routing | react-router-dom 7 | `src/shell/renderer/app-shell/routes.tsx` |
 | Auth & runtime bridge | Desktop-supervised protected standard bridge | `src-electron/` |
@@ -42,7 +42,6 @@ Normative product authority lives under
 
 - Node.js ≥ 24
 - pnpm ≥ 10
-- Rust (stable) + Cargo, with the Tauri 2 toolchain for `src-tauri`
 
 ## Install
 
@@ -70,14 +69,12 @@ pnpm dev:renderer
 ## Build & Verify
 
 ```bash
-pnpm build                            # typecheck + vite build + cargo check
+pnpm build                            # typecheck + renderer and Electron builds
 pnpm test                             # vitest run
 pnpm check:spec-consistency           # spec authority surface check
-pnpm lint                             # typecheck + eslint + cargo check
+pnpm lint                             # typecheck + eslint
 ```
 
-The Tauri identifier remains reserved for future packaging work, but Tauri is
-not an active development path in this rollout.
 
 ## Desktop-Supervised Protected Session
 

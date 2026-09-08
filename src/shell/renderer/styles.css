@@ -11,7 +11,7 @@
  * and every kit component (FieldShell, Button, Surface, etc.) loses its
  * intended layout. We explicitly include both the pnpm symlink path and the
  * resolved .pnpm/ path to be robust against fast-glob symlink behavior. */
-@source "../../../../../nimi/kit/**/*.{ts,tsx}";
+@source "../../../node_modules/@nimiplatform/kit/dist/**/*.{js,mjs}";
 @source "../../../node_modules/.pnpm";
 
 /* ─────────────────────────────────────────────────────────────

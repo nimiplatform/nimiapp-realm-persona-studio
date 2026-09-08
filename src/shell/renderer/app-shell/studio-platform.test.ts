@@ -45,16 +45,12 @@ describe('studio Desktop-supervised protected boundary', () => {
     expect(bootstrapSource).toContain('store.clearAuthSession()');
   });
 
-  it('keeps SDK and Kit source aliases on their canonical shared owners', () => {
+  it('consumes SDK and Kit through public package exports', () => {
     const viteConfigSource = readFileSync(join(process.cwd(), 'vite.config.ts'), 'utf8');
     const stylesSource = readFileSync(join(process.cwd(), 'src/shell/renderer/styles.css'), 'utf8');
 
-    expect(viteConfigSource).toContain("find: /^@nimiplatform\\/sdk\\/runtime$/");
-    expect(viteConfigSource).toContain("replacement: path.resolve(nimiSdkSourceRoot, 'runtime/index.ts')");
-    expect(viteConfigSource).toContain("find: /^@nimiplatform\\/kit\\/shell\\/renderer\\/bootstrap$/");
-    expect(viteConfigSource).toContain("replacement: path.resolve(nimiKitSourceRoot, 'shell/renderer/src/bootstrap/index.ts')");
-    expect(stylesSource).toContain('@source "../../../../../nimi/kit/**/*.{ts,tsx}";');
-    expect(stylesSource).not.toContain('@nimiplatform/kit/dist');
+    expect(viteConfigSource).not.toMatch(/nimiSdkSourceRoot|nimiKitSourceRoot|nimiRepoRoot/);
+    expect(stylesSource).toContain('@source "../../../node_modules/@nimiplatform/kit/dist/**/*.{js,mjs}";');
   });
 });
 

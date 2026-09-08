@@ -72,7 +72,7 @@ units:
     kind: rule
     title: Typed success backing
     modality: must
-    statement: Every public success claim is backed by a typed Realm, Runtime, SDK, or Tauri result; renderer-local state cannot satisfy source authority.
+    statement: Every public success claim is backed by a typed Realm, Runtime, SDK, or Electron result; renderer-local state cannot satisfy source authority.
     condition: Always.
     failure: Withhold the public success claim when no typed source result backs it.
     relations:

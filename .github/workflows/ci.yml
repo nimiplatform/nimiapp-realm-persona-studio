@@ -25,8 +25,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@d15e628ca66d93ee5f352c71671a7bc6a97af5c9 # v6.0.8
-        with:
-          version: 10.32.1
 
       - name: Setup Node.js
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
@@ -36,6 +34,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
+
+      - name: App configuration
+        run: pnpm validate
 
       - name: nimicoding doctor
         run: pnpm nimicoding:doctor
@@ -58,6 +59,9 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Electron build
+        run: pnpm build:electron
+
       - name: Renderer build
         run: pnpm build:renderer
 
@@ -67,99 +71,3 @@ jobs:
           name: renderer-dist
           path: dist/
           retention-days: 7
-
-  pre-submission-self-check:
-    name: Pre-submission self-check
-    needs: spec-and-typescript
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@d15e628ca66d93ee5f352c71671a7bc6a97af5c9 # v6.0.8
-        with:
-          version: 10.32.1
-
-      - name: Setup Node.js
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version: 24
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
-
-      - name: Validate admission inputs
-        run: pnpm run validate
-
-      - name: Local audit
-        run: pnpm run local-audit
-
-      - name: Download renderer build
-        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
-        with:
-          name: renderer-dist
-          path: dist/
-
-      - name: Pack submission packet
-        run: node scripts/pack.mjs
-
-      - name: Upload submission packet
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: nimi-app-submission
-          path: dist/nimi-app-submission.json
-          retention-days: 30
-
-  rust-quality:
-    name: Rust (Tauri)
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@d15e628ca66d93ee5f352c71671a7bc6a97af5c9 # v6.0.8
-        with:
-          version: 10.32.1
-
-      - name: Setup Node.js
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version: 24
-          cache: pnpm
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
-        with:
-          toolchain: stable
-          components: clippy, rustfmt
-
-      - name: Rust cache
-        uses: Swatinem/rust-cache@98c8021b550208e191a6a3145459bfc9fb29c4c0 # v2.8.1
-        with:
-          workspaces: src-tauri -> target
-
-      - name: Install Linux Tauri dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-
-      - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
-
-      - name: cargo fmt --check
-        working-directory: src-tauri
-        run: cargo fmt --all --check
-
-      - name: cargo check
-        run: cargo check --manifest-path src-tauri/Cargo.toml
-
-      - name: cargo clippy
-        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
-
-      - name: cargo test
-        run: cargo test --manifest-path src-tauri/Cargo.toml
