@@ -29,6 +29,7 @@ function isNodePackage(normalizedId: string, packageName: string): boolean {
 
 export default defineConfig(() => {
   return {
+    base: './',
     root: path.resolve(__dirname, 'src/shell/renderer'),
     envDir: __dirname,
     envPrefix: ['VITE_', 'NIMI_'],

@@ -4,5 +4,5 @@ version: 0.1.0
 npm_package_name: nimiapp-realm-persona-studio
 cargo_package_name: nimiapp-realm-persona-studio-shell
 tauri_identifier: ai.nimi.apps.nimi.realm-persona-studio
-package_author: null
+package_author: Nimi Team
 identity_role: scaffold-generated-authoring-input
