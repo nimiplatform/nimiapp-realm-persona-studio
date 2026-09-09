@@ -1,6 +1,6 @@
 {
   "name": "nimiapp-realm-persona-studio",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.34.5",
@@ -58,8 +58,8 @@
     "vite": "^7.3.6",
     "vitest": "^4.1.7",
     "yaml": "^2.9.0",
-    "@nimiplatform/app-tools": "^0.2.9",
-    "@nimiplatform/nimi-coding": "0.6.1"
+    "@nimiplatform/app-tools": "^0.3.0",
+    "@nimiplatform/nimi-coding": "0.6.2"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.100.11",
@@ -71,8 +71,8 @@
     "react-router-dom": "^7.15.1",
     "scheduler": "^0.27.0",
     "zustand": "^5.0.13",
-    "@nimiplatform/sdk": "^0.9.1",
-    "@nimiplatform/kit": "^0.5.1"
+    "@nimiplatform/sdk": "^0.10.0",
+    "@nimiplatform/kit": "^0.6.0"
   },
   "main": "dist-electron/main.js",
   "author": "Nimi Team"
