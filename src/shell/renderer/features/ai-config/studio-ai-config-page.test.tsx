@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { CANONICAL_CAPABILITY_IDS } from '@nimiplatform/kit/core/runtime-capabilities';
 import { StudioAIConfigPage } from './studio-ai-config-page.js';
 
 const { loadStudioAIConfigMock, openStudioAIConfigurationInDesktopMock, aiConfigManagerMock } = vi.hoisted(() => ({
@@ -64,7 +65,7 @@ describe('Studio AIConfig self-owner page', () => {
   it('keeps a persistent refresh path and mounts the direct App editor', async () => {
     renderPage();
 
-    await screen.findByText('1/10 Configured');
+    await screen.findByText(`1/${CANONICAL_CAPABILITY_IDS.length} Configured`);
     await screen.findByRole('button', { name: /Text Generate/u });
     expect(screen.getByRole('button', { name: 'Refresh' })).toBeTruthy();
     expect(document.querySelector('[data-nimi-model-config-capability-grid="true"]')).toBeTruthy();
