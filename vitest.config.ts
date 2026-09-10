@@ -5,6 +5,8 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
+    // Use jsdom's per-window storage, not Node 24's file-backed global.
+    execArgv: ['--no-experimental-webstorage'],
     include: ['src/**/*.test.{ts,tsx}', 'scripts/**/*.test.ts'],
     setupFiles: ['src/test/setup.ts'],
     env: { TZ: 'UTC' },
