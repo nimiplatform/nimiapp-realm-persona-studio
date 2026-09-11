@@ -38,6 +38,7 @@ export function useRefreshPersonaReads(personaId: string, scope: PersonaDetailRe
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: personaDetailQueryKey(personaId, scope) }),
       queryClient.invalidateQueries({ queryKey: ownerPortfolioListQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: ['realm-persona-studio', 'owner-persona-visibility', personaId] }),
     ]);
   };
 }

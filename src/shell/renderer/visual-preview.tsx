@@ -20,7 +20,7 @@ import {
   TextField,
   TooltipProvider,
 } from '@nimiplatform/kit/ui';
-import { HashRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
+import { createHashRouter, RouterProvider, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { ArrowLeft, ChevronDown, ImageIcon, Scan, X } from 'lucide-react';
 import { StudioSidebar } from './app-shell/studio-sidebar/index.js';
 import { PersonaVisualPreviewProvider } from './features/persona-detail/persona-visual-preview-context.js';
@@ -41,14 +41,10 @@ import { ownerPortfolioListQueryKey } from './features/persona-detail/use-person
 import {
   PERSONA_ARCHETYPES,
   PERSONA_TRAIT_MAX,
-  normalizeCreateRealmPersonaDraft,
-  type CreateRealmPersonaDraftInput,
   type PersonaArchetype,
   type PersonaTrait,
 } from './features/portfolio/create-persona-draft.js';
-import { AutosaveIndicator } from './features/portfolio/create-realm-persona-workspace/autosave-indicator.js';
-import { DescribeStage } from './features/portfolio/create-realm-persona-workspace/describe-stage.js';
-import { createEmptyDraft } from './features/portfolio/create-realm-persona-workspace/draft-utils.js';
+import { CreateRealmPersonaWorkspace } from './features/portfolio/CreateRealmPersonaWorkspace.js';
 import { TraitsMultiSelect } from './features/portfolio/create-realm-persona-workspace/traits-multi-select.js';
 import {
   ReferenceImageSourceChooser,
@@ -96,6 +92,13 @@ function useSeedPreviewSettingsCaches() {
         description: persona.bio.value,
         greeting: persona.greeting.value,
         handle: persona.handle.value,
+        lorebookDeclaration: {
+          identity: persona.bio.value || 'Preview identity',
+          behavior: ['先认真倾听，再提出一个小而具体的建议。'],
+          speaking: ['语气温和，偶尔带一点俏皮。'],
+          immutableBoundaries: ['尊重对方的选择，不编造共同经历。'],
+          relationshipPostures: [],
+        },
       },
     );
     studioQueryClient.setQueryData(
@@ -325,28 +328,7 @@ function PreviewCreateReferenceSources() {
 }
 
 function PreviewCreateDescribe() {
-  const [draft, setDraft] = useState<CreateRealmPersonaDraftInput>(() => createEmptyDraft());
-  return (
-    <div className="ras-page ras-create-page ras-create-page--describe">
-      <header className="flex min-w-0 flex-wrap items-start justify-between gap-4">
-        <NimiText as="h1" role="page-title" className="m-0">
-          {translateStudioCopy('create.title')}
-        </NimiText>
-        <AutosaveIndicator state="saved" failureMessage={null} idle />
-      </header>
-      <DescribeStage
-        originalDescription={draft.originalDescription}
-        normalizedDraft={normalizeCreateRealmPersonaDraft(draft)}
-        seedResult={null}
-        isGeneratingSeed={false}
-        isGeneratingDescription={false}
-        updateDraft={(patch) => setDraft((current) => ({ ...current, ...patch }))}
-        onRunSeedGeneration={() => undefined}
-        onRunDescriptionReroll={() => undefined}
-        onSkipSeed={() => undefined}
-      />
-    </div>
-  );
+  return <CreateRealmPersonaWorkspace />;
 }
 
 function PreviewShell() {
@@ -361,6 +343,7 @@ function PreviewShell() {
           visualFixturePersonas={PERSONA_WORKSPACE_VISUAL_FIXTURE_LIST}
         />
         <main className="ras-main">
+          <div className="ras-preview-banner" role="note">{translateStudioCopy('workshop.preview.development')}</div>
           <Routes>
             <Route path="/portfolio" element={<PersonaListPage />} />
             <Route path="/portfolio/create" element={<PreviewCreateDescribe />} />
@@ -390,19 +373,14 @@ const previewGlobal = globalThis as typeof globalThis & {
 const previewRoot = previewGlobal.__RPS_VISUAL_PREVIEW_ROOT__ ?? createRoot(rootElement);
 previewGlobal.__RPS_VISUAL_PREVIEW_ROOT__ = previewRoot;
 
+const previewRouter = createHashRouter([{ path: '*', element: <PersonaVisualPreviewProvider details={PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS} visualData={PERSONA_WORKSPACE_VISUAL_FIXTURE_DATA}><PreviewShell /></PersonaVisualPreviewProvider> }]);
+
 previewRoot.render(
   <StrictMode>
     <NimiThemeProvider accentPack="nimi-accent" defaultScheme="light" defaultDensity="compact">
       <QueryClientProvider client={studioQueryClient}>
         <TooltipProvider>
-          <HashRouter>
-            <PersonaVisualPreviewProvider
-              details={PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS}
-              visualData={PERSONA_WORKSPACE_VISUAL_FIXTURE_DATA}
-            >
-              <PreviewShell />
-            </PersonaVisualPreviewProvider>
-          </HashRouter>
+          <RouterProvider router={previewRouter} />
           <NimiToaster />
         </TooltipProvider>
       </QueryClientProvider>

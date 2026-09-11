@@ -12,9 +12,10 @@ export function createEmptyDraft(): CreateRealmPersonaDraftInput {
     displayName: '',
     concept: '',
     description: '',
+    greeting: '',
     ruleText: '',
     selectedWorldId: '',
-    visibility: 'public',
+    visibility: 'private',
     personaArchetype: '',
     personaTraits: [],
     referenceImageUrl: '',
@@ -43,8 +44,7 @@ export function selectedDraftKey(search: string): string | null {
 }
 
 export function worldOptionLabel(world: SelectableRealmWorld): string {
-  const type = world.type ? ` · ${world.type}` : '';
-  return `${world.name}${type}`;
+  return world.name;
 }
 
 export function countCompletedCreationDraftFields(input: CreateRealmPersonaDraftInput): number {

@@ -21,6 +21,7 @@ export type CreateValidationField =
  */
 export type CreateFlowFailureKind =
   // Reviewed create readiness (create-persona-draft).
+  | 'character-writing-invalid'
   | 'handle-missing'
   | 'display-name-missing'
   | 'concept-missing'
@@ -133,6 +134,7 @@ export function createFlowFailureFromUnknown(
 }
 
 const CREATE_FLOW_FAILURE_COPY_KEYS: Record<CreateFlowFailureKind, StudioCopyKey> = {
+  'character-writing-invalid': 'workshop.writing.invalid',
   'handle-missing': 'create.error.handleMissing',
   'display-name-missing': 'create.error.displayNameMissing',
   'concept-missing': 'create.error.conceptMissing',

@@ -1,4 +1,7 @@
+import { workshopEnglishCopy, workshopChineseCopy } from './workshop-copy.js';
+
 export const studioEnglishCopy = {
+  ...workshopEnglishCopy,
   'app.name': 'Realm Persona Studio',
   'app.logoMark': 'RPS',
 
@@ -468,13 +471,13 @@ export const studioEnglishCopy = {
   'overview.action.openSettings': 'Open settings',
   'overview.action.openIdentity': 'Open identity',
   'overview.action.openPosts': 'Open posts',
-  'overview.preview.title': 'Public profile preview',
+  'overview.preview.title': 'Character profile',
   'overview.preview.publicDescription': 'Public description',
   'overview.preview.greeting': 'Greeting',
   'overview.preview.profileSource': 'profile source',
   'overview.preview.coverAvailable': 'cover available',
   'overview.preview.coverMissing': 'cover missing',
-  'overview.preview.boundary': 'Local preview of public profile fields — it does not claim Realm publication.',
+  'overview.preview.boundary': 'The character profile saved in Realm. Its current visibility is shown above.',
 
   'identity.title': 'Identity',
   'identity.description': 'Avatar, cover, and voice for this Realm Persona.',
@@ -936,6 +939,7 @@ export const studioEnglishCopy = {
 export type StudioCopyKey = keyof typeof studioEnglishCopy;
 
 export const studioChineseCopy: Record<StudioCopyKey, string> = {
+  ...workshopChineseCopy,
   'app.name': 'Realm Persona Studio',
   'app.logoMark': 'RPS',
 
@@ -1405,13 +1409,13 @@ export const studioChineseCopy: Record<StudioCopyKey, string> = {
   'overview.action.openSettings': '打开设定',
   'overview.action.openIdentity': '打开形象与声音',
   'overview.action.openPosts': '打开内容',
-  'overview.preview.title': '公开形象预览',
+  'overview.preview.title': '角色名片',
   'overview.preview.publicDescription': '公开描述',
   'overview.preview.greeting': '问候语',
   'overview.preview.profileSource': '资料来源',
   'overview.preview.coverAvailable': '封面可用',
   'overview.preview.coverMissing': '缺少封面',
-  'overview.preview.boundary': '以下为公开资料的本机预览，不代表已在 Realm 发布。',
+  'overview.preview.boundary': '这里展示 Realm 中已保存的角色资料，当前可见范围以顶部设置为准。',
 
   'identity.title': '形象与声音',
   'identity.description': '这个角色的头像、封面与声音。',

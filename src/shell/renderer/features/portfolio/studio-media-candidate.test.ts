@@ -160,6 +160,8 @@ describe('Studio media candidate Nimi AI consumption', () => {
   });
 
   it.each([
+    'AI_CONFIG_INVALID',
+    'AI_LOCAL_CONFIGURATION_NOT_CONFIGURED',
     'AI_LOCAL_SELECTION_NOT_FOUND',
     'AI_LOADOUT_NOT_FOUND',
     'AI_LOCAL_CAPABILITY_MISMATCH',

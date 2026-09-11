@@ -5,6 +5,7 @@
 @import "@nimiplatform/kit/ui/themes/nimi-density-compact.css";
 @import "@nimiplatform/kit/auth/styles.css";
 @import "tailwindcss";
+@import "./features/persona-workshop/workshop.css";
 
 /* Tailwind 4 won't auto-scan node_modules; without this, kit's JS class
  * strings like `flex flex-col gap-1.5` never get compiled into utility CSS
@@ -348,7 +349,7 @@ a {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  gap: 28px;
+  gap: 18px;
 }
 
 .ras-create-studio__intro h2 {
@@ -388,7 +389,7 @@ a {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  padding: 28px 30px 24px;
+  padding: 22px 26px;
 }
 
 .ras-create-describe-field-label {
@@ -405,7 +406,7 @@ a {
 
 .ras-create-describe-textarea {
   flex: 1;
-  min-height: 260px;
+  min-height: 175px;
   margin-top: 20px;
   border-color: transparent;
   border-radius: var(--nimi-radius-sm);
@@ -421,7 +422,7 @@ a {
 }
 
 .ras-create-describe-textarea textarea {
-  min-height: 260px;
+  min-height: 175px;
   height: 100%;
   padding: 8px;
   font-size: 1rem;
@@ -433,7 +434,7 @@ a {
 
 .ras-create-directions {
   min-width: 0;
-  padding: 30px 24px 24px;
+  padding: 22px;
   border-left: 1px solid var(--nimi-border-subtle);
   background: color-mix(in srgb, var(--nimi-action-primary-bg) 4%, var(--nimi-surface-card));
 }
@@ -1055,7 +1056,7 @@ a {
 }
 
 .ras-local-draft-empty {
-  min-height: 260px;
+  min-height: 175px;
   margin-top: 22px;
   border: 1px solid color-mix(in srgb, var(--nimi-border-subtle) 88%, white);
   border-radius: var(--nimi-radius-lg);

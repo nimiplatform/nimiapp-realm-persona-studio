@@ -90,7 +90,8 @@ function translateVisualCandidateFailure(
 ): string {
   if (result.failure === 'runtime-payload-invalid') return t('assets.error.runtimeImagePayloadInvalid');
   if (result.failure === 'runtime-transport-unavailable') return t('assets.error.runtimeImageTransportUnavailable');
-  if (result.failure === 'runtime-capability-unavailable' || result.failure === 'runtime-route-unbound') {
+  if (result.failure === 'runtime-route-unbound') return t('assets.error.runtimeImageConfigurationUnavailable');
+  if (result.failure === 'runtime-capability-unavailable') {
     return t('assets.error.runtimeMediaCandidateUnavailable');
   }
   if (result.failure === 'runtime-output-malformed' || result.failure === 'runtime-output-missing') {
@@ -105,7 +106,8 @@ function translateVoiceCandidateFailure(
 ): string {
   if (result.failure === 'runtime-payload-invalid') return t('assets.error.runtimeVoicePayloadInvalid');
   if (result.failure === 'runtime-transport-unavailable') return t('assets.error.runtimeVoiceTransportUnavailable');
-  if (result.failure === 'runtime-capability-unavailable' || result.failure === 'runtime-route-unbound') {
+  if (result.failure === 'runtime-route-unbound') return t('assets.error.runtimeVoiceConfigurationUnavailable');
+  if (result.failure === 'runtime-capability-unavailable') {
     return t('assets.error.runtimeMediaCandidateUnavailable');
   }
   if (result.failure === 'runtime-output-malformed' || result.failure === 'runtime-output-missing') {

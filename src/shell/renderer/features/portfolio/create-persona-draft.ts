@@ -6,6 +6,7 @@ import type {
 import type {
   RealmModel,
 } from '@nimiplatform/sdk/realm/generated';
+import { buildCharacterDeclaration, characterWritingIssues } from './persona-character-authoring.js';
 import { normalizeDisplaySafeHttpsUrl } from './persona-external-ref.js';
 import {
   createFlowFailure,
@@ -110,6 +111,7 @@ export type CreateRealmPersonaDraftInput = {
   displayName: string;
   concept: string;
   description: string;
+  greeting?: string;
   ruleText: string;
   selectedWorldId: string;
   visibility: NimiLocalAppPersonaCharacterWritableVisibility | '';
@@ -134,6 +136,7 @@ export type NormalizedCreateRealmPersonaDraft = {
   displayName: string;
   concept: string;
   description: string;
+  greeting: string;
   ruleText: string;
   selectedWorldId: string;
   visibility: NimiLocalAppPersonaCharacterWritableVisibility | '';
@@ -378,6 +381,7 @@ export function normalizeCreateRealmPersonaDraft(input: CreateRealmPersonaDraftI
     displayName: normalizeDraftText(input.displayName),
     concept: normalizeDraftText(input.concept),
     description: normalizeDraftText(input.description),
+    greeting: normalizeDraftText(input.greeting),
     ruleText: normalizeDraftText(input.ruleText),
     selectedWorldId: normalizeDraftText(input.selectedWorldId),
     visibility: input.visibility === 'private' || input.visibility === 'unlisted' || input.visibility === 'public'
@@ -495,6 +499,7 @@ export function normalizeSelectedWorldPreview(world: RealmPersonaCreationWorldDe
   };
 }
 
+// @nimi-authority: rule.realm-persona-studio.setting.r004
 function buildRealmPersonaProfileV1(draft: NormalizedCreateRealmPersonaDraft): NimiLocalAppPersonaCharacterProfileInput {
   return {
     profileSchemaVersion: 'realm.character-profile-core/v1',
@@ -514,6 +519,7 @@ function buildRealmPersonaProfileV1(draft: NormalizedCreateRealmPersonaDraft): N
     },
     interactionProfile: {
       interactionModes: ['conversation'],
+      ...(draft.greeting ? { greeting: draft.greeting } : {}),
     },
     assets: {
       resourceRefs: [],
@@ -546,6 +552,19 @@ export function validateCreateRealmPersonaReadiness(
     ? new Set(options.selectableWorldIds.map((worldId) => worldId.trim()).filter(Boolean))
     : null;
   const handleAvailability = options.handleAvailability;
+  const writing = {
+    characterIdentity: draft.concept,
+    behaviorText: draft.ruleText,
+    speakingText: draft.speechSupplement,
+    boundariesText: draft.boundarySupplement,
+  };
+  const writingFields = {
+    characterIdentity: 'concept', behaviorText: 'ruleText',
+    speakingText: 'speechSupplement', boundariesText: 'boundarySupplement',
+  } as const;
+  for (const field of characterWritingIssues(writing)) {
+    if (writing[field]) errors.push(createFlowFailure('character-writing-invalid', { field: writingFields[field] }));
+  }
 
   if (!draft.handle) {
     errors.push(createFlowFailure('handle-missing', { field: 'handle' }));
@@ -630,13 +649,7 @@ export function validateCreateRealmPersonaReadiness(
       sourceId: `realm-persona-studio:${draft.handle}`,
       sourceVersion: 'owner-reviewed-v1',
     },
-    lorebookDeclaration: {
-      identity: draft.concept,
-      behavior: [draft.ruleText],
-      speaking: [draft.speechSupplement],
-      immutableBoundaries: [draft.boundarySupplement],
-      relationshipPostures: [],
-    },
+    lorebookDeclaration: buildCharacterDeclaration(writing),
     profile: buildRealmPersonaProfileV1(draft),
   };
 

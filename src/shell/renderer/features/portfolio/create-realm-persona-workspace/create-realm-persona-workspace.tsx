@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   EmptyState,
+  InlineAlert,
   NimiText,
   Surface,
   nimiToast,
@@ -32,6 +33,8 @@ import {
   createCreationDraftKey,
   loadCreationDraft,
 } from '../creation-draft-store.js';
+import { removeCreationDraftHistoryEntry } from '../creation-draft-history.js';
+import { dispatchCreationDraftHistoryUpdated } from '../creation-draft-store.js';
 import { appendLocalCreativeAssetHistory } from '../creative-asset-history.js';
 import {
   getLocalAssetImportCapability,
@@ -50,12 +53,11 @@ import {
 } from './create-flow-copy.js';
 import {
   createEmptyDraft,
-  focusCreateField,
   ownerPromptFromDraft,
   selectedDraftKey,
 } from './draft-utils.js';
 import { useAutosaveDraft } from './use-autosave-draft.js';
-import { useCreationDraft } from './use-creation-draft.js';
+import { ownerWrittenSeedInput, useCreationDraft } from './use-creation-draft.js';
 import { useHandleAvailability } from './use-handle-availability.js';
 import { useDescriptionReroll, useSeedGeneration } from './use-seed-generation.js';
 import { useReferenceImage } from './use-reference-image.js';
@@ -94,6 +96,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
     autosaveFailureMessage,
   } = state;
   const queryClient = useQueryClient();
+  const [validationAttempt, setValidationAttempt] = useState(0);
   const translatorRef = useRef(t);
   translatorRef.current = t;
   const [localImportCapability] = useState<LocalImportCapabilityStatus>(() => getLocalAssetImportCapability());
@@ -170,7 +173,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
     extraSourceFields: [],
     acceptedForCreateFingerprint: graphAcceptedFingerprint,
   }), [draft, graphAcceptedFingerprint, seedResult, sourceMode]);
-  useAutosaveDraft({
+  const flushDraft = useAutosaveDraft({
     draftKey,
     draft,
     edited,
@@ -182,14 +185,16 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
     setAutosave: actions.setAutosave,
   });
 
+  const seedInput = ownerWrittenSeedInput(state);
   const { isGeneratingSeed, runSeedGeneration } = useSeedGeneration({
-    draft,
-    normalizedDraft,
+    draftKey,
+    draft: seedInput,
+    normalizedDraft: normalizeCreateRealmPersonaDraft(seedInput),
     locale,
-    t,
     actions,
   });
   const { isGeneratingDescription, runDescriptionReroll } = useDescriptionReroll({
+    draftKey,
     normalizedDraft,
     locale,
     t,
@@ -230,6 +235,10 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
         }
       }
       if (result.ok) {
+        await flushDraft();
+        const finishedDraft = await removeCreationDraftHistoryEntry(draftKey);
+        if (finishedDraft.ok) dispatchCreationDraftHistoryUpdated();
+        else nimiToast.info(t('workshop.finish.draftCleanupFailed'));
         const currentDraft = normalizeCreateRealmPersonaDraft(draft);
         const context: CreatedRealmPersonaContext = {
           personaId: result.canonical.id,
@@ -271,6 +280,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
   });
 
   function submitCreate() {
+    setValidationAttempt((attempt) => attempt + 1);
     const readiness = validateCreateRealmPersonaReadiness(draft, { selectableWorldIds, handleAvailability });
     if (!readiness.ready) {
       const nextFieldErrors = createFieldErrorsFromReadiness(readiness.errors);
@@ -278,7 +288,6 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
       const firstInvalidField = firstInvalidCreateField(nextFieldErrors);
       if (firstInvalidField) {
         if (firstInvalidField === 'referenceImage') actions.setReferenceImageEditorOpen(true);
-        focusCreateField(firstInvalidField);
       } else {
         for (const failure of readiness.errors) logCreateFlowFailure('create-flow.readiness', failure);
         nimiToast.danger(translateCreateFlowFailures(readiness.errors, t));
@@ -306,7 +315,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
       <NimiText as="h1" role="page-title" className="m-0">
         {t('create.title')}
       </NimiText>
-      <AutosaveIndicator state={autosaveState} failureMessage={autosaveFailureMessage} idle={!edited && autosaveState === 'saved'} />
+      <AutosaveIndicator state={autosaveState} failureMessage={autosaveFailureMessage} idle={!edited && autosaveState === 'saved' && !draftHistoryLabel} />
     </header>
   );
 
@@ -335,7 +344,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
           onRunDescriptionReroll={() => void runDescriptionReroll()}
           onSkipSeed={actions.skipSeedAndCreateManually}
         />
-        <AutosaveIndicator state={autosaveState} failureMessage={autosaveFailureMessage} idle={!edited && autosaveState === 'saved'} />
+        <AutosaveIndicator state={autosaveState} failureMessage={autosaveFailureMessage} idle={!edited && autosaveState === 'saved' && !draftHistoryLabel} />
       </div>
     );
   }
@@ -343,10 +352,12 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
   return (
     <div className="ras-page ras-create-page">
       {renderHeader()}
+      {createMutation.isError ? <InlineAlert tone="danger">{t('workshop.finish.createFailed')} {t('persona.failure.sanitized', { reason: t(failureKindCopyKey(personaCharacterFailureReason(createMutation.error))) })}</InlineAlert> : null}
       <ReviewStage
         draft={draft}
         normalizedDraft={normalizedDraft}
         fieldErrors={fieldErrors}
+        validationAttempt={validationAttempt}
         seedOriginalDisplayName={seedOriginalDisplayName}
         createdContext={createdContext}
         referenceAssets={referenceAssets}

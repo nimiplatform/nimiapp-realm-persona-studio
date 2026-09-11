@@ -88,21 +88,40 @@ It is a Desktop-supervised App, not a login or OAuth broker:
 Realm and Runtime calls require separately admitted public Nimi kit / SDK
 operations delivered through the protected standard bridge.
 
-## Routes
+## Creation and maintenance
+
+Start with an idea, choose an inspiration prompt, or ask AI to invent a character.
+AI drafts a public introduction, an opening line, a compact identity, specific
+behavior and speaking principles, and clear boundaries. Review these in four
+steps: introduction, personality, optional visual reference, and Realm creation.
+The live preview shows the actual draft writing; it does not simulate a chat.
+Creation starts private, and the owner reviews visibility and a source-backed
+home world before submitting. Drafts save locally through protected storage and
+reopen at the editing stage when character writing already exists.
+
+The character settings workspace starts with a natural-language AI revision
+request. Suggestions show current and proposed text and can be adopted one at a
+time. Adopting a suggestion only edits the draft. A suggestion cannot overwrite
+a field edited after generation started. Saving uses the latest owner read,
+preserves unrelated profile fields and existing relationship postures, and
+rejects content conflicts without discarding the owner's writing.
 
 | Route | Purpose |
 |-------|---------|
-| `/portfolio` | Current-user owner-created persona list, search, filter, sort, source warnings |
-| `/portfolio/create` | Create a Realm Persona (handle preflight, world select, identity fields) |
-| `/portfolio/:personaId` | Current public profile, ownership, world, state, friendCount |
-| `/portfolio/:personaId/settings` | Visibility + setting proposal + SourceMaterializationPacket materialization |
-| `/portfolio/:personaId/settings/review` | Runtime consistency review (advisory critique) |
-| `/portfolio/:personaId/assets` | Avatar, profile cover, post-image candidates |
-| `/portfolio/:personaId/assets/voice` | Voice-demo candidates via `audio.synthesize` |
-| `/portfolio/:personaId/posts` | Persona-authored post draft, attachment, publish |
-| `/portfolio/:personaId/posts/schedule` | Single app-local foreground-only post schedule |
-| `/portfolio/:personaId/insights` | friendCount, source availability, stale warnings |
-| `/ai-config` | Canonical App AI capability intents and effective state via the kit ModelConfig surface, with Nimi Desktop handoff |
+| `/portfolio` | Owner character collection and local creation drafts |
+| `/portfolio/create` | Idea, AI character draft, live preview, and reviewed creation |
+| `/portfolio/:personaId` | Profile overview and next creative actions |
+| `/portfolio/:personaId/settings` | AI-assisted public profile and character writing maintenance |
+| `/portfolio/:personaId/identity` | Visual identity and voice candidates |
+| `/portfolio/:personaId/posts` | Persona-authored post draft and local schedule |
+| `/portfolio/:personaId/posts/manage` | Local content management |
+| `/assets` | Local creative asset library |
+| `/ai-config` | App-owned AI configuration through the canonical kit surface |
+
+`/visual-preview.html` is a development-only visual entry with a persistent
+example-data label. It is excluded from the production build. It cannot establish
+AI generation, Realm writes, or platform admission; use the Desktop-supervised
+app for those checks.
 
 ## Spec Authority
 

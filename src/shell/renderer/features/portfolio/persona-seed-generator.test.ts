@@ -11,6 +11,9 @@ const validSeed = {
   concept: 'Operational guide for artifact reviews.',
   description: 'Mira helps owners shape and review public persona behavior.',
   ruleText: 'Keep output practical.',
+  greeting: 'That sketch looks promising. What are you hoping to build?',
+  speechStyle: 'Calm, direct sentences.',
+  behaviorBoundary: 'Do not invent past conversations.',
   personaArchetype: 'INTELLECTUAL',
   personaTraits: ['WISE', 'DIRECT'],
   rationale: 'Matches the owner brief.',
@@ -65,6 +68,7 @@ describe('persona seed generation through the injected text candidate runner', (
         speechSupplement: 'Speak in calm, direct sentences.',
         boundarySupplement: 'Do not claim private memory.',
         visualSupplement: 'Use a cool night palette.',
+        ownerWriting: { displayName: 'Mira Prime', greeting: 'Keep this opening.' },
       },
       { locale: 'en' },
     );
@@ -73,7 +77,7 @@ describe('persona seed generation through the injected text candidate runner', (
     const submitted = runner.mock.calls[0]?.[0];
     expect(submitted).toMatchObject({
       surfaceId: 'realm-persona-studio.persona-seed',
-      params: { maxTokens: 1200, temperature: 0.7, topP: 1 },
+      params: { maxTokens: 2200, temperature: 0.7, topP: 1 },
     });
     expect(submitted?.systemText).toContain('owner-reviewed Realm Persona draft');
     expect(submitted?.userText).toContain('"mode":"completion"');
@@ -81,6 +85,7 @@ describe('persona seed generation through the injected text candidate runner', (
     expect(submitted?.userText).toContain('Speak in calm, direct sentences.');
     expect(submitted?.userText).toContain('Do not claim private memory.');
     expect(submitted?.userText).toContain('Use a cool night palette.');
+    expect(JSON.parse(submitted!.userText).ownerWriting).toEqual({ displayName: 'Mira Prime', greeting: 'Keep this opening.' });
     expect(result).toMatchObject({
       ok: true,
       seed: {
@@ -110,7 +115,7 @@ describe('persona seed generation through the injected text candidate runner', (
     const submitted = runner.mock.calls[0]?.[0];
     expect(submitted).toMatchObject({
       surfaceId: 'realm-persona-studio.persona-seed',
-      params: { maxTokens: 1200, temperature: 0.9, topP: 1 },
+      params: { maxTokens: 2200, temperature: 0.9, topP: 1 },
     });
     expect(submitted?.systemText).toContain('invent an original, complete Realm Persona draft from scratch');
     expect(submitted?.systemText).toContain('write in Chinese');
@@ -181,5 +186,14 @@ describe('persona seed generation through the injected text candidate runner', (
       ok: false,
       failure: 'persona-seed-invalid-output',
     });
+  });
+});
+
+describe('complete character generation', () => {
+  it.each(['greeting', 'ruleText', 'speechStyle', 'behaviorBoundary', 'description'] as const)('rejects a seed missing %s instead of advancing to an incomplete character', (field) => {
+    expect(() => parsePersonaSeedOutput(JSON.stringify({ ...validSeed, [field]: '' }))).toThrow();
+  });
+  it('rejects behavior output beyond the Realm declaration bounds', () => {
+    expect(() => parsePersonaSeedOutput(JSON.stringify({ ...validSeed, speechStyle: 'a\nb\nc\nd\ne' }))).toThrow('declaration bounds');
   });
 });

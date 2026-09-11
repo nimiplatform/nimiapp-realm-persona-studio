@@ -105,6 +105,7 @@ describe('create Realm Persona draft normalization', () => {
   it('normalizes public identity and selected world fields for preview', () => {
     expect(normalizeCreateRealmPersonaDraft(baseInput)).toEqual({
       handle: 'mira.persona',
+      greeting: '',
       displayName: 'Mira Persona',
       concept: 'Durable public Realm Persona',
       description: 'Owner-created public identity',

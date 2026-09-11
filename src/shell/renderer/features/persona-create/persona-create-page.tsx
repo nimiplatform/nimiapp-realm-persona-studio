@@ -7,7 +7,7 @@ export function PersonaCreatePage() {
   return (
     <CreateRealmPersonaWorkspace
       onOpenCreatedPersona={(personaId) => {
-        navigate(`/portfolio/${personaId}/settings`);
+        navigate(`/portfolio/${personaId}`);
       }}
     />
   );

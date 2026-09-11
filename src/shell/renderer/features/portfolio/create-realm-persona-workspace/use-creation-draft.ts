@@ -38,6 +38,7 @@ export type CreationDraftWorkspaceState = {
   graphAcceptedFingerprint: string | null;
   seedResult: PersonaSeedGenerationResult | null;
   seedOriginalDisplayName: string;
+  aiFilledFields: Array<keyof CreateRealmPersonaDraftInput>;
   fieldErrors: CreateFieldErrors;
   createdContext: CreatedRealmPersonaContext | null;
   referenceImageSourceMode: ReferenceImageSourceMode | null;
@@ -71,6 +72,20 @@ export type CreationDraftAction =
   | { type: 'set-reference-source-failure'; message: string | null }
   | { type: 'set-autosave'; state: AutosaveState; failureMessage: string | null };
 
+const SEED_FILLED_FIELDS: Array<keyof CreateRealmPersonaDraftInput> = [
+  'handle', 'displayName', 'concept', 'description', 'greeting', 'ruleText',
+  'personaArchetype', 'personaTraits', 'speechSupplement', 'boundarySupplement',
+];
+
+// Only untouched AI text is replaced on another explicit generation. Owner
+// edits (including an edit back to the same text) remove that field from this set.
+export function ownerWrittenSeedInput(state: Pick<CreationDraftWorkspaceState, 'draft' | 'aiFilledFields'>): CreateRealmPersonaDraftInput {
+  return {
+    ...state.draft,
+    ...Object.fromEntries(state.aiFilledFields.map((key) => [key, key === 'personaTraits' ? [] : ''])),
+  };
+}
+
 function initialReferenceAssets(): ReferenceAssetsState {
   return {
     loadState: 'idle',
@@ -91,6 +106,7 @@ function createInitialState(draftKey: string): CreationDraftWorkspaceState {
     graphAcceptedFingerprint: null,
     seedResult: null,
     seedOriginalDisplayName: '',
+    aiFilledFields: [],
     fieldErrors: {},
     createdContext: null,
     referenceImageSourceMode: DEFAULT_REFERENCE_IMAGE_SOURCE_MODE,
@@ -123,6 +139,7 @@ function creationDraftReducer(
         ...state,
         draft: action.draft,
         draftLoadState: 'ready',
+        stage: action.draft.displayName.trim() || action.draft.concept.trim() ? 'review' : 'describe',
       };
     case 'hydrate-failed':
       return {
@@ -144,6 +161,7 @@ function creationDraftReducer(
       return {
         ...state,
         draft: { ...state.draft, ...patch },
+        aiFilledFields: state.aiFilledFields.filter((key) => !(key in patch)),
         edited: true,
         graphAcceptedFingerprint: null,
         createdContext: null,
@@ -166,13 +184,14 @@ function creationDraftReducer(
       });
     case 'apply-seed': {
       const { result, seedDescription } = action;
-      const current = state.draft;
+      const current = ownerWrittenSeedInput(state);
       const nextDraft: CreateRealmPersonaDraftInput = {
         ...current,
         handle: current.handle.trim() ? current.handle : result.seed.handle,
         displayName: current.displayName.trim() ? current.displayName : result.seed.displayName,
         concept: current.concept.trim() ? current.concept : result.seed.concept,
         description: current.description.trim() ? current.description : result.seed.description,
+        greeting: current.greeting?.trim() ? current.greeting : result.seed.greeting,
         ruleText: current.ruleText.trim() ? current.ruleText : result.seed.ruleText,
         personaArchetype: current.personaArchetype.trim() ? current.personaArchetype : result.seed.personaArchetype,
         personaTraits: current.personaTraits.length > 0 ? current.personaTraits : result.seed.personaTraits,
@@ -190,6 +209,7 @@ function creationDraftReducer(
         edited: true,
         seedResult: result,
         seedOriginalDisplayName: result.seed.displayName,
+        aiFilledFields: SEED_FILLED_FIELDS.filter((key) => key === 'personaTraits' ? current.personaTraits.length === 0 : !String(current[key] || '').trim()),
         stage: 'review',
       };
     }

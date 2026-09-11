@@ -1,15 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import {
   Button,
   FieldShell,
   FieldTrigger,
   SelectField,
+  InlineAlert,
+  NimiTabs,
   StatusBadge,
   Surface,
   TextareaField,
   TextField,
 } from '@nimiplatform/kit/ui';
-import { ArrowLeft, ChevronDown, Globe } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, ChevronDown, Globe } from 'lucide-react';
 import {
   PERSONA_ARCHETYPES,
   PERSONA_TRAIT_MAX,
@@ -22,19 +24,19 @@ import {
 } from '../create-persona-draft.js';
 import type { RealmPersonaHandleAvailabilityResult } from '../portfolio-client.js';
 import { useStudioI18n } from '../../../i18n/use-studio-i18n.js';
-import type { StudioCopyKey } from '../../../i18n/studio-copy.js';
 import { translatePersonaArchetypeLabel } from '../../../i18n/studio-i18n.js';
 import {
   PERSONA_ARCHETYPE_DESCRIPTION_KEYS,
+  firstInvalidCreateField,
   translateCreateFlowFailure,
 } from './create-flow-copy.js';
-import { countCompletedCreationDraftFields, worldOptionLabel } from './draft-utils.js';
+import { focusCreateField, worldOptionLabel } from './draft-utils.js';
 import { BehaviorFields } from './behavior-fields.js';
 import { HandleField } from './handle-field.js';
 import { PromptDisclosure } from './prompt-disclosure.js';
 import { ReferenceImageCard } from './reference-image-card.js';
 import { TraitsMultiSelect } from './traits-multi-select.js';
-import { WorldLoadingPanel, WorldPicker, WorldRecoveryPanel } from './world-picker.js';
+import { WorldLoadingPanel, WorldPicker } from './world-picker.js';
 import type { UseReferenceImageResult } from './use-reference-image.js';
 import type {
   CreateFieldErrors,
@@ -43,11 +45,14 @@ import type {
   ReferenceAssetsState,
 } from './types.js';
 import { SELECT_UNSET_VALUE } from './types.js';
+import { CharacterPreview } from '../../persona-workshop/character-preview.js';
+import { characterWritingIssues } from '../persona-character-authoring.js';
 
 export function ReviewStage({
   draft,
   normalizedDraft,
   fieldErrors,
+  validationAttempt,
   seedOriginalDisplayName,
   createdContext,
   referenceAssets,
@@ -76,6 +81,7 @@ export function ReviewStage({
   draft: CreateRealmPersonaDraftInput;
   normalizedDraft: NormalizedCreateRealmPersonaDraft;
   fieldErrors: CreateFieldErrors;
+  validationAttempt: number;
   seedOriginalDisplayName: string;
   createdContext: CreatedRealmPersonaContext | null;
   referenceAssets: ReferenceAssetsState;
@@ -90,7 +96,11 @@ export function ReviewStage({
   selectedWorld: SelectableRealmWorld | null;
   createDisabled: boolean;
   createPending: boolean;
-  handleQuery: { isFetching: boolean; isError: boolean; data?: RealmPersonaHandleAvailabilityResult };
+  handleQuery: {
+    isFetching: boolean;
+    isError: boolean;
+    data?: RealmPersonaHandleAvailabilityResult;
+  };
   handleAvailability: NormalizedRealmPersonaHandleAvailability | null;
   referenceImage: UseReferenceImageResult;
   seedPrompt: string;
@@ -102,160 +112,372 @@ export function ReviewStage({
   onOpenCreatedPersona?: (personaId: string) => void;
 }) {
   const { t } = useStudioI18n();
+  const id = useId();
   const [worldModalOpen, setWorldModalOpen] = useState(false);
-
-  const displayNameError = fieldErrors.displayName ? translateCreateFlowFailure(fieldErrors.displayName, t) : null;
-  const handleError = fieldErrors.handle ? translateCreateFlowFailure(fieldErrors.handle, t) : null;
-  const conceptError = fieldErrors.concept ? translateCreateFlowFailure(fieldErrors.concept, t) : null;
-  const personaArchetypeError = fieldErrors.personaArchetype ? translateCreateFlowFailure(fieldErrors.personaArchetype, t) : null;
-  const personaTraitsError = fieldErrors.personaTraits ? translateCreateFlowFailure(fieldErrors.personaTraits, t) : null;
-  const selectedWorldError = fieldErrors.selectedWorldId ? translateCreateFlowFailure(fieldErrors.selectedWorldId, t) : null;
-  const visibilityError = fieldErrors.visibility ? translateCreateFlowFailure(fieldErrors.visibility, t) : null;
-  const referenceImageError = fieldErrors.referenceImage ? translateCreateFlowFailure(fieldErrors.referenceImage, t) : null;
-  const imagePrompt = normalizedDraft.referenceImagePrompt;
+  const [tab, setTab] = useState<'profile' | 'character' | 'visual' | 'finish'>('profile');
+  const tabs = ['profile', 'character', 'visual', 'finish'] as const;
+  const errorFor = (field: keyof CreateFieldErrors) =>
+    fieldErrors[field] ? translateCreateFlowFailure(fieldErrors[field]!, t) : null;
+  const profileError = errorFor('displayName') || errorFor('handle');
+  const characterError =
+    errorFor('concept') ||
+    errorFor('personaArchetype') ||
+    errorFor('personaTraits') ||
+    errorFor('ruleText') ||
+    errorFor('speechSupplement') ||
+    errorFor('boundarySupplement');
+  const previousValidation = useRef(validationAttempt);
+  useEffect(() => {
+    if (previousValidation.current === validationAttempt) return;
+    previousValidation.current = validationAttempt;
+    if (profileError) setTab('profile');
+    else if (characterError) setTab('character');
+    else if (fieldErrors.referenceImage) setTab('visual');
+    const firstInvalidField = firstInvalidCreateField(fieldErrors);
+    if (firstInvalidField) focusCreateField(firstInvalidField);
+  }, [validationAttempt, profileError, characterError, fieldErrors]);
+  const writing = {
+    characterIdentity: normalizedDraft.concept,
+    behaviorText: normalizedDraft.ruleText,
+    speakingText: normalizedDraft.speechSupplement,
+    boundariesText: normalizedDraft.boundarySupplement,
+  };
+  const writingReady =
+    characterWritingIssues(writing).length === 0 && Boolean(normalizedDraft.personaArchetype);
+  const tabIndex = tabs.indexOf(tab);
 
   return (
     <>
-      <section className="min-w-0">
-          {worldsLoading ? <Surface tone="card" padding="lg" className="rounded-[var(--nimi-radius-xl)]"><WorldLoadingPanel /></Surface> : worldsUnavailable ? (
-            <WorldRecoveryPanel
-              completedCount={countCompletedCreationDraftFields(draft)}
-              retrying={worldsRetrying}
-              onRetry={onRetryWorlds}
-              createDisabled={createDisabled}
-            />
-          ) : (
-            <div className="grid min-w-0 gap-5 px-1 pb-6 pt-1">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <Button tone="ghost" size="sm" onClick={onReturnToDescribe} leadingIcon={<ArrowLeft size={15} aria-hidden="true" />}>{t('create.review.back')}</Button>
+      <div className="ras-workshop-heading">
+        <Button
+          tone="ghost"
+          size="sm"
+          disabled={createPending}
+          onClick={onReturnToDescribe}
+          leadingIcon={<ArrowLeft size={15} aria-hidden="true" />}
+        >
+          {t('create.review.back')}
+        </Button>
+        <h2>{t('workshop.shape.title')}</h2>
+        <p>{t('workshop.shape.description')}</p>
+      </div>
+      <div className="ras-workshop-layout">
+        <Surface tone="card" padding="none" className="ras-workshop-editor">
+          <NimiTabs
+            value={tab}
+            onValueChange={(value) => {
+              if (!createPending) setTab(value as typeof tab);
+            }}
+            items={tabs.map((value, index) => ({
+              value,
+              label: `${index + 1}. ${t(`workshop.tab.${value}`)}`,
+            }))}
+            ariaLabel={t('workshop.shape.title')}
+          />
+          <fieldset disabled={createPending} className="ras-workshop-fieldset">
+            <div hidden={tab !== 'profile'} className="ras-workshop-panel">
+              <div className="ras-create-review-card__heading">
+                <h3>{t('create.review.basicInfo')}</h3>
+                {seedOriginalDisplayName ? (
+                  <StatusBadge tone="info">{t('create.review.aiDraft')}</StatusBadge>
+                ) : null}
               </div>
-
-              <Surface tone="card" material="glass-thick" padding="none" className="ras-create-review-card">
-                <div className="ras-create-review-form">
-                <div className="ras-create-review-form__top">
-                <div className="ras-create-review-form__fields">
-                <div className="ras-create-review-card__heading"><h3>{t('create.review.basicInfo')}</h3><StatusBadge tone="info">{t('create.review.aiDraft')}</StatusBadge></div>
-                <div className="ras-create-identity-grid">
-                  <div className="min-w-0" data-create-field="displayName">
-                    <FieldShell
-                      label={<span className="flex flex-wrap items-center gap-2">{t('create.displayNameLabel')}{seedOriginalDisplayName && normalizedDraft.displayName !== seedOriginalDisplayName ? <StatusBadge tone="success">{t('create.review.modified')}</StatusBadge> : null}</span>}
-                      message={displayNameError}
-                      messageTone={displayNameError ? 'danger' : 'neutral'}
-                    >
-                      <TextField tone={displayNameError ? 'danger' : 'default'} data-create-field-control value={draft.displayName} placeholder={t('create.displayNamePlaceholder')} onChange={(event) => updateDraft({ displayName: event.currentTarget.value })} />
-                    </FieldShell>
-                  </div>
-                  <HandleField
-                    handle={draft.handle}
-                    normalizedHandle={normalizedDraft.handle}
-                    query={handleQuery}
-                    availability={handleAvailability}
-                    handleError={handleError}
-                    updateDraft={updateDraft}
-                  />
-                </div>
-                <div className="min-w-0" data-create-field="concept">
-                  <FieldShell label={t('create.conceptLabel')} message={conceptError || t('create.conceptMessage')} messageTone={conceptError ? 'danger' : 'neutral'}>
-                    <TextareaField tone={conceptError ? 'danger' : 'default'} data-create-field-control rows={3} value={draft.concept} placeholder={t('create.conceptPlaceholder')} onChange={(event) => updateDraft({ concept: event.currentTarget.value })} />
-                  </FieldShell>
-                </div>
-                </div>
-                <div className={`ras-create-review-form__aside ${referenceImageError ? 'ras-create-review-form__aside--error' : ''}`}>
-                <ReferenceImageCard
-                  draft={draft}
-                  normalizedDraft={normalizedDraft}
-                  error={referenceImageError}
-                  referenceAssets={referenceAssets}
-                  referenceSourceFailure={referenceSourceFailure}
-                  referenceImageSourceMode={referenceImageSourceMode}
-                  referenceImageEditorOpen={referenceImageEditorOpen}
-                  referenceImageLoadFailed={referenceImageLoadFailed}
-                  referenceImage={referenceImage}
-                  onEditorOpenChange={onSetReferenceImageEditorOpen}
-                  onReferenceImagePromptChange={(value) => updateDraft({ referenceImagePrompt: value })}
-                />
-                </div>
-                </div>
-                <div className="ras-create-form-grid">
-                <div className="min-w-0" data-create-field="personaArchetype">
+              <div className="ras-create-identity-grid">
+                <div data-create-field="displayName">
                   <FieldShell
-                    label={t('create.personaArchetypeLabel')}
-                    message={personaArchetypeError}
-                    messageTone={personaArchetypeError ? 'danger' : 'neutral'}
+                    label={<label htmlFor={`${id}-name`}>{t('create.displayNameLabel')}</label>}
+                    message={errorFor('displayName')}
+                    messageTone={errorFor('displayName') ? 'danger' : 'neutral'}
                   >
-                    <SelectField
-                      required
-                      tone={personaArchetypeError ? 'danger' : 'default'}
-                      value={draft.personaArchetype || SELECT_UNSET_VALUE}
-                      options={[{ value: SELECT_UNSET_VALUE, label: <span className="text-xs font-normal text-[var(--nimi-text-muted)]">{t('create.personaArchetypePlaceholder')}</span> }, ...PERSONA_ARCHETYPES.map((archetype) => ({ value: archetype, label: `${translatePersonaArchetypeLabel(archetype, t)} — ${t(PERSONA_ARCHETYPE_DESCRIPTION_KEYS[archetype])}` }))]}
-                      onValueChange={(value) => updateDraft({ personaArchetype: value === SELECT_UNSET_VALUE ? '' : value as PersonaArchetype })}
+                    <TextField
+                      id={`${id}-name`}
+                      tone={errorFor('displayName') ? 'danger' : 'default'}
+                      aria-invalid={Boolean(errorFor('displayName')) || undefined}
+                      data-create-field-control
+                      value={draft.displayName}
+                      placeholder={t('create.displayNamePlaceholder')}
+                      onChange={(event) => updateDraft({ displayName: event.currentTarget.value })}
                     />
                   </FieldShell>
                 </div>
-                <div className="min-w-0" data-create-field="personaTraits">
-                  <FieldShell label={t('create.personaTraitsLabel', { max: PERSONA_TRAIT_MAX })} message={personaTraitsError} messageTone={personaTraitsError ? 'danger' : 'neutral'}>
+                <HandleField
+                  handle={draft.handle}
+                  normalizedHandle={normalizedDraft.handle}
+                  query={handleQuery}
+                  availability={handleAvailability}
+                  handleError={errorFor('handle')}
+                  updateDraft={updateDraft}
+                />
+              </div>
+              <FieldShell
+                label={<label htmlFor={`${id}-bio`}>{t('workshop.profile.description')}</label>}
+                message={t('workshop.profile.descriptionHint')}
+              >
+                <TextareaField
+                  id={`${id}-bio`}
+                  rows={4}
+                  value={draft.description}
+                  placeholder={t('workshop.profile.descriptionHint')}
+                  onChange={(event) => updateDraft({ description: event.currentTarget.value })}
+                />
+              </FieldShell>
+              <FieldShell
+                label={<label htmlFor={`${id}-greeting`}>{t('workshop.profile.greeting')}</label>}
+                message={t('workshop.profile.greetingHint')}
+              >
+                <TextareaField
+                  id={`${id}-greeting`}
+                  rows={3}
+                  value={draft.greeting || ''}
+                  placeholder={t('workshop.profile.greetingPlaceholder')}
+                  onChange={(event) => updateDraft({ greeting: event.currentTarget.value })}
+                />
+              </FieldShell>
+            </div>
+            <div hidden={tab !== 'character'} className="ras-workshop-panel">
+              <div data-create-field="concept">
+                <FieldShell
+                  label={
+                    <label htmlFor={`${id}-concept`}>
+                      {t('workshop.character.characterIdentity')}
+                    </label>
+                  }
+                  message={errorFor('concept') || t('workshop.character.identityHint')}
+                  messageTone={errorFor('concept') ? 'danger' : 'neutral'}
+                >
+                  <TextareaField
+                    id={`${id}-concept`}
+                    tone={errorFor('concept') ? 'danger' : 'default'}
+                    aria-invalid={Boolean(errorFor('concept')) || undefined}
+                    data-create-field-control
+                    rows={3}
+                    value={draft.concept}
+                    placeholder={t('workshop.character.characterIdentityPlaceholder')}
+                    onChange={(event) => updateDraft({ concept: event.currentTarget.value })}
+                  />
+                </FieldShell>
+              </div>
+              <div className="ras-create-form-grid">
+                <div data-create-field="personaArchetype">
+                  <FieldShell
+                    label={t('create.personaArchetypeLabel')}
+                    message={errorFor('personaArchetype')}
+                    messageTone={errorFor('personaArchetype') ? 'danger' : 'neutral'}
+                  >
+                    <SelectField
+                      required
+                      tone={errorFor('personaArchetype') ? 'danger' : 'default'}
+                      aria-label={t('create.personaArchetypeLabel')}
+                      value={draft.personaArchetype || SELECT_UNSET_VALUE}
+                      options={[
+                        {
+                          value: SELECT_UNSET_VALUE,
+                          label: t('create.personaArchetypePlaceholder'),
+                        },
+                        ...PERSONA_ARCHETYPES.map((archetype) => ({
+                          value: archetype,
+                          label: `${translatePersonaArchetypeLabel(archetype, t)} — ${t(PERSONA_ARCHETYPE_DESCRIPTION_KEYS[archetype])}`,
+                        })),
+                      ]}
+                      onValueChange={(value) =>
+                        updateDraft({
+                          personaArchetype:
+                            value === SELECT_UNSET_VALUE ? '' : (value as PersonaArchetype),
+                        })
+                      }
+                    />
+                  </FieldShell>
+                </div>
+                <div data-create-field="personaTraits">
+                  <FieldShell
+                    label={t('create.personaTraitsLabel', { max: PERSONA_TRAIT_MAX })}
+                    message={errorFor('personaTraits')}
+                    messageTone={errorFor('personaTraits') ? 'danger' : 'neutral'}
+                  >
                     <TraitsMultiSelect
                       value={draft.personaTraits}
-                      error={personaTraitsError}
+                      error={errorFor('personaTraits')}
                       onChange={(personaTraits: PersonaTrait[]) => updateDraft({ personaTraits })}
                     />
                   </FieldShell>
                 </div>
-                </div>
-                <BehaviorFields draft={draft} fieldErrors={fieldErrors} updateDraft={updateDraft} />
-                <div className="ras-create-form-grid">
-                <div className="min-w-0" data-create-field="selectedWorldId">
-                  <FieldShell label={t('create.worldLabel')} message={selectedWorldError} messageTone={selectedWorldError ? 'danger' : 'neutral'}>
-                    <FieldTrigger
-                      data-create-field-control
-                      aria-invalid={Boolean(selectedWorldError) || undefined}
-                      onClick={() => setWorldModalOpen(true)}
-                      aria-haspopup="dialog"
-                      aria-expanded={worldModalOpen}
-                    >
-                      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-[var(--nimi-radius-sm)] bg-[var(--nimi-action-primary-bg)] text-xs font-semibold text-[var(--nimi-action-primary-text)]">{selectedWorld ? selectedWorld.name.charAt(0).toUpperCase() : <Globe size={14} aria-hidden="true" />}</span>
-                      <span className="min-w-0 flex-1"><span className={`block truncate ${selectedWorld ? 'font-medium' : 'text-xs font-normal text-[var(--nimi-text-muted)]'}`}>{selectedWorld?.name || t('create.world.select')}</span><span className="block truncate text-xs text-[var(--nimi-text-muted)]">{selectedWorld ? worldOptionLabel(selectedWorld) : t('create.worldPreview.noneDescription')}</span></span>
-                      <span className="flex shrink-0 items-center gap-1 text-xs text-[var(--nimi-text-secondary)]">{t('create.world.change')}<ChevronDown size={14} aria-hidden="true" /></span>
-                    </FieldTrigger>
-                  </FieldShell>
-                </div>
-                <div className="min-w-0" data-create-field="visibility">
-                  <FieldShell
-                    label={t('create.visibilityLabel')}
-                    message={visibilityError}
-                    messageTone={visibilityError ? 'danger' : 'neutral'}
-                  >
-                    <SelectField
-                      value={draft.visibility || SELECT_UNSET_VALUE}
-                      options={[
-                        ...(!draft.visibility ? [{ value: SELECT_UNSET_VALUE, label: t('create.error.visibilityMissing'), disabled: true }] : []),
-                        { value: 'private', label: t('visibility.value.private') },
-                        { value: 'unlisted', label: t('visibility.value.unlisted') },
-                        { value: 'public', label: t('visibility.value.public') },
-                      ]}
-                      onValueChange={(value) => updateDraft({ visibility: value as CreateRealmPersonaDraftInput['visibility'] })}
-                    />
-                  </FieldShell>
-                </div>
-                </div>
-                </div>
-
-              <PromptDisclosure seedPrompt={seedPrompt} imagePrompt={imagePrompt} />
-
-              {createdContext ? (
-                <Surface tone="card" padding="md" className="ras-create-created-card">
-                  <div className="flex min-w-0 flex-wrap items-center justify-between gap-3"><div className="min-w-0"><div className="font-medium">{t('create.createdCardTitle')}</div><div className="ras-break-anywhere mt-1 text-sm text-[var(--nimi-text-muted)]">@{createdContext.handle} · {createdContext.personaId}</div></div><StatusBadge tone="success">{t(`visibility.value.${createdContext.visibility}` as StudioCopyKey)}</StatusBadge></div>
-                  <div className="mt-3 flex flex-wrap gap-3"><Button tone="secondary" onClick={() => onOpenCreatedPersona?.(createdContext.personaId)}>{t('create.openSettings')}</Button></div>
-                </Surface>
-              ) : null}
-              <div className="ras-create-review-actions">
-                <Button tone="primary" disabled={createDisabled} loading={createPending} onClick={onSubmit}>{t('create.submit')}</Button>
               </div>
-              </Surface>
+              <BehaviorFields draft={draft} fieldErrors={fieldErrors} updateDraft={updateDraft} />
             </div>
-          )}
-      </section>
-      <WorldPicker open={worldModalOpen} worlds={worlds} selectedWorldId={draft.selectedWorldId} onSelect={(worldId) => { updateDraft({ selectedWorldId: worldId }); setWorldModalOpen(false); }} onClose={() => setWorldModalOpen(false)} />
+            <div hidden={tab !== 'visual'} className="ras-workshop-panel">
+              <h3>{t('workshop.tab.visual')}</h3>
+              <p>{t('workshop.visual.description')}</p>
+              <ReferenceImageCard
+                draft={draft}
+                normalizedDraft={normalizedDraft}
+                error={errorFor('referenceImage')}
+                referenceAssets={referenceAssets}
+                referenceSourceFailure={referenceSourceFailure}
+                referenceImageSourceMode={referenceImageSourceMode}
+                referenceImageEditorOpen={referenceImageEditorOpen}
+                referenceImageLoadFailed={referenceImageLoadFailed}
+                referenceImage={referenceImage}
+                onEditorOpenChange={onSetReferenceImageEditorOpen}
+                onReferenceImagePromptChange={(value) =>
+                  updateDraft({ referenceImagePrompt: value })
+                }
+              />
+              <p className="ras-workshop-help">{t('workshop.visual.note')}</p>
+              <PromptDisclosure
+                seedPrompt={seedPrompt}
+                imagePrompt={normalizedDraft.referenceImagePrompt}
+              />
+            </div>
+            <div hidden={tab !== 'finish'} className="ras-workshop-panel">
+              <h3>{t('workshop.finish.title')}</h3>
+              <p>{t('workshop.finish.description')}</p>
+              <div className="ras-workshop-readiness" data-ready={writingReady}>
+                <Check size={18} aria-hidden="true" />
+                <span>{t(writingReady ? 'workshop.finish.ready' : 'workshop.finish.missing')}</span>
+                {!writingReady ? (
+                  <Button tone="ghost" size="sm" onClick={() => setTab('character')}>
+                    {t('workshop.tab.character')}
+                  </Button>
+                ) : null}
+              </div>
+              {worldsLoading ? (
+                <WorldLoadingPanel />
+              ) : worldsUnavailable ? (
+                <InlineAlert
+                  tone="warning"
+                  action={
+                    <Button
+                      tone="secondary"
+                      size="sm"
+                      loading={worldsRetrying}
+                      onClick={onRetryWorlds}
+                    >
+                      {t('common.retry')}
+                    </Button>
+                  }
+                >
+                  {t('workshop.finish.worldUnavailable')}
+                </InlineAlert>
+              ) : null}
+              <div data-create-field="selectedWorldId">
+                <FieldShell
+                  label={t('create.worldLabel')}
+                  message={errorFor('selectedWorldId')}
+                  messageTone={errorFor('selectedWorldId') ? 'danger' : 'neutral'}
+                >
+                  <FieldTrigger
+                    data-create-field-control
+                    disabled={worldsUnavailable || worldsLoading}
+                    onClick={() => setWorldModalOpen(true)}
+                    aria-haspopup="dialog"
+                    aria-expanded={worldModalOpen}
+                  >
+                    <Globe size={18} aria-hidden="true" />
+                    <span className="min-w-0 flex-1">
+                      {selectedWorld ? worldOptionLabel(selectedWorld) : t('create.world.select')}
+                    </span>
+                    <ChevronDown size={14} aria-hidden="true" />
+                  </FieldTrigger>
+                </FieldShell>
+              </div>
+              <div data-create-field="visibility">
+                <FieldShell
+                  label={t('create.visibilityLabel')}
+                  message={errorFor('visibility')}
+                  messageTone={errorFor('visibility') ? 'danger' : 'neutral'}
+                >
+                  <SelectField
+                    aria-label={t('create.visibilityLabel')}
+                    value={draft.visibility || SELECT_UNSET_VALUE}
+                    options={[
+                      ...(!draft.visibility
+                        ? [
+                            {
+                              value: SELECT_UNSET_VALUE,
+                              label: t('create.error.visibilityMissing'),
+                              disabled: true,
+                            },
+                          ]
+                        : []),
+                      { value: 'private', label: t('visibility.value.private') },
+                      { value: 'unlisted', label: t('visibility.value.unlisted') },
+                      { value: 'public', label: t('visibility.value.public') },
+                    ]}
+                    onValueChange={(value) =>
+                      updateDraft({
+                        visibility: value as CreateRealmPersonaDraftInput['visibility'],
+                      })
+                    }
+                  />
+                </FieldShell>
+              </div>
+              {draft.visibility ? (
+                <p className="ras-workshop-visibility-note">
+                  {t(`workshop.finish.${draft.visibility}`)}
+                </p>
+              ) : null}
+              <p className="ras-workshop-help">{t('workshop.finish.review')}</p>
+              {createdContext ? (
+                <Button
+                  tone="secondary"
+                  onClick={() => onOpenCreatedPersona?.(createdContext.personaId)}
+                >
+                  {t('create.openSettings')}
+                </Button>
+              ) : null}
+            </div>
+          </fieldset>
+          <footer className="ras-workshop-editor__footer">
+            <Button
+              tone="ghost"
+              disabled={createPending}
+              onClick={() => (tabIndex === 0 ? onReturnToDescribe() : setTab(tabs[tabIndex - 1]!))}
+            >
+              {t('workshop.previous')}
+            </Button>
+            {tab === 'finish' ? (
+              <Button
+                tone="primary"
+                disabled={createDisabled || Boolean(createdContext)}
+                loading={createPending}
+                onClick={onSubmit}
+              >
+                {t('workshop.finish.create')}
+              </Button>
+            ) : (
+              <Button
+                tone="primary"
+                trailingIcon={<ArrowRight size={16} aria-hidden="true" />}
+                onClick={() => setTab(tabs[tabIndex + 1]!)}
+              >
+                {t('workshop.next')}
+              </Button>
+            )}
+          </footer>
+        </Surface>
+        <CharacterPreview
+          displayName={draft.displayName}
+          handle={draft.handle}
+          description={draft.description || draft.concept}
+          greeting={draft.greeting || ''}
+          identity={draft.concept}
+          traits={
+            draft.personaArchetype
+              ? [translatePersonaArchetypeLabel(draft.personaArchetype as PersonaArchetype, t)]
+              : []
+          }
+        />
+      </div>
+      <WorldPicker
+        open={worldModalOpen}
+        worlds={worlds}
+        selectedWorldId={draft.selectedWorldId}
+        onSelect={(worldId) => {
+          updateDraft({ selectedWorldId: worldId });
+          setWorldModalOpen(false);
+        }}
+        onClose={() => setWorldModalOpen(false)}
+      />
     </>
   );
 }

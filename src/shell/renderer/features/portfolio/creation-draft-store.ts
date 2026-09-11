@@ -156,6 +156,7 @@ function normalizeStoredDraft(value: unknown, expectedDraftKey: string): Creatio
     displayName: value.displayName as string,
     concept: value.concept as string,
     description: value.description as string,
+    greeting: typeof value.greeting === 'string' ? value.greeting : '',
     ruleText: value.ruleText as string,
     selectedWorldId: value.selectedWorldId as string,
     visibility: value.visibility as CreateRealmPersonaDraftInput['visibility'],

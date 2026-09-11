@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type {
   CreateRealmPersonaDraftInput,
   NormalizedCreateRealmPersonaDraft,
@@ -42,9 +42,27 @@ export function useAutosaveDraft({
   normalizedDraft,
   t,
   setAutosave,
-}: UseAutosaveDraftParams): void {
+}: UseAutosaveDraftParams): () => Promise<void> {
   const autosaveSequence = useRef(0);
   const autosaveQueue = useRef<Promise<void>>(Promise.resolve());
+  const pendingSave = useRef<(() => Promise<void>) | null>(null);
+  const timer = useRef<number | null>(null);
+  const mounted = useRef(true);
+  const flush = useCallback(async () => {
+    if (timer.current !== null) window.clearTimeout(timer.current);
+    const pending = pendingSave.current;
+    pendingSave.current = null;
+    if (pending) autosaveQueue.current = autosaveQueue.current.catch(() => undefined).then(pending);
+    await autosaveQueue.current;
+  }, []);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      autosaveSequence.current += 1;
+      void flush();
+    };
+  }, [draftKey, flush]);
 
   useEffect(() => {
     if (draftLoadState !== 'ready') return undefined;
@@ -52,38 +70,53 @@ export function useAutosaveDraft({
     const sequence = autosaveSequence.current + 1;
     autosaveSequence.current = sequence;
     setAutosave('saving', null);
-    const timeout = window.setTimeout(() => {
-      autosaveQueue.current = autosaveQueue.current.catch(() => undefined).then(async () => {
-        const result: CreationDraftPersistResult = await persistCreationDraft(draftKey, draft);
-        if (!result.ok) {
-          if (autosaveSequence.current === sequence) {
-            logCreateFlowFailure('create-flow.autosave', result.failure);
-            setAutosave('failed', translateCreateFlowFailure(result.failure, t));
+    pendingSave.current = async () => {
+      const result: CreationDraftPersistResult = await persistCreationDraft(draftKey, draft);
+      if (!result.ok) {
+        if (mounted.current && autosaveSequence.current === sequence) {
+          logCreateFlowFailure('create-flow.autosave', result.failure);
+          setAutosave('failed', translateCreateFlowFailure(result.failure, t));
+        }
+        return;
+      }
+      if (draftHistoryLabel) {
+        const historyResult = await upsertCreationDraftHistoryEntry({
+          draftKey,
+          displayName: draftHistoryLabel,
+          ...(selectedWorldName ? { worldName: selectedWorldName } : {}),
+          ...(normalizedDraft.personaArchetype
+            ? { archetype: normalizedDraft.personaArchetype }
+            : {}),
+          updatedAt: result.record.updatedAt,
+        });
+        if (!historyResult.ok) {
+          if (mounted.current && autosaveSequence.current === sequence) {
+            logCreateFlowFailure('create-flow.autosave', historyResult.failure);
+            setAutosave('failed', translateCreateFlowFailure(historyResult.failure, t));
           }
           return;
         }
-        if (draftHistoryLabel) {
-          const historyResult = await upsertCreationDraftHistoryEntry({
-            draftKey,
-            displayName: draftHistoryLabel,
-            ...(selectedWorldName ? { worldName: selectedWorldName } : {}),
-            ...(normalizedDraft.personaArchetype ? { archetype: normalizedDraft.personaArchetype } : {}),
-            updatedAt: result.record.updatedAt,
-          });
-          if (!historyResult.ok) {
-            if (autosaveSequence.current === sequence) {
-              logCreateFlowFailure('create-flow.autosave', historyResult.failure);
-              setAutosave('failed', translateCreateFlowFailure(historyResult.failure, t));
-            }
-            return;
-          }
-          dispatchCreationDraftHistoryUpdated();
-        }
-        if (autosaveSequence.current === sequence) {
-          setAutosave('saved', null);
-        }
-      });
-    }, CREATION_DRAFT_AUTOSAVE_DEBOUNCE_MS);
-    return () => window.clearTimeout(timeout);
-  }, [draft, draftHistoryLabel, draftKey, draftLoadState, edited, normalizedDraft, selectedWorldName, setAutosave, t]);
+        dispatchCreationDraftHistoryUpdated();
+      }
+      if (mounted.current && autosaveSequence.current === sequence) {
+        setAutosave('saved', null);
+      }
+    };
+    timer.current = window.setTimeout(() => void flush(), CREATION_DRAFT_AUTOSAVE_DEBOUNCE_MS);
+    return () => {
+      if (timer.current !== null) window.clearTimeout(timer.current);
+    };
+  }, [
+    draft,
+    draftHistoryLabel,
+    draftKey,
+    draftLoadState,
+    edited,
+    normalizedDraft,
+    selectedWorldName,
+    setAutosave,
+    t,
+    flush,
+  ]);
+  return flush;
 }

@@ -167,9 +167,9 @@ describe('Create Realm Persona workspace v2 shell', () => {
     expect(source).toContain('firstInvalidCreateField(nextFieldErrors)');
     expect(source).toContain('focusCreateField(firstInvalidField)');
     expect(source).toContain('scrollIntoView?.({ behavior: \'smooth\', block: \'center\' })');
-    expect(source).toContain("tone={displayNameError ? 'danger' : 'default'}");
+    expect(source).toContain("tone={errorFor('displayName') ? 'danger' : 'default'}");
     expect(source).toContain("tone={handleError ? 'danger' : 'default'}");
-    expect(source).toContain("tone={conceptError ? 'danger' : 'default'}");
+    expect(source).toContain("tone={errorFor('concept') ? 'danger' : 'default'}");
     expect(source).toContain('data-create-field="personaArchetype"');
     expect(source).toContain('data-create-field="personaTraits"');
     expect(source).toContain('data-create-field="selectedWorldId"');
@@ -178,57 +178,8 @@ describe('Create Realm Persona workspace v2 shell', () => {
     expect(source).not.toContain("t('create.worldDefault'");
   });
 
-  it('renders the review form as one cohesive glass card', () => {
-    const source = workspaceSource();
-    const styles = stylesSource();
 
-    expect(source).toContain('className="ras-create-review-card"');
-    expect(source).toContain('className="ras-create-review-form"');
-    expect(styles).toContain('.ras-create-review-card {');
-    expect(styles).toContain('border-radius: var(--nimi-radius-lg);');
-  });
 
-  it('places the Persona image beside identity fields and keeps personality controls below', () => {
-    const source = workspaceSource();
-    const styles = stylesSource();
-
-    expect(source).not.toContain('xl:grid-cols-[380px_minmax(0,1fr)]');
-    // DOM order matches visual order: the identity fields come before the
-    // reference card inside the two-column review-form containers.
-    expect(source).toMatch(/create\.review\.basicInfo[\s\S]*ras-create-identity-grid[\s\S]*ReferenceImageCard/);
-    expect(source).toContain('ras-create-review-form__fields');
-    expect(source).toContain('ras-create-review-form__aside');
-    expect(source).toContain('setReferenceImageEditorOpen(true)');
-    expect(source).toContain('aria-expanded={referenceImageEditorOpen}');
-    expect(source).toContain('open={referenceImageEditorOpen}');
-    expect(source).toContain('panelClassName="ras-visual-change-dialog"');
-    expect(source).toContain('dataTestId="create-reference-image-dialog"');
-    expect(styles).toContain('grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.82fr);');
-    expect(styles).toContain('.ras-create-review-form__aside {');
-    expect(styles).not.toContain('.ras-create-review-form > .ras-create-reference-card {');
-    expect(styles).not.toContain('grid-row: 1 / span 3;');
-    expect(source).toContain('className="ras-create-form-grid"');
-    expect(styles).toContain('.ras-create-form-grid {');
-    expect(styles).toContain('grid-template-columns: repeat(2, minmax(0, 1fr));');
-  });
-
-  it('shows inline danger feedback through kit field tones without CSS overrides or a required asterisk', () => {
-    const source = workspaceSource();
-
-    expect(source).not.toContain("t('create.displayNameMessage')");
-    expect(source).not.toContain("t('create.handleMessage')");
-    expect(source).not.toContain("t('create.personaArchetypeMessage')");
-    expect(source).not.toContain('aria-hidden="true">*</span>');
-    expect(source).toContain("tone={displayNameError ? 'danger' : 'default'}");
-    expect(source).toContain("tone={conceptError ? 'danger' : 'default'}");
-    expect(source).toContain("tone={personaArchetypeError ? 'danger' : 'default'}");
-    expect(source).not.toContain('!border-[var(');
-    expect(source).not.toContain('!ring-[var(');
-    expect(source).toMatch(/<SelectField\s+required\s+tone=\{personaArchetypeError \? 'danger' : 'default'\}\s+value=\{draft\.personaArchetype \|\| SELECT_UNSET_VALUE\}/);
-    expect(source).toContain("const SELECT_UNSET_VALUE = '__realm_persona_studio_unset__';");
-    expect(source).not.toContain("{ value: '', label: t('create.personaArchetypePlaceholder') }");
-    expect(source).not.toContain("{ value: '', label: t('create.visibilityPlaceholder') }");
-  });
 
   it('does not render creation technical details or validation preview', () => {
     const source = workspaceSource();
@@ -330,8 +281,7 @@ describe('Create Realm Persona workspace v2 shell', () => {
   it('renders world recovery, keeps the prompt view read-only, and exposes a separate editable image prompt', () => {
     const source = workspaceSource();
 
-    expect(source).toContain('WorldRecoveryPanel');
-    expect(source).toContain('countCompletedCreationDraftFields(draft)');
+    expect(source).toContain('workshop.finish.worldUnavailable');
     expect(source).toContain('create.worldRecovery.retry');
     expect(source).toContain('create.worldRecovery.submitDisabled');
     expect(source).toContain('PromptReadOnly');

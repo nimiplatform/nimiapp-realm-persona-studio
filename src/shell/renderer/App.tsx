@@ -1,4 +1,4 @@
-import { HashRouter } from 'react-router-dom';
+import { createHashRouter, RouterProvider } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { NimiToaster, TooltipProvider } from '@nimiplatform/kit/ui';
 import { ShellErrorBoundary } from '@nimiplatform/kit/telemetry/error-boundary';
@@ -7,6 +7,19 @@ import { ShellLayout } from './app-shell/shell-layout.js';
 import { AuthProvider } from './app-shell/auth-provider.js';
 import { studioQueryClient } from './infra/query-client.js';
 import { useStudioI18n } from './i18n/use-studio-i18n.js';
+
+const studioRouter = createHashRouter([
+  {
+    path: '*',
+    element: (
+      <AuthProvider>
+        <ShellLayout>
+          <AppRoutes />
+        </ShellLayout>
+      </AuthProvider>
+    ),
+  },
+]);
 
 export function App() {
   const { t } = useStudioI18n();
@@ -19,13 +32,7 @@ export function App() {
     >
       <QueryClientProvider client={studioQueryClient}>
         <TooltipProvider>
-          <HashRouter>
-            <AuthProvider>
-              <ShellLayout>
-                <AppRoutes />
-              </ShellLayout>
-            </AuthProvider>
-          </HashRouter>
+          <RouterProvider router={studioRouter} />
           <NimiToaster />
         </TooltipProvider>
       </QueryClientProvider>

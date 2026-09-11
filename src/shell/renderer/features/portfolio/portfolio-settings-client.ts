@@ -9,6 +9,8 @@ import type {
 import { getStudioLocalAppClient } from '@renderer/app-shell/studio-platform.js';
 import {
   runStudioTextCandidate,
+  runValidatedStudioTextCandidate,
+  StudioTextCandidateValidationError,
   type StudioTextCandidatePrompt,
   type StudioTextCandidateRunner,
 } from './studio-text-candidate.js';
@@ -168,12 +170,7 @@ export function readPersonaSettings(persona: RealmPersonaCharacterDto): RealmOwn
     description: profile.identity.summary || profile.presentation.profileLine || null,
     greeting: profile.interactionProfile.greeting ?? null,
     handle: profile.identity.handle ?? null,
-    naturalLanguageIntent: null,
-    identity: {},
-    personality: {},
-    communication: {},
-    boundaries: {},
-    positioning: {},
+    lorebookDeclaration: persona.lorebookDeclaration,
   };
 }
 
@@ -221,8 +218,9 @@ export function buildPersonaCharacterReplaceInput(
   profile: NimiLocalAppPersonaCharacterProfileInput,
   visibility: NimiLocalAppPersonaCharacterWritableVisibility,
   reviewedWorldId?: string,
+  declaration = current.persona.lorebookDeclaration,
 ): NimiLocalAppPersonaCharacterReplaceInput {
-  if (!current.persona.lorebookDeclaration) {
+  if (!declaration) {
     throw new Error('Character lorebook declaration is required before replace.');
   }
   return {
@@ -231,7 +229,7 @@ export function buildPersonaCharacterReplaceInput(
     worldId: reviewedWorldId || current.homeWorldId,
     visibility,
     origin: current.origin,
-    lorebookDeclaration: current.persona.lorebookDeclaration,
+    lorebookDeclaration: declaration,
     profile,
   };
 }
@@ -298,15 +296,20 @@ export async function updateReviewedPersonaVisibility(
   }
   try {
     const client = getStudioLocalAppClient().realm.personaCharacter;
-    const profile = client.toProfileInput(current.persona.profile);
-    if (!current.persona.lorebookDeclaration) throw new Error('Character lorebook declaration is required before replace.');
+    const latest = await client.getOwned(personaId);
+    if (latest.contentHash !== current.persona.contentHash) {
+      return { ok: false, source: REALM_PERSONA_VISIBILITY_SOURCE, lifecycleTruth: false,
+        failure: 'content-conflict', message: 'content-conflict', submitted: built.input, draft };
+    }
+    const profile = client.toProfileInput(latest.profile);
+    if (!latest.lorebookDeclaration) throw new Error('Character lorebook declaration is required before replace.');
     const submitted: NimiLocalAppPersonaCharacterReplaceInput = {
       personaCharacterId: personaId,
-      baseContentHash: current.persona.contentHash,
-      worldId: current.persona.worldId,
+      baseContentHash: latest.contentHash,
+      worldId: latest.worldId,
       visibility: built.input.visibility,
-      origin: current.persona.origin,
-      lorebookDeclaration: current.persona.lorebookDeclaration,
+      origin: latest.origin,
+      lorebookDeclaration: latest.lorebookDeclaration,
       profile,
     };
     const replaced = await client.replace(submitted);
@@ -368,39 +371,33 @@ export async function proposeReviewedOwnerPersonaSettings(
   }
 
   try {
-    const output = await runner(built.payload);
-    try {
-      const proposal = normalizeRuntimeOwnerSettingsProposal(output.text, draft);
+    const { output, value: proposal } = await runValidatedStudioTextCandidate(
+      built.payload, (text) => normalizeRuntimeOwnerSettingsProposal(text, draft), runner,
+    );
+    return {
+      ok: true,
+      source: SETTINGS_AI_PROPOSAL_SOURCE,
+      candidate: true,
+      truthWrite: false,
+      proposal,
+      submitted: output.submitted,
+      runtime: {
+        ...(output.traceId ? { traceId: output.traceId } : {}),
+        ...(output.finishReason ? { finishReason: output.finishReason } : {}),
+      },
+    };
+  } catch (error) {
+    if (error instanceof StudioTextCandidateValidationError) {
       return {
-        ok: true,
-        source: SETTINGS_AI_PROPOSAL_SOURCE,
-        candidate: true,
-        truthWrite: false,
-        proposal,
-        submitted: output.submitted,
-        runtime: {
-          ...(output.traceId ? { traceId: output.traceId } : {}),
-          ...(output.finishReason ? { finishReason: output.finishReason } : {}),
-        },
-      };
-    } catch (error) {
-      return {
-        ok: false,
-        source: SETTINGS_AI_PROPOSAL_SOURCE,
-        candidate: false,
-        truthWrite: false,
+        ok: false, source: SETTINGS_AI_PROPOSAL_SOURCE, candidate: false, truthWrite: false,
         failure: 'runtime-settings-proposal-invalid-output',
-        message: error instanceof Error ? error.message : 'Runtime settings proposal output invalid.',
-        submitted: output.submitted,
+        message: error.message,
+        submitted: error.output.submitted,
       };
     }
-  } catch (error) {
     const message = error instanceof Error ? error.message : 'runtime transport call failed.';
     return {
-      ok: false,
-      source: SETTINGS_AI_PROPOSAL_SOURCE,
-      candidate: false,
-      truthWrite: false,
+      ok: false, source: SETTINGS_AI_PROPOSAL_SOURCE, candidate: false, truthWrite: false,
       failure: 'runtime-settings-proposal-failed',
       message: `Nimi App Access ai.text.generateCandidate failed: ${message}`,
       submitted: null,
@@ -442,13 +439,19 @@ export async function updateReviewedOwnerPersonaSettings(
   let submitted: NimiLocalAppPersonaCharacterReplaceInput | null = null;
   try {
     const client = getStudioLocalAppClient().realm.personaCharacter;
-    const profileInput = client.toProfileInput(current.profile);
+    const latest = await client.getOwned(personaId);
+    if (latest.contentHash !== current.contentHash) {
+      return { ok: false, source: OWNER_SETTINGS_SAVE_SOURCE, truthWrite: false,
+        failure: 'content-conflict', message: 'content-conflict', submitted: null, draft };
+    }
+    const profileInput = client.toProfileInput(latest.profile);
     const profile = mergeOwnerSettingsProfile(profileInput, built.preview.submitted);
     submitted = buildPersonaCharacterReplaceInput(
-      current,
+      readPersonaSettings(latest),
       profile,
       current.visibility,
       built.preview.submitted.worldId,
+      built.preview.submitted.lorebookDeclaration ?? latest.lorebookDeclaration,
     );
     const replaced = await client.replace(submitted);
     return {

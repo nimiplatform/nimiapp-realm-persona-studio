@@ -8,9 +8,12 @@ import {
 import {
   isStudioTextRouteUnboundError,
   runStudioTextCandidate,
+  runValidatedStudioTextCandidate,
+  StudioTextCandidateValidationError,
   type StudioTextCandidatePrompt,
   type StudioTextCandidateRunner,
 } from './studio-text-candidate.js';
+import { characterWritingIssues } from './persona-character-authoring.js';
 import { parseStrictRuntimeJsonObject } from './strict-runtime-json.js';
 import {
   CreateFlowFailureError,
@@ -26,6 +29,7 @@ export type PersonaSeedPromptSupplements = {
   speechSupplement?: string;
   boundarySupplement?: string;
   visualSupplement?: string;
+  ownerWriting?: Partial<Pick<CreateRealmPersonaDraftInput, 'displayName' | 'concept' | 'description' | 'greeting' | 'ruleText' | 'personaArchetype' | 'personaTraits'>>;
 };
 
 /**
@@ -58,6 +62,7 @@ export type GeneratedPersonaSeed = Pick<
   CreateRealmPersonaDraftInput,
   'handle' | 'displayName' | 'concept' | 'description' | 'ruleText' | 'personaArchetype' | 'personaTraits'
 > & {
+  greeting: string;
   speechStyle: string;
   behaviorBoundary: string;
 };
@@ -90,6 +95,7 @@ const PERSONA_SEED_OUTPUT_KEYS = [
   'displayName',
   'concept',
   'description',
+  'greeting',
   'ruleText',
   'personaArchetype',
   'personaTraits',
@@ -129,35 +135,42 @@ function buildPersonaSeedPayload(
   return {
     surfaceId: 'realm-persona-studio.persona-seed',
     params: {
-      maxTokens: 1200,
+      maxTokens: 2200,
       temperature: mode === 'creative' ? 0.9 : 0.7,
       topP: 1,
     },
     systemText: [
       introLine,
       'Return ONE JSON object. No prose before or after. No code fences.',
-      'Required keys: handle, displayName, concept, description, ruleText, personaArchetype, personaTraits, speechStyle, behaviorBoundary, rationale.',
+      'The output must contain EXACTLY these 11 keys: handle, displayName, concept, description, greeting, ruleText, personaArchetype, personaTraits, speechStyle, behaviorBoundary, rationale. Additional keys are forbidden.',
+      'The user message is input context, NOT an output template. Never echo mode, userDescription, ownerWriting, personaArchetypeAllowed, or personaTraitsAllowed into the result.',
       '',
+      'Owner-written fields in ownerWriting are hard constraints: preserve them and make every generated field consistent with them, including the owner’s chosen name. Never treat an empty field as a constraint.',
       '— Field rules —',
       'handle: short kebab-case latin suggestion (3-20 chars), no leading @, lowercase letters/digits/hyphens only.',
       displayNameRule,
-      'concept: 1-2 sentences naming the core creative concept.',
-      'description: 1 short public profile description (≤500 chars).',
-      'ruleText: optional behavior/boundary lines, one per line; empty string if nothing meaningful.',
-      'speechStyle: 1-3 lines describing how the persona speaks (tone, pacing, register), one per line; empty string if nothing meaningful.',
-      'behaviorBoundary: 1-3 immutable behavior boundary lines the persona never crosses, one per line; empty string if nothing meaningful.',
+      'concept: a compact identity statement, at most 240 Unicode characters. Include a specific role, a desire, and an interesting tension or contradiction.',
+      'description: a vivid public introduction (80-300 characters) with a concrete habit or lived detail. Do not repeat the concept verbatim or list personality adjectives.',
+      'greeting: 1-3 sentences in the character’s own voice, opening a specific small scene and offering an easy way to respond. No generic assistant greeting, no claims of real memories or previous conversations.',
+      'ruleText: REQUIRED, 2-4 concrete behavior principles, one per line, each at most 160 Unicode characters. Describe choices in everyday situations and an imperfection; avoid abstract adjective lists.',
+      'speechStyle: REQUIRED, 1-3 speaking principles, one per line, each at most 160 Unicode characters. Give distinctive tone, pacing, vocabulary and a short illustrative phrase.',
+      'behaviorBoundary: REQUIRED, 1-3 immutable boundaries, one per line, each at most 160 Unicode characters. Be specific to the character; respect owner constraints and user autonomy.',
       `personaArchetype: EXACTLY ONE of ${PERSONA_ARCHETYPES.join(' | ')}`,
       `personaTraits: array of 1-3 traits from ${PERSONA_TRAITS.join(' | ')}`,
-      'rationale: 1-2 sentences explaining the design choice (English).',
+      `rationale: one brief, useful sentence in ${outputLanguage} explaining what gives this character individuality.`,
+      'Fictional setting and habits describe the character; they are not product access gates. Do not refuse ordinary conversation because of real-world time, weather, location, or unavailable context.',
+      'Ensure concept, behavior, speaking, greeting, and boundaries tell the same story. The character is a digital persona, never a generic helpful assistant. Avoid stereotypes and familiar franchise characters.',
       ...creativeNotes,
       '',
       '— Hard prohibitions —',
       'Never include: handle prefix @, provider, model, lifecycle, state, worldId, ownerId, dna (full JSON), avatarUrl, profileCoverUrl, personaRule, personaRules, LocalAgent.',
       'Never include code fences, comments, or trailing text outside the JSON object.',
+      `Before answering, verify the top-level keys are exactly: ${PERSONA_SEED_OUTPUT_KEYS.join(', ')}. All values are strings except personaTraits, which is an array of allowed trait strings.`,
     ].join('\n'),
     userText: JSON.stringify({
       mode,
       userDescription: ownerPromptParts,
+      ...(supplements.ownerWriting && Object.keys(supplements.ownerWriting).length ? { ownerWriting: supplements.ownerWriting } : {}),
       personaArchetypeAllowed: PERSONA_ARCHETYPES,
       personaTraitsAllowed: PERSONA_TRAITS,
     }),
@@ -211,14 +224,15 @@ export function parsePersonaSeedOutput(raw: string): { seed: GeneratedPersonaSee
     displayName: readString(obj.displayName),
     concept: readString(obj.concept),
     description: readString(obj.description),
+    greeting: readString(obj.greeting),
     ruleText: readString(obj.ruleText),
     personaArchetype: readPersonaArchetype(obj.personaArchetype),
     personaTraits: readPersonaTraits(obj.personaTraits),
     speechStyle: readString(obj.speechStyle),
     behaviorBoundary: readString(obj.behaviorBoundary),
   };
-  if (!seed.displayName || !seed.concept) {
-    throw new CreateFlowFailureError({ kind: 'seed-required-output-missing', detail: 'LLM output missing required `displayName` or `concept`.' });
+  if (!seed.handle || !seed.displayName || !seed.concept || !seed.description || !seed.greeting || !seed.ruleText || !seed.speechStyle || !seed.behaviorBoundary) {
+    throw new CreateFlowFailureError({ kind: 'seed-required-output-missing', detail: 'LLM output is missing required character writing.' });
   }
   if (!seed.personaArchetype) {
     throw new CreateFlowFailureError({ kind: 'seed-archetype-invalid', detail: 'LLM output personaArchetype missing or outside the supported archetypes.' });
@@ -226,10 +240,14 @@ export function parsePersonaSeedOutput(raw: string): { seed: GeneratedPersonaSee
   if (!Array.isArray(obj.personaTraits) || obj.personaTraits.length > 3 || seed.personaTraits.length !== obj.personaTraits.length) {
     throw new CreateFlowFailureError({ kind: 'seed-traits-invalid', detail: 'LLM output personaTraits must contain at most 3 values from the supported trait vocabulary.' });
   }
+  if (characterWritingIssues({ characterIdentity: seed.concept, behaviorText: seed.ruleText, speakingText: seed.speechStyle, boundariesText: seed.behaviorBoundary }).length > 0) {
+    throw new CreateFlowFailureError({ kind: 'seed-output-invalid', detail: 'Generated character writing exceeds the admitted declaration bounds.' });
+  }
   const rationale = readString(obj.rationale);
   return { seed, rationale };
 }
 
+// @nimi-authority: rule.realm-persona-studio.create-flow.r012
 export async function generatePersonaSeedFromDescription(
   description: string,
   runner: StudioTextCandidateRunner = runStudioTextCandidate,
@@ -238,32 +256,30 @@ export async function generatePersonaSeedFromDescription(
 ): Promise<PersonaSeedGenerationResult> {
   const payload = buildPersonaSeedPayload(description, supplements, options);
   try {
-    const output = await runner(payload);
-    try {
-      const parsed = parsePersonaSeedOutput(output.text);
-      return {
-        ok: true,
-        source: PERSONA_SEED_SOURCE,
-        seed: parsed.seed,
-        rationale: parsed.rationale,
-        submitted: output.submitted,
-        runtime: {
-          ...(output.traceId ? { traceId: output.traceId } : {}),
-          ...(output.finishReason ? { finishReason: output.finishReason } : {}),
-        },
-      };
-    } catch (error) {
+    const { output, value: parsed } = await runValidatedStudioTextCandidate(payload, parsePersonaSeedOutput, runner);
+    return {
+      ok: true,
+      source: PERSONA_SEED_SOURCE,
+      seed: parsed.seed,
+      rationale: parsed.rationale,
+      submitted: output.submitted,
+      runtime: {
+        ...(output.traceId ? { traceId: output.traceId } : {}),
+        ...(output.finishReason ? { finishReason: output.finishReason } : {}),
+      },
+    };
+  } catch (error) {
+    if (error instanceof StudioTextCandidateValidationError) {
       return {
         ok: false,
         source: PERSONA_SEED_SOURCE,
         failure: 'persona-seed-invalid-output',
-        cause: isCreateFlowFailureError(error)
-          ? error.failure
-          : createFlowFailureFromUnknown('seed-output-invalid', error),
-        submitted: output.submitted,
+        cause: isCreateFlowFailureError(error.validationError)
+          ? error.validationError.failure
+          : createFlowFailureFromUnknown('seed-output-invalid', error.validationError),
+        submitted: error.output.submitted,
       };
     }
-  } catch (error) {
     return {
       ok: false,
       source: PERSONA_SEED_SOURCE,

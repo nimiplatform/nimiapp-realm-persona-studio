@@ -1,8 +1,25 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useBlocker, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Sparkles } from 'lucide-react';
-import { Avatar, Button, EmptyState, FieldShell, InlineAlert, nimiToast, SelectField, StatusBadge, Surface, TextareaField, TextField } from '@nimiplatform/kit/ui';
-import { personaCharacterFailureReason, type OwnerPortfolioPersonaDetail } from './portfolio-data.js';
+import { Check, Sparkles } from 'lucide-react';
+import {
+  Button,
+  ConfirmDialog,
+  FieldShell,
+  InlineAlert,
+  LoadingSkeleton,
+  NimiTabs,
+  SelectField,
+  StatusBadge,
+  Surface,
+  TextareaField,
+  TextField,
+  nimiToast,
+} from '@nimiplatform/kit/ui';
+import {
+  personaCharacterFailureReason,
+  type OwnerPortfolioPersonaDetail,
+} from './portfolio-data.js';
 import { failureKindCopyKey } from './failure-copy.js';
 import {
   getPortfolioPersonaSettings,
@@ -13,201 +30,29 @@ import {
   type RuntimeOwnerSettingsProposalResult,
 } from './portfolio-client.js';
 import {
-  RAW_RULE_REVIEW_DEFERRED_REASON,
   buildRealmOwnerPersonaSettingsUpdateInput,
   createOwnerPersonaSettingsDraft,
-  partitionConsistencySuggestions,
+  adoptSettingsSuggestions,
   type OwnerPersonaSettingsDraft,
 } from './setting-proposal.js';
+import { CharacterPreview } from '../persona-workshop/character-preview.js';
+import { CharacterWritingFields } from '../persona-workshop/character-writing-fields.js';
 import { useStudioI18n } from '../../i18n/use-studio-i18n.js';
 import type { StudioCopyKey } from '../../i18n/studio-copy.js';
-import type { StudioTranslateOptions } from '../../i18n/studio-i18n.js';
 
-type StudioTranslator = (key: StudioCopyKey, options?: StudioTranslateOptions) => string;
-
-const SETTINGS_FIXED_MESSAGE_KEYS: Record<string, StudioCopyKey> = {
-  [RAW_RULE_REVIEW_DEFERRED_REASON]: 'settings.error.rawRuleReviewDeferred',
-  'owner settings have no reviewed changes': 'settings.error.noReviewedChanges',
-  'natural-language setting intent missing': 'settings.error.intentMissing',
-  'Runtime settings proposal payload invalid.': 'settings.error.runtimeProposalPayloadInvalid',
-  'Runtime settings proposal output invalid.': 'settings.error.runtimeProposalOutputInvalid',
-  'visibility settings have no reviewed changes': 'visibility.noChanges',
-  'displayName cannot be empty because PersonaCharacter profile.presentation.displayName is required': 'settings.error.displayNameRequired',
-  'description cannot be empty because PersonaCharacter profile.identity.summary is required': 'settings.error.descriptionRequired',
-  'worldId cannot be empty because PersonaCharacter replace requires a home world': 'settings.error.worldIdRequired',
-  'Runtime settings proposal returned no supported setting changes.': 'settings.error.proposalNoChanges',
-  'PersonaCharacter settings context identity mismatch.': 'common.operationFailed',
-};
-
-const PERSONA_FAILURE_REASONS = new Set([
-  'capability-unavailable', 'invalid-input', 'session-invalid', 'access-denied',
-  'owner-authority-missing', 'not-found', 'content-conflict', 'realm-unavailable',
-  'rate-limited', 'upstream-failed', 'contract-invalid', 'request-too-large', 'response-too-large',
-]);
-
-function translateSettingsFixedMessage(message: string, t: StudioTranslator): string {
-  if (PERSONA_FAILURE_REASONS.has(message)) return t('persona.failure.sanitized', { reason: t(failureKindCopyKey(message)) });
-  const enumInvalid = message.match(/^(formality|response length|sentiment) must be one of:/);
-  if (enumInvalid) {
-    const fieldKey: StudioCopyKey = enumInvalid[1] === 'formality'
-      ? 'settings.formalityLabel'
-      : enumInvalid[1] === 'response length'
-        ? 'settings.responseLengthLabel'
-        : 'settings.sentimentLabel';
-    return t('settings.error.enumInvalid', { field: t(fieldKey) });
-  }
-  if (message.startsWith('Runtime settings proposal rejected forbidden ')) return t('settings.error.proposalForbiddenField');
-  if (message.startsWith('Runtime settings proposal rejected invalid ')) return t('settings.error.proposalInvalidField');
-  if (message.startsWith('Nimi App Access ai.text.generateCandidate failed:')) return t('settings.error.runtimeProposalFailed');
-  if (message.startsWith('owner settings update rejected: forbidden ')) return t('settings.error.updateForbiddenField');
-  const key = SETTINGS_FIXED_MESSAGE_KEYS[message];
-  return key ? t(key) : t('common.operationFailed');
-}
-
-const CONSISTENCY_FIELD_LABEL_KEYS = {
+const SUGGESTION_LABELS = {
   displayName: 'settingField.displayName',
-  description: 'settings.descriptionLabel',
-  greeting: 'settingField.greeting',
+  description: 'workshop.profile.description',
+  greeting: 'workshop.profile.greeting',
+  characterIdentity: 'workshop.character.characterIdentity',
+  behaviorText: 'workshop.character.behaviorText',
+  speakingText: 'workshop.character.speakingText',
+  boundariesText: 'workshop.character.boundariesText',
 } as const satisfies Record<string, StudioCopyKey>;
-
-function useOwnerSettingsWorkspace(persona: OwnerPortfolioPersonaDetail, onPersonaWrite: () => Promise<void>) {
-  const { t } = useStudioI18n();
-  const settingsQuery = useQuery({
-    queryKey: ['realm-persona-studio', 'persona-settings', persona.ownerScope, persona.id],
-    queryFn: () => getPortfolioPersonaSettings(persona),
-  });
-  const [draft, setDraft] = useState<OwnerPersonaSettingsDraft | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [reviewResult, setReviewResult] = useState<RuntimeOwnerSettingsProposalResult | null>(null);
-  const [appliedKeys, setAppliedKeys] = useState<ReadonlySet<string>>(new Set());
-  const [isReviewing, setIsReviewing] = useState(false);
-  const settingsFailure = settingsQuery.isError ? personaCharacterFailureReason(settingsQuery.error) : null;
-  const proposal = useMemo(() => (
-    draft && settingsQuery.data
-      ? buildRealmOwnerPersonaSettingsUpdateInput(draft, settingsQuery.data as RealmOwnerPersonaSettings)
-      : null
-  ), [draft, settingsQuery.data]);
-  const dirty = useMemo(() => {
-    if (!draft || !settingsQuery.data) return false;
-    const saved = createOwnerPersonaSettingsDraft(settingsQuery.data);
-    return (Object.keys(draft) as (keyof OwnerPersonaSettingsDraft)[])
-      .some((key) => draft[key] !== saved[key]);
-  }, [draft, settingsQuery.data]);
-
-  useEffect(() => {
-    if (settingsQuery.data) {
-      setDraft(createOwnerPersonaSettingsDraft(settingsQuery.data));
-    }
-  }, [persona.id, settingsQuery.data]);
-
-  useEffect(() => {
-    setReviewResult(null);
-    setAppliedKeys(new Set());
-  }, [persona.id]);
-
-  function updateDraft(patch: Partial<OwnerPersonaSettingsDraft>) {
-    setDraft((current) => current ? { ...current, ...patch } : current);
-  }
-
-  async function runConsistencyReview() {
-    if (!draft || !settingsQuery.data) {
-      return;
-    }
-    setIsReviewing(true);
-    setReviewResult(null);
-    setAppliedKeys(new Set());
-    try {
-      const review = await proposeReviewedPortfolioPersonaSettings(
-        persona,
-        { ...draft, naturalLanguageIntent: t('settings.consistency.defaultIntent') },
-        settingsQuery.data as RealmOwnerPersonaSettings,
-      );
-      setReviewResult(review);
-    } finally {
-      setIsReviewing(false);
-    }
-  }
-
-  function applyConsistencySuggestion(key: 'displayName' | 'description' | 'greeting') {
-    if (!reviewResult?.ok) {
-      return;
-    }
-    const { visible } = partitionConsistencySuggestions(reviewResult.proposal.draftPatch);
-    const value = visible[key];
-    if (value === undefined) {
-      return;
-    }
-    if (key === 'displayName') {
-      updateDraft({ displayName: value });
-    } else if (key === 'description') {
-      updateDraft({ description: value });
-    } else {
-      updateDraft({ greeting: value });
-    }
-    setAppliedKeys((current) => new Set(current).add(key));
-    nimiToast.success(t('settings.consistency.applied'));
-  }
-
-  function applyAllConsistencySuggestions() {
-    if (!reviewResult?.ok) {
-      return;
-    }
-    const { visible } = partitionConsistencySuggestions(reviewResult.proposal.draftPatch);
-    const keys = Object.keys(visible);
-    if (keys.length === 0) {
-      return;
-    }
-    updateDraft(visible);
-    setAppliedKeys((current) => new Set([...current, ...keys]));
-    nimiToast.success(t('settings.consistency.applied'));
-  }
-
-  function dismissConsistencyReview() {
-    setReviewResult(null);
-    setAppliedKeys(new Set());
-  }
-
-  async function saveOwnerSettings() {
-    if (!draft || !settingsQuery.data) {
-      return;
-    }
-    setIsSaving(true);
-    try {
-      const updateResult = await updateReviewedPortfolioPersonaSettings(persona, draft, settingsQuery.data);
-      if (updateResult.ok) {
-        nimiToast.success(t('settings.saved'));
-        dismissConsistencyReview();
-        await settingsQuery.refetch();
-        await onPersonaWrite();
-      } else {
-        nimiToast.danger(translateSettingsFixedMessage(updateResult.message, t));
-      }
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  return {
-    persona,
-    settingsQuery,
-    settingsFailure,
-    draft,
-    proposal,
-    dirty,
-    isSaving,
-    reviewResult,
-    appliedKeys,
-    isReviewing,
-    updateDraft,
-    runConsistencyReview,
-    applyConsistencySuggestion,
-    applyAllConsistencySuggestions,
-    dismissConsistencyReview,
-    saveOwnerSettings,
-  };
-}
-
-type OwnerSettingsWorkspaceState = ReturnType<typeof useOwnerSettingsWorkspace>;
+type SuggestionField = keyof typeof SUGGESTION_LABELS;
+const SAVED_FIELDS = [...Object.keys(SUGGESTION_LABELS), 'handle', 'worldId'] as Array<
+  keyof OwnerPersonaSettingsDraft
+>;
 
 export function SettingsSectionHead({
   icon,
@@ -224,7 +69,9 @@ export function SettingsSectionHead({
 }) {
   return (
     <header className="ras-settings-section__head">
-      <span className="ras-settings-section__icon" aria-hidden="true">{icon}</span>
+      <span className="ras-settings-section__icon" aria-hidden="true">
+        {icon}
+      </span>
       <div className="ras-settings-section__heading">
         <h3 className="ras-settings-section__title">{title}</h3>
         {description ? <p className="ras-settings-section__description">{description}</p> : null}
@@ -239,245 +86,447 @@ export function SettingsSectionHead({
   );
 }
 
-function OwnerProfileSection({ settings }: { settings: OwnerSettingsWorkspaceState }) {
-  const { t } = useStudioI18n();
-  const {
-    persona,
-    settingsQuery,
-    settingsFailure,
-    draft,
-    proposal,
-    isSaving,
-    isReviewing,
-    reviewResult,
-    appliedKeys,
-    updateDraft,
-    saveOwnerSettings,
-    runConsistencyReview,
-    applyConsistencySuggestion,
-    applyAllConsistencySuggestions,
-    dismissConsistencyReview,
-  } = settings;
-  const consistency = reviewResult?.ok ? partitionConsistencySuggestions(reviewResult.proposal.draftPatch) : null;
-  const suggestionRows = consistency
-    ? (Object.keys(CONSISTENCY_FIELD_LABEL_KEYS) as Array<keyof typeof CONSISTENCY_FIELD_LABEL_KEYS>).flatMap((key) => {
-      const value = consistency.visible[key];
-      return value === undefined ? [] : [{ key, labelKey: CONSISTENCY_FIELD_LABEL_KEYS[key], value }];
-    })
-    : [];
-  // Home-world selection is WorldCore-backed (scope.r003); the select stays
-  // disabled and the world unchanged when the source list is unavailable.
-  const worldsQuery = useQuery({
-    queryKey: ['realm-persona-studio', 'create-persona-worlds'],
-    queryFn: () => listCreateRealmPersonaSelectableWorlds(),
-  });
-  const worldOptions = useMemo(() => {
-    const options = (worldsQuery.data || []).map((world) => ({ value: world.id, label: world.name }));
-    const currentWorldId = draft?.worldId || '';
-    if (currentWorldId && !options.some((option) => option.value === currentWorldId)) {
-      options.unshift({ value: currentWorldId, label: currentWorldId });
-    }
-    return options;
-  }, [worldsQuery.data, draft?.worldId]);
-
-  return (
-    <div className="ras-settings-dialog__section">
-      <div className="ras-section-head">
-        <div className="ras-settings-dialog__heading">
-          <h3 className="ras-settings-dialog__title">{t('settings.section.profile')}</h3>
-          <p className="ras-settings-dialog__subtitle">{t('settings.profileDialog.description')}</p>
-        </div>
-        <Button
-          tone="secondary"
-          size="sm"
-          leadingIcon={<Sparkles size={15} />}
-          onClick={() => void runConsistencyReview()}
-          disabled={settingsQuery.isLoading || Boolean(settingsFailure) || !draft || isReviewing}
-          loading={isReviewing}
-        >
-          {t('settings.consistency.run')}
-        </Button>
-      </div>
-      {settingsQuery.isLoading ? (
-        <EmptyState title={t('settings.loadingTitle')} description={t('settings.loadingDescription')} />
-      ) : null}
-      {settingsFailure ? (
-        <InlineAlert tone="danger">
-          {t('settings.unavailable', {
-            message: t('persona.failure.sanitized', { reason: t(failureKindCopyKey(settingsFailure)) }),
-          })}
-        </InlineAlert>
-      ) : null}
-      {draft && settingsQuery.data ? (
-        <>
-          <div className="ras-profile-editor">
-            <div className="ras-profile-editor__identity">
-              <Avatar
-                src={persona.avatarUrl}
-                alt={draft.displayName || persona.displayName.value || t('persona.header.personaCharacterAlt')}
-                size="lg"
-                shape="circle"
-                tone="accent"
-                fallback={<span className="text-xl font-semibold">{(draft.displayName || persona.displayName.value || '?').charAt(0).toUpperCase()}</span>}
-              />
-              <div className="ras-profile-editor__identity-main">
-                <FieldShell label={t('settingField.displayName')}>
-                  <TextField
-                    value={draft.displayName}
-                    placeholder={t('settings.displayNamePlaceholder')}
-                    onChange={(event) => updateDraft({ displayName: event.currentTarget.value })}
-                  />
-                </FieldShell>
-                <div className="ras-profile-editor__identity-fields">
-                  <FieldShell label={t('settingField.handle')} message={t('settings.handleHint')}>
-                    <TextField
-                      value={draft.handle}
-                      leading={<span aria-hidden="true">@</span>}
-                      placeholder={t('settings.handlePlaceholder')}
-                      onChange={(event) => updateDraft({ handle: event.currentTarget.value })}
-                    />
-                  </FieldShell>
-                  <FieldShell label={t('settings.worldLabel')}>
-                    <SelectField
-                      value={draft.worldId}
-                      options={worldOptions}
-                      disabled={worldsQuery.isLoading || worldsQuery.isError}
-                      contentLayer="dialog"
-                      onValueChange={(value) => updateDraft({ worldId: value })}
-                    />
-                  </FieldShell>
-                </div>
-              </div>
-            </div>
-            {worldsQuery.isError ? (
-              <InlineAlert tone="warning">{t('settings.worldUnavailable')}</InlineAlert>
-            ) : null}
-            <FieldShell label={t('settingField.greeting')} message={t('settings.greetingHint')}>
-              <TextareaField
-                tone="quiet"
-                className="ras-greeting-editor"
-                textareaClassName="ras-greeting-editor__input"
-                value={draft.greeting}
-                placeholder={t('settings.greetingPlaceholder')}
-                rows={3}
-                onChange={(event) => updateDraft({ greeting: event.currentTarget.value })}
-              />
-            </FieldShell>
-            <FieldShell label={t('settings.descriptionLabel')}>
-              <TextareaField
-                value={draft.description}
-                placeholder={t('settings.descriptionPlaceholder')}
-                rows={4}
-                onChange={(event) => updateDraft({ description: event.currentTarget.value })}
-              />
-            </FieldShell>
-          </div>
-          {reviewResult ? (
-            <Surface tone="panel" padding="md">
-              <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="font-medium">{t('settings.consistency.title')}</div>
-                  {reviewResult.ok ? (
-                    <div className="ras-break-anywhere mt-1 text-[length:var(--nimi-type-body-sm-size)] text-[var(--nimi-text-muted)]">
-                      {reviewResult.proposal.rationale}
-                    </div>
-                  ) : null}
-                </div>
-                <StatusBadge tone={reviewResult.ok ? 'info' : 'danger'}>
-                  {reviewResult.ok ? t('common.candidate') : t('common.sourceUnavailable')}
-                </StatusBadge>
-              </div>
-              {reviewResult.ok ? (
-                <>
-                  {suggestionRows.length > 0 ? (
-                    <div className="mt-3 grid gap-2">
-                      {suggestionRows.map((row) => (
-                        <div
-                          key={row.key}
-                          className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--nimi-radius-field)] border border-[var(--nimi-border-subtle)] p-2.5"
-                        >
-                          <div className="min-w-0">
-                            <div className="text-[length:var(--nimi-type-body-sm-size)] font-medium">{t(row.labelKey)}</div>
-                            <div className="ras-break-anywhere text-[length:var(--nimi-type-body-sm-size)] text-[var(--nimi-text-muted)]">{row.value}</div>
-                          </div>
-                          {appliedKeys.has(row.key) ? (
-                            <StatusBadge tone="success">{t('common.ownerReviewed')}</StatusBadge>
-                          ) : (
-                            <Button tone="secondary" onClick={() => applyConsistencySuggestion(row.key)}>
-                              {t('settings.consistency.apply')}
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                  {consistency && consistency.deferredKeys.length > 0 ? (
-                    <InlineAlert tone="info" className="mt-3">
-                      {t('settings.consistency.deferredNote')}
-                    </InlineAlert>
-                  ) : null}
-                  <InlineAlert tone="info" className="mt-3">
-                    {t('settings.consistency.description')}
-                  </InlineAlert>
-                  <div className="mt-3 flex flex-wrap gap-2.5">
-                    {suggestionRows.length > 1 ? (
-                      <Button onClick={applyAllConsistencySuggestions}>{t('settings.consistency.applyAll')}</Button>
-                    ) : null}
-                    <Button tone="ghost" onClick={dismissConsistencyReview}>
-                      {t('settings.consistency.dismiss')}
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <InlineAlert tone="danger" className="mt-3">
-                  {translateSettingsFixedMessage(reviewResult.message, t)}
-                </InlineAlert>
-              )}
-            </Surface>
-          ) : null}
-          <div className="ras-settings-actions">
-            <Button
-              tone="primary"
-              disabled={!proposal?.ok || isSaving}
-              loading={isSaving}
-              onClick={() => void saveOwnerSettings()}
-            >
-              {t('settings.save')}
-            </Button>
-          </div>
-        </>
-      ) : null}
-    </div>
-  );
-}
-
-/**
- * Editable owner settings form (public profile) rendered inside the settings
- * editor dialog. Visibility is changed directly from the settings workspace
- * page select, so the dialog only carries the profile fields. Layout mirrors
- * the public profile instead of an admin table: an identity row (avatar +
- * display name), the owner-reviewed handle and WorldCore-backed home-world
- * selection under it, the greeting edited inside a quote bubble that matches
- * the read-only greeting card, then the description.
- */
+// @nimi-authority: rule.realm-persona-studio.setting.r009
+// @nimi-authority: rule.realm-persona-studio.setting.r012
+// @nimi-authority: rule.realm-persona-studio.setting.r016
 export function PersonaSettingsForm({
   persona,
   onPersonaWrite,
   onDirtyChange,
+  mode = 'dialog',
 }: {
   persona: OwnerPortfolioPersonaDetail;
   onPersonaWrite: () => Promise<void>;
   onDirtyChange?: (dirty: boolean) => void;
+  mode?: 'page' | 'dialog';
 }) {
-  const settings = useOwnerSettingsWorkspace(persona, onPersonaWrite);
-
+  const { t } = useStudioI18n();
+  const navigate = useNavigate();
+  const id = useId();
+  const [tab, setTab] = useState('profile');
+  const [base, setBase] = useState<RealmOwnerPersonaSettings | null>(null);
+  const [draft, setDraft] = useState<OwnerPersonaSettingsDraft | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isReviewing, setIsReviewing] = useState(false);
+  const [aiRequestFailed, setAiRequestFailed] = useState(false);
+  const [reviewResult, setReviewResult] = useState<RuntimeOwnerSettingsProposalResult | null>(null);
+  const [reviewBase, setReviewBase] = useState<OwnerPersonaSettingsDraft | null>(null);
+  const [appliedKeys, setAppliedKeys] = useState<Set<SuggestionField>>(new Set());
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const mounted = useRef(true);
   useEffect(() => {
-    onDirtyChange?.(settings.dirty);
-  }, [onDirtyChange, settings.dirty]);
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const settingsQuery = useQuery({
+    queryKey: ['realm-persona-studio', 'persona-settings', persona.ownerScope, persona.id],
+    queryFn: () => getPortfolioPersonaSettings(persona),
+    refetchOnWindowFocus: false,
+  });
+  const worldsQuery = useQuery({
+    queryKey: ['realm-persona-studio', 'create-persona-worlds'],
+    queryFn: () => listCreateRealmPersonaSelectableWorlds(),
+  });
+  // A refetch must not erase an owner's unsaved writing or silently advance its base hash.
+  useEffect(() => {
+    if (settingsQuery.data && !base) {
+      setBase(settingsQuery.data);
+      setDraft(createOwnerPersonaSettingsDraft(settingsQuery.data));
+    }
+  }, [base, settingsQuery.data]);
+  const built = useMemo(
+    () => (draft && base ? buildRealmOwnerPersonaSettingsUpdateInput(draft, base) : null),
+    [draft, base],
+  );
+  const dirty = useMemo(() => {
+    if (!draft || !base) return false;
+    const original = createOwnerPersonaSettingsDraft(base);
+    return SAVED_FIELDS.some((key) => draft[key] !== original[key]);
+  }, [draft, base]);
+  const navigationBlocker = useBlocker(dirty || Boolean(draft?.naturalLanguageIntent.trim()));
+  useEffect(() => {
+    onDirtyChange?.(dirty || Boolean(draft?.naturalLanguageIntent.trim()));
+  }, [dirty, draft?.naturalLanguageIntent, onDirtyChange]);
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
 
+  function updateDraft(patch: Partial<OwnerPersonaSettingsDraft>) {
+    setDraft((current) => (current ? { ...current, ...patch } : current));
+    setSaveMessage(null);
+  }
+  async function suggest() {
+    if (!draft || !base || isReviewing || !draft.naturalLanguageIntent.trim()) return;
+    setIsReviewing(true);
+    setAiRequestFailed(false);
+    setReviewResult(null);
+    setAppliedKeys(new Set());
+    setReviewBase({ ...draft });
+    try {
+      const result = await proposeReviewedPortfolioPersonaSettings(persona, draft, base);
+      if (mounted.current) setReviewResult(result);
+    } catch {
+      if (mounted.current) setAiRequestFailed(true);
+    } finally {
+      if (mounted.current) setIsReviewing(false);
+    }
+  }
+  const suggestions = reviewResult?.ok ? reviewResult.proposal.draftPatch : {};
+  const suggestionKeys = Object.keys(suggestions) as SuggestionField[];
+  function apply(keys: SuggestionField[]) {
+    if (!draft || !reviewBase) return;
+    const adopted = adoptSettingsSuggestions(
+      draft,
+      reviewBase,
+      suggestions,
+      keys.filter((key) => !appliedKeys.has(key)),
+    );
+    setDraft(adopted.draft);
+    setSaveMessage(null);
+    setAppliedKeys((current) => new Set([...current, ...adopted.applied]));
+  }
+  async function save() {
+    if (!draft || !base || !built?.ok || isSaving) return;
+    setIsSaving(true);
+    setSaveMessage(null);
+    try {
+      const result = await updateReviewedPortfolioPersonaSettings(persona, draft, base);
+      if (!mounted.current) return;
+      if (!result.ok) {
+        setSaveMessage(
+          result.failure === 'content-conflict'
+            ? t('workshop.save.conflict')
+            : t('persona.failure.sanitized', { reason: t(failureKindCopyKey(result.failure)) }),
+        );
+        return;
+      }
+      const refreshed = await settingsQuery.refetch();
+      if (!mounted.current) return;
+      if (refreshed.isError || !refreshed.data) {
+        // The write succeeded; do not offer another write from the old hash.
+        setBase(result.settings);
+        setDraft(createOwnerPersonaSettingsDraft(result.settings));
+        setSaveMessage(t('workshop.save.refreshFailed'));
+      } else {
+        setBase(refreshed.data);
+        setDraft(createOwnerPersonaSettingsDraft(refreshed.data));
+        nimiToast.success(t('workshop.save.success'));
+      }
+      setReviewResult(null);
+      await onPersonaWrite();
+    } catch {
+      if (mounted.current) setSaveMessage(t('common.operationFailed'));
+    } finally {
+      if (mounted.current) setIsSaving(false);
+    }
+  }
+  if (!draft || !base) {
+    return settingsQuery.isError ? (
+      <InlineAlert
+        tone="danger"
+        action={
+          <Button tone="secondary" size="sm" onClick={() => void settingsQuery.refetch()}>
+            {t('common.retry')}
+          </Button>
+        }
+      >
+        {t('persona.failure.sanitized', {
+          reason: t(failureKindCopyKey(personaCharacterFailureReason(settingsQuery.error))),
+        })}
+      </InlineAlert>
+    ) : (
+      <LoadingSkeleton lines={5} label={t('settings.loadingTitle')} />
+    );
+  }
+  const worldOptions = (worldsQuery.data || []).map((world) => ({
+    value: world.id,
+    label: world.name,
+  }));
+  if (draft.worldId && !worldOptions.some((option) => option.value === draft.worldId))
+    worldOptions.unshift({ value: draft.worldId, label: persona.world.value || draft.worldId });
+  const invalidWriting = built && !built.ok && built.errors.includes('character-writing-invalid');
   return (
-    <div className="ras-settings ras-settings--dialog">
-      <OwnerProfileSection settings={settings} />
+    <div className={`ras-maintenance ras-maintenance--${mode}`}>
+      <ConfirmDialog
+        open={navigationBlocker.state === 'blocked'}
+        title={t('persona.settings.discardTitle')}
+        message={t('persona.settings.discardDescription')}
+        confirmLabel={t('persona.settings.discardConfirm')}
+        cancelLabel={t('common.cancel')}
+        confirmTone="danger"
+        loading={isSaving}
+        onConfirm={() => {
+          if (!isSaving && navigationBlocker.state === 'blocked') navigationBlocker.proceed();
+        }}
+        onClose={() => {
+          if (navigationBlocker.state === 'blocked') navigationBlocker.reset();
+        }}
+      />
+      <div className="ras-workshop-heading">
+        <span className="ras-workshop-eyebrow">{t('workshop.hub.eyebrow')}</span>
+        <h2>{t('workshop.maintain.title')}</h2>
+        <p>{t('workshop.maintain.description')}</p>
+      </div>
+      <footer className="ras-maintenance-savebar">
+        <span role="status">{t(dirty ? 'workshop.save.dirty' : 'workshop.save.clean')}</span>
+        <Button
+          tone="primary"
+          disabled={!built?.ok || isSaving}
+          loading={isSaving}
+          onClick={() => void save()}
+        >
+          {t('workshop.save.action')}
+        </Button>
+      </footer>
+      {saveMessage ? (
+        <InlineAlert tone="warning" className="ras-workshop-save-message">
+          {saveMessage}
+        </InlineAlert>
+      ) : null}
+      <div className="ras-workshop-layout">
+        <div className="ras-maintenance__main">
+          <Surface tone="panel" padding="none" className="ras-writing-partner">
+            <div className="ras-writing-partner__heading">
+              <Sparkles size={20} strokeWidth={1.7} aria-hidden="true" />
+              <div>
+                <h3>{t('workshop.ai.title')}</h3>
+                <p>{t('workshop.ai.description')}</p>
+              </div>
+            </div>
+            <div className="ras-writing-partner__presets">
+              {(['warmer', 'distinct', 'greeting'] as const).map((key) => (
+                <Button
+                  key={key}
+                  tone="secondary"
+                  size="sm"
+                  disabled={isReviewing || isSaving}
+                  onClick={() =>
+                    updateDraft({ naturalLanguageIntent: t(`workshop.ai.${key}Intent`) })
+                  }
+                >
+                  {t(`workshop.ai.${key}`)}
+                </Button>
+              ))}
+            </div>
+            <FieldShell label={<label htmlFor={`${id}-intent`}>{t('workshop.ai.intent')}</label>}>
+              <TextareaField
+                id={`${id}-intent`}
+                rows={3}
+                value={draft.naturalLanguageIntent}
+                readOnly={isReviewing || isSaving}
+                placeholder={t('workshop.ai.placeholder')}
+                onChange={(event) =>
+                  updateDraft({ naturalLanguageIntent: event.currentTarget.value })
+                }
+              />
+            </FieldShell>
+            <div className="ras-writing-partner__actions">
+              <Button
+                tone="primary"
+                loading={isReviewing}
+                disabled={isSaving || !draft.naturalLanguageIntent.trim()}
+                leadingIcon={<Sparkles size={15} aria-hidden="true" />}
+                onClick={() => void suggest()}
+              >
+                {t(isReviewing ? 'workshop.ai.generating' : 'workshop.ai.generate')}
+              </Button>
+            </div>
+            {aiRequestFailed || (reviewResult && !reviewResult.ok) ? (
+              <InlineAlert
+                tone="warning"
+                action={
+                  <Button tone="secondary" size="sm" onClick={() => navigate('/ai-config')}>
+                    {t('workshop.ai.configure')}
+                  </Button>
+                }
+              >
+                {t('workshop.ai.failed')}
+              </InlineAlert>
+            ) : null}
+          </Surface>
+          {reviewResult?.ok ? (
+            <section className="ras-writing-suggestions" aria-label={t('workshop.ai.suggestions')}>
+              <div className="ras-section-head">
+                <h3>{t('workshop.ai.suggestions')}</h3>
+                <StatusBadge tone="info">{t('common.candidate')}</StatusBadge>
+              </div>
+              <p>{reviewResult.proposal.rationale}</p>
+              {suggestionKeys.map((key) => {
+                const applied = appliedKeys.has(key);
+                const stale = !applied && draft[key] !== reviewBase?.[key];
+                return (
+                  <Surface key={key} tone="card" padding="md" className="ras-writing-suggestion">
+                    <div className="ras-section-head">
+                      <h4>{t(SUGGESTION_LABELS[key])}</h4>
+                      {applied ? (
+                        <StatusBadge tone="success">
+                          <Check size={13} aria-hidden="true" />
+                          {t('workshop.ai.adopted')}
+                        </StatusBadge>
+                      ) : (
+                        <Button
+                          size="sm"
+                          tone="secondary"
+                          disabled={stale || isSaving}
+                          onClick={() => apply([key])}
+                        >
+                          {t('workshop.ai.adopt')}
+                        </Button>
+                      )}
+                    </div>
+                    <div className="ras-writing-suggestion__comparison">
+                      <div>
+                        <span>{t('workshop.ai.current')}</span>
+                        <p>{reviewBase?.[key] || t('common.notSet')}</p>
+                      </div>
+                      <div>
+                        <span>{t('workshop.ai.proposed')}</span>
+                        <p>{suggestions[key]}</p>
+                      </div>
+                    </div>
+                    {stale ? <p className="ras-workshop-help">{t('workshop.ai.stale')}</p> : null}
+                  </Surface>
+                );
+              })}
+              <div className="ras-writing-partner__actions">
+                {suggestionKeys.length > 1 ? (
+                  <Button
+                    disabled={
+                      isSaving ||
+                      suggestionKeys.every(
+                        (key) => appliedKeys.has(key) || draft[key] !== reviewBase?.[key],
+                      )
+                    }
+                    onClick={() => apply(suggestionKeys)}
+                  >
+                    {t('workshop.ai.adoptAll')}
+                  </Button>
+                ) : null}
+                <Button tone="ghost" onClick={() => setReviewResult(null)}>
+                  {t('workshop.ai.discard')}
+                </Button>
+              </div>
+            </section>
+          ) : null}
+
+          <Surface tone="card" padding="none" className="ras-workshop-editor">
+            <NimiTabs
+              value={tab}
+              onValueChange={setTab}
+              items={[
+                { value: 'profile', label: t('workshop.tab.profile') },
+                { value: 'character', label: t('workshop.tab.character') },
+              ]}
+              ariaLabel={t('workshop.maintain.title')}
+            />
+            <fieldset disabled={isSaving} className="ras-workshop-fieldset">
+              <div hidden={tab !== 'profile'} className="ras-workshop-panel">
+                <div className="ras-create-identity-grid">
+                  <FieldShell
+                    label={<label htmlFor={`${id}-name`}>{t('settingField.displayName')}</label>}
+                    message={!draft.displayName.trim() ? t('workshop.save.required') : null}
+                    messageTone="danger"
+                  >
+                    <TextField
+                      id={`${id}-name`}
+                      value={draft.displayName}
+                      onChange={(event) => updateDraft({ displayName: event.currentTarget.value })}
+                    />
+                  </FieldShell>
+                  <FieldShell
+                    label={<label htmlFor={`${id}-handle`}>{t('settingField.handle')}</label>}
+                  >
+                    <TextField
+                      id={`${id}-handle`}
+                      leading={<span aria-hidden="true">@</span>}
+                      value={draft.handle}
+                      onChange={(event) => updateDraft({ handle: event.currentTarget.value })}
+                    />
+                  </FieldShell>
+                </div>
+                <FieldShell
+                  label={<label htmlFor={`${id}-bio`}>{t('workshop.profile.description')}</label>}
+                  message={
+                    !draft.description.trim()
+                      ? t('workshop.save.required')
+                      : t('workshop.profile.descriptionHint')
+                  }
+                  messageTone={!draft.description.trim() ? 'danger' : 'neutral'}
+                >
+                  <TextareaField
+                    id={`${id}-bio`}
+                    value={draft.description}
+                    rows={4}
+                    onChange={(event) => updateDraft({ description: event.currentTarget.value })}
+                  />
+                </FieldShell>
+                <FieldShell
+                  label={<label htmlFor={`${id}-greeting`}>{t('workshop.profile.greeting')}</label>}
+                  message={t('workshop.profile.greetingHint')}
+                >
+                  <TextareaField
+                    id={`${id}-greeting`}
+                    value={draft.greeting}
+                    rows={3}
+                    placeholder={t('workshop.profile.greetingPlaceholder')}
+                    onChange={(event) => updateDraft({ greeting: event.currentTarget.value })}
+                  />
+                </FieldShell>
+                <details className="ras-workshop-world-details">
+                  <summary>{t('settings.worldLabel')}</summary>
+                  <SelectField
+                    aria-label={t('settings.worldLabel')}
+                    value={draft.worldId}
+                    options={worldOptions}
+                    disabled={worldsQuery.isLoading || worldsQuery.isError}
+                    contentLayer={mode === 'dialog' ? 'dialog' : undefined}
+                    onValueChange={(value) => updateDraft({ worldId: value })}
+                  />
+                  {worldsQuery.isError ? <p>{t('settings.worldUnavailable')}</p> : null}
+                </details>
+              </div>
+              <div hidden={tab !== 'character'} className="ras-workshop-panel">
+                {!base.lorebookDeclaration ? (
+                  <InlineAlert tone="info">{t('workshop.save.unavailable')}</InlineAlert>
+                ) : null}
+                <CharacterWritingFields
+                  value={draft}
+                  onChange={updateDraft}
+                  showErrors={Boolean(invalidWriting)}
+                />
+              </div>
+            </fieldset>
+            {invalidWriting && tab !== 'character' ? (
+              <InlineAlert
+                tone="warning"
+                action={
+                  <Button tone="ghost" onClick={() => setTab('character')}>
+                    {t('workshop.tab.character')}
+                  </Button>
+                }
+              >
+                {t('workshop.writing.invalid')}
+              </InlineAlert>
+            ) : null}
+          </Surface>
+        </div>
+        <CharacterPreview
+          displayName={draft.displayName}
+          handle={draft.handle}
+          description={draft.description}
+          greeting={draft.greeting}
+          identity={draft.characterIdentity}
+          imageUrl={persona.avatarUrl}
+        />
+      </div>
     </div>
   );
 }

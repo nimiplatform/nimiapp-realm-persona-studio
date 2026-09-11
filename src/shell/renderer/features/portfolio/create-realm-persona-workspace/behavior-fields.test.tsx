@@ -38,7 +38,7 @@ it('lets an owner fill missing fields, focuses the first error, and carries edit
   let reviewed = createEmptyDraft();
   render(<Harness initialDraft={{ ...createEmptyDraft(), handle: 'mira', displayName: 'Mira', concept: 'A quiet observer', selectedWorldId: 'world-oasis', personaArchetype: 'CARING' }} onReview={(draft) => { reviewed = draft; }} />);
   fireEvent.click(screen.getByText('Review'));
-  const rules = screen.getByRole('textbox', { name: '行为准则 必填' });
+  const rules = screen.getByRole('textbox', { name: 'TA 如何待人处事 必填' });
   await waitFor(() => expect(document.activeElement).toBe(rules));
   expect(rules.getAttribute('aria-invalid')).toBe('true');
   expect(screen.getByText('请填写说话方式。')).toBeTruthy();
@@ -46,8 +46,8 @@ it('lets an owner fill missing fields, focuses the first error, and carries edit
   fireEvent.change(rules, { target: { value: '先倾听，再回应。' } });
   expect(screen.queryByText('请填写行为准则。')).toBeNull();
   expect(screen.getByText('请填写说话方式。')).toBeTruthy();
-  fireEvent.change(screen.getByRole('textbox', { name: '说话方式 必填' }), { target: { value: '温柔简洁。' } });
-  fireEvent.change(screen.getByRole('textbox', { name: '行为边界 必填' }), { target: { value: '不索取隐私。' } });
+  fireEvent.change(screen.getByRole('textbox', { name: 'TA 如何说话 必填' }), { target: { value: '温柔简洁。' } });
+  fireEvent.change(screen.getByRole('textbox', { name: 'TA 会坚持什么底线 必填' }), { target: { value: '不索取隐私。' } });
   fireEvent.click(screen.getByText('Review'));
   const result = validateCreateRealmPersonaReadiness(reviewed, { ...options, selectableWorldIds: [...options.selectableWorldIds] });
   expect(result.ready).toBe(true);
@@ -60,7 +60,7 @@ it('displays existing candidate values and rejects a whitespace-only owner edit'
   expect(screen.getByDisplayValue('候选行为')).toBeTruthy();
   expect(screen.getByDisplayValue('候选语气')).toBeTruthy();
   expect(screen.getByDisplayValue('候选边界')).toBeTruthy();
-  fireEvent.change(screen.getByRole('textbox', { name: '行为准则 必填' }), { target: { value: '  \n ' } });
+  fireEvent.change(screen.getByRole('textbox', { name: 'TA 如何待人处事 必填' }), { target: { value: '  \n ' } });
   fireEvent.click(screen.getByText('Review'));
   expect(screen.getByText('请填写行为准则。')).toBeTruthy();
 });

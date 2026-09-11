@@ -147,7 +147,7 @@ function OverviewPublicProfilePreview({ persona }: { persona: OwnerPortfolioPers
     <Surface tone="panel" material="glass-regular" padding="lg" className="ras-radius-xl overflow-hidden">
       <div className="flex items-center justify-between gap-3">
         <h2 className="m-0 text-[length:var(--nimi-type-body-size)] font-semibold">{t('overview.preview.title')}</h2>
-        <StatusBadge tone="info">{t('common.localOnly')}</StatusBadge>
+        <StatusBadge tone="info">{t('overview.preview.savedInRealm')}</StatusBadge>
       </div>
       <div className="mt-3 overflow-hidden rounded-[var(--nimi-radius-panel)] border border-[var(--nimi-border-subtle)] bg-[var(--nimi-surface-card)]">
         <div className="relative min-h-52 bg-[var(--nimi-surface-panel)]">

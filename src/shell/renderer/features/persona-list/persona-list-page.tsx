@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, ChevronRight, FilePenLine, Info, LayoutGrid, Plus, RefreshCw } from 'lucide-react';
+import { AlertTriangle, ChevronRight, FilePenLine, Info, LayoutGrid, Plus, RefreshCw, Sparkles, ArrowRight } from 'lucide-react';
 import {
   Avatar,
   Button,
@@ -368,7 +368,6 @@ export function PersonaListPage() {
     () => applyOwnerPortfolioView(personas, { query: queryText, filter: 'all', sort }),
     [personas, queryText, sort],
   );
-  const sourceWarnings = personas.filter((persona) => persona.friendCount.status === 'source-unavailable');
   const portfolioFailure = portfolioQuery.isError ? classifyPortfolioFailure(portfolioQuery.error) : null;
   const refreshing = portfolioQuery.isFetching || worldCoresQuery.isFetching || draftHistoryStatus === 'loading';
   const refreshAll = () => {
@@ -395,15 +394,19 @@ export function PersonaListPage() {
             >
               {t('common.refresh')}
             </Button>
-            <Button
-              tone="primary"
-              leadingIcon={<Plus size={15} strokeWidth={2} />}
-              onClick={openCreate}
-            >
-              {t('portfolio.createButton')}
-            </Button>
+
           </div>
         </header>
+
+        <section className="ras-persona-welcome">
+          <span className="ras-workshop-eyebrow">{t('workshop.hub.eyebrow')}</span>
+          <h2>{t('workshop.hub.title')}</h2>
+          <p>{t('workshop.hub.description')}</p>
+          <div className="ras-persona-welcome__actions">
+            <Button tone="primary" leadingIcon={<Sparkles size={16} aria-hidden="true" />} onClick={openCreate}>{t('workshop.hub.create')}</Button>
+            {draftHistoryStatus === 'ready' && draftEntries[0] ? <Button tone="ghost" trailingIcon={<ArrowRight size={15} aria-hidden="true" />} onClick={() => navigate(`/portfolio/create?draft=${encodeURIComponent(draftEntries[0]!.draftKey)}`)}>{t('workshop.hub.resume')}</Button> : null}
+          </div>
+        </section>
 
         <NimiTabs
           items={[
@@ -472,14 +475,6 @@ export function PersonaListPage() {
                   onSortChange={setSort}
                 />
 
-                {sourceWarnings.length > 0 ? (
-                  <InlineAlert tone="warning">
-                    {t('portfolio.friendCountWarning', {
-                      count: sourceWarnings.length,
-                      plural: sourceWarnings.length === 1 ? '' : 's',
-                    })}
-                  </InlineAlert>
-                ) : null}
 
                 {visiblePersonas.length === 0 ? (
                   <EmptyState

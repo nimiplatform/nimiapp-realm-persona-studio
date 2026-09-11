@@ -143,8 +143,10 @@ export function PersonaTabBar({
 
 export function PersonaHeader({
   persona,
+  compact = false,
 }: {
   persona: OwnerPortfolioPersonaDetail;
+  compact?: boolean;
 }) {
   const { t } = useStudioI18n();
   const openSettingsEditor = useOpenPersonaSettingsEditor();
@@ -223,6 +225,14 @@ export function PersonaHeader({
   ) : (
     <Play size={11} strokeWidth={2} aria-hidden="true" />
   );
+
+  if (compact) {
+    return <header className="ras-persona-compact-header">
+      <Avatar src={persona.avatarUrl ?? null} alt={name} size="md" shape="circle" tone="accent" fallback={name.charAt(0).toUpperCase()} />
+      <div><h1>{name}</h1><p>{handle} · {world}</p></div>
+      <VisibilityInlineSelect persona={persona} />
+    </header>;
+  }
 
   return (
     <section className="ras-persona-hero">
@@ -412,7 +422,7 @@ export function PersonaWorkspaceFrame({
         <PersonaVoiceEditorContext.Provider value={openVoiceEditor}>
           <div className="ras-persona-workspace" data-view={current}>
             <section className="ras-persona-surface">
-              <PersonaHeader persona={persona} />
+              <PersonaHeader persona={persona} compact={current === 'settings'} />
               <PersonaTabBar personaId={persona.id} current={current} mode={mode} />
               <div className="ras-persona-surface__content">{children}</div>
             </section>

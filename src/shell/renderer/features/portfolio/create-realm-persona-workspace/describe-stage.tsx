@@ -5,7 +5,7 @@ import {
   InlineAlert,
   TextareaField,
 } from '@nimiplatform/kit/ui';
-import { ArrowRight, Check, ChevronDown, Dices, MessageCircle, Pencil, ScanFace, Shield, Sparkles } from 'lucide-react';
+import { ArrowRight, BookOpen, Compass, Radio, Check, ChevronDown, Dices, MessageCircle, Pencil, ScanFace, Shield, Sparkles } from 'lucide-react';
 import type {
   NormalizedCreateRealmPersonaDraft,
 } from '../create-persona-draft.js';
@@ -61,11 +61,24 @@ export function DescribeStage({
   return (
     <section className="ras-create-studio" aria-labelledby={`${id}-heading`}>
       <div className="ras-create-studio__intro">
-        <h2 id={`${id}-heading`}>{t('create.studio.heading')}</h2>
-        <p>{t('create.studio.intro')}</p>
+        <span className="ras-workshop-eyebrow">{t('workshop.eyebrow')}</span>
+        <h2 id={`${id}-heading`}>{t('workshop.idea.title')}</h2>
+        <p>{t('workshop.idea.description')}</p>
       </div>
 
+      <ol className="ras-creation-journey" aria-label={t('create.title')}>
+        {(['step1', 'step2', 'step3'] as const).map((step, index) => <li key={step} aria-current={index === 0 ? 'step' : undefined}><span>{String(index + 1).padStart(2, '0')}</span>{t(`workshop.idea.${step}`)}</li>)}
+      </ol>
+      {!originalDescription.trim() && !busy ? <div className="ras-idea-starters">
+        <p>{t('workshop.idea.inspiration')}</p>
+        <div>{([{ key: 'bookshop', Icon: BookOpen }, { key: 'explorer', Icon: Compass }, { key: 'radio', Icon: Radio }] as const).map(({ key, Icon }) => (
+          <button type="button" key={key} onClick={() => updateDraft({ originalDescription: t(`workshop.idea.starter.${key}Text`) })}>
+            <Icon size={19} strokeWidth={1.6} aria-hidden="true" /><span>{t(`workshop.idea.starter.${key}`)}</span><ArrowRight size={15} aria-hidden="true" />
+          </button>
+        ))}</div>
+      </div> : null}
       <div className="ras-create-describe-card">
+        {isGeneratingSeed ? <div className="ras-creation-progress" role="status"><Sparkles size={18} aria-hidden="true" /><div><strong>{t('workshop.idea.busy')}</strong><p>{t('workshop.idea.busyHint')}</p></div></div> : null}
         <div className="ras-create-describe-card__body">
           <div className="ras-create-composer">
             <div className="ras-create-describe-field-label">
@@ -83,7 +96,7 @@ export function DescribeStage({
             </div>
             <TextareaField
               id={`${id}-description`}
-              rows={8}
+              rows={5}
               tone="quiet"
               className="ras-create-describe-textarea"
               value={originalDescription}
@@ -129,7 +142,7 @@ export function DescribeStage({
                         />
                       </FieldShell>
                     </div>
-                    {!expanded ? <p className="ras-create-direction__hint">{normalizedDraft[key].trim() || t(supplementLabels[key].placeholderKey)}</p> : null}
+                    {!expanded && normalizedDraft[key].trim() ? <p className="ras-create-direction__hint">{normalizedDraft[key]}</p> : null}
                   </div>
                 );
               })}

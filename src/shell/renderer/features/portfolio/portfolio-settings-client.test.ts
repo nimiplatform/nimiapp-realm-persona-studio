@@ -43,16 +43,11 @@ function currentSettings(): RealmOwnerPersonaSettings {
     origin: persona.origin,
     profile: persona.profile,
     persona,
+    lorebookDeclaration: persona.lorebookDeclaration,
     displayName: 'Mira',
     description: 'Quiet strategist',
     greeting: 'Welcome in.',
     handle: 'mira',
-    naturalLanguageIntent: null,
-    identity: {},
-    personality: {},
-    communication: {},
-    boundaries: {},
-    positioning: {},
   };
 }
 
@@ -128,7 +123,6 @@ describe('owner PersonaCharacter settings client', () => {
       displayName: 'Mira Prime',
       description: 'Owner-reviewed native summary.',
       greeting: 'Welcome back.',
-      publicRole: 'must remain local',
     };
 
     const result = await updateReviewedOwnerPersonaSettings('persona-1', draft, settings);
@@ -239,4 +233,28 @@ describe('owner PersonaCharacter settings client', () => {
     });
   });
 
+});
+
+it('does not replace a character changed in Realm while its owner was editing', async () => {
+  personaCharacter.replace.mockClear();
+  personaCharacter.getOwned.mockResolvedValue({ ...persona, contentHash: '9'.repeat(64) });
+  const settings = currentSettings();
+  const draft = { ...createOwnerPersonaSettingsDraft(settings), greeting: 'An unsaved greeting.' };
+  const result = await updateReviewedOwnerPersonaSettings(persona.id, draft, settings);
+  expect(result).toMatchObject({ ok: false, failure: 'content-conflict', draft: { greeting: 'An unsaved greeting.' } });
+  expect(personaCharacter.replace).not.toHaveBeenCalled();
+});
+
+it('replaces a reviewed declaration with the latest complete profile, preserving unrelated source fields', async () => {
+  personaCharacter.getOwned.mockResolvedValue(persona);
+  personaCharacter.toProfileInput.mockImplementation(profileInput);
+  personaCharacter.replace.mockImplementation(async (input) => ({ ...persona, contentHash: '8'.repeat(64), contentRevision: 2, lorebookDeclaration: input.lorebookDeclaration }));
+  const settings = currentSettings();
+  const result = await updateReviewedOwnerPersonaSettings(persona.id, { ...createOwnerPersonaSettingsDraft(settings), speakingText: 'Short sentences.\nDry humor.' }, settings);
+  expect(result.ok).toBe(true);
+  expect(personaCharacter.replace).toHaveBeenLastCalledWith(expect.objectContaining({
+    baseContentHash: persona.contentHash,
+    profile: profileInput(),
+    lorebookDeclaration: { ...persona.lorebookDeclaration, speaking: ['Short sentences.', 'Dry humor.'] },
+  }));
 });
