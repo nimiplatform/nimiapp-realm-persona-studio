@@ -112,7 +112,7 @@ function buildStudioModelConfigCopy(t: StudioCopyTranslator): ModelConfigCopy {
 }
 
 export function StudioAIConfigPage() {
-  const { t } = useStudioI18n();
+  const { locale, t } = useStudioI18n();
   const queryClient = useQueryClient();
   const aiConfigManager = getStudioAIConfigManager();
   const configQuery = useQuery({
@@ -166,11 +166,6 @@ export function StudioAIConfigPage() {
           </StatusBadge>
         </div>
 
-        {configQuery.isError ? (
-          <InlineAlert tone="danger" className="mb-4">
-            {t('aiConfig.unavailableDetail')}
-          </InlineAlert>
-        ) : null}
         {configQuery.isSuccess && !configured ? (
           <InlineAlert tone="warning" className="mb-4">
             {t('aiConfig.notConfiguredDetail')}
@@ -198,6 +193,7 @@ export function StudioAIConfigPage() {
           loadError={configQuery.isError ? t('aiConfig.unavailableDetail') : null}
           onRetry={() => { void configQuery.refetch(); }}
           copy={modelConfigCopy}
+          language={locale}
         />
 
         <div className="flex flex-wrap gap-3">

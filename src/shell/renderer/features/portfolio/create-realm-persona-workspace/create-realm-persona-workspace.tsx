@@ -218,7 +218,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
             kind: 'runtime-image-candidate',
             sourceKind: candidate.sourceKind,
             reviewState: candidate.reviewState === 'owner-selected' ? 'owner-reviewed' : 'candidate-only',
-            label: normalizedDraft.displayName || 'Realm Persona portrait candidate',
+            label: normalizedDraft.displayName || 'assets.history.runtimeImageCandidate',
             source: 'Realm Persona creation draft reference image candidate',
             detail: candidate.url,
             previewUrl: candidate.url,

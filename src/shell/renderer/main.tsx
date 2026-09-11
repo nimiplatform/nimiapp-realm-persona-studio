@@ -13,6 +13,7 @@ import {
 } from '@nimiplatform/kit/shell/renderer/bootstrap';
 import { installStudioGlobalErrorLogging } from './infra/telemetry/renderer-log.js';
 import { ensureStudioI18nInitialized, translateStudioCopy } from './i18n/studio-i18n.js';
+import { readStoredThemeScheme } from './app-shell/theme-scheme.js';
 import './styles.css';
 
 ensureStudioI18nInitialized();
@@ -44,12 +45,20 @@ if (!rootElement) {
   throw new Error('REALM_PERSONA_STUDIO_ROOT_MISSING');
 }
 
-createRoot(rootElement).render(
-  <StrictMode>
-    <NimiThemeProvider accentPack="nimi-accent" defaultScheme="light" defaultDensity="compact">
-      <Suspense fallback={<EntryFallback />}>
-        <App />
-      </Suspense>
-    </NimiThemeProvider>
-  </StrictMode>,
-);
+async function bootstrapStudioRenderer(root: HTMLElement) {
+  // Seed the provider from the stored appearance choice before first paint so
+  // dark-scheme owners never see a light flash. Missing or unreadable
+  // preference fails closed to the light default.
+  const storedScheme = await readStoredThemeScheme();
+  createRoot(root).render(
+    <StrictMode>
+      <NimiThemeProvider accentPack="nimi-accent" defaultScheme={storedScheme ?? 'light'} defaultDensity="compact">
+        <Suspense fallback={<EntryFallback />}>
+          <App />
+        </Suspense>
+      </NimiThemeProvider>
+    </StrictMode>,
+  );
+}
+
+void bootstrapStudioRenderer(rootElement);

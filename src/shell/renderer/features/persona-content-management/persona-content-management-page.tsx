@@ -1,11 +1,15 @@
-import { useMemo } from 'react';
+// @nimi-authority: rule.realm-persona-studio.post.r001
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Archive, CalendarClock, FileText, Image, Mic2 } from 'lucide-react';
 import { Button, EmptyState, InlineAlert, StatusBadge, Surface } from '@nimiplatform/kit/ui';
 import { PersonaShell, WorkspaceIntro } from '@renderer/features/persona-detail/persona-shell.js';
+import { loadLocalPostDrafts, type LocalPostDraftRecord } from '@renderer/features/portfolio/local-post-draft-store.js';
 import { buildDraftBoxEntries, type DraftBoxEntry } from '@renderer/features/portfolio/draft-box.js';
+import { creativeHistoryTitleKey } from '@renderer/features/portfolio/creative-asset-history.js';
 import { useLocalCreativeAssetHistory } from '@renderer/features/portfolio/use-local-creative-asset-history.js';
 import { loadLocalPostSchedule } from '@renderer/features/portfolio/local-post-schedule-store.js';
+import { formatDraftUpdatedAt } from '@renderer/features/persona-list/persona-list-page.js';
 import type { OwnerPortfolioPersonaDetail } from '@renderer/features/portfolio/portfolio-data.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
 import type { StudioCopyKey } from '@renderer/i18n/studio-copy.js';
@@ -44,8 +48,11 @@ function statusTone(status: DraftBoxEntry['status']): 'info' | 'warning' | 'succ
 }
 
 function DraftBoxEntryCard({ entry }: { entry: DraftBoxEntry }) {
-  const { t } = useStudioI18n();
+  const { locale, t } = useStudioI18n();
   const navigate = useNavigate();
+  const titleKey = entry.kind === 'scheduled-post'
+    ? 'draftBox.scheduledPostTitle'
+    : entry.kind === 'post-draft' ? null : creativeHistoryTitleKey(entry.title);
   return (
     <Surface tone="card" padding="md">
       <div className="flex min-w-0 items-start gap-3">
@@ -54,7 +61,7 @@ function DraftBoxEntryCard({ entry }: { entry: DraftBoxEntry }) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <h3 className="m-0 text-[length:var(--nimi-type-body-size)] font-semibold">{entry.title}</h3>
+            <h3 className="m-0 text-[length:var(--nimi-type-body-size)] font-semibold">{titleKey ? t(titleKey) : entry.title}</h3>
             <StatusBadge tone={statusTone(entry.status)}>{t(ENTRY_STATUS_KEYS[entry.status])}</StatusBadge>
             <StatusBadge tone="neutral">{t(ENTRY_BOUNDARY_KEYS[entry.truthBoundary])}</StatusBadge>
           </div>
@@ -63,7 +70,7 @@ function DraftBoxEntryCard({ entry }: { entry: DraftBoxEntry }) {
           </p>
           <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2 text-[length:var(--nimi-type-body-xs-size)] text-[var(--nimi-text-muted)]">
             <span>{t(ENTRY_DESTINATION_KEYS[entry.destination])}</span>
-            <span>{entry.createdAt}</span>
+            <time dateTime={entry.createdAt}>{formatDraftUpdatedAt(entry.createdAt, locale)}</time>
           </div>
         </div>
         <Button tone="secondary" size="sm" onClick={() => navigate(entry.actionPath)}>
@@ -78,11 +85,28 @@ function ContentManagementBody({ persona }: { persona: OwnerPortfolioPersonaDeta
   const { t } = useStudioI18n();
   const navigate = useNavigate();
   const creativeHistoryState = useLocalCreativeAssetHistory(persona.id);
+  const [postDrafts, setPostDrafts] = useState<LocalPostDraftRecord[]>([]);
+  const [postsLoading, setPostsLoading] = useState(true);
+  const [postsUnavailable, setPostsUnavailable] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    setPostDrafts([]);
+    setPostsLoading(true);
+    setPostsUnavailable(false);
+    void loadLocalPostDrafts(persona.id).then((result) => {
+      if (cancelled) return;
+      setPostsLoading(false);
+      setPostsUnavailable(!result.ok);
+      if (result.ok) setPostDrafts(result.records);
+    });
+    return () => { cancelled = true; };
+  }, [persona.id]);
   const draftBoxEntries = useMemo(() => buildDraftBoxEntries({
     personaId: persona.id,
     creativeHistory: creativeHistoryState.records,
+    postDrafts,
     localSchedule: loadLocalPostSchedule(persona.id),
-  }), [creativeHistoryState.records, persona.id]);
+  }), [creativeHistoryState.records, persona.id, postDrafts]);
   const localOnlyCount = draftBoxEntries.filter((entry) => entry.truthBoundary === 'local-only').length;
   const candidateCount = draftBoxEntries.filter((entry) => entry.truthBoundary === 'candidate-only').length;
   const dueCount = draftBoxEntries.filter((entry) => entry.status === 'ready-when-due').length;
@@ -103,13 +127,11 @@ function ContentManagementBody({ persona }: { persona: OwnerPortfolioPersonaDeta
             <Button tone="secondary" onClick={() => navigate(`/portfolio/${persona.id}/posts`)}>
               {t('contentManagement.compose')}
             </Button>
-            <Button tone="ghost" onClick={() => navigate(`/portfolio/${persona.id}/posts/schedule`)}>
-              {t('contentManagement.schedule')}
-            </Button>
           </>
         }
       />
 
+      {postsUnavailable ? <InlineAlert tone="warning">{t('contentManagement.postDraftsUnavailable')}</InlineAlert> : null}
       {creativeHistoryState.unavailable ? <InlineAlert tone="warning">{t('assets.history.unavailable')}</InlineAlert> : null}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -130,22 +152,12 @@ function ContentManagementBody({ persona }: { persona: OwnerPortfolioPersonaDeta
               </StatusBadge>
             </div>
             <div className="mt-4 grid gap-3">
-              {draftBoxEntries.length === 0 ? (
+              {postsLoading ? <p>{t('common.loadingEllipsis')}</p> : draftBoxEntries.length === 0 ? (
                 <EmptyState title={t('draftBox.emptyTitle')} description={t('draftBox.emptyDescription')} />
               ) : draftBoxEntries.map((entry) => (
                 <DraftBoxEntryCard key={entry.id} entry={entry} />
               ))}
             </div>
-          </Surface>
-
-          <Surface tone="card" padding="lg" className="ras-radius-xl">
-            <h2 className="m-0 text-[length:var(--nimi-type-body-size)] font-semibold">{t('contentManagement.ledger.title')}</h2>
-            <p className="m-0 mt-2 text-[length:var(--nimi-type-body-sm-size)] text-[var(--nimi-text-muted)]">
-              {t('contentManagement.ledger.description')}
-            </p>
-            <InlineAlert tone="info" className="mt-3">
-              {t('contentManagement.ledger.boundary')}
-            </InlineAlert>
           </Surface>
         </div>
 

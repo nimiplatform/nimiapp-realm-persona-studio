@@ -144,7 +144,7 @@ export function ReferenceImageCard({
             ref={referenceImageFileInputRef}
             type="file"
             accept="image/*"
-            className="ras-create-visual-source__file-input"
+            hidden
             aria-label={t('assets.visualChange.uploadAriaLabel')}
             onChange={(event) => void handleReferenceImageUpload(event)}
           />

@@ -117,12 +117,9 @@ function normalizeRecord(value: unknown, personaId: string): LocalPostScheduleRe
 }
 
 export function loadLocalPostSchedule(personaId: string, storage?: LocalStorageLike | null): LocalPostScheduleRecord | null {
-  const targetStorage = resolveStorage(storage);
-  if (!targetStorage) {
-    return null;
-  }
-
   try {
+    const targetStorage = resolveStorage(storage);
+    if (!targetStorage) return null;
     const raw = targetStorage.getItem(scheduleKey(personaId));
     return raw ? normalizeRecord(JSON.parse(raw), personaId) : null;
   } catch {
@@ -170,7 +167,8 @@ export function saveLocalPostSchedule(
 
 export function clearLocalPostSchedule(personaId: string, storage?: LocalStorageLike | null): void {
   const targetStorage = resolveStorage(storage);
-  targetStorage?.removeItem(scheduleKey(personaId));
+  if (!targetStorage) throw new Error('Local post schedule storage is unavailable.');
+  targetStorage.removeItem(scheduleKey(personaId));
 }
 
 export function isLocalPostScheduleDue(record: LocalPostScheduleRecord, now = new Date()): boolean {

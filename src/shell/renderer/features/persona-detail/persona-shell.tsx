@@ -1,12 +1,14 @@
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { AudioLines, BadgeCheck, Pause, PenLine, Pencil, Play, Settings, SlidersHorizontal } from 'lucide-react';
+import { AudioLines, BadgeCheck, Pause, Pencil, Play, Settings } from 'lucide-react';
 import {
+  ActionMenu,
   Avatar,
   Button,
   InlineAlert,
   LoadingSkeleton,
   nimiToast,
+  PillTabs,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -34,7 +36,7 @@ import { usePersonaVisualPreview } from './persona-visual-preview-context.js';
 /**
  * Opens the persona settings editor dialog owned by `PersonaWorkspaceFrame`.
  * Available to anything rendered inside the frame (hero header edit action,
- * public preview edit action).
+ * overview edit-profile action).
  */
 const PersonaSettingsEditorContext = createContext<(() => void) | null>(null);
 
@@ -75,29 +77,38 @@ export function useOpenPersonaVoiceEditor(): () => void {
   return openVoiceEditor;
 }
 
-export type PersonaShellTabKey = 'settings' | 'posts';
+export type PersonaShellTabKey = 'overview' | 'settings' | 'identity' | 'posts';
 export type PersonaShellMode = PersonaDetailReadScope;
 
 type PersonaTabDef = {
   key: PersonaShellTabKey;
   labelKey: StudioCopyKey;
-  icon: typeof SlidersHorizontal;
   basePath: (personaId: string, mode: PersonaShellMode) => string;
   modes: readonly PersonaShellMode[];
 };
 
 const TABS: PersonaTabDef[] = [
   {
+    key: 'overview',
+    labelKey: 'persona.tabs.overview',
+    modes: ['owner'],
+    basePath: (personaId) => `/portfolio/${personaId}`,
+  },
+  {
     key: 'settings',
     labelKey: 'persona.tabs.settings',
-    icon: SlidersHorizontal,
     modes: ['owner'],
     basePath: (personaId) => `/portfolio/${personaId}/settings`,
   },
   {
+    key: 'identity',
+    labelKey: 'persona.tabs.identity',
+    modes: ['owner'],
+    basePath: (personaId) => `/portfolio/${personaId}/identity`,
+  },
+  {
     key: 'posts',
     labelKey: 'persona.tabs.posts',
-    icon: PenLine,
     modes: ['owner'],
     basePath: (personaId) => `/portfolio/${personaId}/posts`,
   },
@@ -116,26 +127,17 @@ export function PersonaTabBar({
   const navigate = useNavigate();
   const tabs = TABS.filter((tab) => tab.modes.includes(mode));
   return (
-    <nav className="ras-persona-tabs" aria-label={t('persona.tabs.ariaLabel')}>
-      <div className="ras-persona-tabs__track">
-        {tabs.map((tab) => {
-          const active = tab.key === current;
-          return (
-            <button
-              key={tab.key}
-              type="button"
-              className="ras-persona-tabs__tab"
-              data-active={active ? 'true' : 'false'}
-              aria-current={active ? 'page' : undefined}
-              onClick={() => navigate(tab.basePath(personaId, mode))}
-            >
-              <tab.icon size={15} strokeWidth={1.9} aria-hidden="true" />
-              <span>{t(tab.labelKey)}</span>
-            </button>
-          );
-        })}
-      </div>
-    </nav>
+    <div className="ras-persona-tabs">
+      <PillTabs
+        ariaLabel={t('persona.tabs.ariaLabel')}
+        value={current}
+        items={tabs.map((tab) => ({ value: tab.key, label: t(tab.labelKey) }))}
+        onValueChange={(value) => {
+          const next = tabs.find((tab) => tab.key === value);
+          if (next) navigate(next.basePath(personaId, mode));
+        }}
+      />
+    </div>
   );
 }
 
@@ -291,33 +293,28 @@ export function PersonaHeader({
                   sideOffset={8}
                   className="border-0 bg-transparent p-0 shadow-none"
                 >
-                  <div className="ras-voice-menu" role="menu" aria-label={voiceAriaLabel}>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className="ras-voice-menu__item"
-                      onClick={() => {
-                        toggleVoicePlayback();
-                        setVoiceMenuOpen(false);
-                      }}
-                    >
-                      {isVoicePlaying ? (
-                        <Pause size={13} strokeWidth={2} aria-hidden="true" />
-                      ) : (
-                        <Play size={13} strokeWidth={2} aria-hidden="true" />
-                      )}
-                      <span>{isVoicePlaying ? t('assets.overview.voice.pause') : t('assets.overview.voice.play')}</span>
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className="ras-voice-menu__item"
-                      onClick={handleVoiceEdit}
-                    >
-                      <AudioLines size={13} strokeWidth={2} aria-hidden="true" />
-                      <span>{t('assets.overview.replaceVoice')}</span>
-                    </button>
-                  </div>
+                  <ActionMenu
+                    ariaLabel={voiceAriaLabel}
+                    items={[
+                      {
+                        id: 'voice-playback',
+                        label: isVoicePlaying ? t('assets.overview.voice.pause') : t('assets.overview.voice.play'),
+                        icon: isVoicePlaying
+                          ? <Pause size={13} strokeWidth={2} aria-hidden="true" />
+                          : <Play size={13} strokeWidth={2} aria-hidden="true" />,
+                        onSelect: () => {
+                          toggleVoicePlayback();
+                          setVoiceMenuOpen(false);
+                        },
+                      },
+                      {
+                        id: 'voice-replace',
+                        label: t('assets.overview.replaceVoice'),
+                        icon: <AudioLines size={13} strokeWidth={2} aria-hidden="true" />,
+                        onSelect: handleVoiceEdit,
+                      },
+                    ]}
+                  />
                 </PopoverContent>
               </Popover>
             )}
@@ -368,7 +365,7 @@ export function WorkspaceIntro({
   actions?: ReactNode;
 }) {
   return (
-    <section className="ras-card">
+    <Surface tone="card" padding="lg" className="ras-radius-xl">
       <div className="ras-workspace-intro">
         <div className="ras-workspace-intro__copy">
           <h2 className="ras-workspace-intro__title">
@@ -379,13 +376,16 @@ export function WorkspaceIntro({
         </div>
         {actions ? <div className="ras-page-header__actions">{actions}</div> : null}
       </div>
-    </section>
+    </Surface>
   );
 }
 
 function deriveCurrentTab(pathname: string, personaId: string): PersonaShellTabKey {
-  if (pathname.startsWith(`/portfolio/${personaId}/posts`)) return 'posts';
-  return 'settings';
+  const base = `/portfolio/${personaId}`;
+  if (pathname.startsWith(`${base}/settings`)) return 'settings';
+  if (pathname.startsWith(`${base}/identity`)) return 'identity';
+  if (pathname.startsWith(`${base}/posts`)) return 'posts';
+  return 'overview';
 }
 
 export function PersonaWorkspaceFrame({
@@ -433,7 +433,6 @@ export function PersonaWorkspaceFrame({
             persona={persona}
             open={voiceEditorOpen}
             onClose={() => setVoiceEditorOpen(false)}
-            onPersonaWrite={refreshPersonaReads}
           />
         </PersonaVoiceEditorContext.Provider>
       </PersonaVisualIdentityEditorContext.Provider>
@@ -511,7 +510,7 @@ export function PersonaShell({
     return (
       <ScrollArea className="flex-1" viewportClassName="bg-transparent">
         <div className="ras-page">
-          <section className="ras-card">
+          <Surface tone="card" padding="lg" className="ras-radius-xl grid gap-4">
             <InlineAlert tone={failure.kind === 'capability-unavailable' ? 'info' : 'danger'}>
               <strong>{t(titleKeyByKind[failure.kind])}</strong>
               <div>{t(detailKeyByKind[failure.kind])}</div>
@@ -526,7 +525,7 @@ export function PersonaShell({
                 {t('common.retry')}
               </Button>
             </div>
-          </section>
+          </Surface>
         </div>
       </ScrollArea>
     );

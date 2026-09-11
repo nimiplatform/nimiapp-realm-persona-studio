@@ -11,10 +11,10 @@ import { PersonaSettingsForm } from '@renderer/features/portfolio/OwnerPortfolio
 
 /**
  * Settings editor dialog opened from the entry points inside the persona
- * workspace frame (settings overview edit action, public preview edit
- * action). Hosts the editable public-profile form without a dialog header,
- * so the profile section is the first thing the owner sees; the settings tab
- * itself stays a read-only overview.
+ * workspace frame (hero edit action, overview edit-profile action). Hosts the
+ * editable public-profile form without a dialog header, so the profile
+ * section is the first thing the owner sees; the settings tab itself stays a
+ * read-only overview. Closing with unsaved changes asks before discarding.
  */
 export function PersonaSettingsModal({
   persona,
@@ -33,8 +33,19 @@ export function PersonaSettingsModal({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteFailure, setDeleteFailure] = useState<string | null>(null);
+  const [formDirty, setFormDirty] = useState(false);
+  const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
   const canDelete = persona.ownerScope === 'owner-created'
     && persona.visibility.status === 'available' && persona.visibility.value === 'private';
+
+  function requestClose() {
+    if (deleting) return;
+    if (formDirty) {
+      setDiscardConfirmOpen(true);
+      return;
+    }
+    onClose();
+  }
 
   async function deletePersona() {
     if (!canDelete || deleting) return;
@@ -60,13 +71,13 @@ export function PersonaSettingsModal({
         open={open}
         kind="dialog"
         size="md"
-        onClose={() => { if (!deleting) onClose(); }}
+        onClose={requestClose}
         panelClassName="ras-settings-dialog"
         contentClassName="ras-settings-dialog__content"
         data-testid="persona-settings-dialog"
       >
         <DialogTitle className="sr-only">{t('settings.section.profile')}</DialogTitle>
-        <PersonaSettingsForm persona={persona} onPersonaWrite={onPersonaWrite} />
+        <PersonaSettingsForm persona={persona} onPersonaWrite={onPersonaWrite} onDirtyChange={setFormDirty} />
         {deleteFailure ? (
           <InlineAlert tone="danger">
             {t('persona.failure.sanitized', { reason: t(failureKindCopyKey(deleteFailure)) })}
@@ -88,6 +99,20 @@ export function PersonaSettingsModal({
         loading={deleting}
         onConfirm={() => void deletePersona()}
         onClose={() => { if (!deleting) setConfirmOpen(false); }}
+      />
+      <ConfirmDialog
+        open={discardConfirmOpen}
+        title={t('persona.settings.discardTitle')}
+        message={t('persona.settings.discardDescription')}
+        confirmLabel={t('persona.settings.discardConfirm')}
+        cancelLabel={t('common.cancel')}
+        confirmTone="danger"
+        onConfirm={() => {
+          setDiscardConfirmOpen(false);
+          setFormDirty(false);
+          onClose();
+        }}
+        onClose={() => setDiscardConfirmOpen(false)}
       />
     </>
   );

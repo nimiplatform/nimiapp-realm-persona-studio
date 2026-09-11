@@ -1,4 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { TooltipProvider } from '@nimiplatform/kit/ui';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ensureStudioI18nInitialized } from '@renderer/i18n/studio-i18n.js';
@@ -28,12 +29,13 @@ vi.mock('@renderer/app-shell/studio-storage.js', () => ({
 }));
 
 const persona = PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS['visual-xiaomi']!;
-function showEditor() {
-  render(<TooltipProvider><PersonaPostEditor persona={persona} /></TooltipProvider>);
+function showEditor(path = '/') {
+  render(<MemoryRouter initialEntries={[path]}><TooltipProvider><PersonaPostEditor persona={persona} /></TooltipProvider></MemoryRouter>);
 }
 async function seedDraft(caption: string) {
   const saved = await saveLocalPostDraft({ personaId: persona.id, caption, tagsText: '', visibility: 'private', category: null, attachments: [] });
   if (!saved.ok) throw new Error('Expected persisted draft');
+  return saved.record;
 }
 
 beforeEach(async () => {
@@ -45,11 +47,19 @@ beforeEach(async () => {
 afterEach(cleanup);
 
 describe('persona post editor draft isolation', () => {
+  it('opens the exact saved draft selected from content management', async () => {
+    const selected = await seedDraft('Selected draft');
+    await seedDraft('Another draft');
+    showEditor(`/portfolio/${persona.id}/posts?draft=${selected.id}`);
+    await waitFor(() => expect((screen.getByRole('textbox', { name: 'Post copy' }) as HTMLTextAreaElement).value)
+      .toBe('Selected draft'));
+  });
+
   it('keeps owner edits when AI finishes after the input changes', async () => {
     let finish!: (result: PostCopyPolishResult) => void;
     polish.mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
     showEditor();
-    const input = screen.getByRole('textbox');
+    const input = screen.getByRole('textbox', { name: 'Post copy' });
     await waitFor(() => expect((input as HTMLTextAreaElement).disabled).toBe(false));
     fireEvent.change(input, { target: { value: 'Original draft' } });
     fireEvent.click(screen.getByRole('button', { name: 'AI assist' }));
@@ -69,7 +79,7 @@ describe('persona post editor draft isolation', () => {
     showEditor();
     const card = await screen.findByRole('button', { name: /Saved draft/ });
     fireEvent.click(card);
-    const input = screen.getByRole('textbox');
+    const input = screen.getByRole('textbox', { name: 'Post copy' });
     fireEvent.change(input, { target: { value: 'Unsaved revision' } });
     fireEvent.click(card);
     expect((input as HTMLTextAreaElement).value).toBe('Unsaved revision');
@@ -80,6 +90,6 @@ describe('persona post editor draft isolation', () => {
     showEditor();
     const remove = await screen.findByRole('button', { name: 'Delete draft' });
     fireEvent.keyDown(remove, { key: 'Enter' });
-    expect((screen.getByRole('textbox') as HTMLTextAreaElement).value).toBe('');
+    expect((screen.getByRole('textbox', { name: 'Post copy' }) as HTMLTextAreaElement).value).toBe('');
   });
 });

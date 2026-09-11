@@ -6,9 +6,11 @@ import {
   Image,
   Languages,
   LayoutGrid,
+  Moon,
   PanelLeft,
   Plus,
   SlidersHorizontal,
+  Sun,
   UserRound,
 } from 'lucide-react';
 import {
@@ -26,6 +28,7 @@ import {
   SidebarSection,
   Surface,
   Tooltip,
+  useNimiTheme,
 } from '@nimiplatform/kit/ui';
 import { motion, NIMI_PRESSED_SCALE, useNimiReducedMotion } from '@nimiplatform/kit/ui/motion';
 import studioLogoUrl from '@renderer/assets/brand/studio-logo.png?url';
@@ -33,6 +36,7 @@ import { listOwnerPortfolioPersonas } from '../../features/portfolio/portfolio-c
 import type { OwnerPortfolioPersona } from '../../features/portfolio/portfolio-data.js';
 import { useStudioI18n } from '../../i18n/use-studio-i18n.js';
 import { ownerPortfolioListQueryKey } from '../../features/persona-detail/use-persona-detail-query.js';
+import { persistThemeScheme } from '../theme-scheme.js';
 import { useAppStore } from '../app-store.js';
 
 export const STUDIO_SIDEBAR_PREFERENCE_STORAGE_PATH = 'shell/sidebar.json';
@@ -52,7 +56,6 @@ export type StudioSidebarProps = {
   collapsed: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
   visualFixturePersonas?: readonly OwnerPortfolioPersona[];
-  visualFixturePendingReviews?: Readonly<Record<string, number>>;
 };
 
 function SidebarBrand({ collapsed, onCollapsedChange }: StudioSidebarProps) {
@@ -61,7 +64,7 @@ function SidebarBrand({ collapsed, onCollapsedChange }: StudioSidebarProps) {
 
   return (
     <SidebarHeader
-      className="!min-h-0 !px-0 !py-0"
+      className="min-h-0 px-0 py-0"
       title={collapsed ? (
         <div className="flex w-full justify-center py-1">
           <Tooltip content={collapseLabel} placement="right">
@@ -161,16 +164,13 @@ function PersonaRosterItem({
   persona,
   collapsed,
   active,
-  pendingReviewCount,
   onSelect,
 }: {
   persona: OwnerPortfolioPersona;
   collapsed: boolean;
   active: boolean;
-  pendingReviewCount: number;
   onSelect: () => void;
 }) {
-  const { t } = useStudioI18n();
   const reducedMotion = useNimiReducedMotion();
   const label = persona.displayName || persona.id;
   const item = (
@@ -202,15 +202,10 @@ function PersonaRosterItem({
         fallback={<span className="text-sm font-semibold">{label.charAt(0).toUpperCase()}</span>}
       />
       {collapsed ? null : (
-        <>
-          <span className="ras-sidebar-persona__copy">
-            <strong>{label}</strong>
-            <small>{persona.worldName || '—'}</small>
-          </span>
-          {pendingReviewCount > 0 ? (
-            <span className="ras-sidebar-persona__review">{t('shell.sidebar.pendingReview', { count: pendingReviewCount })}</span>
-          ) : null}
-        </>
+        <span className="ras-sidebar-persona__copy">
+          <strong>{label}</strong>
+          <small>{persona.worldName || '—'}</small>
+        </span>
       )}
     </motion.button>
   );
@@ -219,9 +214,11 @@ function PersonaRosterItem({
 
 function AccountMenu({ collapsed }: { collapsed: boolean }) {
   const { locale, setLocale, t } = useStudioI18n();
+  const { scheme, setScheme } = useNimiTheme();
   const authUser = useAppStore((state) => state.auth.user);
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [schemePersistFailed, setSchemePersistFailed] = useState(false);
   const displayName = authUser?.displayName?.trim() || t('shell.account.ownerFallback');
   const email = authUser?.email?.trim() || t('shell.account.runtimeAccount');
   const avatarUrl = authUser?.avatarUrl ?? null;
@@ -239,6 +236,18 @@ function AccountMenu({ collapsed }: { collapsed: boolean }) {
   const switchLocale = () => {
     setOpen(false);
     void setLocale(locale === 'en' ? 'zh' : 'en');
+  };
+  const switchScheme = () => {
+    const next = scheme === 'dark' ? 'light' : 'dark';
+    setScheme(next);
+    void persistThemeScheme(next).then((persisted) => {
+      if (persisted) {
+        setSchemePersistFailed(false);
+        setOpen(false);
+        return;
+      }
+      setSchemePersistFailed(true);
+    });
   };
 
   const trigger = collapsed ? (
@@ -286,7 +295,8 @@ function AccountMenu({ collapsed }: { collapsed: boolean }) {
         <AccountPanel
           user={accountUser}
           ariaLabel={t('shell.account.menu')}
-          className="!w-[min(320px,calc(100vw-24px))]"
+          className="w-[min(320px,calc(100vw-24px))]"
+          statusMessage={schemePersistFailed ? t('shell.account.schemePersistFailed') : undefined}
           items={[
             {
               id: 'owner-portfolio',
@@ -308,6 +318,12 @@ function AccountMenu({ collapsed }: { collapsed: boolean }) {
               icon: <Languages size={16} strokeWidth={1.8} />,
               onSelect: switchLocale,
             },
+            {
+              id: 'color-scheme',
+              label: t(scheme === 'dark' ? 'shell.account.switchToLight' : 'shell.account.switchToDark'),
+              icon: scheme === 'dark' ? <Sun size={16} strokeWidth={1.8} /> : <Moon size={16} strokeWidth={1.8} />,
+              onSelect: switchScheme,
+            },
           ]}
         />
       </PopoverContent>
@@ -325,14 +341,13 @@ function workspaceSuffix(pathname: string, personaId: string | null): string {
   if (!personaId) return '';
   const prefix = `/portfolio/${encodeURIComponent(personaId)}`;
   const suffix = pathname.startsWith(prefix) ? pathname.slice(prefix.length) : '';
-  return suffix.startsWith('/posts') || suffix.startsWith('/settings') ? suffix : '';
+  return suffix.startsWith('/posts') || suffix.startsWith('/settings') || suffix.startsWith('/identity') ? suffix : '';
 }
 
 export function StudioSidebar({
   collapsed,
   onCollapsedChange,
   visualFixturePersonas,
-  visualFixturePendingReviews = {},
 }: StudioSidebarProps) {
   const { t } = useStudioI18n();
   const location = useLocation();
@@ -344,7 +359,6 @@ export function StudioSidebar({
     enabled: !fixtureMode,
   });
   const personas = visualFixturePersonas ?? portfolioQuery.data ?? [];
-  const pendingReviews = fixtureMode ? visualFixturePendingReviews : {};
   const selectedPersonaId = currentPersonaId(location.pathname);
   const suffix = workspaceSuffix(location.pathname, selectedPersonaId);
 
@@ -362,7 +376,7 @@ export function StudioSidebar({
       <div className="flex h-full min-h-0 flex-col gap-1 px-3 pb-3 pt-8">
         <SidebarBrand collapsed={collapsed} onCollapsedChange={onCollapsedChange} />
 
-        <SidebarSection className="shrink-0 !px-0 !py-1">
+        <SidebarSection className="shrink-0 px-0 py-1">
           {collapsed ? (
             <Tooltip content={t('shell.sidebar.createPersona')} placement="right">
               <IconButton
@@ -386,7 +400,7 @@ export function StudioSidebar({
           )}
         </SidebarSection>
 
-        <SidebarSection className="shrink-0 !px-0 !py-1">
+        <SidebarSection className="shrink-0 px-0 py-1">
           <NavigationItem
             collapsed={collapsed}
             label={t(myPersonasNavigationItem.labelKey)}
@@ -396,7 +410,7 @@ export function StudioSidebar({
           />
         </SidebarSection>
 
-        <SidebarSection className="flex min-h-0 flex-1 flex-col !px-0 !py-1">
+        <SidebarSection className="flex min-h-0 flex-1 flex-col px-0 py-1">
           <ScrollArea className="min-h-0 flex-1" viewportClassName="bg-transparent">
             {portfolioQuery.isLoading && !fixtureMode ? (
               <div className="ras-sidebar-roster-state">{t('common.loadingEllipsis')}</div>
@@ -424,7 +438,6 @@ export function StudioSidebar({
                     persona={persona}
                     collapsed={collapsed}
                     active={selectedPersonaId === persona.id}
-                    pendingReviewCount={pendingReviews[persona.id] ?? 0}
                     onSelect={() => navigate(`/portfolio/${persona.id}${suffix}`)}
                   />
                 ))}
@@ -433,7 +446,7 @@ export function StudioSidebar({
           </ScrollArea>
         </SidebarSection>
 
-        <SidebarSection className="shrink-0 !px-0 !py-1">
+        <SidebarSection className="shrink-0 px-0 py-1">
           <div className="flex flex-col gap-1">
             {navigationItems.map(({ to, labelKey, Icon }) => {
               const label = t(labelKey);

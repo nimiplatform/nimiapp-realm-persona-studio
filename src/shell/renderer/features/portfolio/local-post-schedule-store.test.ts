@@ -121,6 +121,10 @@ describe('local post schedule store', () => {
     expect(storage.setItem).not.toHaveBeenCalled();
   });
 
+  it('does not report a cleared schedule when storage is unavailable', () => {
+    expect(() => clearLocalPostSchedule('persona-1', null)).toThrow(/storage is unavailable/u);
+  });
+
   it('does not report a saved schedule when local storage is unavailable', () => {
     expect(() => saveLocalPostSchedule('persona-1', candidate, null)).toThrow(/storage is unavailable/u);
   });

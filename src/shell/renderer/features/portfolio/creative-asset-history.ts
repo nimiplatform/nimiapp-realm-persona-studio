@@ -1,4 +1,17 @@
 import { createAppUlid, isAppUlid } from '../../app-shell/app-ulid.js';
+import type { StudioCopyKey } from '../../i18n/studio-copy.js';
+
+const CREATIVE_HISTORY_TITLE_KEYS = new Set<StudioCopyKey>([
+  'assets.history.runtimeImageCandidate',
+  'assets.history.avatarPackageCandidate',
+  'assets.history.identityResourceUpload',
+  'assets.history.localImageEdit',
+  'assets.history.voiceDemoCandidate',
+]);
+
+export function creativeHistoryTitleKey(label: string): StudioCopyKey | null {
+  return CREATIVE_HISTORY_TITLE_KEYS.has(label as StudioCopyKey) ? label as StudioCopyKey : null;
+}
 
 export type CreativeAssetHistoryKind =
   | 'runtime-image-candidate'

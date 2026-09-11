@@ -44,7 +44,7 @@ export function HandleField({
         message={handleError}
         messageTone={handleError ? 'danger' : 'neutral'}
       >
-        <TextField tone={handleError ? 'danger' : 'default'} className={handleError ? 'focus-within:!border-[var(--nimi-field-focus)] focus-within:!ring-[var(--nimi-focus-ring-color)]' : undefined} data-create-field-control value={handle} placeholder={t('create.handlePlaceholder')} onChange={(event) => updateDraft({ handle: event.currentTarget.value })} />
+        <TextField tone={handleError ? 'danger' : 'default'} data-create-field-control value={handle} placeholder={t('create.handlePlaceholder')} onChange={(event) => updateDraft({ handle: event.currentTarget.value })} />
       </FieldShell>
       {query.isError ? <InlineAlert tone="danger">{t('create.handleCheckFailed')}</InlineAlert> : null}
     </div>

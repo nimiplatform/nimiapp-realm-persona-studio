@@ -1,6 +1,6 @@
 app_id: nimi.realm-persona-studio
 display_name: Realm Persona Studio
-version: 0.1.3
+version: 0.1.4
 npm_package_name: nimiapp-realm-persona-studio
 cargo_package_name: nimiapp-realm-persona-studio-shell
 tauri_identifier: ai.nimi.apps.nimi.realm-persona-studio

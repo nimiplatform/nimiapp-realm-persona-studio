@@ -486,11 +486,3 @@ export const PERSONA_WORKSPACE_VISUAL_FIXTURE_DATA: Record<string, PersonaWorksp
     postQueue: [],
   },
 };
-
-export const PERSONA_WORKSPACE_VISUAL_FIXTURE_PENDING_REVIEWS: Record<string, number> = {
-  'visual-xiaomi': 1,
-  'visual-nanxing': 1,
-  'visual-mengqi': 1,
-  'visual-chenwu': 0,
-  'visual-xinglan': 0,
-};

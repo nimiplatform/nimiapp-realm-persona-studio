@@ -1,5 +1,8 @@
+// @nimi-authority: rule.realm-persona-studio.post.r009
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
+  Archive,
   ImageOff,
   Lock,
   Paperclip,
@@ -8,10 +11,12 @@ import {
   UserRound,
   X,
 } from 'lucide-react';
-import { Button, IconButton, InlineAlert, SelectField, StatusBadge, Tooltip, nimiToast } from '@nimiplatform/kit/ui';
-import { PERSONA_PUBLICATION_AVAILABLE } from '@renderer/features/portfolio/portfolio-post-client.js';
+import { Button, IconButton, InlineAlert, NimiText, SelectField, StatusBadge, TextareaField, Tooltip, nimiToast } from '@nimiplatform/kit/ui';
 import type { OwnerPortfolioPersonaDetail } from '@renderer/features/portfolio/portfolio-data.js';
-import { loadLocalPostSchedule } from '@renderer/features/portfolio/local-post-schedule-store.js';
+import {
+  loadLocalPostSchedule,
+  type LocalPostScheduleRecord,
+} from '@renderer/features/portfolio/local-post-schedule-store.js';
 import {
   classifyLocalPostAttachmentMime,
   deleteLocalPostDraft,
@@ -37,6 +42,7 @@ import type { PersonaWorkspaceQueueItem } from '@renderer/features/persona-detai
 import { usePersonaVisualPreview } from '@renderer/features/persona-detail/persona-visual-preview-context.js';
 import type { StudioCopyKey } from '@renderer/i18n/studio-copy.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
+import { PersonaSchedulePanel } from './persona-schedule-panel.js';
 
 const UNCATEGORIZED_VALUE = 'none';
 
@@ -99,6 +105,9 @@ export function PersonaPostEditor({
   persona: OwnerPortfolioPersonaDetail;
 }) {
   const { t } = useStudioI18n();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedDraftId = searchParams.get('draft');
   const visualData = usePersonaVisualPreview()?.visualData[persona.id];
   const [caption, setCaption] = useState(visualData?.initialPostCaption ?? '');
   const [tagsText, setTagsText] = useState(visualData?.initialPostTags ?? '');
@@ -113,6 +122,9 @@ export function PersonaPostEditor({
   const [activeQueueItem, setActiveQueueItem] = useState<string | null>(null);
   const [polishing, setPolishing] = useState(false);
   const [polishProposal, setPolishProposal] = useState<RuntimePostCopyProposal | null>(null);
+  const [localSchedule, setLocalSchedule] = useState<LocalPostScheduleRecord | null>(
+    () => visualData ? null : loadLocalPostSchedule(persona.id),
+  );
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const attachmentsRef = useRef<EditorAttachment[]>([]);
   const editorRevisionRef = useRef(0);
@@ -151,6 +163,7 @@ export function PersonaPostEditor({
     setActiveQueueItem(null);
     setPolishing(false);
     setPolishProposal(null);
+    setLocalSchedule(visualData ? null : loadLocalPostSchedule(persona.id));
     if (visualData) {
       setLoading(false);
       setStorageUnavailable(false);
@@ -168,16 +181,14 @@ export function PersonaPostEditor({
       }
       setStorageUnavailable(false);
       setDrafts(result.records);
+      const requestedDraft = result.records.find((record) => record.id === requestedDraftId);
+      if (requestedDraft) editDraft(requestedDraft);
     });
     return () => {
       cancelled = true;
     };
-  }, [persona.id, visualData]);
+  }, [persona.id, visualData, requestedDraftId]);
 
-  const localSchedule = useMemo(
-    () => visualData ? null : loadLocalPostSchedule(persona.id),
-    [persona.id, visualData],
-  );
   const queueItems = useMemo<PersonaWorkspaceQueueItem[]>(() => {
     if (visualData) return visualData.postQueue;
     const items: PersonaWorkspaceQueueItem[] = drafts.map((record) => ({
@@ -454,10 +465,11 @@ export function PersonaPostEditor({
               }}
             />
           </div>
-          <textarea
+          <TextareaField
             value={caption}
             disabled={loading}
             readOnly={mutationPending}
+            rows={8}
             aria-label={t('posts.workspace.caption')}
             placeholder={t('posts.workspace.captionPlaceholder')}
             onChange={(event) => {
@@ -532,26 +544,21 @@ export function PersonaPostEditor({
               </div>
             </div>
             <div className="ras-post-editor__actions">
-              <span className="ras-post-editor__count">
+              <NimiText as="span" role="caption" className="ras-post-editor__count">
                 {caption.length} {t('posts.workspace.characters')}
-              </span>
+              </NimiText>
               <Button
-                tone="secondary"
+                tone="primary"
                 loading={saving}
                 disabled={loading || mutationPending || !caption.trim()}
                 onClick={() => void saveDraft()}
               >
                 {t('posts.workspace.saveAndPreview')}
               </Button>
-              {/* @nimi-authority: rule.realm-persona-studio.post.r009 — publication stays visibly disabled until an exact post operation is admitted. */}
-              <Button
-                tone="primary"
-                disabled={!PERSONA_PUBLICATION_AVAILABLE || loading || !caption.trim()}
-              >
-                {t('posts.publish')}
-              </Button>
             </div>
           </footer>
+          {/* Publishing remains unavailable until an exact operation is admitted. */}
+          <InlineAlert tone="info">{t('posts.workspace.publishNote')}</InlineAlert>
         </div>
 
         {polishProposal ? (
@@ -574,12 +581,18 @@ export function PersonaPostEditor({
           </section>
         ) : null}
 
-        <InlineAlert tone="warning">{t('posts.publicationUnavailable')}</InlineAlert>
-
         <section className="ras-post-feed" aria-label={t('posts.workspace.queueTitle')}>
-          <header className="ras-post-feed__header">
+          <header className="ras-post-feed__header ras-section-head">
             <h3>{t('posts.workspace.queueTitle')}</h3>
             <span>{t('posts.workspace.queueCount', { count: queueItems.length })} · {t('posts.workspace.queueBoundary')}</span>
+            <Button
+              tone="ghost"
+              size="sm"
+              leadingIcon={<Archive size={14} strokeWidth={1.8} />}
+              onClick={() => navigate(`/portfolio/${persona.id}/posts/manage`)}
+            >
+              {t('posts.workspace.openDraftBox')}
+            </Button>
           </header>
           {queueItems.length === 0 ? (
             <div className="ras-post-feed__empty">{t('posts.workspace.queueEmpty')}</div>
@@ -655,6 +668,8 @@ export function PersonaPostEditor({
           )}
         </section>
       </section>
+
+      <PersonaSchedulePanel persona={persona} schedule={localSchedule} onScheduleChange={setLocalSchedule} />
     </div>
   );
 }

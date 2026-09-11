@@ -13,30 +13,21 @@ import { PersonaListPage } from '../features/persona-list/persona-list-page.js';
 const PersonaCreatePage = lazy(() =>
   import('../features/persona-create/persona-create-page.js').then((m) => ({ default: m.PersonaCreatePage })),
 );
+const PersonaOverviewPage = lazy(() =>
+  import('../features/persona-overview/persona-overview-page.js').then((m) => ({ default: m.PersonaOverviewPage })),
+);
 const PersonaSettingsPage = lazy(() =>
   import('../features/persona-settings/persona-settings-page.js').then((m) => ({ default: m.PersonaSettingsPage })),
+);
+const PersonaIdentityPage = lazy(() =>
+  import('../features/persona-identity/persona-identity-page.js').then((m) => ({ default: m.PersonaIdentityPage })),
 );
 const PersonaPostsPage = lazy(() =>
   import('../features/persona-posts/persona-posts-page.js').then((m) => ({ default: m.PersonaPostsPage })),
 );
-const PersonaPostsSchedulePage = lazy(() =>
-  import('../features/persona-posts-schedule/persona-posts-schedule-page.js').then((m) => ({
-    default: m.PersonaPostsSchedulePage,
-  })),
-);
 const PersonaContentManagementPage = lazy(() =>
   import('../features/persona-content-management/persona-content-management-page.js').then((m) => ({
     default: m.PersonaContentManagementPage,
-  })),
-);
-const PersonaVoiceConfigPage = lazy(() =>
-  import('../features/persona-voice/persona-voice-config-page.js').then((m) => ({
-    default: m.PersonaVoiceConfigPage,
-  })),
-);
-const PersonaPublicPreviewPage = lazy(() =>
-  import('../features/persona-preview/persona-public-preview-page.js').then((m) => ({
-    default: m.PersonaPublicPreviewPage,
   })),
 );
 const StudioAIConfigPage = lazy(() =>
@@ -89,13 +80,11 @@ export function AppRoutes() {
           <Routes location={location}>
             <Route path="/portfolio" element={<PersonaListPage />} />
             <Route path="/portfolio/create" element={<PersonaCreatePage />} />
-            <Route path="/portfolio/:personaId" element={<Navigate to="settings" replace />} />
+            <Route path="/portfolio/:personaId" element={<PersonaOverviewPage />} />
             <Route path="/portfolio/:personaId/settings" element={<PersonaSettingsPage />} />
-            <Route path="/portfolio/:personaId/settings/voice" element={<PersonaVoiceConfigPage />} />
+            <Route path="/portfolio/:personaId/identity" element={<PersonaIdentityPage />} />
             <Route path="/portfolio/:personaId/posts" element={<PersonaPostsPage />} />
-            <Route path="/portfolio/:personaId/posts/schedule" element={<PersonaPostsSchedulePage />} />
             <Route path="/portfolio/:personaId/posts/manage" element={<PersonaContentManagementPage />} />
-            <Route path="/portfolio/:personaId/preview" element={<PersonaPublicPreviewPage />} />
             <Route path="/assets" element={<AssetsLibraryPage />} />
             <Route path="/ai-config" element={<StudioAIConfigPage />} />
             <Route path="*" element={<Navigate to="/portfolio" replace />} />

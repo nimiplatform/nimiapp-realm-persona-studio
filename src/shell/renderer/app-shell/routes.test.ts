@@ -17,14 +17,28 @@ describe('Studio route boundaries', () => {
     const source = routesSource();
 
     expect(source).toContain('path="/portfolio"');
+    expect(source).toContain('path="/portfolio/:personaId"');
+    expect(source).toContain('path="/portfolio/:personaId/settings"');
+    expect(source).toContain('path="/portfolio/:personaId/identity"');
     expect(source).toContain('path="/portfolio/:personaId/posts"');
-    expect(source).toContain('path="/portfolio/:personaId/posts/schedule"');
+    expect(source).toContain('path="/portfolio/:personaId/posts/manage"');
     expect(source).not.toContain('path="/worlds"');
     expect(source).not.toContain('path="/creator-personas/:personaId"');
     expect(source).not.toContain('path="/curation/forge-imported-system"');
     expect(source).not.toContain('path="/curation/forge-imported-system/:personaId/posts"');
     expect(source).not.toContain('path="/curation/forge-imported-system/:personaId/posts/schedule"');
     expect(source).not.toContain('path="/curation/forge-imported-system/:personaId/settings/review"');
+  });
+
+  it('removes obsolete workspace routes', () => {
+    const source = routesSource();
+
+    expect(source).not.toContain('path="/portfolio/:personaId/settings/voice"');
+    expect(source).not.toContain('path="/portfolio/:personaId/posts/schedule"');
+    expect(source).not.toContain('path="/portfolio/:personaId/preview"');
+    expect(source).not.toContain('PersonaVoiceConfigPage');
+    expect(source).not.toContain('PersonaPostsSchedulePage');
+    expect(source).not.toContain('PersonaPublicPreviewPage');
   });
 
   it('does not hold the next route behind an exit wait or keep both pages in flex layout', () => {

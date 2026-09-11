@@ -1,3 +1,10 @@
+> Note (2026-09): entries below marked "blocked" by the protected bootstrap gate predate the
+> fixture-backed preview harness. The development-only visual check path is `pnpm dev:renderer` →
+> `http://127.0.0.1:1450/visual-preview.html`, which renders the real feature pages against
+> the development visual fixture without the protected Desktop bridge. It verifies layout and
+> local interactions only; Desktop authorization, Realm writes, AI generation, and persistence
+> through the protected bridge remain NOT-VERIFIED by this harness.
+
 **Source visual truth**
 
 - Path: `/var/folders/5h/yywrq1bn0w75bzmcrf7l8rc40000gn/T/codex-clipboard-9c17e4be-5b87-4107-b399-d576de653997.png`

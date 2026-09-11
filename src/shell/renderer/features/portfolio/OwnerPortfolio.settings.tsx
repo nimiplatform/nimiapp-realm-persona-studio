@@ -87,6 +87,12 @@ function useOwnerSettingsWorkspace(persona: OwnerPortfolioPersonaDetail, onPerso
       ? buildRealmOwnerPersonaSettingsUpdateInput(draft, settingsQuery.data as RealmOwnerPersonaSettings)
       : null
   ), [draft, settingsQuery.data]);
+  const dirty = useMemo(() => {
+    if (!draft || !settingsQuery.data) return false;
+    const saved = createOwnerPersonaSettingsDraft(settingsQuery.data);
+    return (Object.keys(draft) as (keyof OwnerPersonaSettingsDraft)[])
+      .some((key) => draft[key] !== saved[key]);
+  }, [draft, settingsQuery.data]);
 
   useEffect(() => {
     if (settingsQuery.data) {
@@ -187,6 +193,7 @@ function useOwnerSettingsWorkspace(persona: OwnerPortfolioPersonaDetail, onPerso
     settingsFailure,
     draft,
     proposal,
+    dirty,
     isSaving,
     reviewResult,
     appliedKeys,
@@ -201,14 +208,6 @@ function useOwnerSettingsWorkspace(persona: OwnerPortfolioPersonaDetail, onPerso
 }
 
 type OwnerSettingsWorkspaceState = ReturnType<typeof useOwnerSettingsWorkspace>;
-
-export function SettingsSection({ muted = false, children }: { muted?: boolean; children: ReactNode }) {
-  return (
-    <section className={muted ? 'ras-settings-section ras-settings-section--muted' : 'ras-settings-section'}>
-      {children}
-    </section>
-  );
-}
 
 export function SettingsSectionHead({
   icon,
@@ -283,7 +282,7 @@ function OwnerProfileSection({ settings }: { settings: OwnerSettingsWorkspaceSta
 
   return (
     <div className="ras-settings-dialog__section">
-      <div className="ras-settings-dialog__head">
+      <div className="ras-section-head">
         <div className="ras-settings-dialog__heading">
           <h3 className="ras-settings-dialog__title">{t('settings.section.profile')}</h3>
           <p className="ras-settings-dialog__subtitle">{t('settings.profileDialog.description')}</p>
@@ -464,11 +463,17 @@ function OwnerProfileSection({ settings }: { settings: OwnerSettingsWorkspaceSta
 export function PersonaSettingsForm({
   persona,
   onPersonaWrite,
+  onDirtyChange,
 }: {
   persona: OwnerPortfolioPersonaDetail;
   onPersonaWrite: () => Promise<void>;
+  onDirtyChange?: (dirty: boolean) => void;
 }) {
   const settings = useOwnerSettingsWorkspace(persona, onPersonaWrite);
+
+  useEffect(() => {
+    onDirtyChange?.(settings.dirty);
+  }, [onDirtyChange, settings.dirty]);
 
   return (
     <div className="ras-settings ras-settings--dialog">

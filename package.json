@@ -1,6 +1,6 @@
 {
   "name": "nimiapp-realm-persona-studio",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.34.5",
@@ -58,7 +58,7 @@
     "vite": "^7.3.6",
     "vitest": "^4.1.7",
     "yaml": "^2.9.0",
-    "@nimiplatform/app-tools": "^0.3.0",
+    "@nimiplatform/app-tools": "^0.4.0",
     "@nimiplatform/nimi-coding": "0.6.2"
   },
   "dependencies": {
@@ -75,5 +75,6 @@
     "@nimiplatform/kit": "^0.6.0"
   },
   "main": "dist-electron/main.js",
-  "author": "Nimi Team"
+  "author": "Nimi Team",
+  "license": "MIT"
 }

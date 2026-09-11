@@ -5,6 +5,7 @@ import { AlertTriangle, ChevronRight, FilePenLine, Info, LayoutGrid, Plus, Refre
 import {
   Avatar,
   Button,
+  DataList,
   EmptyState,
   InlineAlert,
   LoadingSkeleton,
@@ -14,11 +15,11 @@ import {
   SearchField,
   SelectField,
   StatusBadge,
+  Surface,
 } from '@nimiplatform/kit/ui';
 import {
   applyOwnerPortfolioView,
   classifyPortfolioFailure,
-  type OwnerPortfolioFilter,
   type OwnerPortfolioSort,
   type PortfolioFailureKind,
 } from '@renderer/features/portfolio/portfolio-data.js';
@@ -44,12 +45,6 @@ import {
   listStudioWorldCores,
   studioWorldCardPresentation,
 } from '@renderer/data/studio-world-core.js';
-
-const PORTFOLIO_FILTER_OPTIONS: { value: OwnerPortfolioFilter; labelKey: StudioCopyKey }[] = [
-  { value: 'all', labelKey: 'portfolio.filter.allPersonas' },
-  { value: 'friend-count-available', labelKey: 'portfolio.filter.friendCountAvailable' },
-  { value: 'friend-count-unavailable', labelKey: 'portfolio.filter.friendCountUnavailable' },
-];
 
 const PORTFOLIO_SORT_OPTIONS: { value: OwnerPortfolioSort; labelKey: StudioCopyKey }[] = [
   { value: 'realm-order', labelKey: 'portfolio.sort.realmOrder' },
@@ -109,28 +104,20 @@ export function formatDraftUpdatedAt(updatedAt: string, locale: 'en' | 'zh'): st
 
 function PortfolioToolbar({
   queryText,
-  filter,
   sort,
   visibleCount,
   totalCount,
   onQueryChange,
-  onFilterChange,
   onSortChange,
 }: {
   queryText: string;
-  filter: OwnerPortfolioFilter;
   sort: OwnerPortfolioSort;
   visibleCount: number;
   totalCount: number;
   onQueryChange: (next: string) => void;
-  onFilterChange: (next: OwnerPortfolioFilter) => void;
   onSortChange: (next: OwnerPortfolioSort) => void;
 }) {
   const { t } = useStudioI18n();
-  const filterOptions = PORTFOLIO_FILTER_OPTIONS.map((option) => ({
-    value: option.value,
-    label: t(option.labelKey),
-  }));
   const sortOptions = PORTFOLIO_SORT_OPTIONS.map((option) => ({
     value: option.value,
     label: t(option.labelKey),
@@ -147,15 +134,6 @@ function PortfolioToolbar({
       />
       <div className="ras-portfolio-toolbar__controls">
         <div className="ras-portfolio-toolbar__field">
-          <span className="ras-portfolio-toolbar__field-label">{t('portfolio.filter.label')}</span>
-          <SelectField
-            aria-label={t('portfolio.filter.label')}
-            value={filter}
-            options={filterOptions}
-            onValueChange={(value) => onFilterChange(value as OwnerPortfolioFilter)}
-          />
-        </div>
-        <div className="ras-portfolio-toolbar__field">
           <span className="ras-portfolio-toolbar__field-label">{t('portfolio.sort.label')}</span>
           <SelectField
             aria-label={t('portfolio.sort.label')}
@@ -165,7 +143,9 @@ function PortfolioToolbar({
           />
         </div>
         <p className="ras-portfolio-toolbar__count">
-          {visibleCount} / {totalCount} · {t('portfolio.localView')}
+          {visibleCount === totalCount
+            ? t('portfolio.count.total', { count: totalCount })
+            : t('portfolio.count.filtered', { visible: visibleCount, total: totalCount })}
         </p>
       </div>
     </div>
@@ -176,9 +156,9 @@ function PortfolioLoadingState() {
   return (
     <div className="ras-persona-grid">
       {Array.from({ length: 6 }).map((_, index) => (
-        <section key={index} className="ras-card ras-card--quiet">
+        <Surface key={index} tone="panel" padding="lg" className="ras-radius-xl">
           <LoadingSkeleton lines={3} />
-        </section>
+        </Surface>
       ))}
     </div>
   );
@@ -245,24 +225,28 @@ function LocalDraftList({
 
   if (status === 'unavailable') {
     return (
-      <section className="ras-local-draft-empty" aria-live="polite">
-        <AlertTriangle size={28} strokeWidth={1.8} aria-hidden="true" />
-        <h2>{t('portfolio.localDrafts.unavailableTitle')}</h2>
-        <p>{t('portfolio.localDrafts.unavailableDescription')}</p>
-      </section>
+      <EmptyState
+        className="ras-local-draft-empty"
+        icon={<AlertTriangle size={28} strokeWidth={1.8} aria-hidden="true" />}
+        title={t('portfolio.localDrafts.unavailableTitle')}
+        description={t('portfolio.localDrafts.unavailableDescription')}
+      />
     );
   }
 
   if (entries.length === 0) {
     return (
-      <section className="ras-local-draft-empty">
-        <FilePenLine size={30} strokeWidth={1.7} aria-hidden="true" />
-        <h2>{t('portfolio.localDrafts.emptyTitle')}</h2>
-        <p>{t('portfolio.localDrafts.emptyDescription')}</p>
-        <Button tone="primary" leadingIcon={<Plus size={16} />} onClick={onCreate}>
-          {t('portfolio.createButton')}
-        </Button>
-      </section>
+      <EmptyState
+        className="ras-local-draft-empty"
+        icon={<FilePenLine size={30} strokeWidth={1.7} aria-hidden="true" />}
+        title={t('portfolio.localDrafts.emptyTitle')}
+        description={t('portfolio.localDrafts.emptyDescription')}
+        action={(
+          <Button tone="primary" leadingIcon={<Plus size={16} />} onClick={onCreate}>
+            {t('portfolio.createButton')}
+          </Button>
+        )}
+      />
     );
   }
 
@@ -271,54 +255,53 @@ function LocalDraftList({
       {partial ? (
         <InlineAlert tone="warning">{t('portfolio.localDrafts.partialUnavailable')}</InlineAlert>
       ) : null}
-      <section className="ras-local-draft-list">
-        <div className="ras-local-draft-list__rows">
-          {entries.map((entry) => {
-            const description = [
-              entry.worldName,
-              entry.archetype ? translatePersonaArchetypeLabel(entry.archetype, t) : null,
-            ].filter(Boolean).join(' · ');
-            const updatedAt = formatDraftUpdatedAt(entry.updatedAt, locale);
+      <DataList
+        ariaLabel={t('portfolio.localDrafts.ariaLabel')}
+        items={entries.map((entry) => {
+          const description = [
+            entry.worldName,
+            entry.archetype ? translatePersonaArchetypeLabel(entry.archetype, t) : null,
+          ].filter(Boolean).join(' · ');
+          const updatedAt = formatDraftUpdatedAt(entry.updatedAt, locale);
 
-            return (
-              <article key={entry.draftKey} className="ras-local-draft-row">
-                <Avatar
-                  alt={entry.displayName}
-                  src={images[entry.draftKey]}
-                  size="lg"
-                  shape="rounded"
-                  tone="accent"
-                  className="ras-local-draft-row__avatar"
-                  fallback={<span className="text-xl font-semibold">{entry.displayName.charAt(0).toUpperCase()}</span>}
-                />
-                <div className="ras-local-draft-row__identity">
-                  <h2>{entry.displayName}</h2>
-                  {description ? <p>{description}</p> : null}
-                </div>
-                <div className="ras-local-draft-row__meta">
-                  <PersonaLibraryStatusBadge status="local-draft" />
-                  <time
-                    className="ras-local-draft-row__updated-at"
-                    dateTime={entry.updatedAt}
-                    aria-label={t('portfolio.localDrafts.updatedAt', { dateTime: updatedAt })}
-                  >
-                    {updatedAt}
-                  </time>
-                </div>
-                <Button
-                  tone="ghost"
-                  size="sm"
-                  className="ras-local-draft-row__action"
-                  trailingIcon={<ChevronRight size={17} strokeWidth={1.8} />}
-                  onClick={() => onContinue(entry.draftKey)}
+          return {
+            id: entry.draftKey,
+            leading: (
+              <Avatar
+                alt={entry.displayName}
+                src={images[entry.draftKey]}
+                size="lg"
+                shape="rounded"
+                tone="accent"
+                fallback={<span className="text-xl font-semibold">{entry.displayName.charAt(0).toUpperCase()}</span>}
+              />
+            ),
+            title: entry.displayName,
+            description: description || undefined,
+            meta: (
+              <>
+                <PersonaLibraryStatusBadge status="local-draft" />
+                <time
+                  dateTime={entry.updatedAt}
+                  aria-label={t('portfolio.localDrafts.updatedAt', { dateTime: updatedAt })}
                 >
-                  {t('portfolio.localDrafts.continue')}
-                </Button>
-              </article>
-            );
-          })}
-        </div>
-      </section>
+                  {updatedAt}
+                </time>
+              </>
+            ),
+            actions: (
+              <Button
+                tone="ghost"
+                size="sm"
+                trailingIcon={<ChevronRight size={17} strokeWidth={1.8} />}
+                onClick={() => onContinue(entry.draftKey)}
+              >
+                {t('portfolio.localDrafts.continue')}
+              </Button>
+            ),
+          };
+        })}
+      />
     </div>
   );
 }
@@ -328,7 +311,6 @@ export function PersonaListPage() {
   const navigate = useNavigate();
   const [activeView, setActiveView] = useState<PortfolioView>('personas');
   const [queryText, setQueryText] = useState('');
-  const [filter, setFilter] = useState<OwnerPortfolioFilter>('all');
   const [sort, setSort] = useState<OwnerPortfolioSort>('realm-order');
   const [draftEntries, setDraftEntries] = useState<CreationDraftHistoryEntry[]>([]);
   const [draftImages, setDraftImages] = useState<Record<string, string | null>>({});
@@ -383,8 +365,8 @@ export function PersonaListPage() {
     }),
   ), [worldCoresQuery.data]);
   const visiblePersonas = useMemo(
-    () => applyOwnerPortfolioView(personas, { query: queryText, filter, sort }),
-    [personas, filter, queryText, sort],
+    () => applyOwnerPortfolioView(personas, { query: queryText, filter: 'all', sort }),
+    [personas, queryText, sort],
   );
   const sourceWarnings = personas.filter((persona) => persona.friendCount.status === 'source-unavailable');
   const portfolioFailure = portfolioQuery.isError ? classifyPortfolioFailure(portfolioQuery.error) : null;
@@ -483,12 +465,10 @@ export function PersonaListPage() {
               <>
                 <PortfolioToolbar
                   queryText={queryText}
-                  filter={filter}
                   sort={sort}
                   visibleCount={visiblePersonas.length}
                   totalCount={personas.length}
                   onQueryChange={setQueryText}
-                  onFilterChange={setFilter}
                   onSortChange={setSort}
                 />
 
@@ -519,7 +499,7 @@ export function PersonaListPage() {
                           worldBannerUrl={worldPresentation?.bannerUrl || null}
                           worldName={worldPresentation?.worldName || persona.worldName}
                           active={false}
-                          onSelect={() => navigate(`/portfolio/${persona.id}/settings`)}
+                          onSelect={() => navigate(`/portfolio/${persona.id}`)}
                         />
                       );
                     })}

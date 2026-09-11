@@ -33,6 +33,7 @@ import { translatePersonaArchetypeLabel, translatePersonaTraitLabel } from '@ren
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
 import {
   CREATIVE_ASSET_HISTORY_UPDATED_EVENT,
+  creativeHistoryTitleKey,
   loadAllLocalCreativeAssetHistory,
   type CreativeAssetHistoryRecord,
 } from '@renderer/features/portfolio/creative-asset-history.js';
@@ -233,7 +234,7 @@ function AssetImageGrid({
               }}
             />
           ) : null}
-          <div className="absolute inset-x-0 bottom-0 truncate bg-[linear-gradient(transparent,rgba(15,23,42,0.82))] px-3 pb-2 pt-6 text-left text-xs font-medium text-white">
+          <div className="absolute inset-x-0 bottom-0 truncate bg-[linear-gradient(transparent,color-mix(in_srgb,var(--nimi-text-primary)_82%,transparent))] px-3 pb-2 pt-6 text-left text-xs font-medium text-[var(--nimi-surface-canvas)]">
             {entry.title}
           </div>
         </Surface>
@@ -474,13 +475,27 @@ export function AssetsLibraryPage() {
   const [importFailure, setImportFailure] = useState<{ message: string; informational: boolean } | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const data = useMemo(() => aggregateAssetLibraryData({
-    creativeHistoryRecords,
-    creationDraftRecords,
-    importedRecords,
-    sourceUnavailableCount,
-    importedUnavailableCount,
-  }), [creativeHistoryRecords, creationDraftRecords, importedRecords, sourceUnavailableCount, importedUnavailableCount]);
+  const data = useMemo(() => {
+    const aggregated = aggregateAssetLibraryData({
+      creativeHistoryRecords,
+      creationDraftRecords,
+      importedRecords,
+      sourceUnavailableCount,
+      importedUnavailableCount,
+    });
+    // Resolve recognized Studio history title keys in the active locale.
+    const localize = (entry: AssetLibraryEntry): AssetLibraryEntry => {
+      const titleKey = creativeHistoryTitleKey(entry.title);
+      return titleKey ? { ...entry, title: t(titleKey) } : entry;
+    };
+    return {
+      ...aggregated,
+      entries: aggregated.entries.map(localize),
+      images: aggregated.images.map(localize),
+      audio: aggregated.audio.map(localize),
+      uploads: aggregated.uploads.map(localize),
+    };
+  }, [creativeHistoryRecords, creationDraftRecords, importedRecords, sourceUnavailableCount, importedUnavailableCount, t]);
 
   useEffect(() => {
     let cancelled = false;

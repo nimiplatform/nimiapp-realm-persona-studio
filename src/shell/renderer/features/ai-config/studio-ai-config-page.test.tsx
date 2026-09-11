@@ -100,7 +100,7 @@ describe('Studio AIConfig self-owner page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open AI models in Nimi Desktop' }));
 
     await screen.findByText('Nimi Desktop could not open Realm Persona Studio’s AI models. No configuration was changed.');
-    await screen.findByText('The operation failed. Try again.');
+    await screen.findByText('Something went wrong. Try again.');
     expect(document.querySelector('details')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Copy diagnostics' }));

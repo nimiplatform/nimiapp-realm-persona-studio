@@ -3,9 +3,29 @@ import type { LocalPostScheduleRecord } from './local-post-schedule-store.js';
 import { buildDraftBoxEntries } from './draft-box.js';
 
 describe('Draft Box model', () => {
+  it('includes saved post drafts, preserves owner copy and links to the selected record', () => {
+    const entries = buildDraftBoxEntries({
+      personaId: 'persona-1',
+      creativeHistory: [],
+      localSchedule: null,
+      postDrafts: [{
+        id: 'draft-1', personaId: 'persona-1', caption: 'draftBox.title', tagsText: '#note',
+        visibility: 'private', category: null, attachments: [],
+        updatedAt: '2026-09-12T00:00:00.000Z',
+        source: 'realm-persona-studio.local-post-draft-editor', candidateOnly: true, publicTruth: false,
+      }],
+    });
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      kind: 'post-draft', title: 'draftBox.title', detail: 'draftBox.title',
+      actionPath: '/portfolio/persona-1/posts?draft=draft-1', truthBoundary: 'local-only',
+    });
+  });
+
   it('maps local creative history into candidate-only draft entries', () => {
     const entries = buildDraftBoxEntries({
       personaId: 'persona-1',
+      postDrafts: [],
       creativeHistory: [{
         id: 'voice-1',
         personaId: 'persona-1',
@@ -46,7 +66,7 @@ describe('Draft Box model', () => {
       detail: 'artifact-voice-1',
       source: 'Runtime audio.synthesize',
       createdAt: '2026-06-18T01:00:00.000Z',
-      actionPath: '/portfolio/persona-1/settings/voice',
+      actionPath: '/portfolio/persona-1/identity',
     }, {
       id: 'creative:image-1',
       kind: 'identity-image',
@@ -57,7 +77,7 @@ describe('Draft Box model', () => {
       detail: 'artifact-image-1',
       source: 'Runtime image.generate',
       createdAt: '2026-06-18T00:00:00.000Z',
-      actionPath: '/portfolio/persona-1/settings',
+      actionPath: '/portfolio/persona-1/identity',
     }]);
   });
 
@@ -114,6 +134,7 @@ describe('Draft Box model', () => {
 
     expect(buildDraftBoxEntries({
       personaId: 'persona-1',
+      postDrafts: [],
       creativeHistory: [],
       localSchedule: schedule,
       now: new Date('2026-06-18T00:01:00.000Z'),
@@ -123,9 +144,9 @@ describe('Draft Box model', () => {
       destination: 'schedule',
       status: 'ready-when-due',
       truthBoundary: 'local-only',
-      title: 'Scheduled post draft',
+      title: 'draftBox.scheduledPostTitle',
       detail: 'Reviewed launch note',
-      actionPath: '/portfolio/persona-1/posts/schedule',
+      actionPath: '/portfolio/persona-1/posts',
     });
   });
 });

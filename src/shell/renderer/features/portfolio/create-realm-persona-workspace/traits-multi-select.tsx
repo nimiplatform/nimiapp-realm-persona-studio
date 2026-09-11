@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   Button,
   Checkbox,
+  FieldTrigger,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -18,10 +19,11 @@ import { translatePersonaTraitLabel } from '../../../i18n/studio-i18n.js';
 import { PERSONA_TRAIT_DESCRIPTION_KEYS } from './create-flow-copy.js';
 
 /**
- * Persona trait multi-select (hard cap PERSONA_TRAIT_MAX). The trigger keeps
- * the field-styled chip display; the option list is a kit Popover with a
- * checkbox list so outside-click, Escape, and focus handling come from the
- * kit overlay primitive instead of hand-rolled document listeners.
+ * Persona trait multi-select (hard cap PERSONA_TRAIT_MAX). The trigger is a
+ * kit FieldTrigger displaying the selected chips; the option list is a kit
+ * Popover with a checkbox list so outside-click, Escape, and focus handling
+ * come from the kit overlay primitive instead of hand-rolled document
+ * listeners.
  */
 export function TraitsMultiSelect({
   value,
@@ -38,23 +40,22 @@ export function TraitsMultiSelect({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button
-          type="button"
+        <FieldTrigger
           data-create-field-control
           aria-invalid={Boolean(error) || undefined}
-          className={`ras-create-trait-trigger ${error ? 'ras-create-trait-trigger--error' : ''}`}
+          className="h-auto min-h-10 py-1.5"
         >
-          <span className="ras-create-trait-trigger__selection">
+          <span className="ras-create-trait-selection">
             {value.length > 0 ? value.map((trait) => (
               <span key={trait} className="ras-create-trait-chip">
                 {translatePersonaTraitLabel(trait, t).split(' · ')[0]}
               </span>
             )) : (
-              <span className="ras-create-trait-trigger__placeholder">{t('create.personaTraitsPlaceholder', { max: PERSONA_TRAIT_MAX })}</span>
+              <span className="ras-create-trait-placeholder">{t('create.personaTraitsPlaceholder', { max: PERSONA_TRAIT_MAX })}</span>
             )}
           </span>
-          <ChevronDown className={`ras-create-trait-trigger__chevron ${open ? 'rotate-180' : ''}`} size={15} aria-hidden="true" />
-        </button>
+          <ChevronDown className={`ras-create-trait-chevron ${open ? 'rotate-180' : ''}`} size={15} aria-hidden="true" />
+        </FieldTrigger>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-0">
         <ScrollArea className="max-h-64">

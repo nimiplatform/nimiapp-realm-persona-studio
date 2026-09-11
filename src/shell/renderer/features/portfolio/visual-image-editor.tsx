@@ -6,7 +6,7 @@ import {
   RotateCw,
   Upload,
 } from 'lucide-react';
-import { Button, EmptyState, IconButton, InlineAlert, nimiToast, StatusBadge } from '@nimiplatform/kit/ui';
+import { Button, EmptyState, IconButton, InlineAlert, nimiToast, Slider, StatusBadge } from '@nimiplatform/kit/ui';
 import type { OwnerPortfolioPersonaDetail } from './portfolio-data.js';
 import { appendLocalCreativeAssetHistory } from './creative-asset-history.js';
 import { useStudioI18n } from '../../i18n/use-studio-i18n.js';
@@ -84,6 +84,9 @@ function exportEditedVisualImage(
   canvas.height = Math.max(1, Math.round(params.frameHeight * exportScale));
   const context = canvas.getContext('2d');
   if (!context) return null;
+  // Intentional export chrome, not UI styling: the exported image gets an
+  // opaque white backing so transparent source areas stay readable wherever
+  // the owner reuses the file.
   context.fillStyle = '#ffffff';
   context.fillRect(0, 0, canvas.width, canvas.height);
   context.translate(canvas.width / 2, canvas.height / 2);
@@ -277,7 +280,7 @@ export function VisualImageEditorWorkspace({
         kind: 'local-image-edit-candidate',
         sourceKind: 'imported',
         reviewState: 'owner-reviewed',
-        label: 'Local image edit candidate',
+        label: 'assets.history.localImageEdit',
         source: VISUAL_IMAGE_EDIT_SOURCE,
         previewUrl: dataUrl,
         detail: buildVisualImageEditDetail({
@@ -422,18 +425,18 @@ export function VisualImageEditorWorkspace({
                   </button>
                 ))}
               </div>
-              <label className="ras-image-editor__slider">
+              <div className="ras-image-editor__slider">
                 <span>{t('assets.imageEditor.zoom')}</span>
-                <input
-                  type="range"
+                <Slider
                   min={1}
                   max={MAX_ZOOM}
                   step={0.01}
                   value={zoom}
+                  aria-label={t('assets.imageEditor.zoom')}
                   onChange={(event) => updateZoom(Number(event.currentTarget.value))}
                 />
                 <output>{zoom.toFixed(2)}</output>
-              </label>
+              </div>
               <div className="ras-image-editor__icon-row">
                 <IconButton
                   tone="secondary"
@@ -478,18 +481,18 @@ export function VisualImageEditorWorkspace({
                 ))}
               </div>
               {ADJUSTMENTS.map((adjustment) => (
-                <label key={adjustment.key} className="ras-image-editor__slider">
+                <div key={adjustment.key} className="ras-image-editor__slider">
                   <span>{t(adjustment.labelKey)}</span>
-                  <input
-                    type="range"
+                  <Slider
                     min={adjustment.min}
                     max={adjustment.max}
                     step={adjustment.step}
                     value={effects[adjustment.key]}
+                    aria-label={t(adjustment.labelKey)}
                     onChange={(event) => updateAdjustment(adjustment.key, Number(event.currentTarget.value))}
                   />
                   <output>{adjustment.format(effects[adjustment.key])}</output>
-                </label>
+                </div>
               ))}
             </div>
 

@@ -1,4 +1,4 @@
-import { StrictMode, useRef, useState } from 'react';
+import { StrictMode, useRef, useState, type ComponentType } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { QueryClientProvider } from '@tanstack/react-query';
 import {
@@ -23,17 +23,20 @@ import {
 import { HashRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { ArrowLeft, ChevronDown, ImageIcon, Scan, X } from 'lucide-react';
 import { StudioSidebar } from './app-shell/studio-sidebar/index.js';
-import { PersonaWorkspaceFrame } from './features/persona-detail/persona-shell.js';
 import { PersonaVisualPreviewProvider } from './features/persona-detail/persona-visual-preview-context.js';
 import {
   PERSONA_WORKSPACE_VISUAL_FIXTURE_DATA,
   PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS,
   PERSONA_WORKSPACE_VISUAL_FIXTURE_LIST,
-  PERSONA_WORKSPACE_VISUAL_FIXTURE_PENDING_REVIEWS,
 } from './features/persona-detail/persona-workspace.visual-fixture.js';
-import { PersonaPostEditor } from './features/persona-posts/persona-post-editor.js';
-import { PersonaSettingsOverview } from './features/persona-settings/persona-settings-overview.js';
+import { PersonaOverviewPage } from './features/persona-overview/persona-overview-page.js';
+import { PersonaIdentityPage } from './features/persona-identity/persona-identity-page.js';
+import { PersonaPostsPage } from './features/persona-posts/persona-posts-page.js';
+import { PersonaSettingsPage } from './features/persona-settings/persona-settings-page.js';
 import { PersonaListPage } from './features/persona-list/persona-list-page.js';
+import { PersonaContentManagementPage } from './features/persona-content-management/persona-content-management-page.js';
+import { AssetsLibraryPage } from './features/assets-library/assets-library-page.js';
+import { StudioAIConfigPage } from './features/ai-config/studio-ai-config-page.js';
 import { ownerPortfolioListQueryKey } from './features/persona-detail/use-persona-detail-query.js';
 import {
   PERSONA_ARCHETYPES,
@@ -102,21 +105,12 @@ function useSeedPreviewSettingsCaches() {
   }
 }
 
-function PreviewWorkspace({ tab }: { tab: 'posts' | 'settings' }) {
+function PreviewPersonaPage({ page: Page }: { page: ComponentType }) {
   const { personaId = 'visual-xiaomi' } = useParams();
-  const persona = PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS[personaId];
-  const visualData = PERSONA_WORKSPACE_VISUAL_FIXTURE_DATA[personaId];
-  if (!persona || !visualData) return <Navigate to="/portfolio/visual-xiaomi/settings" replace />;
-
-  return (
-    <PersonaWorkspaceFrame key={persona.id} persona={persona} current={tab}>
-      {tab === 'posts' ? (
-        <PersonaPostEditor persona={persona} />
-      ) : (
-        <PersonaSettingsOverview persona={persona} />
-      )}
-    </PersonaWorkspaceFrame>
-  );
+  if (!PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS[personaId] || !PERSONA_WORKSPACE_VISUAL_FIXTURE_DATA[personaId]) {
+    return <Navigate to="/portfolio/visual-xiaomi" replace />;
+  }
+  return <Page />;
 }
 
 function PreviewCreateReferenceSources() {
@@ -204,7 +198,7 @@ function PreviewCreateReferenceSources() {
                     ref={previewFileInputRef}
                     type="file"
                     accept="image/*"
-                    className="ras-create-visual-source__file-input"
+                    hidden
                     aria-label={translateStudioCopy('assets.visualChange.uploadAriaLabel')}
                     onChange={(event) => {
                       event.currentTarget.value = '';
@@ -278,7 +272,7 @@ function PreviewCreateReferenceSources() {
               </FieldShell>
             </div>
 
-            <div className="ras-create-personality-grid">
+            <div className="ras-create-form-grid">
             <div className="min-w-0" data-create-field="personaArchetype">
               <FieldShell label={translateStudioCopy('create.personaArchetypeLabel')}>
                 <SelectField
@@ -365,18 +359,21 @@ function PreviewShell() {
           collapsed={collapsed}
           onCollapsedChange={setCollapsed}
           visualFixturePersonas={PERSONA_WORKSPACE_VISUAL_FIXTURE_LIST}
-          visualFixturePendingReviews={PERSONA_WORKSPACE_VISUAL_FIXTURE_PENDING_REVIEWS}
         />
         <main className="ras-main">
           <Routes>
             <Route path="/portfolio" element={<PersonaListPage />} />
             <Route path="/portfolio/create" element={<PreviewCreateDescribe />} />
-            <Route path="/portfolio/:personaId" element={<Navigate to="settings" replace />} />
-            <Route path="/portfolio/:personaId/posts" element={<PreviewWorkspace tab="posts" />} />
-            <Route path="/portfolio/:personaId/settings" element={<PreviewWorkspace tab="settings" />} />
+            <Route path="/portfolio/:personaId" element={<PreviewPersonaPage page={PersonaOverviewPage} />} />
+            <Route path="/portfolio/:personaId/settings" element={<PreviewPersonaPage page={PersonaSettingsPage} />} />
+            <Route path="/portfolio/:personaId/identity" element={<PreviewPersonaPage page={PersonaIdentityPage} />} />
+            <Route path="/portfolio/:personaId/posts" element={<PreviewPersonaPage page={PersonaPostsPage} />} />
+            <Route path="/portfolio/:personaId/posts/manage" element={<PreviewPersonaPage page={PersonaContentManagementPage} />} />
+            <Route path="/assets" element={<AssetsLibraryPage />} />
+            <Route path="/ai-config" element={<StudioAIConfigPage />} />
             <Route path="/preview/create-reference-sources" element={<PreviewCreateReferenceSources />} />
             <Route path="/preview/create-describe" element={<PreviewCreateDescribe />} />
-            <Route path="*" element={<Navigate to="/portfolio/visual-xiaomi/settings" replace />} />
+            <Route path="*" element={<Navigate to="/portfolio/visual-xiaomi" replace />} />
           </Routes>
         </main>
       </div>

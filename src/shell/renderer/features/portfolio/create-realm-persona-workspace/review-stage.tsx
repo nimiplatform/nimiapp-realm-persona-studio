@@ -142,7 +142,7 @@ export function ReviewStage({
                       message={displayNameError}
                       messageTone={displayNameError ? 'danger' : 'neutral'}
                     >
-                      <TextField tone={displayNameError ? 'danger' : 'default'} className={displayNameError ? 'focus-within:!border-[var(--nimi-field-focus)] focus-within:!ring-[var(--nimi-focus-ring-color)]' : undefined} data-create-field-control value={draft.displayName} placeholder={t('create.displayNamePlaceholder')} onChange={(event) => updateDraft({ displayName: event.currentTarget.value })} />
+                      <TextField tone={displayNameError ? 'danger' : 'default'} data-create-field-control value={draft.displayName} placeholder={t('create.displayNamePlaceholder')} onChange={(event) => updateDraft({ displayName: event.currentTarget.value })} />
                     </FieldShell>
                   </div>
                   <HandleField
@@ -156,7 +156,7 @@ export function ReviewStage({
                 </div>
                 <div className="min-w-0" data-create-field="concept">
                   <FieldShell label={t('create.conceptLabel')} message={conceptError || t('create.conceptMessage')} messageTone={conceptError ? 'danger' : 'neutral'}>
-                    <TextareaField tone={conceptError ? 'danger' : 'default'} className={conceptError ? 'focus-within:!border-[var(--nimi-field-focus)] focus-within:!ring-[var(--nimi-focus-ring-color)]' : undefined} data-create-field-control rows={3} value={draft.concept} placeholder={t('create.conceptPlaceholder')} onChange={(event) => updateDraft({ concept: event.currentTarget.value })} />
+                    <TextareaField tone={conceptError ? 'danger' : 'default'} data-create-field-control rows={3} value={draft.concept} placeholder={t('create.conceptPlaceholder')} onChange={(event) => updateDraft({ concept: event.currentTarget.value })} />
                   </FieldShell>
                 </div>
                 </div>
@@ -176,7 +176,7 @@ export function ReviewStage({
                 />
                 </div>
                 </div>
-                <div className="ras-create-personality-grid">
+                <div className="ras-create-form-grid">
                 <div className="min-w-0" data-create-field="personaArchetype">
                   <FieldShell
                     label={t('create.personaArchetypeLabel')}
@@ -185,8 +185,8 @@ export function ReviewStage({
                   >
                     <SelectField
                       required
+                      tone={personaArchetypeError ? 'danger' : 'default'}
                       value={draft.personaArchetype || SELECT_UNSET_VALUE}
-                      className={personaArchetypeError ? '!border-[var(--nimi-status-danger)] focus:!border-[var(--nimi-field-focus)] focus:!ring-[var(--nimi-focus-ring-color)]' : undefined}
                       options={[{ value: SELECT_UNSET_VALUE, label: <span className="text-xs font-normal text-[var(--nimi-text-muted)]">{t('create.personaArchetypePlaceholder')}</span> }, ...PERSONA_ARCHETYPES.map((archetype) => ({ value: archetype, label: `${translatePersonaArchetypeLabel(archetype, t)} — ${t(PERSONA_ARCHETYPE_DESCRIPTION_KEYS[archetype])}` }))]}
                       onValueChange={(value) => updateDraft({ personaArchetype: value === SELECT_UNSET_VALUE ? '' : value as PersonaArchetype })}
                     />
@@ -203,13 +203,12 @@ export function ReviewStage({
                 </div>
                 </div>
                 <BehaviorFields draft={draft} fieldErrors={fieldErrors} updateDraft={updateDraft} />
-                <div className="ras-create-placement-grid">
+                <div className="ras-create-form-grid">
                 <div className="min-w-0" data-create-field="selectedWorldId">
                   <FieldShell label={t('create.worldLabel')} message={selectedWorldError} messageTone={selectedWorldError ? 'danger' : 'neutral'}>
                     <FieldTrigger
                       data-create-field-control
                       aria-invalid={Boolean(selectedWorldError) || undefined}
-                      className={selectedWorldError ? '!border-[var(--nimi-status-danger)] focus:!border-[var(--nimi-field-focus)] focus:!ring-[var(--nimi-focus-ring-color)]' : undefined}
                       onClick={() => setWorldModalOpen(true)}
                       aria-haspopup="dialog"
                       aria-expanded={worldModalOpen}

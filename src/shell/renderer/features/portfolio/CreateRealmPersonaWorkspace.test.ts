@@ -185,7 +185,7 @@ describe('Create Realm Persona workspace v2 shell', () => {
     expect(source).toContain('className="ras-create-review-card"');
     expect(source).toContain('className="ras-create-review-form"');
     expect(styles).toContain('.ras-create-review-card {');
-    expect(styles).toContain('border-radius: 18px;');
+    expect(styles).toContain('border-radius: var(--nimi-radius-lg);');
   });
 
   it('places the Persona image beside identity fields and keeps personality controls below', () => {
@@ -207,23 +207,24 @@ describe('Create Realm Persona workspace v2 shell', () => {
     expect(styles).toContain('.ras-create-review-form__aside {');
     expect(styles).not.toContain('.ras-create-review-form > .ras-create-reference-card {');
     expect(styles).not.toContain('grid-row: 1 / span 3;');
-    expect(source).toContain('className="ras-create-personality-grid"');
-    expect(styles).toContain('.ras-create-personality-grid {');
+    expect(source).toContain('className="ras-create-form-grid"');
+    expect(styles).toContain('.ras-create-form-grid {');
     expect(styles).toContain('grid-template-columns: repeat(2, minmax(0, 1fr));');
   });
 
-  it('shows inline danger feedback without a required asterisk and restores normal focus color on focus', () => {
+  it('shows inline danger feedback through kit field tones without CSS overrides or a required asterisk', () => {
     const source = workspaceSource();
 
     expect(source).not.toContain("t('create.displayNameMessage')");
     expect(source).not.toContain("t('create.handleMessage')");
     expect(source).not.toContain("t('create.personaArchetypeMessage')");
     expect(source).not.toContain('aria-hidden="true">*</span>');
-    expect(source).toContain('focus-within:!border-[var(--nimi-field-focus)]');
-    expect(source).toContain('focus-within:!ring-[var(--nimi-focus-ring-color)]');
-    expect(source).toContain('focus:!border-[var(--nimi-field-focus)]');
-    expect(source).toContain('focus:!ring-[var(--nimi-focus-ring-color)]');
-    expect(source).toMatch(/<SelectField\s+required\s+value=\{draft\.personaArchetype \|\| SELECT_UNSET_VALUE\}/);
+    expect(source).toContain("tone={displayNameError ? 'danger' : 'default'}");
+    expect(source).toContain("tone={conceptError ? 'danger' : 'default'}");
+    expect(source).toContain("tone={personaArchetypeError ? 'danger' : 'default'}");
+    expect(source).not.toContain('!border-[var(');
+    expect(source).not.toContain('!ring-[var(');
+    expect(source).toMatch(/<SelectField\s+required\s+tone=\{personaArchetypeError \? 'danger' : 'default'\}\s+value=\{draft\.personaArchetype \|\| SELECT_UNSET_VALUE\}/);
     expect(source).toContain("const SELECT_UNSET_VALUE = '__realm_persona_studio_unset__';");
     expect(source).not.toContain("{ value: '', label: t('create.personaArchetypePlaceholder') }");
     expect(source).not.toContain("{ value: '', label: t('create.visibilityPlaceholder') }");
@@ -243,7 +244,7 @@ describe('Create Realm Persona workspace v2 shell', () => {
     const draft = readFileSync(join(process.cwd(), 'src/shell/renderer/features/portfolio/create-persona-draft.ts'), 'utf8');
 
     expect(source).toContain('PERSONA_TRAIT_MAX');
-    expect(source).toContain('ras-create-trait-trigger');
+    expect(source).toContain('FieldTrigger');
     expect(source).toContain('<Popover');
     expect(source).toContain('PopoverTrigger');
     expect(source).toContain('PopoverContent');
