@@ -58,7 +58,7 @@
     "vite": "^7.3.6",
     "vitest": "^4.1.7",
     "yaml": "^2.9.0",
-    "@nimiplatform/app-tools": "^0.4.0",
+    "@nimiplatform/app-tools": "^0.5.1",
     "@nimiplatform/nimi-coding": "0.6.2"
   },
   "dependencies": {
@@ -71,8 +71,8 @@
     "react-router-dom": "^7.15.1",
     "scheduler": "^0.27.0",
     "zustand": "^5.0.13",
-    "@nimiplatform/sdk": "^0.10.0",
-    "@nimiplatform/kit": "^0.6.0"
+    "@nimiplatform/sdk": "^0.11.0",
+    "@nimiplatform/kit": "^0.7.0"
   },
   "main": "dist-electron/main.js",
   "author": "Nimi Team",
