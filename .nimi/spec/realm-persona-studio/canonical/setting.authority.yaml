@@ -130,7 +130,7 @@ units:
     kind: rule
     title: Runtime setting candidates
     modality: must
-    statement: Runtime setting proposals remain editable candidates and return to the same owner-reviewed save path.
+    statement: Runtime setting proposals remain editable candidates and return to the same owner-reviewed save path. Requests prioritize the explicit owner intent and current unsaved draft, ask only for requested changed fields, preserve owner-specified facts and phrases, and request a brief rationale in the current UI language; generic character-improvement instructions do not broaden the requested edit.
     condition: Whenever Runtime proposes a setting.
     failure: Keep the proposal local and do not save it as source state outside the owner-reviewed path.
     relations:

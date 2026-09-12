@@ -127,6 +127,7 @@ describe('AI character revision candidates', () => {
       personaId: 'mira',
       current: settings,
       draft: { ...draft(), greeting: 'An owner edit.', naturalLanguageIntent: '只修改开场白。' },
+      locale: 'zh',
     });
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('Expected valid owner intent');
@@ -136,6 +137,8 @@ describe('AI character revision candidates', () => {
     expect(prompt.currentDraft.behaviorText).toBe(draft().behaviorText);
     expect(prompt.currentDraft).not.toHaveProperty('worldId');
     expect(prompt.currentDraft).not.toHaveProperty('provider');
+    expect(prompt).not.toHaveProperty('currentSettings');
+    expect(result.payload.systemText).toContain('rationale 必须使用简体中文');
   });
   it('requires an explicit change request', () => {
     expect(

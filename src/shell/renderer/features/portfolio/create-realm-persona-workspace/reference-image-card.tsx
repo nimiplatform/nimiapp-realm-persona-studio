@@ -17,6 +17,7 @@ import {
   ReferenceImageSourceChooser,
 } from '../reference-image-source-chooser.js';
 import { useStudioI18n } from '../../../i18n/use-studio-i18n.js';
+import { LOCAL_IMPORT_MIME_TYPES } from '../../assets-library/local-import-store.js';
 import type { UseReferenceImageResult } from './use-reference-image.js';
 import type { ReferenceAssetsState } from './types.js';
 
@@ -54,6 +55,7 @@ export function ReferenceImageCard({
     isGeneratingReferenceImage,
     referenceImageGenerationTarget,
     referenceImageFailure,
+    localImportAvailable,
     referenceCandidateLoadFailures,
     isImportingReferenceImage,
     isOptimizingImagePrompt,
@@ -70,6 +72,9 @@ export function ReferenceImageCard({
     handleReferenceImageUpload,
   } = referenceImage;
   const imagePrompt = normalizedDraft.referenceImagePrompt;
+  const regenerationCandidate = selectedReferenceCandidate || (!previewReferenceCandidate?.url
+    ? normalizedDraft.referenceImageCandidates.find((candidate) => !candidate.url || referenceCandidateLoadFailures.has(candidate.url))
+    : null);
 
   return (
     <Surface
@@ -94,7 +99,7 @@ export function ReferenceImageCard({
         <Scan className="ras-create-reference-card__corner" data-corner="top-right" strokeWidth={1.15} aria-hidden="true" />
         <Scan className="ras-create-reference-card__corner" data-corner="bottom-left" strokeWidth={1.15} aria-hidden="true" />
         <Scan className="ras-create-reference-card__corner" data-corner="bottom-right" strokeWidth={1.15} aria-hidden="true" />
-        {previewReferenceCandidate && !referenceImageLoadFailed ? (
+        {previewReferenceCandidate?.url && !referenceImageLoadFailed && !referenceCandidateLoadFailures.has(previewReferenceCandidate.url) ? (
           <img
             src={previewReferenceCandidate.url}
             alt={t('create.referenceAlt')}
@@ -143,7 +148,7 @@ export function ReferenceImageCard({
           <input
             ref={referenceImageFileInputRef}
             type="file"
-            accept="image/*"
+            accept={LOCAL_IMPORT_MIME_TYPES.join(',')}
             hidden
             aria-label={t('assets.visualChange.uploadAriaLabel')}
             onChange={(event) => void handleReferenceImageUpload(event)}
@@ -152,7 +157,7 @@ export function ReferenceImageCard({
           <ReferenceImageSourceChooser
             value={referenceImageSourceMode}
             attached={Boolean(normalizedDraft.referenceImageUrl)}
-            uploadDisabled={isImportingReferenceImage}
+            uploadDisabled={!localImportAvailable || isImportingReferenceImage}
             onUploadRequest={requestReferenceImageUpload}
             onValueChange={selectReferenceImageSourceMode}
           />
@@ -178,7 +183,7 @@ export function ReferenceImageCard({
                       type="button"
                       className="ras-create-visual-source__asset"
                       aria-label={t('create.reference.useAsset', { title: asset.title })}
-                      onClick={() => asset.previewUrl ? adoptReferenceImageUrl(asset.previewUrl) : undefined}
+                      onClick={() => asset.previewUrl ? adoptReferenceImageUrl(asset.previewUrl, { artifactId: asset.artifactId, sourceKind: asset.sourceKind }) : undefined}
                     >
                       <img src={asset.previewUrl || ''} alt={asset.title} />
                       <span>{asset.title}</span>
@@ -245,7 +250,7 @@ export function ReferenceImageCard({
                 <Button
                   tone="primary"
                   fullWidth
-                  disabled={referenceCandidateLoadFailures.has(previewReferenceCandidate.url) || isGeneratingReferenceImage}
+                  disabled={!previewReferenceCandidate.url || referenceCandidateLoadFailures.has(previewReferenceCandidate.url) || isGeneratingReferenceImage}
                   onClick={() => selectReferenceImageCandidate(previewReferenceCandidate.url)}
                 >
                   {t('create.reference.selectCandidate')}
@@ -254,24 +259,30 @@ export function ReferenceImageCard({
               <Button
                 tone="secondary"
                 fullWidth
-                disabled={!selectedReferenceCandidate || !imagePrompt}
+                disabled={!regenerationCandidate || !imagePrompt}
                 loading={referenceImageGenerationTarget?.mode === 'replace'}
-                onClick={() => selectedReferenceCandidate
-                  ? void runReferenceImageGeneration({ mode: 'replace', slot: selectedReferenceCandidate.slot })
+                onClick={() => regenerationCandidate
+                  ? void runReferenceImageGeneration({ mode: 'replace', slot: regenerationCandidate.slot })
                   : undefined}
                 leadingIcon={<RefreshCw size={15} aria-hidden="true" />}
               >
-                {t('create.reference.regenerateSelected')}
+                {t(selectedReferenceCandidate ? 'create.reference.regenerateSelected' : 'create.generateReference')}
               </Button>
               <p className="m-0 text-xs text-[var(--nimi-text-muted)]">
                 {selectedReferenceCandidate
                   ? t('create.reference.regenerateSelectedHelp')
+                  : regenerationCandidate
+                  ? t('create.reference.sourceUrlUnavailable')
                   : t('create.reference.selectToRegenerate')}
               </p>
             </>
           ) : null}
+          {!localImportAvailable ? <InlineAlert tone="info">{t('create.reference.uploadUnavailable')}</InlineAlert> : null}
+          {referenceImageFailure ? <InlineAlert tone="danger">{referenceImageFailure}</InlineAlert> : null}
           {referenceSourceFailure ? <InlineAlert tone="danger">{referenceSourceFailure}</InlineAlert> : null}
-          {normalizedDraft.referenceImageUrl ? <Button tone="ghost" size="sm" onClick={clearReferenceImage}>{t('create.clearReference')}</Button> : null}
+          {selectedReferenceCandidate && (!selectedReferenceCandidate.url || referenceCandidateLoadFailures.has(selectedReferenceCandidate.url))
+            ? <InlineAlert tone="warning">{t('create.reference.sourceUrlUnavailable')}</InlineAlert> : null}
+          {selectedReferenceCandidate ? <Button tone="ghost" size="sm" onClick={clearReferenceImage}>{t('create.clearReference')}</Button> : null}
         </div>
       </OverlayShell>
       {error ? <p className="ras-create-reference-card__error">{error}</p> : null}

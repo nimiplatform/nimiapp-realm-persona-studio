@@ -24,6 +24,7 @@ import {
 } from '../creative-asset-history.js';
 import {
   aggregateAssetLibraryData,
+  isDisplayableAssetPreviewUrl,
   type AssetLibraryEntry,
 } from '../../assets-library/asset-library-data.js';
 import {
@@ -33,7 +34,7 @@ import {
 } from '../../assets-library/local-import-store.js';
 import type { ReferenceImageSourceMode } from '../reference-image-source-chooser.js';
 import { logCreateFlowFailure, translateCreateFlowFailure } from './create-flow-copy.js';
-import { isRealmReferenceImageUrl } from './draft-utils.js';
+import { referenceImageCandidatePreviewUrl } from '../reference-image-source.js';
 import type {
   CreateRealmPersonaDraftPatchInput,
   CreateStage,
@@ -82,8 +83,7 @@ async function loadExistingReferenceAssets(
   const seenUrls = new Set<string>();
   const entries = data.images.filter((entry) => {
     if (
-      entry.reviewState === 'candidate-only'
-      || !isRealmReferenceImageUrl(entry.previewUrl)
+      !isDisplayableAssetPreviewUrl(entry.previewUrl)
       || (entry.provenance.kind === 'draft' && entry.provenance.draftKey === currentDraftKey)
       || seenUrls.has(entry.previewUrl)
     ) return false;
@@ -122,6 +122,8 @@ export function useReferenceImage({
   t: StudioTranslator;
   actions: ReferenceImageActions;
 }) {
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
   const [referenceImageGenerationTarget, setReferenceImageGenerationTarget] = useState<ReferenceImageGenerationTarget | null>(null);
   const [referenceImageFailure, setReferenceImageFailure] = useState<string | null>(null);
   const [referenceCandidateLoadFailures, setReferenceCandidateLoadFailures] = useState<Set<string>>(() => new Set());
@@ -159,7 +161,8 @@ export function useReferenceImage({
     if (target.mode === 'fill' && occupiedTarget) return;
     if (
       target.mode === 'replace'
-      && (!occupiedTarget || occupiedTarget.url !== currentDraft.referenceImageUrl)
+      && (!occupiedTarget || (occupiedTarget.reviewState !== 'owner-selected'
+        && occupiedTarget.url && !referenceCandidateLoadFailures.has(occupiedTarget.url)))
     ) {
       return;
     }
@@ -186,8 +189,8 @@ export function useReferenceImage({
         return;
       }
       const createdAt = new Date().toISOString();
-      const urls = [...new Set([...(result.artifactUris || []), result.referenceImageUrl].filter(Boolean))];
-      const url = urls[0];
+      // @nimi-authority: rule.realm-persona-studio.asset.r014
+      const url = result.referenceImageUrl;
       if (!url) {
         const message = t('create.reference.capabilityUnavailable');
         setReferenceImageFailure(message);
@@ -198,6 +201,7 @@ export function useReferenceImage({
         draftKey,
         slot: target.slot,
         url,
+        ...(result.artifactIds[0] ? { artifactId: result.artifactIds[0] } : {}),
         prompt,
         createdAt,
         sourceKind: 'generated',
@@ -290,13 +294,10 @@ export function useReferenceImage({
 
   function markReferenceImageUnavailable(url: string) {
     setReferenceCandidateLoadFailures((current) => new Set(current).add(url));
-    if (normalizedDraft.referenceImageUrl === url) {
-      clearReferenceImage();
-    }
   }
 
-  function adoptReferenceImageUrl(url: string) {
-    const result = adoptImportedReferenceImageCandidate(draft, draftKey, url);
+  function adoptReferenceImageUrl(url: string, source: { artifactId?: string; sourceKind: 'generated' | 'imported' } = { sourceKind: 'imported' }) {
+    const result = adoptImportedReferenceImageCandidate(draftRef.current, draftKey, url, new Date().toISOString(), source);
     if (!result.ok) {
       actions.setReferenceSourceFailure(t(result.failure === 'candidate-slots-full'
         ? 'create.reference.sourceSlotsFull'
@@ -322,6 +323,10 @@ export function useReferenceImage({
 
   function requestReferenceImageUpload() {
     if (isImportingReferenceImage) return;
+    if (!localImportCapability.available) {
+      actions.setReferenceSourceFailure(t('create.reference.uploadUnavailable'));
+      return;
+    }
     actions.setReferenceImageSourceMode(null);
     referenceImageFileInputRef.current?.click();
   }
@@ -341,15 +346,20 @@ export function useReferenceImage({
       if (!result.ok) {
         actions.setReferenceSourceFailure(t(result.failure === 'capability-unavailable'
           ? 'create.reference.uploadUnavailable'
+          : result.failure === 'file-too-large'
+          ? 'assetsLibrary.upload.fileTooLarge'
+          : result.failure === 'unsupported-media-type'
+          ? 'assetsLibrary.upload.fileRejected'
           : 'create.reference.uploadFailed'));
         return;
       }
       await refreshReferenceAssets();
-      if (!isRealmReferenceImageUrl(result.record.previewUrl)) {
+      const previewUrl = referenceImageCandidatePreviewUrl(result.record.previewUrl, result.record.artifactId);
+      if (!previewUrl) {
         actions.setReferenceSourceFailure(t('create.reference.uploadLocalOnly'));
         return;
       }
-      adoptReferenceImageUrl(result.record.previewUrl);
+      adoptReferenceImageUrl(previewUrl, { artifactId: result.record.artifactId, sourceKind: 'imported' });
     } finally {
       setIsImportingReferenceImage(false);
     }
@@ -357,7 +367,7 @@ export function useReferenceImage({
 
   const candidateCount = normalizedDraft.referenceImageCandidates.length;
   const selectedReferenceCandidate = normalizedDraft.referenceImageCandidates.find(
-    (candidate) => candidate.url === normalizedDraft.referenceImageUrl,
+    (candidate) => candidate.reviewState === 'owner-selected',
   ) || null;
   const previewReferenceCandidate = selectedReferenceCandidate
     || normalizedDraft.referenceImageCandidates.find(
@@ -372,6 +382,7 @@ export function useReferenceImage({
   );
 
   return {
+    localImportAvailable: localImportCapability.available,
     referenceImageGenerationTarget,
     referenceImageFailure,
     referenceCandidateLoadFailures,

@@ -134,9 +134,9 @@ units:
     kind: rule
     title: Local imported asset boundary
     modality: must
-    statement: Local file import produces only an imported local candidate and initiates no Realm or network transfer.
+    statement: Local file import produces only an imported local candidate through the protected local Runtime carrier and initiates no Realm or external network transfer.
     condition: During the import action.
-    failure: Reject any network or publishing attempt during import; keep publishing visibly disabled under existing rule r010.
+    failure: Reject any external network or publishing attempt during import; keep publishing visibly disabled under existing rule r010.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.asset.asset-library
@@ -150,3 +150,23 @@ units:
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.asset.pre-create-asset-candidate
+  - id: rule.realm-persona-studio.asset.r014
+    kind: rule
+    title: Durable local reference images
+    modality: must
+    statement: Pre-create and reusable image candidates may reference an App-owned Runtime artifact returned by the protected ai.scenarioJobs or ai.artifacts operations; storage keeps its exact artifactId and owner review state, reconstructs its preview through ai.artifacts.read, and never persists inline bytes in draft metadata or writes a Runtime artifact id or data or blob URI into PersonaCharacter profile resourceRefs or externalRefs. An explicitly selected display-safe HTTPS reference remains eligible for the existing complete profile write.
+    condition: Whenever Studio stores, restores, selects, or creates a Persona with an image candidate.
+    failure: Preserve character writing and candidate provenance if artifact reading fails, visibly mark the selected image unavailable, and require clearing or replacing that selection before creation; do not invent a preview or public reference.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.asset.pre-create-asset-candidate
+  - id: rule.realm-persona-studio.asset.r015
+    kind: rule
+    title: Protected imported artifact index
+    modality: must
+    statement: Studio imports files of at most eight mebibytes using exact client.ai.artifacts.upload only for MIME types jointly admitted by its installed SDK, shell, and Runtime contracts, stores only the returned artifact identity and local source metadata through client.storage, and restores previews through client.ai.artifacts.read. This version admits PNG, JPEG, WebP, and GIF images; audio file import stays unavailable until the published dependency contract admits it. Removing an imported item removes its Studio index entry and never claims deletion of Runtime-managed artifact bytes.
+    condition: Whenever an owner imports, reopens, or removes a local asset candidate.
+    failure: Reject unsupported or oversized files before transfer, preserve unrelated index entries on failure, expose unavailable previews explicitly, and report import success only after both the protected artifact upload and index write succeed.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.asset.asset-library

@@ -386,6 +386,7 @@ export function buildLocalPostScheduleCandidate(
   return { scheduleable: true, errors: [], candidate };
 }
 
+// @nimi-authority: rule.realm-persona-studio.post.r002
 export function buildRuntimePostCopyPrompt(input: {
   persona: OwnerPortfolioPersonaDetail;
   draft: LocalPostDraftInput;
@@ -415,7 +416,9 @@ export function buildRuntimePostCopyPrompt(input: {
       },
       systemText: [
         'You draft candidate Realm Persona post copy for owner review.',
-        'Return one JSON object with caption, tagsText, and rationale only.',
+        'Return exactly one JSON object with caption, tagsText, and rationale only. No code fences, markdown wrappers, or text outside the JSON object.',
+        'All three values must be strings. tagsText is a comma-separated list, or an empty string if no tags are needed. Keep rationale brief and in the language of the owner intent.',
+        'Polish the current caption while preserving its facts and the owner intent. Do not invent new events, memories, or relationships.',
         'Do not include provider, model, LocalAgent, worldId, authorId, id, scheduledAt, scheduleId, queue, campaign, recurrence, moderation, or publish success fields.',
         'The owner must review the result before Realm publish.',
       ].join('\n'),

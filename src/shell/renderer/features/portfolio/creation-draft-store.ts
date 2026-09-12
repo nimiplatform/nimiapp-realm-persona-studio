@@ -19,6 +19,8 @@ import {
   type CreateFlowFailureKind,
 } from './create-flow-failure.js';
 import { normalizeDisplaySafeHttpsUrl } from './persona-external-ref.js';
+import { referenceImageArtifactId, referenceImageCandidatePreviewUrl } from './reference-image-source.js';
+import { readStudioMediaArtifactPreview } from './studio-media-candidate.js';
 
 export const CREATION_DRAFT_STORAGE_PATH_PREFIX = 'creation/drafts/';
 export const CREATION_DRAFT_AUTOSAVE_DEBOUNCE_MS = 800;
@@ -71,11 +73,13 @@ function resolveStorage(storage?: CreationDraftStorage | null): CreationDraftSto
 }
 
 function normalizeCandidate(value: unknown, expectedDraftKey: string): ReferenceImageCandidate | null {
-  const normalizedUrl = isRecord(value) ? normalizeDisplaySafeHttpsUrl(value.url) : null;
+  const artifactId = isRecord(value) ? referenceImageArtifactId(value.artifactId) : undefined;
+  const normalizedUrl = isRecord(value) ? referenceImageCandidatePreviewUrl(value.url, artifactId) : '';
   if (
     !isRecord(value)
     || value.draftKey !== expectedDraftKey
-    || !normalizedUrl
+    || (!normalizedUrl && !(artifactId && value.url === ''))
+    || (value.artifactId !== undefined && !artifactId)
     || typeof value.prompt !== 'string'
     || !isIsoDateTime(value.createdAt)
     || !isReferenceImageCandidateSlot(value.slot)
@@ -88,11 +92,14 @@ function normalizeCandidate(value: unknown, expectedDraftKey: string): Reference
   const reviewState = value.reviewState === 'candidate-only' || value.reviewState === 'owner-selected'
     ? value.reviewState
     : null;
-  if (!sourceKind || !reviewState || (sourceKind === 'generated' && !value.prompt.trim())) return null;
+  // Reused generated media may not include its original prompt. New generation
+  // validates and snapshots the owner's visible prompt before calling Runtime.
+  if (!sourceKind || !reviewState) return null;
   return {
     draftKey: expectedDraftKey,
     slot: value.slot,
     url: normalizedUrl,
+    ...(artifactId ? { artifactId } : {}),
     prompt: value.prompt.trim(),
     createdAt: value.createdAt.trim(),
     sourceKind,
@@ -214,9 +221,16 @@ export async function loadCreationDraft(
   try {
     const document = await targetStorage.readJson(getCreationDraftStoragePath(normalizedDraftKey));
     const record = normalizeStoredDraft(document.value, normalizedDraftKey);
-    return record
-      ? { ok: true, record }
-      : { ok: false, failure: createFlowFailure('draft-stored-invalid', { detail: 'Stored draft is invalid.' }) };
+    if (!record) return { ok: false, failure: createFlowFailure('draft-stored-invalid', { detail: 'Stored draft is invalid.' }) };
+    const candidates = await Promise.all(record.referenceImageCandidates.map(async (candidate) => {
+      if (candidate.url || !candidate.artifactId) return candidate;
+      try {
+        const url = await readStudioMediaArtifactPreview(candidate.artifactId, 'image/');
+        return { ...candidate, url: referenceImageCandidatePreviewUrl(url, candidate.artifactId) };
+      } catch { return candidate; }
+    }));
+    const selected = candidates.find((candidate) => candidate.reviewState === 'owner-selected');
+    return { ok: true, record: { ...record, referenceImageCandidates: candidates, referenceImageUrl: selected?.url || '' } };
   } catch (error) {
     if (isStudioStorageNotFoundError(error)) return { ok: true, record: null };
     return { ok: false, failure: createFlowFailure('draft-read-failed', { detail: 'Draft storage read failed.' }) };
@@ -279,7 +293,14 @@ export async function persistCreationDraft(
     referenceImageCandidates: candidates as ReferenceImageCandidate[],
   };
   try {
-    await targetStorage.writeJson(getCreationDraftStoragePath(draftKey), record);
+    // @nimi-authority: rule.realm-persona-studio.asset.r014
+    await targetStorage.writeJson(getCreationDraftStoragePath(draftKey), {
+      ...record,
+      referenceImageUrl: normalizeDisplaySafeHttpsUrl(record.referenceImageUrl) || '',
+      referenceImageCandidates: record.referenceImageCandidates.map((candidate) => ({
+        ...candidate, url: normalizeDisplaySafeHttpsUrl(candidate.url) || '',
+      })),
+    });
     return { ok: true, record };
   } catch {
     return persistFailure('draft-persist-failed', 'Draft could not be persisted through protected storage.');

@@ -6,17 +6,22 @@ import {
   saveLocalPostSchedule,
 } from './local-post-schedule-store.js';
 import type { LocalPostScheduleCandidate } from './post-draft.js';
+import type { StudioProtectedJsonStorage } from '../../app-shell/studio-storage.js';
+
+type ScheduleJson = Awaited<ReturnType<StudioProtectedJsonStorage['readJson']>>['value'];
 
 function createStorage() {
-  const values = new Map<string, string>();
+  const values = new Map<string, ScheduleJson>();
   return {
-    getItem: vi.fn((key: string) => values.get(key) ?? null),
-    setItem: vi.fn((key: string, value: string) => {
+    readJson: vi.fn(async (key: string) => {
+      if (!values.has(key)) throw Object.assign(new Error('Missing document'), { code: 'not-found' });
+      return { value: values.get(key)!, sizeBytes: 1 };
+    }),
+    writeJson: vi.fn(async (key: string, value: ScheduleJson) => {
       values.set(key, value);
+      return { value, sizeBytes: 1 };
     }),
-    removeItem: vi.fn((key: string) => {
-      values.delete(key);
-    }),
+    removeJson: vi.fn(async (key: string) => ({ removed: values.delete(key) })),
   };
 }
 
@@ -58,9 +63,9 @@ const candidate: LocalPostScheduleCandidate = {
 };
 
 describe('local post schedule store', () => {
-  it('persists one app-local executable schedule per persona', () => {
+  it('persists one app-local executable schedule per persona', async () => {
     const storage = createStorage();
-    const record = saveLocalPostSchedule('persona-1', candidate, storage, new Date('2026-05-21T00:00:00'));
+    const record = await saveLocalPostSchedule('persona-1', candidate, storage, new Date('2026-05-21T00:00:00'));
 
     expect(record).toMatchObject({
       localKey: 'persona-1:2026-05-22T09:30',
@@ -73,21 +78,21 @@ describe('local post schedule store', () => {
       },
       candidate,
     });
-    expect(loadLocalPostSchedule('persona-1', storage)).toEqual(record);
-    expect(loadLocalPostSchedule('persona-2', storage)).toBeNull();
+    expect(await loadLocalPostSchedule('persona-1', storage)).toEqual(record);
+    expect(await loadLocalPostSchedule('persona-2', storage)).toBeNull();
   });
 
-  it('computes foreground due state and clears after publish success', () => {
+  it('computes foreground due state and clears only after storage acknowledges removal', async () => {
     const storage = createStorage();
-    const record = saveLocalPostSchedule('persona-1', candidate, storage, new Date('2026-05-21T00:00:00'));
+    const record = await saveLocalPostSchedule('persona-1', candidate, storage, new Date('2026-05-21T00:00:00'));
 
     expect(isLocalPostScheduleDue(record, new Date('2026-05-22T09:29:00'))).toBe(false);
     expect(isLocalPostScheduleDue(record, new Date('2026-05-22T09:30:00'))).toBe(true);
-    clearLocalPostSchedule('persona-1', storage);
-    expect(loadLocalPostSchedule('persona-1', storage)).toBeNull();
+    await clearLocalPostSchedule('persona-1', storage);
+    expect(await loadLocalPostSchedule('persona-1', storage)).toBeNull();
   });
 
-  it('fails closed on old local candidates with string sourceRef', () => {
+  it('fails closed on old local candidates with string sourceRef', async () => {
     const storage = createStorage();
     const oldCandidate = structuredClone(candidate) as unknown as Record<string, unknown>;
     const postCandidate = oldCandidate.postCandidate as Record<string, unknown>;
@@ -104,28 +109,35 @@ describe('local post schedule store', () => {
       candidate: oldCandidate,
     };
 
-    storage.setItem('realm-persona-studio.local-post-schedule.persona-1', JSON.stringify(oldRecord));
+    await storage.writeJson('posts/schedules/persona-1.json', oldRecord as ScheduleJson);
 
-    expect(loadLocalPostSchedule('persona-1', storage)).toBeNull();
-    expect(() => saveLocalPostSchedule(
+    await expect(loadLocalPostSchedule('persona-1', storage)).rejects.toThrow('Stored local post schedule is invalid');
+    await expect(saveLocalPostSchedule(
       'persona-1',
       oldCandidate as unknown as LocalPostScheduleCandidate,
       storage,
-    )).toThrow(/typed PersonaCharacter sourceRef/);
+    )).rejects.toThrow(/typed PersonaCharacter sourceRef/);
   });
 
-  it('rejects a schedule stored under a different persona than its sourceRef', () => {
+  it('rejects a schedule stored under a different persona than its sourceRef', async () => {
     const storage = createStorage();
 
-    expect(() => saveLocalPostSchedule('persona-2', candidate, storage)).toThrow(/persona identity does not match/u);
-    expect(storage.setItem).not.toHaveBeenCalled();
+    await expect(saveLocalPostSchedule('persona-2', candidate, storage)).rejects.toThrow(/persona identity does not match/u);
+    expect(storage.writeJson).not.toHaveBeenCalled();
   });
 
-  it('does not report a cleared schedule when storage is unavailable', () => {
-    expect(() => clearLocalPostSchedule('persona-1', null)).toThrow(/storage is unavailable/u);
+  it('does not report a cleared schedule when storage is unavailable', async () => {
+    await expect(clearLocalPostSchedule('persona-1', null)).rejects.toThrow(/storage is unavailable/u);
   });
 
-  it('does not report a saved schedule when local storage is unavailable', () => {
-    expect(() => saveLocalPostSchedule('persona-1', candidate, null)).toThrow(/storage is unavailable/u);
+  it('does not report a saved schedule when local storage is unavailable', async () => {
+    await expect(saveLocalPostSchedule('persona-1', candidate, null)).rejects.toThrow(/storage is unavailable/u);
+  });
+
+  it('distinguishes an unavailable protected read from an absent schedule', async () => {
+    const storage = createStorage();
+    storage.readJson.mockRejectedValueOnce(new Error('Access denied'));
+    await expect(loadLocalPostSchedule('persona-1', storage)).rejects.toThrow('Access denied');
+    await expect(loadLocalPostSchedule('persona-1', storage)).resolves.toBeNull();
   });
 });

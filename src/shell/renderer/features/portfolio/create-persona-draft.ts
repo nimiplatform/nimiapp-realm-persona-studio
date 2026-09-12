@@ -8,6 +8,7 @@ import type {
 } from '@nimiplatform/sdk/realm/generated';
 import { buildCharacterDeclaration, characterWritingIssues } from './persona-character-authoring.js';
 import { normalizeDisplaySafeHttpsUrl } from './persona-external-ref.js';
+import { referenceImageArtifactId, referenceImageCandidatePreviewUrl } from './reference-image-source.js';
 import {
   createFlowFailure,
   type CreateFlowFailure,
@@ -88,6 +89,7 @@ export type ReferenceImageCandidate = {
   draftKey: string;
   slot: ReferenceImageCandidateSlot;
   url: string;
+  artifactId?: string;
   prompt: string;
   createdAt: string;
   sourceKind: 'generated' | 'imported';
@@ -117,7 +119,7 @@ export type CreateRealmPersonaDraftInput = {
   visibility: NimiLocalAppPersonaCharacterWritableVisibility | '';
   personaArchetype: PersonaArchetype | '';
   personaTraits: PersonaTrait[];
-  /** Optional owner-selected display-safe HTTPS reference image URL adopted from one local candidate source. */
+  /** In-memory preview of the selected local candidate; only a safe HTTPS URL can enter the Realm profile. */
   referenceImageUrl: string;
   /** Owner-editable local image-generation input, initialized from the describe-stage prompt. */
   referenceImagePrompt: string;
@@ -252,11 +254,6 @@ function normalizePersonaTraits(values: readonly PersonaTrait[] | readonly strin
   return out;
 }
 
-function normalizeReferenceImageUrl(value: unknown): string {
-  const trimmed = typeof value === 'string' ? value.trim() : '';
-  return normalizeDisplaySafeHttpsUrl(trimmed) ?? '';
-}
-
 function normalizeSupplement(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
@@ -281,7 +278,8 @@ function normalizeReferenceImageCandidates(values: unknown): ReferenceImageCandi
       return [];
     }
     const draftKey = record.draftKey.trim();
-    const url = normalizeReferenceImageUrl(record.url);
+    const artifactId = referenceImageArtifactId(record.artifactId);
+    const url = referenceImageCandidatePreviewUrl(record.url, artifactId);
     const prompt = record.prompt.trim();
     const createdAt = record.createdAt.trim();
     const sourceKind = record.sourceKind === 'generated' || record.sourceKind === 'imported'
@@ -291,8 +289,8 @@ function normalizeReferenceImageCandidates(values: unknown): ReferenceImageCandi
       ? record.reviewState
       : null;
     if (
-      !url
-      || (sourceKind === 'generated' && !prompt)
+      (!url && !(artifactId && record.url === ''))
+      || (record.artifactId !== undefined && !artifactId)
       || !isIsoDateTime(createdAt)
       || !sourceKind
       || !reviewState
@@ -301,6 +299,7 @@ function normalizeReferenceImageCandidates(values: unknown): ReferenceImageCandi
       draftKey,
       slot: record.slot,
       url,
+      ...(artifactId ? { artifactId } : {}),
       prompt,
       createdAt,
       sourceKind,
@@ -323,11 +322,12 @@ export function adoptImportedReferenceImageCandidate(
   draftKey: string,
   url: string,
   createdAt = new Date().toISOString(),
+  source: { artifactId?: string; sourceKind: 'generated' | 'imported' } = { sourceKind: 'imported' },
 ): AdoptReferenceImageCandidateResult {
   if (!/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(draftKey.trim())) {
     return { ok: false, failure: 'draft-key-invalid' };
   }
-  const normalizedUrl = normalizeReferenceImageUrl(url);
+  const normalizedUrl = referenceImageCandidatePreviewUrl(url, source.artifactId);
   if (!normalizedUrl) return { ok: false, failure: 'reference-url-invalid' };
   const normalizedCreatedAt = createdAt.trim();
   if (!isIsoDateTime(normalizedCreatedAt)) return { ok: false, failure: 'candidate-timestamp-invalid' };
@@ -346,9 +346,10 @@ export function adoptImportedReferenceImageCandidate(
     draftKey: draftKey.trim(),
     slot: targetSlot,
     url: normalizedUrl,
+    ...(source.artifactId ? { artifactId: source.artifactId } : {}),
     prompt: '',
     createdAt: normalizedCreatedAt,
-    sourceKind: 'imported',
+    sourceKind: source.sourceKind,
     reviewState: 'owner-selected',
   };
   const referenceImageCandidates: ReferenceImageCandidate[] = [
@@ -372,6 +373,8 @@ function normalizeDraftText(value: unknown): string {
 }
 
 export function normalizeCreateRealmPersonaDraft(input: CreateRealmPersonaDraftInput): NormalizedCreateRealmPersonaDraft {
+  const candidates = normalizeReferenceImageCandidates(input.referenceImageCandidates);
+  const selectedCandidate = candidates.find((candidate) => candidate.reviewState === 'owner-selected' && candidate.url === input.referenceImageUrl);
   const rawPrimary = normalizeDraftText(input.personaArchetype).toUpperCase();
   const personaArchetype = (PERSONA_ARCHETYPES as readonly string[]).includes(rawPrimary)
     ? (rawPrimary as PersonaArchetype)
@@ -389,13 +392,13 @@ export function normalizeCreateRealmPersonaDraft(input: CreateRealmPersonaDraftI
       : '',
     personaArchetype,
     personaTraits: normalizePersonaTraits(Array.isArray(input.personaTraits) ? input.personaTraits : []),
-    referenceImageUrl: normalizeReferenceImageUrl(input.referenceImageUrl),
+    referenceImageUrl: referenceImageCandidatePreviewUrl(input.referenceImageUrl, selectedCandidate?.artifactId),
     referenceImagePrompt: normalizeDraftText(input.referenceImagePrompt),
     originalDescription: normalizeDraftText(input.originalDescription),
     speechSupplement: normalizeSupplement(input.speechSupplement),
     boundarySupplement: normalizeSupplement(input.boundarySupplement),
     visualSupplement: normalizeSupplement(input.visualSupplement),
-    referenceImageCandidates: normalizeReferenceImageCandidates(input.referenceImageCandidates),
+    referenceImageCandidates: candidates,
   };
 }
 
@@ -523,12 +526,12 @@ function buildRealmPersonaProfileV1(draft: NormalizedCreateRealmPersonaDraft): N
     },
     assets: {
       resourceRefs: [],
-      ...(draft.referenceImageUrl
+      ...(normalizeDisplaySafeHttpsUrl(draft.referenceImageUrl)
         ? {
             externalRefs: [{
               refId: 'reference-image-1',
               kind: 'referenceImage',
-              uri: draft.referenceImageUrl,
+              uri: normalizeDisplaySafeHttpsUrl(draft.referenceImageUrl)!,
               purpose: 'visual-reference',
             }],
           }
@@ -610,6 +613,10 @@ export function validateCreateRealmPersonaReadiness(
   const selectedReferenceCandidates = draft.referenceImageCandidates
     .filter((candidate) => candidate.reviewState === 'owner-selected');
   if (selectedReferenceCandidates.length > 1) {
+    errors.push(createFlowFailure('reference-selection-invalid', { field: 'referenceImage' }));
+  }
+  if (selectedReferenceCandidates.some((candidate) => !candidate.url)
+    || (input.referenceImageUrl && !draft.referenceImageUrl)) {
     errors.push(createFlowFailure('reference-selection-invalid', { field: 'referenceImage' }));
   }
   if (

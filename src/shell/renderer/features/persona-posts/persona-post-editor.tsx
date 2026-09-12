@@ -13,10 +13,7 @@ import {
 } from 'lucide-react';
 import { Button, IconButton, InlineAlert, NimiText, SelectField, StatusBadge, TextareaField, Tooltip, nimiToast } from '@nimiplatform/kit/ui';
 import type { OwnerPortfolioPersonaDetail } from '@renderer/features/portfolio/portfolio-data.js';
-import {
-  loadLocalPostSchedule,
-  type LocalPostScheduleRecord,
-} from '@renderer/features/portfolio/local-post-schedule-store.js';
+import { useLocalPostSchedule } from '@renderer/features/portfolio/use-local-post-schedule.js';
 import {
   classifyLocalPostAttachmentMime,
   deleteLocalPostDraft,
@@ -121,10 +118,10 @@ export function PersonaPostEditor({
   const [storageUnavailable, setStorageUnavailable] = useState(false);
   const [activeQueueItem, setActiveQueueItem] = useState<string | null>(null);
   const [polishing, setPolishing] = useState(false);
+  const [polishFailure, setPolishFailure] = useState<StudioCopyKey | null>(null);
   const [polishProposal, setPolishProposal] = useState<RuntimePostCopyProposal | null>(null);
-  const [localSchedule, setLocalSchedule] = useState<LocalPostScheduleRecord | null>(
-    () => visualData ? null : loadLocalPostSchedule(persona.id),
-  );
+  const scheduleState = useLocalPostSchedule(persona.id, Boolean(visualData));
+  const { schedule: localSchedule, setSchedule: setLocalSchedule } = scheduleState;
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const attachmentsRef = useRef<EditorAttachment[]>([]);
   const editorRevisionRef = useRef(0);
@@ -163,7 +160,7 @@ export function PersonaPostEditor({
     setActiveQueueItem(null);
     setPolishing(false);
     setPolishProposal(null);
-    setLocalSchedule(visualData ? null : loadLocalPostSchedule(persona.id));
+    setPolishFailure(null);
     if (visualData) {
       setLoading(false);
       setStorageUnavailable(false);
@@ -298,9 +295,10 @@ export function PersonaPostEditor({
   async function runAiPolish() {
     if (polishing || mutationPending) return;
     if (!caption.trim()) {
-      nimiToast.danger(t('posts.workspace.aiPolishEmpty'));
+      setPolishFailure('posts.workspace.aiPolishEmpty');
       return;
     }
+    setPolishFailure(null);
     setPolishing(true);
     const revision = editorRevisionRef.current;
     try {
@@ -311,7 +309,7 @@ export function PersonaPostEditor({
       });
       if (!mountedRef.current || revision !== editorRevisionRef.current) return;
       if (!result.ok) {
-        nimiToast.danger(t(POLISH_FAILURE_COPY_KEYS[result.failure]));
+        setPolishFailure(POLISH_FAILURE_COPY_KEYS[result.failure]);
         return;
       }
       setPolishProposal(result.proposal);
@@ -476,6 +474,7 @@ export function PersonaPostEditor({
               editorRevisionRef.current += 1;
               setCaption(event.currentTarget.value);
               setPolishProposal(null);
+              setPolishFailure(null);
             }}
           />
           {attachments.length > 0 ? (
@@ -561,6 +560,8 @@ export function PersonaPostEditor({
           <InlineAlert tone="info">{t('posts.workspace.publishNote')}</InlineAlert>
         </div>
 
+        {polishing ? <p role="status">{t('posts.workspace.aiPolishing')}</p> : null}
+        {polishFailure ? <InlineAlert tone="danger">{t(polishFailure)}</InlineAlert> : null}
         {polishProposal ? (
           <section className="ras-post-ai-proposal" aria-label={t('posts.workspace.aiProposalTitle')}>
             <div>
@@ -669,7 +670,13 @@ export function PersonaPostEditor({
         </section>
       </section>
 
-      <PersonaSchedulePanel persona={persona} schedule={localSchedule} onScheduleChange={setLocalSchedule} />
+      {scheduleState.unavailable ? (
+        <InlineAlert tone="warning" action={<Button tone="secondary" onClick={scheduleState.reload}>{t('common.retry')}</Button>}>
+          {t('posts.schedule.loadFailed')}
+        </InlineAlert>
+      ) : null}
+      <PersonaSchedulePanel persona={persona} schedule={localSchedule} onScheduleChange={setLocalSchedule}
+        disabled={scheduleState.loading || scheduleState.unavailable} />
     </div>
   );
 }

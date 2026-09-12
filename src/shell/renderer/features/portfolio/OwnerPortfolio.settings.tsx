@@ -100,7 +100,7 @@ export function PersonaSettingsForm({
   onDirtyChange?: (dirty: boolean) => void;
   mode?: 'page' | 'dialog';
 }) {
-  const { t } = useStudioI18n();
+  const { t, locale } = useStudioI18n();
   const navigate = useNavigate();
   const id = useId();
   const [tab, setTab] = useState('profile');
@@ -124,6 +124,7 @@ export function PersonaSettingsForm({
     queryKey: ['realm-persona-studio', 'persona-settings', persona.ownerScope, persona.id],
     queryFn: () => getPortfolioPersonaSettings(persona),
     refetchOnWindowFocus: false,
+    refetchOnMount: 'always',
   });
   const worldsQuery = useQuery({
     queryKey: ['realm-persona-studio', 'create-persona-worlds'],
@@ -131,11 +132,11 @@ export function PersonaSettingsForm({
   });
   // A refetch must not erase an owner's unsaved writing or silently advance its base hash.
   useEffect(() => {
-    if (settingsQuery.data && !base) {
+    if (settingsQuery.isFetchedAfterMount && !settingsQuery.isError && settingsQuery.data && !base) {
       setBase(settingsQuery.data);
       setDraft(createOwnerPersonaSettingsDraft(settingsQuery.data));
     }
-  }, [base, settingsQuery.data]);
+  }, [base, settingsQuery.data, settingsQuery.isError, settingsQuery.isFetchedAfterMount]);
   const built = useMemo(
     () => (draft && base ? buildRealmOwnerPersonaSettingsUpdateInput(draft, base) : null),
     [draft, base],
@@ -171,7 +172,7 @@ export function PersonaSettingsForm({
     setAppliedKeys(new Set());
     setReviewBase({ ...draft });
     try {
-      const result = await proposeReviewedPortfolioPersonaSettings(persona, draft, base);
+      const result = await proposeReviewedPortfolioPersonaSettings(persona, draft, base, undefined, locale);
       if (mounted.current) setReviewResult(result);
     } catch {
       if (mounted.current) setAiRequestFailed(true);

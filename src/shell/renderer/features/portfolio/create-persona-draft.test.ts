@@ -381,7 +381,21 @@ describe('create Realm Persona readiness', () => {
         normalized: 'mira.persona',
       }),
     });
-    expect((rejected.payload?.body.profile.assets as { externalRefs?: unknown[] }).externalRefs).toBeUndefined();
+    expect(rejected.ready).toBe(false);
+    expect(rejected.errors).toContainEqual(expect.objectContaining({ kind: 'reference-selection-invalid' }));
+  });
+
+  it('creates with a reviewed local image without sending its bytes or Runtime id into PersonaCharacter', () => {
+    const result = validateCreateRealmPersonaReadiness({
+      ...baseInput, referenceImageUrl: 'data:image/png;base64,AQID',
+      referenceImageCandidates: [{ draftKey: '01J00000000000000000000001', slot: 0,
+        artifactId: 'artifact-local-reference', url: 'data:image/png;base64,AQID', prompt: 'Reviewed image',
+        createdAt: '2026-09-12T00:00:00.000Z', sourceKind: 'generated', reviewState: 'owner-selected' }],
+    }, { handleAvailability: normalizeRealmPersonaHandleAvailability('mira.persona', { available: true, normalized: 'mira.persona' }) });
+    expect(result.ready).toBe(true);
+    expect(result.payload?.body.profile.assets.externalRefs).toBeUndefined();
+    expect(JSON.stringify(result.payload?.body)).not.toContain('artifact-local-reference');
+    expect(JSON.stringify(result.payload?.body)).not.toContain('data:image');
   });
 
   it('keeps credential-bearing or fragment-bearing HTTPS references out of create input', () => {

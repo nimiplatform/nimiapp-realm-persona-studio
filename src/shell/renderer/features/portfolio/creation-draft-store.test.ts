@@ -10,6 +10,10 @@ import {
   type CreationDraftStorage,
 } from './creation-draft-store.js';
 import type { CreateRealmPersonaDraftInput } from './create-persona-draft.js';
+import { adoptImportedReferenceImageCandidate, validateCreateRealmPersonaReadiness } from './create-persona-draft.js';
+
+const { readPreview } = vi.hoisted(() => ({ readPreview: vi.fn() }));
+vi.mock('./studio-media-candidate.js', () => ({ readStudioMediaArtifactPreview: readPreview }));
 
 function createStorage(): CreationDraftStorage & { values: Map<string, unknown> } {
   const values = new Map<string, unknown>();
@@ -54,7 +58,44 @@ const draft: CreateRealmPersonaDraftInput = {
   }],
 };
 
+it('persists a reused generated HTTPS reference when its original prompt is unavailable', async () => {
+  const storage = createStorage();
+  const adopted = adoptImportedReferenceImageCandidate(
+    { ...draft, referenceImageUrl: '', referenceImageCandidates: [] }, draftKey,
+    'https://cdn.example.test/reused.png', '2026-09-12T00:00:00.000Z', { sourceKind: 'generated' },
+  );
+  if (!adopted.ok) throw new Error('Expected a selectable HTTPS reference');
+  const reused = { ...draft, referenceImageUrl: adopted.referenceImageUrl, referenceImageCandidates: adopted.referenceImageCandidates };
+  expect(await persistCreationDraft(draftKey, reused, storage)).toMatchObject({ ok: true });
+  expect(await loadCreationDraft(draftKey, storage)).toMatchObject({
+    ok: true, record: { referenceImageUrl: adopted.referenceImageUrl, referenceImageCandidates: [
+      { sourceKind: 'generated', reviewState: 'owner-selected', prompt: '' },
+    ] },
+  });
+});
+
 describe('creation draft protected persistence', () => {
+  it('stores only artifact identity, restores the reviewed preview, and preserves writing on artifact loss', async () => {
+    const storage = createStorage();
+    const previewUrl = `data:image/png;base64,${'a'.repeat(400_000)}`;
+    const input: CreateRealmPersonaDraftInput = { ...draft, referenceImageUrl: previewUrl,
+      referenceImageCandidates: [{ ...draft.referenceImageCandidates![0]!, url: previewUrl, artifactId: 'artifact-reference' }] };
+    expect(await persistCreationDraft(draftKey, input, storage)).toMatchObject({ ok: true });
+    const stored = storage.values.get(getCreationDraftStoragePath(draftKey));
+    expect(JSON.stringify(stored).length).toBeLessThan(3000);
+    expect(JSON.stringify(stored)).not.toContain('data:image');
+    readPreview.mockResolvedValueOnce(previewUrl);
+    expect(await loadCreationDraft(draftKey, storage)).toMatchObject({ ok: true, record: {
+      displayName: draft.displayName, referenceImageUrl: previewUrl,
+      referenceImageCandidates: [{ artifactId: 'artifact-reference', reviewState: 'owner-selected' }],
+    } });
+    readPreview.mockRejectedValueOnce(new Error('Artifact no longer available'));
+    const unavailable = await loadCreationDraft(draftKey, storage);
+    if (!unavailable.ok || !unavailable.record) throw new Error('Character writing must remain available');
+    expect(unavailable.record.displayName).toBe(draft.displayName);
+    expect(unavailable.record.referenceImageCandidates[0]?.reviewState).toBe('owner-selected');
+    expect(validateCreateRealmPersonaReadiness(unavailable.record).errors).toContainEqual(expect.objectContaining({ kind: 'reference-selection-invalid' }));
+  });
   it('uses a canonical protected JSON path and generates valid ULIDs', () => {
     expect(CREATION_DRAFT_AUTOSAVE_DEBOUNCE_MS).toBe(800);
     expect(getCreationDraftStoragePath(draftKey)).toBe(`${CREATION_DRAFT_STORAGE_PATH_PREFIX}${draftKey}.json`);

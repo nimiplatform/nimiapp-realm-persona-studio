@@ -8,7 +8,8 @@ import {
   useOpenPersonaSettingsEditor,
 } from '@renderer/features/persona-detail/persona-shell.js';
 import { CreativeAssetActivityFeed } from '@renderer/features/portfolio/OwnerPortfolio.assets.js';
-import { loadLocalPostSchedule } from '@renderer/features/portfolio/local-post-schedule-store.js';
+import type { LocalPostScheduleRecord } from '@renderer/features/portfolio/local-post-schedule-store.js';
+import { useLocalPostSchedule } from '@renderer/features/portfolio/use-local-post-schedule.js';
 import type { OwnerPortfolioPersonaDetail, SettingField } from '@renderer/features/portfolio/portfolio-data.js';
 import { settingFieldDisplayValue } from '@renderer/features/portfolio/OwnerPortfolio.shared.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
@@ -44,7 +45,7 @@ function hasValue(field: SettingField): boolean {
  * links to the workspace that owns the underlying field; nothing is inferred
  * from private or unavailable state.
  */
-function deriveOverviewHints(persona: OwnerPortfolioPersonaDetail): OverviewHint[] {
+function deriveOverviewHints(persona: OwnerPortfolioPersonaDetail, localSchedule: LocalPostScheduleRecord | null, scheduleKnown: boolean): OverviewHint[] {
   const base = `/portfolio/${persona.id}`;
   const hints: OverviewHint[] = [];
 
@@ -73,7 +74,6 @@ function deriveOverviewHints(persona: OwnerPortfolioPersonaDetail): OverviewHint
     });
   }
 
-  const localSchedule = loadLocalPostSchedule(persona.id);
   if (localSchedule) {
     hints.push({
       id: 'review-schedule',
@@ -82,7 +82,7 @@ function deriveOverviewHints(persona: OwnerPortfolioPersonaDetail): OverviewHint
       actionLabelKey: 'overview.action.openPosts',
       actionPath: `${base}/posts`,
     });
-  } else {
+  } else if (scheduleKnown) {
     hints.push({
       id: 'compose-post',
       copyKey: 'overview.hint.composePost',
@@ -97,7 +97,9 @@ function deriveOverviewHints(persona: OwnerPortfolioPersonaDetail): OverviewHint
 function OverviewNextSteps({ persona }: { persona: OwnerPortfolioPersonaDetail }) {
   const { t } = useStudioI18n();
   const navigate = useNavigate();
-  const hints = useMemo(() => deriveOverviewHints(persona), [persona]);
+  const scheduleState = useLocalPostSchedule(persona.id);
+  const hints = useMemo(() => deriveOverviewHints(persona, scheduleState.schedule, !scheduleState.loading && !scheduleState.unavailable),
+    [persona, scheduleState.schedule, scheduleState.loading, scheduleState.unavailable]);
 
   return (
     <Surface tone="card" padding="lg" className="ras-radius-xl">
@@ -106,6 +108,7 @@ function OverviewNextSteps({ persona }: { persona: OwnerPortfolioPersonaDetail }
           <h2 className="ras-workspace-intro__title">{t('overview.nextSteps.title')}</h2>
         </div>
       </div>
+      {scheduleState.unavailable ? <InlineAlert tone="warning">{t('posts.schedule.loadFailed')}</InlineAlert> : null}
       {hints.length === 0 ? (
         <p className="m-0 text-[length:var(--nimi-type-body-sm-size)] text-[var(--nimi-text-muted)]">
           {t('overview.nextSteps.empty')}

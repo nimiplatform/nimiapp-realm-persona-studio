@@ -1,28 +1,51 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
-  CREATIVE_ASSET_HISTORY_STORAGE_PREFIX,
+  CREATIVE_ASSET_HISTORY_STORAGE_PATH,
   appendLocalCreativeAssetHistory,
   loadAllLocalCreativeAssetHistory,
   loadLocalCreativeAssetHistory,
   type CreativeAssetHistoryStorage,
 } from './creative-asset-history.js';
 
-function createStorage(): CreativeAssetHistoryStorage & { values: Map<string, unknown> } {
-  const values = new Map<string, unknown>();
+const { readPreview } = vi.hoisted(() => ({ readPreview: vi.fn() }));
+vi.mock('./studio-media-candidate.js', () => ({ readStudioMediaArtifactPreview: readPreview }));
+
+type HistoryJson = Awaited<ReturnType<CreativeAssetHistoryStorage['readJson']>>['value'];
+function createStorage(): CreativeAssetHistoryStorage & { values: Map<string, HistoryJson> } {
+  const values = new Map<string, HistoryJson>();
   return {
     values,
-    get length() {
-      return values.size;
-    },
-    key: vi.fn((index: number) => [...values.keys()][index] ?? null),
-    getItem: vi.fn((key: string) => values.has(key) ? JSON.stringify(values.get(key)) : null),
-    setItem: vi.fn((key: string, value: string) => {
-      values.set(key, JSON.parse(value));
+    readJson: vi.fn(async (key: string) => {
+      if (!values.has(key)) throw Object.assign(new Error('Missing document'), { code: 'not-found' });
+      return { value: values.get(key)!, sizeBytes: 1 };
+    }),
+    writeJson: vi.fn(async (key: string, value: HistoryJson) => {
+      values.set(key, value);
+      return { value, sizeBytes: 1 };
     }),
   };
 }
 
 describe('app-local creative asset history', () => {
+  it('stores compact artifact identity and restores the preview through the protected artifact reader', async () => {
+    const storage = createStorage();
+    const previewUrl = `data:image/png;base64,${'a'.repeat(400_000)}`;
+    const saved = await appendLocalCreativeAssetHistory('persona-image', {
+      sourceContentHash: 'hash-persona-image', kind: 'runtime-image-candidate',
+      sourceKind: 'generated', reviewState: 'candidate-only', label: 'Image candidate',
+      source: 'Nimi App Access ai.scenarioJobs', detail: previewUrl, previewUrl,
+      artifactIds: ['artifact-image-large'],
+    }, storage);
+    expect(saved.ok).toBe(true);
+    const stored = storage.values.get(CREATIVE_ASSET_HISTORY_STORAGE_PATH);
+    expect(JSON.stringify(stored).length).toBeLessThan(2000);
+    expect(JSON.stringify(stored)).not.toContain('data:image');
+    readPreview.mockResolvedValueOnce(previewUrl);
+    const loaded = await loadLocalCreativeAssetHistory('persona-image', storage);
+    expect(readPreview).toHaveBeenCalledWith('artifact-image-large', 'image/');
+    expect(loaded).toMatchObject({ ok: true, unavailableCount: 0, records: [{ previewUrl }] });
+  });
+
   it('persists persona provenance and keeps histories isolated by persona', async () => {
     const storage = createStorage();
     const next = await appendLocalCreativeAssetHistory('persona-1', {
@@ -50,11 +73,15 @@ describe('app-local creative asset history', () => {
     });
     expect(await loadLocalCreativeAssetHistory('persona-1', storage)).toMatchObject({ ok: true, records: next.records });
     expect(await loadLocalCreativeAssetHistory('persona-2', storage)).toMatchObject({ ok: true, records: [] });
+    if (!next.ok) throw new Error('Expected persisted candidate');
+    await appendLocalCreativeAssetHistory('persona-2', { ...next.record, id: '01J00000000000000000000012' }, storage);
+    expect(await loadLocalCreativeAssetHistory('persona-1', storage)).toMatchObject({ ok: true, records: next.records });
+    expect((await loadAllLocalCreativeAssetHistory(storage)).records).toHaveLength(2);
   });
 
   it('drops malformed records while reporting their source unavailability', async () => {
     const storage = createStorage();
-    storage.values.set(`${CREATIVE_ASSET_HISTORY_STORAGE_PREFIX}persona-1`, [
+    storage.values.set(CREATIVE_ASSET_HISTORY_STORAGE_PATH, [
       {
         id: 'bad-local',
         personaId: 'persona-1',

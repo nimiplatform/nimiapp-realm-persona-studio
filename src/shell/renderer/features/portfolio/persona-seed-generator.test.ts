@@ -190,6 +190,25 @@ describe('persona seed generation through the injected text candidate runner', (
 });
 
 describe('complete character generation', () => {
+  it('rejects array-valued writing and gives the real regeneration path a field-specific correction', async () => {
+    const malformedSeed = JSON.stringify({
+      ...validSeed,
+      ruleText: ['Keep output practical.'],
+      speechStyle: ['Calm, direct sentences.'],
+      behaviorBoundary: ['Do not invent past conversations.'],
+    });
+    expect(() => parsePersonaSeedOutput(malformedSeed))
+      .toThrow('Fields ruleText, speechStyle, behaviorBoundary must be JSON strings');
+    const runner = vi.fn<StudioTextCandidateRunner>()
+      .mockImplementationOnce(fakeTextCandidateRunner(malformedSeed))
+      .mockImplementationOnce(fakeTextCandidateRunner(JSON.stringify(validSeed)));
+
+    const result = await generatePersonaSeedFromDescription('', runner, {}, { locale: 'zh' });
+
+    expect(runner).toHaveBeenCalledTimes(2);
+    expect(runner.mock.calls[1]?.[0].userText).toContain('Fields ruleText, speechStyle, behaviorBoundary must be JSON strings');
+    expect(result).toMatchObject({ ok: true, source: 'Nimi App Access ai.text.generateCandidate' });
+  });
   it.each(['greeting', 'ruleText', 'speechStyle', 'behaviorBoundary', 'description'] as const)('rejects a seed missing %s instead of advancing to an incomplete character', (field) => {
     expect(() => parsePersonaSeedOutput(JSON.stringify({ ...validSeed, [field]: '' }))).toThrow();
   });

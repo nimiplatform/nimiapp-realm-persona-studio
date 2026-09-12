@@ -1,13 +1,13 @@
-build_profile_ref: tauri-pnpm-vite
-toolchain_version: node>=24;pnpm>=10;rust>=1.80;tauri=2
+build_profile_ref: electron-packager-pnpm-vite
+toolchain_version: node>=24;pnpm>=10;electron=42
 install_command: pnpm install
 typecheck_command: pnpm typecheck
 lint_command: pnpm lint
 test_command: pnpm test
-build_command: pnpm build
+build_command: pnpm run build:electron:production
 build_renderer_command: pnpm build:renderer
-shell_check_command: cargo check --manifest-path src-tauri/Cargo.toml
-output_path: src-tauri/target/release
+shell_check_command: pnpm typecheck:electron
+output_path: dist-electron-package
 renderer_output_path: dist
 lockfile_path: pnpm-lock.yaml
 lockfile_policy: author-install-generates-lockfile

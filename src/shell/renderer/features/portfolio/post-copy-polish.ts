@@ -8,6 +8,8 @@ import {
 import {
   isStudioTextRouteUnboundError,
   runStudioTextCandidate,
+  runValidatedStudioTextCandidate,
+  StudioTextCandidateValidationError,
   type StudioTextCandidateRunner,
 } from './studio-text-candidate.js';
 
@@ -16,8 +18,8 @@ import {
  * candidate material only: it returns to the editor as a reviewable proposal
  * and never rewrites the draft by itself.
  *
- * @nimi-authority: rule.realm-persona-studio.post.r002
  */
+// @nimi-authority: rule.realm-persona-studio.post.r002
 
 export type PostCopyPolishFailure =
   | 'post-copy-polish-route-unbound'
@@ -41,10 +43,15 @@ export async function requestPostCopyPolish(
     return { ok: false, failure: 'post-copy-polish-invalid-output' };
   }
 
-  let outputText: string;
   try {
-    outputText = (await runner(prompt.payload)).text;
+    const { value: proposal } = await runValidatedStudioTextCandidate(
+      prompt.payload, (text) => normalizeRuntimePostCopyProposal(text, input.draft), runner,
+    );
+    return { ok: true, proposal };
   } catch (error) {
+    if (error instanceof StudioTextCandidateValidationError) {
+      return { ok: false, failure: 'post-copy-polish-invalid-output' };
+    }
     return {
       ok: false,
       failure: isStudioTextRouteUnboundError(error)
@@ -53,9 +60,4 @@ export async function requestPostCopyPolish(
     };
   }
 
-  try {
-    return { ok: true, proposal: normalizeRuntimePostCopyProposal(outputText, input.draft) };
-  } catch {
-    return { ok: false, failure: 'post-copy-polish-invalid-output' };
-  }
 }

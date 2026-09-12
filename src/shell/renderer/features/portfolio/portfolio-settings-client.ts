@@ -340,6 +340,7 @@ export async function proposeReviewedOwnerPersonaSettings(
   current: RealmOwnerPersonaSettings,
   runner: StudioTextCandidateRunner = runStudioTextCandidate,
   personaContext?: OwnerPersonaSettingsProposalContext,
+  locale?: 'zh' | 'en',
 ): Promise<RuntimeOwnerSettingsProposalResult> {
   if (current.id !== personaId || current.persona.id !== personaId) {
     return {
@@ -357,6 +358,7 @@ export async function proposeReviewedOwnerPersonaSettings(
     draft,
     current,
     ...(personaContext ? { personaContext } : {}),
+    ...(locale ? { locale } : {}),
   });
   if (!built.ok) {
     return {
@@ -410,6 +412,7 @@ export async function proposeReviewedPortfolioPersonaSettings(
   draft: OwnerPersonaSettingsDraft,
   current: RealmOwnerPersonaSettings,
   runner?: StudioTextCandidateRunner,
+  locale?: 'zh' | 'en',
 ): Promise<RuntimeOwnerSettingsProposalResult> {
   return proposeReviewedOwnerPersonaSettings(
     persona.id,
@@ -417,6 +420,7 @@ export async function proposeReviewedPortfolioPersonaSettings(
     current,
     runner,
     buildPortfolioSettingsProposalContext(persona),
+    locale,
   );
 }
 export async function updateReviewedOwnerPersonaSettings(

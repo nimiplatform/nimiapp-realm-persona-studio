@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { OwnerPortfolioPersonaDetail } from './portfolio-data.js';
 import type { LocalPostDraftInput } from './post-draft.js';
 import { requestPostCopyPolish } from './post-copy-polish.js';
@@ -42,6 +42,20 @@ function runnerThrowing(error: unknown): StudioTextCandidateRunner {
 }
 
 describe('post copy polish candidate', () => {
+  it('gives one precise correction after invalid output without changing the owner draft', async () => {
+    const before = structuredClone(draft);
+    const outputs = ['```json\n{"caption":"wrapped"}\n```', JSON.stringify({ caption: 'A reviewed candidate.', tagsText: 'draft', rationale: 'Smoother phrasing.' })];
+    const runner = vi.fn<StudioTextCandidateRunner>(async (prompt) => ({
+      text: outputs.shift()!, submitted: prompt, finishReason: 'stop', traceId: 'test-correction',
+    }));
+    expect(await requestPostCopyPolish({ persona, draft, intent: 'Polish the copy.' }, runner)).toMatchObject({
+      ok: true, proposal: { draftPatch: { caption: 'A reviewed candidate.' }, truthWrite: false },
+    });
+    expect(runner).toHaveBeenCalledTimes(2);
+    const correction = runner.mock.calls[1]![0];
+    expect(correction.systemText + correction.userText).toContain('single JSON object');
+    expect(draft).toEqual(before);
+  });
   it('returns a reviewable proposal built from owner-visible draft state', async () => {
     const result = await requestPostCopyPolish(
       { persona, draft, intent: 'Polish the copy.' },

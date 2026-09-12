@@ -14,6 +14,7 @@ import { appendLocalCreativeAssetHistory } from '@renderer/features/portfolio/cr
 import { buildReviewedVoiceDemoCandidatePayload, type VoiceDemoCandidateInput } from '@renderer/features/portfolio/media-voice-candidate.js';
 import type { OwnerPortfolioPersonaDetail, SettingField } from '@renderer/features/portfolio/portfolio-data.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
+import { StudioVoiceSelector, useStudioVoicePresets } from '../portfolio/studio-voice-selector.js';
 
 function translateVoiceFailure(
   result: Extract<RuntimeVoiceDemoSynthesisResult, { ok: false }>,
@@ -34,6 +35,7 @@ function translateVoiceFailure(
 function createVoiceDraft(persona: OwnerPortfolioPersonaDetail): VoiceDemoCandidateInput {
   return {
     scriptText: persona.greeting.value || persona.bio.value || '',
+    presetVoiceId: '',
   };
 }
 
@@ -96,11 +98,14 @@ function VoiceDemoSection({ persona }: { persona: OwnerPortfolioPersonaDetail })
   const [draft, setDraft] = useState<VoiceDemoCandidateInput>(() => createVoiceDraft(persona));
   const [result, setResult] = useState<RuntimeVoiceDemoSynthesisResult | null>(null);
   const [isSynthesizing, setIsSynthesizing] = useState(false);
+  const voices = useStudioVoicePresets();
+  const voiceReady = !voices.loading && !voices.unavailable && voices.voices.some((voice) => voice.voiceId === draft.presetVoiceId);
   const payload = useMemo(() => buildReviewedVoiceDemoCandidatePayload(draft, persona), [persona, draft]);
   const previewUrl = result?.ok ? result.runtime.previewUrls[0] || '' : '';
   const voiceConfigured = Boolean(persona.voice?.voiceId || persona.voice?.description || persona.voice?.speechModelId);
 
   async function synthesizeVoiceDemo() {
+    if (!voiceReady || isSynthesizing) return;
     setIsSynthesizing(true);
     setResult(null);
     try {
@@ -116,7 +121,7 @@ function VoiceDemoSection({ persona }: { persona: OwnerPortfolioPersonaDetail })
           label: 'assets.history.voiceDemoCandidate',
           source: next.source,
           ...(next.runtime.previewUrls[0] ? { previewUrl: next.runtime.previewUrls[0] } : {}),
-          detail: next.runtime.previewUrls[0] || next.runtime.artifactIds[0] || next.runtime.jobId || 'voice artifact generated',
+          detail: next.runtime.artifactIds.join(', '),
           artifactIds: next.runtime.artifactIds,
           ...(next.runtime.traceId ? { traceId: next.runtime.traceId } : {}),
         });
@@ -155,24 +160,27 @@ function VoiceDemoSection({ persona }: { persona: OwnerPortfolioPersonaDetail })
         <p className="m-0 mt-2 text-[length:var(--nimi-type-body-sm-size)] text-[var(--nimi-text-muted)]">
           {t('voiceConfig.demo.description')}
         </p>
+        <StudioVoiceSelector catalogue={voices} value={draft.presetVoiceId} disabled={isSynthesizing}
+          onChange={(presetVoiceId) => { setDraft((current) => ({ ...current, presetVoiceId })); setResult(null); }} />
         <FieldShell label={t('voiceConfig.script.label')} message={t('voiceConfig.script.message')}>
           <TextareaField
             value={draft.scriptText}
             rows={5}
+            readOnly={isSynthesizing}
             placeholder={t('voiceConfig.script.placeholder')}
             onChange={(event) => {
-              setDraft({ scriptText: event.currentTarget.value });
+              setDraft((current) => ({ ...current, scriptText: event.currentTarget.value }));
               setResult(null);
             }}
           />
         </FieldShell>
         <InlineAlert tone={payload.changed ? 'info' : 'warning'}>
-          {payload.changed ? t('voiceConfig.ready') : payload.errors.join('; ') || t('voiceConfig.scriptRequired')}
+          {payload.changed ? t('voiceConfig.ready') : t(draft.scriptText.trim() ? 'voiceConfig.preset.choose' : 'voiceConfig.scriptRequired')}
         </InlineAlert>
         <div className="mt-3 flex flex-wrap gap-3">
           <Button
             tone="primary"
-            disabled={!payload.changed || isSynthesizing}
+            disabled={!payload.changed || !voiceReady || isSynthesizing}
             loading={isSynthesizing}
             onClick={() => void synthesizeVoiceDemo()}
           >

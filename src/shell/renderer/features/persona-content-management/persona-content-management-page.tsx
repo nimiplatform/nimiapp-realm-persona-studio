@@ -8,7 +8,7 @@ import { loadLocalPostDrafts, type LocalPostDraftRecord } from '@renderer/featur
 import { buildDraftBoxEntries, type DraftBoxEntry } from '@renderer/features/portfolio/draft-box.js';
 import { creativeHistoryTitleKey } from '@renderer/features/portfolio/creative-asset-history.js';
 import { useLocalCreativeAssetHistory } from '@renderer/features/portfolio/use-local-creative-asset-history.js';
-import { loadLocalPostSchedule } from '@renderer/features/portfolio/local-post-schedule-store.js';
+import { useLocalPostSchedule } from '@renderer/features/portfolio/use-local-post-schedule.js';
 import { formatDraftUpdatedAt } from '@renderer/features/persona-list/persona-list-page.js';
 import type { OwnerPortfolioPersonaDetail } from '@renderer/features/portfolio/portfolio-data.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
@@ -85,6 +85,7 @@ function ContentManagementBody({ persona }: { persona: OwnerPortfolioPersonaDeta
   const { t } = useStudioI18n();
   const navigate = useNavigate();
   const creativeHistoryState = useLocalCreativeAssetHistory(persona.id);
+  const scheduleState = useLocalPostSchedule(persona.id);
   const [postDrafts, setPostDrafts] = useState<LocalPostDraftRecord[]>([]);
   const [postsLoading, setPostsLoading] = useState(true);
   const [postsUnavailable, setPostsUnavailable] = useState(false);
@@ -105,8 +106,8 @@ function ContentManagementBody({ persona }: { persona: OwnerPortfolioPersonaDeta
     personaId: persona.id,
     creativeHistory: creativeHistoryState.records,
     postDrafts,
-    localSchedule: loadLocalPostSchedule(persona.id),
-  }), [creativeHistoryState.records, persona.id, postDrafts]);
+    localSchedule: scheduleState.schedule,
+  }), [creativeHistoryState.records, persona.id, postDrafts, scheduleState.schedule]);
   const localOnlyCount = draftBoxEntries.filter((entry) => entry.truthBoundary === 'local-only').length;
   const candidateCount = draftBoxEntries.filter((entry) => entry.truthBoundary === 'candidate-only').length;
   const dueCount = draftBoxEntries.filter((entry) => entry.status === 'ready-when-due').length;
@@ -132,6 +133,7 @@ function ContentManagementBody({ persona }: { persona: OwnerPortfolioPersonaDeta
       />
 
       {postsUnavailable ? <InlineAlert tone="warning">{t('contentManagement.postDraftsUnavailable')}</InlineAlert> : null}
+      {scheduleState.unavailable ? <InlineAlert tone="warning">{t('posts.schedule.loadFailed')}</InlineAlert> : null}
       {creativeHistoryState.unavailable ? <InlineAlert tone="warning">{t('assets.history.unavailable')}</InlineAlert> : null}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -152,7 +154,7 @@ function ContentManagementBody({ persona }: { persona: OwnerPortfolioPersonaDeta
               </StatusBadge>
             </div>
             <div className="mt-4 grid gap-3">
-              {postsLoading ? <p>{t('common.loadingEllipsis')}</p> : draftBoxEntries.length === 0 ? (
+              {postsLoading || scheduleState.loading ? <p>{t('common.loadingEllipsis')}</p> : draftBoxEntries.length === 0 ? (
                 <EmptyState title={t('draftBox.emptyTitle')} description={t('draftBox.emptyDescription')} />
               ) : draftBoxEntries.map((entry) => (
                 <DraftBoxEntryCard key={entry.id} entry={entry} />

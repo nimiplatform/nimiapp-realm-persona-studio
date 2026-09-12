@@ -9,6 +9,7 @@ import {
   type CreateFlowFailure,
 } from './create-flow-failure.js';
 import { normalizeDisplaySafeHttpsUrl } from './persona-external-ref.js';
+import { referenceImageCandidatePreviewUrl } from './reference-image-source.js';
 
 export const PERSONA_REFERENCE_IMAGE_SOURCE = 'Runtime ScenarioService.submitScenarioJob image.generate' as const;
 
@@ -37,7 +38,6 @@ export type PersonaReferenceImageResult =
     source: typeof PERSONA_REFERENCE_IMAGE_SOURCE;
     failure:
       | 'persona-reference-image-payload-invalid'
-      | 'persona-reference-image-public-uri-unavailable'
       | StudioMediaCandidateFailure;
     /** Typed failure carrier consumed by the UI; `detail` is log-only. */
     cause: CreateFlowFailure;
@@ -101,13 +101,14 @@ export async function generatePersonaReferenceImage(
   const artifactUris = artifactValues(result.artifacts, 'publicUri');
   const referenceImageUrl = artifactUris
     .map((uri) => normalizeDisplaySafeHttpsUrl(uri))
-    .find((uri): uri is string => Boolean(uri));
+    .find((uri): uri is string => Boolean(uri))
+    || referenceImageCandidatePreviewUrl(artifactValues(result.artifacts, 'previewUrl')[0], artifactIds[0]);
   if (!referenceImageUrl) {
     return {
       ok: false,
       source: PERSONA_REFERENCE_IMAGE_SOURCE,
-      failure: 'persona-reference-image-public-uri-unavailable',
-      cause: createFlowFailure('reference-local-artifact-no-url', { detail: 'Runtime image.generate produced a local candidate but no display-safe HTTPS URI that Realm can store as a public reference image.' }),
+      failure: 'runtime-output-malformed',
+      cause: createFlowFailure('runtime-output-malformed', { detail: 'Runtime image.generate returned no readable image backed by an artifact identity or safe HTTPS reference.' }),
       submitted: built.payload,
     };
   }

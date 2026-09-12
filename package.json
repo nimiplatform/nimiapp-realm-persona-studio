@@ -9,6 +9,8 @@
     "pnpm": ">=10.0.0"
   },
   "scripts": {
+    "storybook": "storybook dev -p 6006 --host 127.0.0.1 --no-open --disable-telemetry",
+    "build:storybook": "storybook build --output-dir .nimi/local/storybook --disable-telemetry",
     "dev": "nimi-app dev --shell electron",
     "dev:renderer": "vite --host 127.0.0.1 --port 1450 --strictPort",
     "dev:shell": "nimi-app dev",
@@ -39,6 +41,9 @@
   "devDependencies": {
     "@electron/packager": "^20.3.0",
     "@eslint/js": "^10.0.1",
+    "@nimiplatform/app-tools": "^0.5.1",
+    "@nimiplatform/nimi-coding": "0.6.2",
+    "@storybook/react-vite": "10.6.0",
     "@tailwindcss/vite": "^4.3.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -51,17 +56,18 @@
     "eslint": "^10.4.0",
     "globals": "^17.6.0",
     "jsdom": "^28.1.0",
+    "storybook": "10.6.0",
     "tailwindcss": "^4.3.0",
     "tsx": "^4.20.3",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.59.4",
     "vite": "^7.3.6",
     "vitest": "^4.1.7",
-    "yaml": "^2.9.0",
-    "@nimiplatform/app-tools": "^0.5.1",
-    "@nimiplatform/nimi-coding": "0.6.2"
+    "yaml": "^2.9.0"
   },
   "dependencies": {
+    "@nimiplatform/kit": "^0.7.0",
+    "@nimiplatform/sdk": "^0.11.0",
     "@tanstack/react-query": "^5.100.11",
     "i18next": "^25.8.18",
     "lucide-react": "^0.577.0",
@@ -70,9 +76,7 @@
     "react-i18next": "^16.5.8",
     "react-router-dom": "^7.15.1",
     "scheduler": "^0.27.0",
-    "zustand": "^5.0.13",
-    "@nimiplatform/sdk": "^0.11.0",
-    "@nimiplatform/kit": "^0.7.0"
+    "zustand": "^5.0.13"
   },
   "main": "dist-electron/main.js",
   "author": "Nimi Team",

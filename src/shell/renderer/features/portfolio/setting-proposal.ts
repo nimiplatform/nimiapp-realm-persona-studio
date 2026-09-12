@@ -124,6 +124,7 @@ export function buildRuntimeOwnerSettingsProposalPrompt(input: {
   current: OwnerPersonaSettingsSnapshot;
   draft: OwnerPersonaSettingsDraft;
   personaContext?: OwnerPersonaSettingsProposalContext;
+  locale?: 'zh' | 'en';
 }):
   | { ok: true; errors: []; payload: StudioTextCandidatePrompt }
   | { ok: false; errors: string[]; payload: null } {
@@ -137,16 +138,16 @@ export function buildRuntimeOwnerSettingsProposalPrompt(input: {
     errors: [],
     payload: {
       surfaceId: 'realm-persona-studio.settings-proposal',
-      params: { maxTokens: 2000, temperature: 0.5, topP: 1 },
+      params: { maxTokens: 2000, temperature: 0.3, topP: 1 },
       systemText: [
-        'You are a thoughtful character writing partner. Propose owner-reviewed PersonaCharacter changes, never save them.',
+        'Edit the owner draft to satisfy the explicit ownerIntent. This is a bounded edit request, not a request to redesign the character.',
         'Return ONE JSON object, no code fences. Allowed string fields: displayName, description, greeting, characterIdentity, behaviorText, speakingText, boundariesText, rationale.',
-        'Return ONLY the fields that need to change for the owner intent, plus a brief rationale. Preserve the name, core identity, and boundaries unless the owner explicitly asks to change them.',
-        'Use currentDraft, including unsaved edits, as the starting point. CurrentSettings provides context only.',
+        'First determine which fields the owner asked to edit. Return ONLY those changed fields and rationale. Omit every unrequested or unchanged field. If only description is requested, the ONLY output keys are description and rationale.',
+        'Use currentDraft, including unsaved edits, as the starting point. Preserve every fact, phrase, name, and boundary the owner asks to retain. Do not turn a small edit into a rewrite.',
         'characterIdentity: at most 240 Unicode characters. behaviorText: 1-6 lines; speakingText: 1-4 lines; boundariesText: 1-6 lines. Every line at most 160 Unicode characters. Never leave these fields empty.',
-        'Give the persona specific habits, a meaningful tension, concrete choices, and distinctive speech. Avoid adjective lists and a generic helpful-assistant voice.',
-        'Greeting should open a small scene in their own voice and invite an easy reply. Never invent memories or prior conversations with the reader.',
-        'Keep the introduction, behavior, speaking, greeting, and boundaries coherent. Match the language of the owner intent and character writing, including rationale.',
+        'Only when a field is requested: keep its writing concrete and consistent with the existing character. Do not invent new habits, biography, relationships, memories or prior conversations.',
+        'Match changed text to the language requested by the owner, otherwise keep its existing language.',
+        input.locale === 'en' ? 'Write rationale in English.' : input.locale === 'zh' ? 'rationale 必须使用简体中文，简要说明本次修改。' : 'Write rationale in the language of ownerIntent.',
         'Never include provider, model, LocalAgent, lifecycle, state, worldId, handle, avatarUrl, profileCoverUrl, raw rules, IDs, hidden configuration, or private memory.',
         'All output is editable candidate writing. The owner decides what to adopt.',
       ].join('\n'),
@@ -154,7 +155,6 @@ export function buildRuntimeOwnerSettingsProposalPrompt(input: {
         personaId: input.personaId,
         ...(input.personaContext ? { personaContext: input.personaContext } : {}),
         ownerIntent: draft.naturalLanguageIntent,
-        currentSettings: publicWriting(createOwnerPersonaSettingsDraft(input.current)),
         currentDraft: publicWriting(draft),
       }),
     },

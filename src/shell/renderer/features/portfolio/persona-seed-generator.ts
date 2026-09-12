@@ -143,6 +143,8 @@ function buildPersonaSeedPayload(
       introLine,
       'Return ONE JSON object. No prose before or after. No code fences.',
       'The output must contain EXACTLY these 11 keys: handle, displayName, concept, description, greeting, ruleText, personaArchetype, personaTraits, speechStyle, behaviorBoundary, rationale. Additional keys are forbidden.',
+      'Only personaTraits is an array. Every other value MUST be a JSON string. In particular, ruleText, speechStyle, and behaviorBoundary are strings, NEVER arrays.',
+      'Encode multiple principles inside one string using escaped newline characters: "ruleText": "First principle.\\nSecond principle." Use the same string format for speechStyle and behaviorBoundary.',
       'The user message is input context, NOT an output template. Never echo mode, userDescription, ownerWriting, personaArchetypeAllowed, or personaTraitsAllowed into the result.',
       '',
       'Owner-written fields in ownerWriting are hard constraints: preserve them and make every generated field consistent with them, including the owner’s chosen name. Never treat an empty field as a constraint.',
@@ -219,6 +221,14 @@ export function parsePersonaSeedOutput(raw: string): { seed: GeneratedPersonaSee
     label: 'Runtime persona seed output',
     allowedKeys: PERSONA_SEED_OUTPUT_KEYS,
   });
+  const invalidStringFields = PERSONA_SEED_OUTPUT_KEYS.filter((key) => key !== 'personaTraits'
+    && obj[key] !== undefined && typeof obj[key] !== 'string');
+  if (invalidStringFields.length > 0) {
+    throw new CreateFlowFailureError({
+      kind: 'seed-output-invalid',
+      detail: `Fields ${invalidStringFields.join(', ')} must be JSON strings, not arrays or objects. Encode multiple principles in one string separated by escaped newline characters (\\n).`,
+    });
+  }
   const seed: GeneratedPersonaSeed = {
     handle: normalizeHandleSuggestion(obj.handle),
     displayName: readString(obj.displayName),

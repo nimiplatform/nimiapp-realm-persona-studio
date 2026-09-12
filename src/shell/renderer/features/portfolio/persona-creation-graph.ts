@@ -178,6 +178,8 @@ export function buildPersonaCreationGraphFromDraft(
 ): PersonaCreationGraph {
   const draft = normalizeCreateRealmPersonaDraft(draftInput);
   const sourceLabel = options.sourceLabel?.trim() || sourceModeLabel(options.sourceMode);
+  const selectedReference = draft.referenceImageCandidates.find((candidate) => candidate.reviewState === 'owner-selected');
+  const referenceSource = selectedReference?.artifactId || draft.referenceImageUrl;
   const fingerprint = stableFingerprint({
     sourceMode: options.sourceMode,
     sourceLabel,
@@ -194,8 +196,8 @@ export function buildPersonaCreationGraphFromDraft(
     speechSupplement: draft.speechSupplement,
     boundarySupplement: draft.boundarySupplement,
     visualSupplement: draft.visualSupplement,
-    referenceImageUrl: draft.referenceImageUrl,
-    referenceImageCandidates: draft.referenceImageCandidates,
+    referenceImageUrl: referenceSource,
+    referenceImageCandidates: draft.referenceImageCandidates.map((candidate) => ({ ...candidate, url: candidate.artifactId ? '' : candidate.url })),
     originalDescription: draft.originalDescription,
   });
 
@@ -215,7 +217,7 @@ export function buildPersonaCreationGraphFromDraft(
     sourceField('boundarySupplement', 'Behavior boundary supplement', present(draft.boundarySupplement), 'candidateOnly', 'behavior'),
     sourceField('visualSupplement', 'Visual style supplement', present(draft.visualSupplement), 'candidateOnly', 'visualBrief'),
     sourceField('ruleText', 'Visible behavior rules', present(draft.ruleText), 'candidateOnly', 'behavior'),
-    sourceField('referenceImageUrl', 'Reference image URL', present(draft.referenceImageUrl), 'candidateOnly', 'visualBrief'),
+    sourceField('referenceImageUrl', 'Reference image candidate', present(referenceSource), 'candidateOnly', 'visualBrief'),
     sourceField('runtimeRationale', 'Runtime draft rationale', present(options.runtimeRationale || ''), 'candidateOnly', 'riskNotes'),
     ]),
   ];
@@ -299,8 +301,8 @@ export function buildPersonaCreationGraphFromDraft(
     buildSection({
       key: 'visualBrief',
       title: 'Visual Brief',
-      summary: draft.referenceImageUrl ? 'A reviewed reference image URL is ready as create input.' : 'Visual brief remains optional candidate material.',
-      fields: field('Reference image URL', present(draft.referenceImageUrl)),
+      summary: referenceSource ? 'A reviewed visual candidate is retained locally; only a safe HTTPS reference may enter the profile.' : 'Visual brief remains optional candidate material.',
+      fields: field('Reference image candidate', present(referenceSource)),
       missing: draft.referenceImageUrl ? [] : ['avatar/profile cover visual brief'],
       risks: [],
       ruleIds: ['R-RPS-GRAPH-024'],
@@ -384,7 +386,7 @@ export function buildPersonaCreationGraphFromDraft(
       target: 'asset-candidate',
       label: 'Reference image',
       status: draft.referenceImageUrl ? 'ready' : 'deferred',
-      reason: draft.referenceImageUrl ? 'Reference image URL remains reviewed create input.' : 'Identity assets move to Identity Studio.',
+      reason: referenceSource ? 'The candidate remains local; an artifact identity is never a Realm resource reference.' : 'Identity assets move to Identity Studio.',
       ruleIds: ['R-RPS-GRAPH-024'],
     },
     {

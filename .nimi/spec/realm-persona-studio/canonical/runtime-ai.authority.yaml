@@ -118,3 +118,13 @@ units:
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.runtime-ai.ai-config-operations
+  - id: rule.realm-persona-studio.runtime-ai.r012
+    kind: rule
+    title: Source-backed voice selection
+    modality: must
+    statement: Voice candidate generation requires an explicit owner selection from client.aiConfig.listOptions with kind preset-voices for the current App audio configuration and submits that exact presetVoiceId through the protected speech-synthesize operation; Studio never invents a voice or writes the candidate selection into PersonaCharacter source state.
+    condition: Whenever Studio prepares or submits a voice candidate.
+    failure: Preserve the script and render voice selection unavailable or required when the source list cannot be read, the selected voice is missing, or Runtime rejects it; make no audio generation or public voice claim.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.runtime-ai.ai-config-operations

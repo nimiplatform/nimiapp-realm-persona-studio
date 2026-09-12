@@ -111,6 +111,7 @@ describe('Studio media candidate Nimi AI consumption', () => {
       surfaceId: 'realm-persona-studio.test-voice',
       capability: 'audio.synthesize',
       text: 'Welcome in.',
+      presetVoiceId: 'catalogue-voice',
     });
 
     expect(result).toMatchObject({
@@ -126,6 +127,9 @@ describe('Studio media candidate Nimi AI consumption', () => {
       model: expect.anything(),
       route: expect.anything(),
       credential: expect.anything(),
+    }));
+    expect(speechSynthesize).toHaveBeenCalledWith(expect.objectContaining({
+      voiceRef: { kind: 'preset_voice_id', presetVoiceId: 'catalogue-voice' },
     }));
   });
 
@@ -226,21 +230,22 @@ describe('Studio media candidate Nimi AI consumption', () => {
       surfaceId: 'realm-persona-studio.test-voice',
       capability: 'audio.synthesize',
       text: 'Welcome in.',
+      presetVoiceId: 'catalogue-voice',
     })).resolves.toMatchObject({ ok: false, failure: 'runtime-route-unbound' });
   });
 
-  it('keeps Kit input rejection distinct from malformed Runtime output', async () => {
+  it.each(['SDK_AI_INPUT_INVALID', 'invalid-payload'])('keeps %s input rejection distinct from malformed Runtime output', async (reasonCode) => {
     const runners = createStudioMediaCandidateRunners({
       client: fakeClient(),
       createScenarioJobClient: fakeScenarioClientFactory,
       speechSynthesize: async () => ({
         ok: false,
         capabilityId: 'audio.synthesize',
-        reason: 'input-invalid',
+        reason: 'runtime-call-failed',
         message: 'Speech input is invalid.',
         error: createNimiError({
           message: 'Speech input is invalid.',
-          reasonCode: 'SDK_AI_INPUT_INVALID',
+          reasonCode,
           actionHint: 'fix_input',
           source: 'sdk',
         }),
@@ -251,6 +256,7 @@ describe('Studio media candidate Nimi AI consumption', () => {
       surfaceId: 'realm-persona-studio.test-voice',
       capability: 'audio.synthesize',
       text: 'Welcome in.',
+      presetVoiceId: 'catalogue-voice',
     })).resolves.toEqual({
       ok: false,
       failure: 'runtime-payload-invalid',

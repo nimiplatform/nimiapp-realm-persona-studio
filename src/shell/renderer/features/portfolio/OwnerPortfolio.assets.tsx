@@ -43,6 +43,7 @@ import {
 import { SettingsSectionHead } from './OwnerPortfolio.settings.js';
 import { VisualImageEditorWorkspace } from './visual-image-editor.js';
 import { useStudioI18n } from '../../i18n/use-studio-i18n.js';
+import { StudioVoiceSelector, useStudioVoicePresets } from './studio-voice-selector.js';
 import type { StudioCopyKey } from '../../i18n/studio-copy.js';
 import type { StudioTranslateOptions } from '../../i18n/studio-i18n.js';
 
@@ -65,6 +66,7 @@ export function createVisualImageGenerationDraft(): VisualMediaCandidateInput & 
 export function createVoiceDemoCandidateInput(persona: OwnerPortfolioPersonaDetail): VoiceDemoCandidateInput {
   return {
     scriptText: persona.greeting.value || '',
+    presetVoiceId: '',
   };
 }
 
@@ -446,7 +448,7 @@ function VisualIdentityChangeEditor({
       setGenerationResult(result);
       if (result.ok) {
         const previewUrl = result.runtime.previewUrls[0];
-        await appendLocalCreativeAssetHistory(persona.id, {
+        const persisted = await appendLocalCreativeAssetHistory(persona.id, {
           sourceContentHash: persona.contentHash,
           kind: 'runtime-image-candidate',
           sourceKind: 'generated',
@@ -454,10 +456,11 @@ function VisualIdentityChangeEditor({
           label: 'assets.history.runtimeImageCandidate',
           source: result.source,
           ...(previewUrl ? { previewUrl } : {}),
-          detail: previewUrl || result.runtime.artifactUris[0] || result.runtime.artifactIds[0] || result.runtime.jobId || 'image artifact generated',
+          detail: result.runtime.artifactIds.join(', ') || result.runtime.artifactUris.join(', '),
           artifactIds: result.runtime.artifactIds,
           ...(result.runtime.traceId ? { traceId: result.runtime.traceId } : {}),
         });
+        if (!persisted.ok) nimiToast.danger(t('assets.history.persistFailed'));
         await onHistoryUpdated();
         nimiToast.success(t('assets.imageGenerated'));
       } else if (isMediaCapabilityUnavailable(result.failure)) {
@@ -731,6 +734,8 @@ function VoiceChangeEditor({
   const [uploadedPreviewUrl, setUploadedPreviewUrl] = useState<string | null>(null);
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
   const [voiceDraft, setVoiceDraft] = useState<VoiceDemoCandidateInput>(() => createVoiceDemoCandidateInput(persona));
+  const voices = useStudioVoicePresets();
+  const voiceReady = !voices.loading && !voices.unavailable && voices.voices.some((voice) => voice.voiceId === voiceDraft.presetVoiceId);
   const [synthesisResult, setSynthesisResult] = useState<RuntimeVoiceDemoSynthesisResult | null>(null);
   const [isSynthesizing, setIsSynthesizing] = useState(false);
 
@@ -778,7 +783,7 @@ function VoiceChangeEditor({
   }
 
   async function synthesizeVoiceDemo() {
-    if (!voicePayload.changed || isSynthesizing) return;
+    if (!voicePayload.changed || !voiceReady || isSynthesizing) return;
     setIsSynthesizing(true);
     setSynthesisResult(null);
     try {
@@ -786,7 +791,7 @@ function VoiceChangeEditor({
       setSynthesisResult(result);
       if (result.ok) {
         const previewUrl = result.runtime.previewUrls[0];
-        await appendLocalCreativeAssetHistory(persona.id, {
+        const persisted = await appendLocalCreativeAssetHistory(persona.id, {
           sourceContentHash: persona.contentHash,
           kind: 'voice-demo-candidate',
           sourceKind: 'generated',
@@ -794,11 +799,12 @@ function VoiceChangeEditor({
           label: 'assets.history.voiceDemoCandidate',
           source: result.source,
           ...(previewUrl ? { previewUrl } : {}),
-          detail: previewUrl || result.runtime.artifactIds[0] || result.runtime.jobId || 'voice artifact generated',
+          detail: result.runtime.artifactIds.join(', '),
           artifactIds: result.runtime.artifactIds,
           ...(result.runtime.traceId ? { traceId: result.runtime.traceId } : {}),
         });
         await onHistoryUpdated();
+        if (!persisted.ok) nimiToast.danger(t('assets.history.persistFailed'));
         nimiToast.success(t('assets.voiceGenerated'));
       } else if (isMediaCapabilityUnavailable(result.failure)) {
         nimiToast.info(translateVoiceCandidateFailure(result, t));
@@ -909,16 +915,19 @@ function VoiceChangeEditor({
 
       {mode === 'ai' ? (
         <div className="ras-visual-change__ai" data-testid="voice-ai-composer">
+          <StudioVoiceSelector catalogue={voices} value={voiceDraft.presetVoiceId} disabled={isSynthesizing}
+            onChange={(presetVoiceId) => { setVoiceDraft((current) => ({ ...current, presetVoiceId })); setSynthesisResult(null); }} />
           <label htmlFor="voice-demo-script">{t('assets.voiceChange.scriptLabel')}</label>
           <div className="ras-visual-change__composer">
             <textarea
               id="voice-demo-script"
               rows={3}
               maxLength={2000}
+              readOnly={isSynthesizing}
               value={voiceDraft.scriptText}
               placeholder={t('assets.voiceChange.scriptPlaceholder')}
               onChange={(event) => {
-                setVoiceDraft({ scriptText: event.currentTarget.value });
+                setVoiceDraft((current) => ({ ...current, scriptText: event.currentTarget.value }));
                 setSynthesisResult(null);
               }}
             />
@@ -933,7 +942,7 @@ function VoiceChangeEditor({
                 tone="primary"
                 size="sm"
                 aria-label={t('assets.voiceChange.generate')}
-                disabled={!voicePayload.changed || isSynthesizing}
+                disabled={!voicePayload.changed || !voiceReady || isSynthesizing}
                 aria-busy={isSynthesizing || undefined}
                 onClick={() => void synthesizeVoiceDemo()}
                 icon={isSynthesizing
@@ -943,7 +952,7 @@ function VoiceChangeEditor({
             </div>
           </div>
           <InlineAlert tone={voicePayload.changed ? 'info' : 'warning'}>
-            {voicePayload.changed ? t('assets.voiceNotice') : t('assets.error.voiceDemoScriptMissing')}
+            {voicePayload.changed ? t('assets.voiceNotice') : t(voiceDraft.scriptText.trim() ? 'voiceConfig.preset.choose' : 'assets.error.voiceDemoScriptMissing')}
           </InlineAlert>
           {synthesisResult && !synthesisResult.ok ? (
             <InlineAlert tone="danger">

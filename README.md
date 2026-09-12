@@ -17,8 +17,8 @@ persona IP. It supports:
 - Building a coherent persona identity (personality, worldview, role)
 - Managing public settings through natural language + AI assistance
 - Cultivating visual identity (avatar, profile cover candidates, post images)
-- Composing and publishing persona-authored posts to the Realm feed
-- Monitoring source-backed adoption signals (`friendCount`)
+- Composing persona-authored post drafts and a single local schedule per persona; Realm publication is currently unavailable
+- Showing source availability for adoption signals (`friendCount`); no value is shown until an admitted source supplies it
 
 It is **not** a LocalAgent runtime center, world maintenance tool, Forge
 package editor, team collaboration platform, or performance analytics suite.
@@ -50,7 +50,7 @@ pnpm install
 ```
 
 All runtime dependencies resolve from npm (`@nimiplatform/kit`,
-`@nimiplatform/sdk`) and crates.io (`nimi-shell-tauri`); no sibling
+`@nimiplatform/sdk`); no sibling
 `nimi-realm` checkout is required.
 
 ## Development
@@ -73,7 +73,22 @@ pnpm build                            # typecheck + renderer and Electron builds
 pnpm test                             # vitest run
 pnpm check:spec-consistency           # spec authority surface check
 pnpm lint                             # typecheck + eslint
+pnpm storybook                        # local component and page fixtures, port 6006
+pnpm build:storybook                  # .nimi/local/storybook; also built in CI
 ```
+
+Storybook covers portfolio, creation and reference sources, overview, settings,
+identity and voice, post drafting and management, assets, AI configuration, and
+writing/voice loading and failure controls. The development banner identifies
+fixture data; a Storybook-only module supplies settings read fixtures. Other
+protected reads without a host remain unavailable, and no AI, storage, or Realm
+write is replaced with a successful response. Storybook verifies
+presentation only; acceptance uses the supervised Electron App through CDP.
+
+Local image imports use the published protected artifact upload/read operations
+and a metadata index at `assets/imported.json`. PNG, JPEG, WebP and GIF files up
+to 8 MiB are supported. Audio file import awaits published SDK/Kit audio MIME
+admission. Removing an imported entry does not delete Runtime-managed bytes.
 
 ## Desktop-Supervised Protected Session
 

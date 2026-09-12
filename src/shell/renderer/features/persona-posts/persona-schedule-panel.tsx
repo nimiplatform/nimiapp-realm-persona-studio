@@ -4,7 +4,6 @@ import { CalendarClock } from 'lucide-react';
 import {
   Button,
   Checkbox,
-  DatePicker,
   FieldShell,
   InlineAlert,
   nimiToast,
@@ -12,7 +11,6 @@ import {
   Surface,
   TextareaField,
   TextField,
-  type DatePickerLabels,
 } from '@nimiplatform/kit/ui';
 import {
   clearLocalPostSchedule,
@@ -59,10 +57,12 @@ export function PersonaSchedulePanel({
   persona,
   schedule,
   onScheduleChange,
+  disabled = false,
 }: {
   persona: OwnerPortfolioPersonaDetail;
   schedule: LocalPostScheduleRecord | null;
   onScheduleChange: (next: LocalPostScheduleRecord | null) => void;
+  disabled?: boolean;
 }) {
   const { t } = useStudioI18n();
   const developmentFixture = Boolean(usePersonaVisualPreview()?.visualData[persona.id]?.developmentFixture);
@@ -74,6 +74,7 @@ export function PersonaSchedulePanel({
   const [errors, setErrors] = useState<string[]>([]);
   const [persistFailed, setPersistFailed] = useState(false);
   const [clearFailed, setClearFailed] = useState(false);
+  const [pending, setPending] = useState(false);
 
   useEffect(() => {
     setCaption(schedule?.candidate.postCandidate.realmCreatePost.caption ?? '');
@@ -95,21 +96,8 @@ export function PersonaSchedulePanel({
     attachmentTargetId: '',
   }), [caption, tagsText, humanReviewed]);
 
-  const datePickerLabels = useMemo<DatePickerLabels>(() => ({
-    panelTitle: t('posts.schedule.datePicker.panelTitle'),
-    yearHeader: t('posts.schedule.datePicker.yearHeader'),
-    monthHeader: t('posts.schedule.datePicker.monthHeader'),
-    dayHeader: t('posts.schedule.datePicker.dayHeader'),
-    yearWheelAriaLabel: t('posts.schedule.datePicker.yearWheelAriaLabel'),
-    monthWheelAriaLabel: t('posts.schedule.datePicker.monthWheelAriaLabel'),
-    dayWheelAriaLabel: t('posts.schedule.datePicker.dayWheelAriaLabel'),
-    todayButton: t('posts.schedule.datePicker.todayButton'),
-    clearButton: t('posts.schedule.datePicker.clearButton'),
-    confirmButton: t('posts.schedule.datePicker.confirmButton'),
-    clearValueAriaLabel: t('posts.schedule.datePicker.clearValueAriaLabel'),
-  }), [t]);
-
-  function saveSchedule() {
+  async function saveSchedule() {
+    if (disabled || pending) return;
     setPersistFailed(false);
     const result = buildLocalPostScheduleCandidate(
       validateLocalPostDraft(draftInput, persona),
@@ -137,27 +125,36 @@ export function PersonaSchedulePanel({
       nimiToast.info(t('posts.workspace.fixturePreviewSaved'));
       return;
     }
+    setPending(true);
     try {
-      const saved = saveLocalPostSchedule(persona.id, result.candidate);
+      const saved = await saveLocalPostSchedule(persona.id, result.candidate);
       onScheduleChange(saved);
       nimiToast.success(t('posts.schedule.savedFor', { time: saved.localRunAt }));
     } catch {
       setPersistFailed(true);
+    } finally {
+      setPending(false);
     }
   }
 
-  function clearSchedule() {
+  async function clearSchedule() {
+    if (disabled || pending) return;
     setClearFailed(false);
+    setPending(true);
     try {
-      if (!developmentFixture) clearLocalPostSchedule(persona.id);
+      if (!developmentFixture) await clearLocalPostSchedule(persona.id);
       onScheduleChange(null);
       nimiToast.success(t('posts.schedule.cleared'));
     } catch {
       setClearFailed(true);
+    } finally {
+      setPending(false);
     }
   }
 
   const scheduleDue = schedule ? isLocalPostScheduleDue(schedule) : false;
+  const today = new Date();
+  const minimumDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   const savedCaption = schedule?.candidate.postCandidate.realmCreatePost.caption ?? '';
 
   return (
@@ -188,13 +185,13 @@ export function PersonaSchedulePanel({
           <StatusBadge tone={scheduleDue ? 'warning' : 'info'}>
             {scheduleDue ? t('posts.schedule.dueBadge') : t('posts.schedule.savedBadge')}
           </StatusBadge>
-          <Button tone="secondary" size="sm" onClick={clearSchedule}>
+          <Button tone="secondary" size="sm" disabled={disabled || pending} onClick={clearSchedule}>
             {t('posts.schedule.clear')}
           </Button>
         </div>
       ) : null}
 
-      <div className="mt-4 grid gap-4">
+      <fieldset disabled={disabled || pending} className="mt-4 grid min-w-0 gap-4">
         <FieldShell label={t('posts.schedule.captionLabel')}>
           <TextareaField
             value={caption}
@@ -221,11 +218,13 @@ export function PersonaSchedulePanel({
         </FieldShell>
         <div className="grid gap-4 md:grid-cols-2">
           <FieldShell label={t('posts.schedule.localDate')}>
-            <DatePicker
+            <TextField
+              type="date"
+              min={minimumDate}
+              aria-label={t('posts.schedule.localDate')}
               value={localDate}
-              labels={datePickerLabels}
-              onValueChange={(value) => {
-                setLocalDate(value);
+              onChange={(event) => {
+                setLocalDate(event.currentTarget.value);
                 setErrors([]);
               }}
             />
@@ -233,6 +232,7 @@ export function PersonaSchedulePanel({
           <FieldShell label={t('posts.schedule.localTime')}>
             <TextField
               type="time"
+              aria-label={t('posts.schedule.localTime')}
               value={localTime}
               onChange={(event) => {
                 setLocalTime(event.currentTarget.value);
@@ -261,7 +261,7 @@ export function PersonaSchedulePanel({
           <InlineAlert tone="danger">{t('posts.schedule.persistFailed')}</InlineAlert>
         ) : null}
         <div className="flex flex-wrap gap-3">
-          <Button tone="primary" onClick={saveSchedule}>
+          <Button tone="primary" loading={pending} onClick={saveSchedule}>
             {t('posts.schedule.save')}
           </Button>
           {schedule ? (
@@ -271,7 +271,7 @@ export function PersonaSchedulePanel({
           ) : null}
         </div>
         <InlineAlert tone="info">{t('posts.schedule.boundaryNote')}</InlineAlert>
-      </div>
+      </fieldset>
     </Surface>
   );
 }

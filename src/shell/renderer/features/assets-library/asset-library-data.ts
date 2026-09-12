@@ -26,6 +26,7 @@ export type AssetLibraryEntry = {
   title: string;
   /** A URL that the renderer can display, or null when the source is unavailable. */
   previewUrl: string | null;
+  artifactId?: string;
   provenance: AssetLibraryProvenance;
   createdAt: string;
 };
@@ -155,6 +156,7 @@ function normalizeHistoryRecord(value: unknown): AssetLibraryEntry | null {
     reviewState,
     title,
     previewUrl,
+    ...(Array.isArray(value.artifactIds) && typeof value.artifactIds[0] === 'string' ? { artifactId: value.artifactIds[0] } : {}),
     provenance: { kind: 'persona', personaId, sourceContentHash, ...(originDraftKey ? { originDraftKey } : {}) },
     createdAt,
   };
@@ -191,6 +193,7 @@ function normalizeDraftCandidate(
     reviewState,
     title,
     previewUrl: url,
+    ...(typeof value.artifactId === 'string' ? { artifactId: value.artifactId } : {}),
     provenance,
     createdAt,
   };
@@ -212,6 +215,7 @@ function normalizeImportedRecord(value: unknown): AssetLibraryEntry | null {
     reviewState: 'candidate-only',
     title,
     previewUrl: normalizePreviewUrl(value.previewUrl),
+    ...(typeof value.artifactId === 'string' ? { artifactId: value.artifactId } : {}),
     provenance: { kind: 'local-import', id },
     createdAt,
   };

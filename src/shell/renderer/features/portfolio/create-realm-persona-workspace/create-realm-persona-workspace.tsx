@@ -225,8 +225,9 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
             reviewState: candidate.reviewState === 'owner-selected' ? 'owner-reviewed' : 'candidate-only',
             label: normalizedDraft.displayName || 'assets.history.runtimeImageCandidate',
             source: 'Realm Persona creation draft reference image candidate',
-            detail: candidate.url,
+            detail: candidate.artifactId || candidate.url,
             previewUrl: candidate.url,
+            ...(candidate.artifactId ? { artifactIds: [candidate.artifactId] } : {}),
             originDraftKey: candidate.draftKey,
           })
         )));
@@ -281,6 +282,11 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
 
   function submitCreate() {
     setValidationAttempt((attempt) => attempt + 1);
+    if (normalizedDraft.referenceImageUrl && referenceImage.referenceCandidateLoadFailures.has(normalizedDraft.referenceImageUrl)) {
+      actions.setFieldErrors(createFieldErrorsFromReadiness([{ kind: 'reference-selection-invalid', field: 'referenceImage' }]));
+      actions.setReferenceImageEditorOpen(true);
+      return;
+    }
     const readiness = validateCreateRealmPersonaReadiness(draft, { selectableWorldIds, handleAvailability });
     if (!readiness.ready) {
       const nextFieldErrors = createFieldErrorsFromReadiness(readiness.errors);

@@ -1,5 +1,7 @@
 import { createAppUlid, isAppUlid } from '../../app-shell/app-ulid.js';
+import { getStudioProtectedJsonStorage, isStudioStorageNotFoundError, type StudioProtectedJsonStorage } from '../../app-shell/studio-storage.js';
 import type { StudioCopyKey } from '../../i18n/studio-copy.js';
+import { readStudioMediaArtifactPreview } from './studio-media-candidate.js';
 
 const CREATIVE_HISTORY_TITLE_KEYS = new Set<StudioCopyKey>([
   'assets.history.runtimeImageCandidate',
@@ -50,7 +52,7 @@ export type CreativeAssetHistoryInput = Omit<
   createdAt?: string;
 };
 
-export type CreativeAssetHistoryStorage = Pick<Storage, 'getItem' | 'setItem' | 'key' | 'length'>;
+export type CreativeAssetHistoryStorage = Pick<StudioProtectedJsonStorage, 'readJson' | 'writeJson'>;
 
 export type CreativeAssetHistoryLoadResult =
   | { ok: true; records: CreativeAssetHistoryRecord[]; unavailableCount: number }
@@ -72,7 +74,7 @@ export type CreativeAssetHistoryPersistResult =
     record: null;
   };
 
-export const CREATIVE_ASSET_HISTORY_STORAGE_PREFIX = 'realm-persona-studio.creative-asset-history.';
+export const CREATIVE_ASSET_HISTORY_STORAGE_PATH = 'assets/creative-history.json';
 export const CREATIVE_ASSET_HISTORY_UPDATED_EVENT = 'rps:creative-asset-history-updated';
 const HISTORY_LIMIT_PER_PERSONA = 20;
 const ISO_DATE_TIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/;
@@ -85,11 +87,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function resolveStorage(storage?: CreativeAssetHistoryStorage | null): CreativeAssetHistoryStorage | null {
   if (storage !== undefined) return storage;
-  return typeof window !== 'undefined' ? window.localStorage : null;
-}
-
-function historyKey(personaId: string): string {
-  return `${CREATIVE_ASSET_HISTORY_STORAGE_PREFIX}${personaId}`;
+  try { return getStudioProtectedJsonStorage(); } catch { return null; }
 }
 
 function nonEmptyText(value: unknown): string | null {
@@ -181,7 +179,8 @@ function normalizeRecord(value: unknown): CreativeAssetHistoryRecord | null {
   };
 }
 
-export async function loadAllLocalCreativeAssetHistory(
+// @nimi-authority: rule.realm-persona-studio.asset.r009
+async function readStoredCreativeAssetHistory(
   storage?: CreativeAssetHistoryStorage | null,
 ): Promise<CreativeAssetHistoryLoadResult> {
   const targetStorage = resolveStorage(storage);
@@ -198,29 +197,24 @@ export async function loadAllLocalCreativeAssetHistory(
   try {
     const records: CreativeAssetHistoryRecord[] = [];
     let unavailableCount = 0;
-    for (let index = 0; index < targetStorage.length; index += 1) {
-      const key = targetStorage.key(index);
-      if (!key?.startsWith(CREATIVE_ASSET_HISTORY_STORAGE_PREFIX)) continue;
-      const raw = targetStorage.getItem(key);
-      if (!raw) continue;
-      const parsed: unknown = JSON.parse(raw);
-      if (!Array.isArray(parsed)) {
-        return {
-          ok: false,
-          failure: 'creative-asset-history-unavailable',
-          message: 'Creative asset history app-local document is invalid.',
-          records: [],
-          unavailableCount: 0,
-        };
-      }
-      for (const item of parsed) {
-        const normalized = normalizeRecord(item);
-        if (normalized) records.push(normalized);
-        else unavailableCount += 1;
-      }
+    const { value: parsed } = await targetStorage.readJson(CREATIVE_ASSET_HISTORY_STORAGE_PATH);
+    if (!Array.isArray(parsed)) {
+      return {
+        ok: false,
+        failure: 'creative-asset-history-unavailable',
+        message: 'Creative asset history app-local document is invalid.',
+        records: [],
+        unavailableCount: 0,
+      };
+    }
+    for (const item of parsed) {
+      const normalized = normalizeRecord(item);
+      if (normalized) records.push(normalized);
+      else unavailableCount += 1;
     }
     return { ok: true, records, unavailableCount };
-  } catch {
+  } catch (error) {
+    if (isStudioStorageNotFoundError(error)) return { ok: true, records: [], unavailableCount: 0 };
     return {
       ok: false,
       failure: 'creative-asset-history-unavailable',
@@ -229,6 +223,27 @@ export async function loadAllLocalCreativeAssetHistory(
       unavailableCount: 0,
     };
   }
+}
+
+async function resolveHistoryPreviews(loaded: CreativeAssetHistoryLoadResult): Promise<CreativeAssetHistoryLoadResult> {
+  if (!loaded.ok) return loaded;
+  let unavailableCount = loaded.unavailableCount;
+  const records = await Promise.all(loaded.records.map(async (record) => {
+    if (record.previewUrl || !record.artifactIds?.[0]) return record;
+    try {
+      const previewUrl = await readStudioMediaArtifactPreview(record.artifactIds[0], record.kind === 'voice-demo-candidate' ? 'audio/' : 'image/');
+      if (previewUrl) return { ...record, previewUrl };
+    } catch { /* The canonical artifact may no longer be available. Keep its metadata. */ }
+    unavailableCount += 1;
+    return record;
+  }));
+  return { ok: true, records, unavailableCount };
+}
+
+export async function loadAllLocalCreativeAssetHistory(
+  storage?: CreativeAssetHistoryStorage | null,
+): Promise<CreativeAssetHistoryLoadResult> {
+  return resolveHistoryPreviews(await readStoredCreativeAssetHistory(storage));
 }
 
 export async function loadLocalCreativeAssetHistory(
@@ -245,46 +260,9 @@ export async function loadLocalCreativeAssetHistory(
       unavailableCount: 0,
     };
   }
-  const targetStorage = resolveStorage(storage);
-  if (!targetStorage) {
-    return {
-      ok: false,
-      failure: 'creative-asset-history-unavailable',
-      message: 'Creative asset history app-local storage is unavailable.',
-      records: [],
-      unavailableCount: 0,
-    };
-  }
-  try {
-    const raw = targetStorage.getItem(historyKey(normalizedPersonaId));
-    if (!raw) return { ok: true, records: [], unavailableCount: 0 };
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) {
-      return {
-        ok: false,
-        failure: 'creative-asset-history-unavailable',
-        message: 'Creative asset history app-local document is invalid.',
-        records: [],
-        unavailableCount: 0,
-      };
-    }
-    const records: CreativeAssetHistoryRecord[] = [];
-    let unavailableCount = 0;
-    for (const item of parsed) {
-      const normalized = normalizeRecord(item);
-      if (normalized && normalized.personaId === normalizedPersonaId) records.push(normalized);
-      else unavailableCount += 1;
-    }
-    return { ok: true, records: records.slice(0, HISTORY_LIMIT_PER_PERSONA), unavailableCount };
-  } catch {
-    return {
-      ok: false,
-      failure: 'creative-asset-history-unavailable',
-      message: 'Creative asset history app-local storage read failed.',
-      records: [],
-      unavailableCount: 0,
-    };
-  }
+  const loaded = await readStoredCreativeAssetHistory(storage);
+  if (!loaded.ok) return loaded;
+  return resolveHistoryPreviews({ ...loaded, records: loaded.records.filter((record) => record.personaId === normalizedPersonaId).slice(0, HISTORY_LIMIT_PER_PERSONA) });
 }
 
 function dispatchCreativeAssetHistoryUpdated(): void {
@@ -308,8 +286,13 @@ async function appendCreativeAssetHistoryOnce(
       record: null,
     };
   }
-  const loaded = await loadLocalCreativeAssetHistory(normalizedPersonaId || '', targetStorage);
+  const loaded = await readStoredCreativeAssetHistory(targetStorage);
   if (!loaded.ok) return { ...loaded, record: null };
+  const personaRecords = loaded.records.filter((record) => record.personaId === normalizedPersonaId);
+  if (loaded.unavailableCount > 0) return {
+    ok: false, failure: 'creative-asset-history-unavailable',
+    message: 'Creative asset history contains unreadable records.', records: personaRecords, record: null,
+  };
 
   const candidate = normalizeRecord({
     ...input,
@@ -323,15 +306,32 @@ async function appendCreativeAssetHistoryOnce(
       ok: false,
       failure: 'creative-asset-history-record-invalid',
       message: 'Creative asset history candidate provenance is incomplete.',
-      records: loaded.records,
+      records: personaRecords,
       record: null,
     };
   }
 
-  const next = [candidate, ...loaded.records.filter((record) => record.id !== candidate.id)]
+  const next = [candidate, ...personaRecords.filter((record) => record.id !== candidate.id)]
     .slice(0, HISTORY_LIMIT_PER_PERSONA);
+  // Generated media is restored through its existing Runtime artifact identity.
+  // Inline bytes and session-only blob URLs are not durable JSON metadata.
+  const transientPreview = candidate.previewUrl?.startsWith('data:') || candidate.previewUrl?.startsWith('blob:');
+  if (transientPreview && !candidate.artifactIds?.[0]) return {
+    ok: false, failure: 'creative-asset-history-record-invalid',
+    message: 'A transient media preview needs a durable Runtime artifact identity.', records: personaRecords, record: null,
+  };
+  const storedNext = next.map((record) => {
+    const { previewUrl, ...metadata } = record;
+    const transient = previewUrl?.startsWith('data:') || previewUrl?.startsWith('blob:');
+    return transient ? {
+      ...metadata,
+      detail: record.detail === previewUrl ? record.artifactIds?.join(', ') || record.label : record.detail,
+    } : record;
+  });
   try {
-    targetStorage.setItem(historyKey(normalizedPersonaId), JSON.stringify(next));
+    await targetStorage.writeJson(CREATIVE_ASSET_HISTORY_STORAGE_PATH, [
+      ...loaded.records.filter((record) => record.personaId !== normalizedPersonaId), ...storedNext,
+    ]);
     dispatchCreativeAssetHistoryUpdated();
     return {
       ok: true,
@@ -343,7 +343,7 @@ async function appendCreativeAssetHistoryOnce(
       ok: false,
       failure: 'creative-asset-history-unavailable',
       message: 'Creative asset history app-local storage write failed.',
-      records: loaded.records,
+      records: personaRecords,
       record: null,
     };
   }

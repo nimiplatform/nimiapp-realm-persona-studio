@@ -97,6 +97,7 @@ export function createStudioMediaCandidateRunners(
         runtime: { ai: scenarioJobs },
         appId: STUDIO_RUNTIME_APP_ID,
         text: input.text,
+        voiceRef: { kind: 'preset_voice_id', presetVoiceId: input.presetVoiceId },
         scenarioId: input.surfaceId,
         surfaceId: input.surfaceId,
       });
@@ -171,6 +172,11 @@ async function projectSpeechResult(
   }
 }
 
+export async function readStudioMediaArtifactPreview(artifactId: string, expectedMimePrefix: 'image/' | 'audio/'): Promise<string | undefined> {
+  const artifact = await projectArtifact({ artifactId, mimeType: '' }, getStudioLocalAppClient(), expectedMimePrefix);
+  return artifact.previewUrl;
+}
+
 async function projectArtifact(
   artifact: {
     readonly artifactId?: string;
@@ -236,6 +242,7 @@ function projectThrownFailure(error: unknown): StudioMediaCandidateExecutionResu
 function classifyFailure(error: unknown, runnerReason = ''): StudioMediaCandidateFailure {
   const reasonCode = errorReasonCode(error);
   if (runnerReason === 'input-invalid' || [
+    'INVALID_PAYLOAD',
     'AI_INPUT_INVALID',
     'AI_MEDIA_OPTION_UNSUPPORTED',
     'AI_MEDIA_SPEC_INVALID',
@@ -319,7 +326,7 @@ function normalizePreviewUrl(value: unknown): string | undefined {
   }
 }
 
-function bytesToDataUrl(bytes: Uint8Array, mimeType: string): string {
+export function bytesToDataUrl(bytes: Uint8Array, mimeType: string): string {
   let binary = '';
   const chunkSize = 0x8000;
   for (let offset = 0; offset < bytes.length; offset += chunkSize) {

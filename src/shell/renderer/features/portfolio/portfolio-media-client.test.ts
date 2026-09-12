@@ -148,6 +148,7 @@ describe('owner portfolio media client', () => {
     }));
     const voice = await synthesizeReviewedVoiceDemo({
       scriptText: 'Welcome in.',
+      presetVoiceId: 'catalogue-voice',
     }, ownerPersonaDetail(), async (input) => ({
       ok: true,
       jobId: 'voice-job-1',
@@ -215,6 +216,7 @@ describe('owner portfolio media client', () => {
     }, ownerPersonaDetail());
     const voice = await synthesizeReviewedVoiceDemo({
       scriptText: ' ',
+      presetVoiceId: 'catalogue-voice',
     }, ownerPersonaDetail());
 
     expect(visual).toMatchObject({ ok: false, failure: 'runtime-payload-invalid', draft: null });

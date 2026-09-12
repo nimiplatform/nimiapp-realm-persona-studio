@@ -88,10 +88,12 @@ describe('media and voice candidate normalization', () => {
   it('normalizes voice input to Resource(AUDIO) and PERSONA_VOICE_SAMPLE', () => {
     expect(normalizeVoiceDemoCandidateInput({
       scriptText: '  Hello\r\nfrom the public demo.  ',
+      presetVoiceId: 'catalogue-voice',
     })).toEqual({
       resourceType: 'AUDIO',
       bindingPoint: 'PERSONA_VOICE_SAMPLE',
       scriptText: 'Hello\nfrom the public demo.',
+      presetVoiceId: 'catalogue-voice',
     });
   });
 
@@ -257,6 +259,7 @@ describe('reviewed media and voice candidate payloads', () => {
   it('builds an allowlisted speechSynthesize candidate input preview', () => {
     const result = buildReviewedVoiceSynthesisPayload({
       scriptText: '  Welcome in.  ',
+      presetVoiceId: 'catalogue-voice',
     });
 
     expect(result).toMatchObject({
@@ -275,6 +278,7 @@ describe('reviewed media and voice candidate payloads', () => {
   it('fails closed when Runtime speechSynthesize script text is missing', () => {
     const result = buildReviewedVoiceSynthesisPayload({
       scriptText: ' ',
+      presetVoiceId: 'catalogue-voice',
     });
 
     expect(result).toEqual({
@@ -287,6 +291,7 @@ describe('reviewed media and voice candidate payloads', () => {
   it('builds a candidate-only Runtime voice payload without public Resource or Binding success', () => {
     const result = buildReviewedVoiceDemoCandidatePayload({
       scriptText: 'Welcome in.',
+      presetVoiceId: 'catalogue-voice',
     }, persona);
 
     expect(result.changed).toBe(true);

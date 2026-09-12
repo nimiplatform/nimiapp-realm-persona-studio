@@ -66,7 +66,6 @@ export type CreateFlowFailureKind =
   | 'reference-prompt-empty'
   | 'reference-count-invalid'
   | 'reference-payload-invalid'
-  | 'reference-local-artifact-no-url'
   | 'runtime-payload-invalid'
   | 'runtime-capability-unavailable'
   | 'runtime-route-unbound'
@@ -173,7 +172,6 @@ const CREATE_FLOW_FAILURE_COPY_KEYS: Record<CreateFlowFailureKind, StudioCopyKey
   'reference-prompt-empty': 'create.error.referencePromptEmpty',
   'reference-count-invalid': 'create.error.referenceCountInvalid',
   'reference-payload-invalid': 'create.error.referencePayloadInvalid',
-  'reference-local-artifact-no-url': 'create.error.referenceLocalArtifactNoUrl',
   'runtime-payload-invalid': 'create.error.referencePayloadInvalid',
   'runtime-capability-unavailable': 'create.error.referenceCandidateUnavailable',
   'runtime-route-unbound': 'create.error.aiRouteUnbound',

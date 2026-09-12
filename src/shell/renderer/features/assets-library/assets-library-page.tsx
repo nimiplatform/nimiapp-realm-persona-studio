@@ -311,7 +311,7 @@ function AssetPreviewOverlay({
   useEffect(() => setCopyState('idle'), [entry?.id]);
 
   async function copyPreviewUrl() {
-    if (!entry?.previewUrl || typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+    if (!entry?.previewUrl?.startsWith('https://') || typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
       setCopyState('failed');
       return;
     }
@@ -339,8 +339,8 @@ function AssetPreviewOverlay({
           <Button
             tone="secondary"
             leadingIcon={<Copy size={15} strokeWidth={1.8} />}
-            disabled={!entry?.previewUrl}
-            title={!entry?.previewUrl ? t('assetsLibrary.copyUnavailable') : undefined}
+            disabled={!entry?.previewUrl?.startsWith('https://')}
+            title={!entry?.previewUrl?.startsWith('https://') ? t('assetsLibrary.copyUnavailable') : undefined}
             onClick={() => void copyPreviewUrl()}
           >
             {t('assetsLibrary.copyUrl')}
@@ -390,7 +390,7 @@ function AssetPreviewOverlay({
               </div>
               <div>
                 <dt className="text-[var(--nimi-text-muted)]">{t('assetsLibrary.copyUrl')}</dt>
-                <dd className="ras-break-anywhere m-0 mt-1 text-[var(--nimi-text-primary)]">{entry.previewUrl || t('assetsLibrary.previewUnavailable')}</dd>
+                <dd className="ras-break-anywhere m-0 mt-1 text-[var(--nimi-text-primary)]">{entry.previewUrl?.startsWith('https://') ? entry.previewUrl : entry.previewUrl ? t('assetsLibrary.localReference') : t('assetsLibrary.previewUnavailable')}</dd>
               </div>
             </dl>
           </Surface>
@@ -557,6 +557,8 @@ export function AssetsLibraryPage() {
         nimiToast.success(t('assetsLibrary.upload.success', { title: result.record.title }));
       } else if (result.failure === 'unsupported-media-type') {
         setImportFailure({ message: t('assetsLibrary.upload.fileRejected'), informational: false });
+      } else if (result.failure === 'file-too-large') {
+        setImportFailure({ message: t('assetsLibrary.upload.fileTooLarge'), informational: false });
       } else if (result.failure === 'capability-unavailable') {
         setImportFailure({ message: t('assetsLibrary.upload.capabilityUnavailable'), informational: true });
       } else {
@@ -644,7 +646,7 @@ export function AssetsLibraryPage() {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*,audio/*"
+          accept="image/png,image/jpeg,image/webp,image/gif"
           className="hidden"
           onChange={(event) => void handleFileChange(event)}
         />

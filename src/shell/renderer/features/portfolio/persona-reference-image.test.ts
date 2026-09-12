@@ -90,7 +90,7 @@ describe('persona reference image generation', () => {
       artifacts: [{ artifactId: 'artifact-http', publicUri: 'http://cdn.example.test/reference.png' }],
     }));
 
-    expect(result).toMatchObject({ ok: false, failure: 'persona-reference-image-public-uri-unavailable' });
+    expect(result).toMatchObject({ ok: false, failure: 'runtime-output-malformed' });
   });
 
   it('keeps credential-bearing HTTPS artifacts local', async () => {
@@ -105,10 +105,10 @@ describe('persona reference image generation', () => {
       }],
     }));
 
-    expect(result).toMatchObject({ ok: false, failure: 'persona-reference-image-public-uri-unavailable' });
+    expect(result).toMatchObject({ ok: false, failure: 'runtime-output-malformed' });
   });
 
-  it('keeps a local-only generated artifact out of the Realm public reference field', async () => {
+  it('returns an artifact-backed local candidate without requiring a public URL', async () => {
     const result = await generatePersonaReferenceImage({
       prompt: 'A reviewed public Realm Persona portrait',
     }, async () => ({
@@ -118,8 +118,9 @@ describe('persona reference image generation', () => {
     }));
 
     expect(result).toMatchObject({
-      ok: false,
-      failure: 'persona-reference-image-public-uri-unavailable',
+      ok: true,
+      referenceImageUrl: 'data:image/png;base64,AQID',
+      artifactIds: ['artifact-2'],
       submitted: { prompt: 'A reviewed public Realm Persona portrait' },
     });
   });

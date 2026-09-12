@@ -1,4 +1,9 @@
 import type { LocalPostScheduleCandidate } from './post-draft.js';
+import {
+  getStudioProtectedJsonStorage,
+  isStudioStorageNotFoundError,
+  type StudioProtectedJsonStorage,
+} from '../../app-shell/studio-storage.js';
 
 export type LocalPostScheduleRecord = {
   localKey: string;
@@ -14,12 +19,13 @@ export type LocalPostScheduleRecord = {
   candidate: LocalPostScheduleCandidate;
 };
 
-type LocalStorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
+type LocalScheduleStorage = StudioProtectedJsonStorage;
 
-const SCHEDULE_PREFIX = 'realm-persona-studio.local-post-schedule.';
+const SCHEDULE_PREFIX = 'posts/schedules/';
 
 function scheduleKey(personaId: string): string {
-  return `${SCHEDULE_PREFIX}${personaId}`;
+  if (!personaId.trim()) throw new Error('Persona id is required for local schedule storage.');
+  return `${SCHEDULE_PREFIX}${encodeURIComponent(personaId)}.json`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -69,11 +75,9 @@ function isLocalPostScheduleCandidate(value: unknown): value is LocalPostSchedul
     && review?.humanReviewed === true;
 }
 
-function resolveStorage(storage?: LocalStorageLike | null): LocalStorageLike | null {
-  if (storage !== undefined) {
-    return storage;
-  }
-  return typeof window !== 'undefined' ? window.localStorage : null;
+function resolveStorage(storage?: LocalScheduleStorage | null): LocalScheduleStorage {
+  if (storage === null) throw new Error('Local post schedule storage is unavailable.');
+  return storage ?? getStudioProtectedJsonStorage();
 }
 
 function normalizeRecord(value: unknown, personaId: string): LocalPostScheduleRecord | null {
@@ -116,23 +120,26 @@ function normalizeRecord(value: unknown, personaId: string): LocalPostScheduleRe
   };
 }
 
-export function loadLocalPostSchedule(personaId: string, storage?: LocalStorageLike | null): LocalPostScheduleRecord | null {
+// @nimi-authority: rule.realm-persona-studio.asset.r009
+export async function loadLocalPostSchedule(personaId: string, storage?: LocalScheduleStorage | null): Promise<LocalPostScheduleRecord | null> {
   try {
     const targetStorage = resolveStorage(storage);
-    if (!targetStorage) return null;
-    const raw = targetStorage.getItem(scheduleKey(personaId));
-    return raw ? normalizeRecord(JSON.parse(raw), personaId) : null;
-  } catch {
-    return null;
+    const document = await targetStorage.readJson(scheduleKey(personaId));
+    const record = normalizeRecord(document.value, personaId);
+    if (!record) throw new Error('Stored local post schedule is invalid.');
+    return record;
+  } catch (error) {
+    if (isStudioStorageNotFoundError(error)) return null;
+    throw error;
   }
 }
 
-export function saveLocalPostSchedule(
+export async function saveLocalPostSchedule(
   personaId: string,
   candidate: LocalPostScheduleCandidate,
-  storage?: LocalStorageLike | null,
+  storage?: LocalScheduleStorage | null,
   now = new Date(),
-): LocalPostScheduleRecord {
+): Promise<LocalPostScheduleRecord> {
   if (!isLocalPostScheduleCandidate(candidate)) {
     throw new Error('Local post schedule candidate requires typed PersonaCharacter sourceRef evidence.');
   }
@@ -154,21 +161,17 @@ export function saveLocalPostSchedule(
     candidate,
   };
   const targetStorage = resolveStorage(storage);
-  if (!targetStorage) {
-    throw new Error('Local post schedule storage is unavailable.');
-  }
   try {
-    targetStorage.setItem(scheduleKey(personaId), JSON.stringify(record));
+    await targetStorage.writeJson(scheduleKey(personaId), record);
   } catch {
     throw new Error('Local post schedule could not be persisted.');
   }
   return record;
 }
 
-export function clearLocalPostSchedule(personaId: string, storage?: LocalStorageLike | null): void {
+export async function clearLocalPostSchedule(personaId: string, storage?: LocalScheduleStorage | null): Promise<void> {
   const targetStorage = resolveStorage(storage);
-  if (!targetStorage) throw new Error('Local post schedule storage is unavailable.');
-  targetStorage.removeItem(scheduleKey(personaId));
+  await targetStorage.removeJson(scheduleKey(personaId));
 }
 
 export function isLocalPostScheduleDue(record: LocalPostScheduleRecord, now = new Date()): boolean {

@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, InlineAlert, NimiText, StatusBadge, Surface, nimiToast } from '@nimiplatform/kit/ui';
 import { ModelConfigAIConfigSurface, type ModelConfigCopy } from '@nimiplatform/kit/features/model-config';
-import { CANONICAL_CAPABILITY_IDS } from '@nimiplatform/kit/core/runtime-capabilities';
 import { failureKindCopyKey } from '@renderer/features/portfolio/failure-copy.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
 import type { StudioCopyKey } from '@renderer/i18n/studio-copy.js';
@@ -14,6 +13,8 @@ import {
 } from './studio-ai-config-store.js';
 
 const STUDIO_AI_CONFIG_QUERY_KEY = ['realm-persona-studio', 'studio-ai-config'] as const;
+// @nimi-authority: rule.realm-persona-studio.runtime-ai.r011
+const STUDIO_AI_CAPABILITIES = ['text.generate', 'image.generate', 'audio.synthesize'] as const;
 
 const CAPABILITY_LABEL_KEYS: Readonly<Record<string, StudioCopyKey>> = {
   'audio.synthesize': 'ModelConfig.surface.capability.audioSynthesize',
@@ -126,7 +127,8 @@ export function StudioAIConfigPage() {
   });
 
   const snapshot = configQuery.data;
-  const intents = snapshot?.config?.capabilities ?? [];
+  const intents = (snapshot?.config?.capabilities ?? []).filter((intent) =>
+    STUDIO_AI_CAPABILITIES.some((capability) => capability === intent.capabilityContract));
   const effectiveByCapability = new Map(
     snapshot?.effectiveSelections.map((selection) => [selection.capabilityContract, selection]),
   );
@@ -174,7 +176,7 @@ export function StudioAIConfigPage() {
         <ModelConfigAIConfigSurface
           className="mb-4"
           context={{ owner: 'app-ai-config', appId: 'nimi.realm-persona-studio' }}
-          capabilityContracts={CANONICAL_CAPABILITY_IDS}
+          capabilityContracts={STUDIO_AI_CAPABILITIES}
           capabilities={snapshot?.config?.capabilities ?? (configQuery.isSuccess ? null : undefined)}
           revision={snapshot?.revision}
           effectiveSelections={snapshot?.effectiveSelections}

@@ -40,6 +40,7 @@ export type AvatarPackageCandidateInput = VisualImageGenerationInput & {
 
 export type VoiceDemoCandidateInput = {
   scriptText: string;
+  presetVoiceId: string;
 };
 
 export type NormalizedVisualMediaCandidateInput = {
@@ -53,6 +54,7 @@ export type NormalizedVoiceDemoCandidateInput = {
   resourceType: VoiceCandidateResourceType;
   bindingPoint: Extract<MediaCandidateBindingPoint, 'PERSONA_VOICE_SAMPLE'>;
   scriptText: string;
+  presetVoiceId: string;
 };
 
 export type CandidatePersonaContext = {
@@ -82,6 +84,7 @@ export type StudioVoiceCandidatePreview = {
   surfaceId: string;
   capability: 'audio.synthesize';
   text: string;
+  presetVoiceId: string;
 };
 
 export type ReviewedVoiceDemoCandidatePayload = {
@@ -299,6 +302,7 @@ export function normalizeVoiceDemoCandidateInput(input: VoiceDemoCandidateInput)
     resourceType: 'AUDIO',
     bindingPoint: 'PERSONA_VOICE_SAMPLE',
     scriptText: normalizeLineText(input.scriptText),
+    presetVoiceId: normalizeSingleLine(input.presetVoiceId),
   };
 }
 
@@ -496,6 +500,7 @@ export function buildReviewedVoiceSynthesisPayload(
   if (!normalized.scriptText) {
     errors.push('voice demo script missing for voice candidate generation');
   }
+  if (!normalized.presetVoiceId) errors.push('voice preset selection missing');
 
   if (errors.length > 0) {
     return { changed: false, errors, payload: null };
@@ -508,6 +513,7 @@ export function buildReviewedVoiceSynthesisPayload(
       surfaceId: 'realm-persona-studio.voice-demo-candidate',
       capability: 'audio.synthesize',
       text: normalizeSingleLine(normalized.scriptText),
+      presetVoiceId: normalized.presetVoiceId,
     },
   };
 }
