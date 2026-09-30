@@ -8,7 +8,8 @@ import {
 } from 'lucide-react';
 import { Button, EmptyState, IconButton, InlineAlert, nimiToast, Slider, StatusBadge } from '@nimiplatform/kit/ui';
 import type { OwnerPortfolioPersonaDetail } from './portfolio-data.js';
-import { appendLocalCreativeAssetHistory } from './creative-asset-history.js';
+import { saveLocalImageEditCandidate } from './local-image-edit-candidate.js';
+import { LOCAL_IMPORT_MAX_BYTES, LOCAL_IMPORT_MIME_TYPES } from '../assets-library/local-import-store.js';
 import { useStudioI18n } from '../../i18n/use-studio-i18n.js';
 import type { StudioCopyKey } from '../../i18n/studio-copy.js';
 import {
@@ -31,7 +32,6 @@ import {
   type VisualImageRotation,
 } from './visual-image-edit.js';
 
-const VISUAL_IMAGE_EDIT_SOURCE = 'realm-persona-studio.local-image-edit';
 const MAX_ZOOM = 3;
 
 type VisualImageSourceKind = 'current' | 'upload';
@@ -63,7 +63,7 @@ function effectsEqual(left: VisualImageEffects, right: VisualImageEffects): bool
     && Math.abs(left.hueRotate - right.hueRotate) < 0.001;
 }
 
-function exportEditedVisualImage(
+async function exportEditedVisualImage(
   image: HTMLImageElement,
   params: {
     naturalWidth: number;
@@ -77,7 +77,7 @@ function exportEditedVisualImage(
     frameHeight: number;
     effects: VisualImageEffects;
   },
-): string | null {
+): Promise<Blob | null> {
   const exportScale = computeVisualImageExportScale(params.displayScale, params.frameWidth, params.frameHeight);
   const canvas = document.createElement('canvas');
   canvas.width = Math.max(1, Math.round(params.frameWidth * exportScale));
@@ -99,15 +99,17 @@ function exportEditedVisualImage(
   const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
   applyVisualImageEffects(pixels, params.effects);
   context.putImageData(pixels, 0, 0);
-  return canvas.toDataURL('image/jpeg', 0.9);
+  return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.9));
 }
 
 export function VisualImageEditorWorkspace({
   persona,
   onHistoryUpdated,
+  initialFile = null,
 }: {
   persona: OwnerPortfolioPersonaDetail;
   onHistoryUpdated: () => Promise<void>;
+  initialFile?: File | null;
 }) {
   const { t } = useStudioI18n();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -128,6 +130,21 @@ export function VisualImageEditorWorkspace({
   const [flipVertical, setFlipVertical] = useState(false);
   const [effects, setEffects] = useState<VisualImageEffects>({ ...DEFAULT_VISUAL_IMAGE_EFFECTS });
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (!initialFile) return;
+    setUploadedPreviewUrl(URL.createObjectURL(initialFile));
+    setSourceKind('upload');
+    setImageSize(null);
+    setImageLoadFailed(false);
+    setAspectId(DEFAULT_VISUAL_IMAGE_ASPECT);
+    setZoom(1);
+    setOffset({ x: 0, y: 0 });
+    setRotation(0);
+    setFlipHorizontal(false);
+    setFlipVertical(false);
+    setEffects({ ...DEFAULT_VISUAL_IMAGE_EFFECTS });
+  }, [initialFile]);
 
   const sourceUrl = sourceKind === 'current' ? persona.avatarUrl || null : uploadedPreviewUrl;
   const aspect = resolveVisualImageAspect(aspectId);
@@ -201,8 +218,12 @@ export function VisualImageEditorWorkspace({
     const file = event.currentTarget.files?.[0] ?? null;
     event.currentTarget.value = '';
     if (!file) return;
-    if (!file.type.toLowerCase().startsWith('image/')) {
-      nimiToast.danger(t('assets.visualChange.uploadInvalid'));
+    if (!LOCAL_IMPORT_MIME_TYPES.some((mime) => mime === file.type.toLowerCase())) {
+      nimiToast.danger(t('assetsLibrary.upload.fileRejected'));
+      return;
+    }
+    if (file.size > LOCAL_IMPORT_MAX_BYTES) {
+      nimiToast.danger(t('assetsLibrary.upload.fileTooLarge'));
       return;
     }
     const nextPreviewUrl = URL.createObjectURL(file);
@@ -259,7 +280,7 @@ export function VisualImageEditorWorkspace({
     if (!image || !imageSize || !sourceUrl || isSaving || imageLoadFailed) return;
     setIsSaving(true);
     try {
-      const dataUrl = exportEditedVisualImage(image, {
+      const blob = await exportEditedVisualImage(image, {
         naturalWidth: imageSize.width,
         naturalHeight: imageSize.height,
         rotation,
@@ -271,33 +292,29 @@ export function VisualImageEditorWorkspace({
         frameHeight: frame.height,
         effects,
       });
-      if (!dataUrl) {
+      if (!blob || blob.type !== 'image/jpeg') {
         nimiToast.danger(t('assets.imageEditor.exportFailed'));
         return;
       }
-      const persisted = await appendLocalCreativeAssetHistory(persona.id, {
-        sourceContentHash: persona.contentHash,
-        kind: 'local-image-edit-candidate',
-        sourceKind: 'imported',
-        reviewState: 'owner-reviewed',
-        label: 'assets.history.localImageEdit',
-        source: VISUAL_IMAGE_EDIT_SOURCE,
-        previewUrl: dataUrl,
-        detail: buildVisualImageEditDetail({
+      const persisted = await saveLocalImageEditCandidate(persona, new Uint8Array(await blob.arrayBuffer()),
+        buildVisualImageEditDetail({
           aspectId,
           rotation,
           flipHorizontal,
           flipVertical,
           effects,
           presetId: activePresetId,
-        }),
-      });
+        }));
       if (!persisted.ok) {
-        nimiToast.danger(t('assets.history.persistFailed'));
+        const failureKey = persisted.failure === 'file-too-large' ? 'assetsLibrary.upload.fileTooLarge'
+          : persisted.failure === 'history-unavailable' ? 'assets.imageEditor.historyPersistFailed'
+            : 'assets.imageEditor.saveUnavailable';
+        nimiToast.danger(t(failureKey));
         return;
       }
       nimiToast.success(t('assets.imageEditor.saved'));
-      await onHistoryUpdated();
+      try { await onHistoryUpdated(); }
+      catch { nimiToast.info(t('assets.imageEditor.historyReloadFailed')); }
     } catch {
       nimiToast.danger(t('assets.imageEditor.exportFailed'));
     } finally {
@@ -313,7 +330,7 @@ export function VisualImageEditorWorkspace({
         ref={fileInputRef}
         className="ras-image-editor__file-input"
         type="file"
-        accept="image/*"
+        accept={LOCAL_IMPORT_MIME_TYPES.join(',')}
         aria-label={t('assets.imageEditor.uploadAriaLabel')}
         onChange={handleUploadChange}
       />

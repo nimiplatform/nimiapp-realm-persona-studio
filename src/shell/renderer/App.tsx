@@ -7,15 +7,18 @@ import { ShellLayout } from './app-shell/shell-layout.js';
 import { AuthProvider } from './app-shell/auth-provider.js';
 import { studioQueryClient } from './infra/query-client.js';
 import { useStudioI18n } from './i18n/use-studio-i18n.js';
+import { StudioNavigationGuardProvider } from './app-shell/studio-navigation-guard.js';
 
 const studioRouter = createHashRouter([
   {
     path: '*',
     element: (
       <AuthProvider>
-        <ShellLayout>
-          <AppRoutes />
-        </ShellLayout>
+        <StudioNavigationGuardProvider>
+          <ShellLayout>
+            <AppRoutes />
+          </ShellLayout>
+        </StudioNavigationGuardProvider>
       </AuthProvider>
     ),
   },

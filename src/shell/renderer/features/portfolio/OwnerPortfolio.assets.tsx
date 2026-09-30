@@ -42,6 +42,7 @@ import {
 } from './creative-asset-history.js';
 import { SettingsSectionHead } from './OwnerPortfolio.settings.js';
 import { VisualImageEditorWorkspace } from './visual-image-editor.js';
+import { LOCAL_IMPORT_MAX_BYTES, LOCAL_IMPORT_MIME_TYPES } from '../assets-library/local-import-store.js';
 import { useStudioI18n } from '../../i18n/use-studio-i18n.js';
 import { StudioVoiceSelector, useStudioVoicePresets } from './studio-voice-selector.js';
 import type { StudioCopyKey } from '../../i18n/studio-copy.js';
@@ -177,6 +178,7 @@ export function PersonaVisualIdentityDialog({
   const { t } = useStudioI18n();
   const { creativeHistory, refreshCreativeHistory } = useCreativeAssetHistory(persona.id);
   const [imageEditorOpen, setImageEditorOpen] = useState(false);
+  const [imageEditorFile, setImageEditorFile] = useState<File | null>(null);
 
   return (
     <>
@@ -201,19 +203,19 @@ export function PersonaVisualIdentityDialog({
         description={<span className="ras-visual-change__description">{t('assets.visualChange.description')}</span>}
         panelClassName="ras-visual-change-dialog"
         contentClassName="ras-visual-change-dialog__content"
-        footer={persona.avatarUrl ? (
+        footer={(
           <div className="flex flex-wrap items-center justify-end gap-3">
             <Button
               tone="ghost"
               size="sm"
               className="mr-auto"
               leadingIcon={<Crop size={15} strokeWidth={1.8} />}
-              onClick={() => setImageEditorOpen(true)}
+              onClick={() => { setImageEditorFile(null); setImageEditorOpen(true); }}
             >
               {t('assets.visualChange.editImage')}
             </Button>
           </div>
-        ) : undefined}
+        )}
         dataTestId="persona-visual-identity-dialog"
       >
         <VisualIdentityChangeEditor
@@ -221,6 +223,7 @@ export function PersonaVisualIdentityDialog({
           creativeHistory={creativeHistory}
           onHistoryUpdated={refreshCreativeHistory}
           onPersonaWrite={onPersonaWrite}
+          onEditUpload={(file) => { setImageEditorFile(file); setImageEditorOpen(true); }}
         />
       </OverlayShell>
 
@@ -239,7 +242,7 @@ export function PersonaVisualIdentityDialog({
         )}
         dataTestId="persona-visual-image-editor-dialog"
       >
-        <VisualImageEditorWorkspace persona={persona} onHistoryUpdated={refreshCreativeHistory} />
+        <VisualImageEditorWorkspace persona={persona} initialFile={imageEditorFile} onHistoryUpdated={refreshCreativeHistory} />
       </OverlayShell>
     </>
   );
@@ -352,11 +355,13 @@ function VisualIdentityChangeEditor({
   creativeHistory,
   onHistoryUpdated,
   onPersonaWrite,
+  onEditUpload,
 }: {
   persona: OwnerPortfolioPersonaDetail;
   creativeHistory: CreativeAssetHistoryRecord[];
   onHistoryUpdated: () => Promise<void>;
   onPersonaWrite: () => Promise<void>;
+  onEditUpload: (file: File) => void;
 }) {
   const { t } = useStudioI18n();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -421,8 +426,12 @@ function VisualIdentityChangeEditor({
     const file = event.currentTarget.files?.[0] ?? null;
     event.currentTarget.value = '';
     if (!file) return;
-    if (!file.type.toLowerCase().startsWith('image/')) {
-      nimiToast.danger(t('assets.visualChange.uploadInvalid'));
+    if (!LOCAL_IMPORT_MIME_TYPES.some((mime) => mime === file.type.toLowerCase())) {
+      nimiToast.danger(t('assetsLibrary.upload.fileRejected'));
+      return;
+    }
+    if (file.size > LOCAL_IMPORT_MAX_BYTES) {
+      nimiToast.danger(t('assetsLibrary.upload.fileTooLarge'));
       return;
     }
     const nextPreviewUrl = URL.createObjectURL(file);
@@ -433,6 +442,7 @@ function VisualIdentityChangeEditor({
     setUploadedFile(file);
     setSelectedAssetId(null);
     setGenerationResult(null);
+    onEditUpload(file);
   }
 
   async function generateImageCandidate() {

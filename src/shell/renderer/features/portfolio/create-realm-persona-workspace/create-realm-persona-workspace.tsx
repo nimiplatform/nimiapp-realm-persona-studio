@@ -143,8 +143,8 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
     queryFn: () => listCreateRealmPersonaSelectableWorlds(),
   });
   const worlds = worldsQuery.data || [];
-  const selectableWorldIds = useMemo(() => worlds.map((world) => world.id), [worlds]);
-  const selectedWorld = worlds.find((world) => world.id === draft.selectedWorldId) || null;
+  const selectableWorldIds = useMemo(() => worlds.filter((world) => Boolean(world.name)).map((world) => world.id), [worlds]);
+  const selectedWorld = worlds.find((world) => world.id === draft.selectedWorldId && Boolean(world.name)) || null;
   // OASIS is the local default world: once the source-backed world list is
   // available and the hydrated draft has no explicit selection, pre-select it.
   // This is a system-derived default, not an owner edit — it must not flip the
@@ -179,7 +179,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
     edited,
     draftLoadState,
     draftHistoryLabel,
-    selectedWorldName: selectedWorld?.name,
+    selectedWorldName: selectedWorld?.name ?? undefined,
     normalizedDraft,
     t,
     setAutosave: actions.setAutosave,
@@ -312,8 +312,8 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
     createMutation.mutate(readiness.payload);
   }
 
-  const createDisabled = createMutation.isPending || worldsQuery.isLoading || worldsQuery.isError || worlds.length === 0;
-  const worldsUnavailable = worldsQuery.isError || (!worldsQuery.isLoading && worlds.length === 0);
+  const createDisabled = createMutation.isPending || worldsQuery.isLoading || worldsQuery.isError || selectableWorldIds.length === 0;
+  const worldsUnavailable = worldsQuery.isError || (!worldsQuery.isLoading && selectableWorldIds.length === 0);
   const seedPrompt = ownerPromptFromDraft(draft);
 
   const renderHeader = () => (

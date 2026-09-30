@@ -11,6 +11,7 @@ vi.mock('@renderer/app-shell/studio-platform.js', () => ({
 }));
 
 import {
+  buildPortfolioSettingsProposalContext,
   buildRealmUpdateVisibilityInput,
   createPersonaVisibilityDraft,
   getOwnerPersonaSettings,
@@ -23,9 +24,11 @@ import {
   type RealmPersonaVisibilitySettings,
 } from './portfolio-settings-client.js';
 import { createOwnerPersonaSettingsDraft } from './setting-proposal.js';
+import { normalizeOwnerPortfolioPersonaDetail } from './portfolio-data.js';
 import {
   ownerPersonaDetail,
   persona,
+  world,
 } from './portfolio-client.test-helpers.js';
 import type { StudioTextCandidateRunner } from './studio-text-candidate.js';
 
@@ -65,6 +68,13 @@ describe('owner PersonaCharacter settings client', () => {
       visibility: input.visibility,
       profile: { ...input.profile, profileHash: 'f'.repeat(64), profileCoverage: persona.profile.profileCoverage },
     }));
+  });
+
+  it('keeps AI world identity separate from WorldCore display availability', () => {
+    expect(buildPortfolioSettingsProposalContext(normalizeOwnerPortfolioPersonaDetail(persona, world)))
+      .toMatchObject({ worldId: 'world-oasis', worldName: 'OASIS' });
+    expect(buildPortfolioSettingsProposalContext(normalizeOwnerPortfolioPersonaDetail(persona)))
+      .toMatchObject({ worldId: 'world-oasis', worldName: null });
   });
 
   it('reads native settings and canonical visibility through getOwned', async () => {

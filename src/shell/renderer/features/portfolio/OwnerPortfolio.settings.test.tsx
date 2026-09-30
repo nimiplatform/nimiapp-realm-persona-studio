@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PersonaSettingsForm } from './OwnerPortfolio.settings.js';
+import { StudioNavigationGuardProvider } from '../../app-shell/studio-navigation-guard.js';
 import { readPersonaSettings } from './portfolio-settings-client.js';
 import { ownerPersonaDetail, persona } from './portfolio-client.test-helpers.js';
 import { ensureStudioI18nInitialized } from '../../i18n/studio-i18n.js';
@@ -33,7 +34,7 @@ describe('owner settings editor read baseline', () => {
     let finishRead!: (value: ReturnType<typeof settings>) => void;
     readSettings.mockImplementationOnce(() => new Promise((resolve) => { finishRead = resolve; }));
     const router = createMemoryRouter([{ path: '/', element: (
-      <PersonaSettingsForm persona={detail} onPersonaWrite={async () => {}} mode="page" />
+      <StudioNavigationGuardProvider><PersonaSettingsForm persona={detail} onPersonaWrite={async () => {}} mode="page" /></StudioNavigationGuardProvider>
     ) }]);
     render(<QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>);
     await waitFor(() => expect(readSettings).toHaveBeenCalledOnce());

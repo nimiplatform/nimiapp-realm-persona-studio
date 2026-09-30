@@ -4,6 +4,7 @@ import { translateStudioCopy, type StudioTranslateOptions } from '../../i18n/stu
 import { useStudioI18n } from '../../i18n/use-studio-i18n.js';
 import type { StudioCopyKey } from '../../i18n/studio-copy.js';
 import type { OwnerPortfolioPersona, SettingField, SettingFieldKey } from './portfolio-data.js';
+import { failureKindCopyKey } from './failure-copy.js';
 
 type StudioTranslator = (key: StudioCopyKey, options?: StudioTranslateOptions) => string;
 
@@ -49,7 +50,8 @@ export function settingFieldDisplayValue(
 ): string {
   if (field.value) return field.value;
   if (field.status === 'available-empty') return emptyLabel;
-  return t('shared.fieldStatus.sourceUnavailable');
+  const unavailable = t('shared.fieldStatus.sourceUnavailable');
+  return field.sourceFailure ? `${unavailable} · ${t(failureKindCopyKey(field.sourceFailure))}` : unavailable;
 }
 
 export function PersonaLibraryStatusBadge({ status }: { status: PersonaLibraryStatus }) {

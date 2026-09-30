@@ -11,11 +11,14 @@ import {
 import { RefreshCw } from 'lucide-react';
 import {
   groupSelectableRealmWorldsForPicker,
+  hasSelectableWorldName,
+  type NamedSelectableRealmWorld,
   type SelectableRealmWorld,
 } from '../create-persona-draft.js';
 import { useStudioI18n } from '../../../i18n/use-studio-i18n.js';
 import { worldOptionLabel } from './draft-utils.js';
 
+// @nimi-authority: rule.realm-persona-studio.create-flow.r010
 export function WorldPicker({
   open,
   worlds,
@@ -33,22 +36,24 @@ export function WorldPicker({
   const [search, setSearch] = useState('');
   const query = search.trim().toLocaleLowerCase();
   const groups = useMemo(() => {
-    const filtered = worlds.filter((world) => world.name.toLocaleLowerCase().includes(query));
+    const filtered = worlds.filter(hasSelectableWorldName).filter((world) => world.name.toLocaleLowerCase().includes(query));
     const grouped = groupSelectableRealmWorldsForPicker(filtered);
     return grouped;
   }, [query, worlds]);
   const orderedWorlds = [...groups.recommended, ...groups.others];
+  const unavailableWorlds = worlds.filter((world) => !hasSelectableWorldName(world));
+  const hasSelectedWorld = orderedWorlds.some((world) => world.id === selectedWorldId);
 
   function moveRadio(event: KeyboardEvent<HTMLButtonElement>, index: number) {
-    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    if (!['ArrowDown', 'ArrowUp', 'ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return;
     event.preventDefault();
     const nextIndex = event.key === 'Home'
       ? 0
       : event.key === 'End'
         ? orderedWorlds.length - 1
-        : event.key === 'ArrowDown'
-          ? Math.min(index + 1, orderedWorlds.length - 1)
-          : Math.max(index - 1, 0);
+        : event.key === 'ArrowDown' || event.key === 'ArrowRight'
+          ? (index + 1) % orderedWorlds.length
+          : (index - 1 + orderedWorlds.length) % orderedWorlds.length;
     const nextWorld = orderedWorlds[nextIndex];
     if (!nextWorld) return;
     onSelect(nextWorld.id);
@@ -57,7 +62,7 @@ export function WorldPicker({
     radios[nextIndex]?.focus();
   }
 
-  const renderWorld = (world: SelectableRealmWorld, index: number, recommended: boolean) => {
+  const renderWorld = (world: NamedSelectableRealmWorld, index: number, recommended: boolean) => {
     const selected = world.id === selectedWorldId;
     return (
       <Surface
@@ -69,9 +74,10 @@ export function WorldPicker({
         interactive
         active={selected}
         role="radio"
+        tabIndex={selected || (!hasSelectedWorld && index === 0) ? 0 : -1}
         aria-checked={selected}
         aria-label={worldOptionLabel(world)}
-        onClick={() => onSelect(world.id)}
+        onClick={() => { onSelect(world.id); onClose(); }}
         onKeyDown={(event) => moveRadio(event, index)}
         className="flex w-full items-center gap-3 text-left"
       >
@@ -103,6 +109,7 @@ export function WorldPicker({
       dataTestId="realm-persona-world-picker"
     >
       <div className="grid gap-4">
+        {unavailableWorlds.length > 0 ? <InlineAlert tone="warning">{t('create.world.partialUnavailable', { count: unavailableWorlds.length })}</InlineAlert> : null}
         <SearchField value={search} placeholder={t('create.world.search')} aria-label={t('create.world.search')} onChange={(event) => setSearch(event.currentTarget.value)} />
         {orderedWorlds.length === 0 ? <EmptyState title={t('create.world.noMatches')} description={t('create.world.search')} /> : (
           <div role="radiogroup" aria-label={t('create.world.select')} className="grid max-h-[52vh] gap-4 overflow-y-auto">
@@ -110,6 +117,9 @@ export function WorldPicker({
             {groups.others.length > 0 ? <section className="grid gap-2"><h3 className="m-0 text-xs font-semibold text-[var(--nimi-text-muted)]">{t('create.world.all')}</h3>{groups.others.map((world, index) => renderWorld(world, groups.recommended.length + index, false))}</section> : null}
           </div>
         )}
+        {unavailableWorlds.map((world) => <Surface key={world.id} padding="sm" data-world-id={world.id}>
+          <StatusBadge tone="warning">{t('shared.worldUnavailable')}</StatusBadge>
+        </Surface>)}
       </div>
     </OverlayShell>
   );

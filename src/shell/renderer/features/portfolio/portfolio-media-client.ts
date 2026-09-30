@@ -219,15 +219,24 @@ export async function selectReviewedPersonaAvatarUrl(
   }
   try {
     const client = getStudioLocalAppClient().realm.personaCharacter;
-    const profile = withSelectedAvatarExternalRef(client.toProfileInput(current.profile), submitted.avatarUrl);
-    if (!current.lorebookDeclaration) throw new Error('Character lorebook declaration is required before replace.');
+    const latest = await client.getOwned(current.id);
+    if (latest.id !== current.id || latest.visibility === 'system') {
+      return { ok: false, source: REALM_PERSONA_AVATAR_SELECT_SOURCE, publicTruth: false,
+        failure: 'contract-invalid', message: 'contract-invalid', submitted };
+    }
+    if (latest.contentHash !== current.contentHash) {
+      return { ok: false, source: REALM_PERSONA_AVATAR_SELECT_SOURCE, publicTruth: false,
+        failure: 'content-conflict', message: 'content-conflict', submitted };
+    }
+    const profile = withSelectedAvatarExternalRef(client.toProfileInput(latest.profile), submitted.avatarUrl);
+    if (!latest.lorebookDeclaration) throw new Error('Character lorebook declaration is required before replace.');
     const replaced = await client.replace({
-      personaCharacterId: current.id,
-      baseContentHash: current.contentHash,
-      worldId: current.worldId,
-      visibility: current.visibility,
-      origin: current.origin,
-      lorebookDeclaration: current.lorebookDeclaration,
+      personaCharacterId: latest.id,
+      baseContentHash: latest.contentHash,
+      worldId: latest.worldId,
+      visibility: latest.visibility,
+      origin: latest.origin,
+      lorebookDeclaration: latest.lorebookDeclaration,
       profile,
     });
     return normalizeRealmPersonaAvatarSelectResult(replaced, submitted);

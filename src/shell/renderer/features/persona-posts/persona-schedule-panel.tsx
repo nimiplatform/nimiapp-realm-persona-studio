@@ -75,6 +75,20 @@ export function PersonaSchedulePanel({
   const [persistFailed, setPersistFailed] = useState(false);
   const [clearFailed, setClearFailed] = useState(false);
   const [pending, setPending] = useState(false);
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    let timer: number | undefined;
+    const update = () => {
+      const current = new Date();
+      setNow(current);
+      if (!schedule || isLocalPostScheduleDue(schedule, current)) return;
+      const delay = new Date(schedule.localRunAt).getTime() - current.getTime();
+      if (Number.isFinite(delay)) timer = window.setTimeout(update, Math.min(Math.max(0, delay), 60_000));
+    };
+    update();
+    return () => window.clearTimeout(timer);
+  }, [schedule]);
 
   useEffect(() => {
     setCaption(schedule?.candidate.postCandidate.realmCreatePost.caption ?? '');
@@ -152,7 +166,7 @@ export function PersonaSchedulePanel({
     }
   }
 
-  const scheduleDue = schedule ? isLocalPostScheduleDue(schedule) : false;
+  const scheduleDue = schedule ? isLocalPostScheduleDue(schedule, now) : false;
   const today = new Date();
   const minimumDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   const savedCaption = schedule?.candidate.postCandidate.realmCreatePost.caption ?? '';
@@ -190,6 +204,8 @@ export function PersonaSchedulePanel({
           </Button>
         </div>
       ) : null}
+
+      {scheduleDue ? <InlineAlert tone="info">{t('posts.schedule.dueDescription')}</InlineAlert> : null}
 
       <fieldset disabled={disabled || pending} className="mt-4 grid min-w-0 gap-4">
         <FieldShell label={t('posts.schedule.captionLabel')}>

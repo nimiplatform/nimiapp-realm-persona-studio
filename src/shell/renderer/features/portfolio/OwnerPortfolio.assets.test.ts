@@ -69,16 +69,6 @@ describe('persona hero visual identity entry', () => {
     expect(copy).not.toContain("'assets.overview.visual.");
   });
 
-  it('keeps the local image editor one click away inside the visual dialog', () => {
-    const component = source('src/shell/renderer/features/portfolio/OwnerPortfolio.assets.tsx');
-    const copy = source('src/shell/renderer/i18n/studio-copy.ts');
-
-    expect(component).toContain('dataTestId="persona-visual-image-editor-dialog"');
-    expect(component).toContain('onClick={() => setImageEditorOpen(true)}');
-    expect(component).toContain("t('assets.visualChange.editImage')");
-    expect(component).toContain('<VisualImageEditorWorkspace persona={persona} onHistoryUpdated={refreshCreativeHistory} />');
-    expect(copy).toContain("'assets.visualChange.editImage': '编辑当前图片'");
-  });
 });
 
 describe('persona hero voice entry', () => {

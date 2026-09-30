@@ -352,18 +352,22 @@ export function PersonaListPage() {
     return () => window.removeEventListener(CREATION_DRAFT_HISTORY_UPDATED_EVENT, handleHistoryUpdated);
   }, [refreshDraftHistory]);
 
-  const personas = portfolioQuery.data || [];
+  const portfolioPersonas = portfolioQuery.data || [];
   const worldCoresQuery = useQuery({
     queryKey: ['realm-world-core', 'portfolio-card-banners'],
     queryFn: () => listStudioWorldCores({ take: 100 }),
-    enabled: activeView === 'personas' && personas.length > 0,
+    enabled: activeView === 'personas' && portfolioPersonas.length > 0,
   });
   const worldPresentationById = useMemo(() => new Map(
-    (worldCoresQuery.data || []).map((world) => {
+    (worldCoresQuery.isError ? [] : worldCoresQuery.data || []).map((world) => {
       const presentation = studioWorldCardPresentation(world);
       return [presentation.worldId, presentation] as const;
     }),
-  ), [worldCoresQuery.data]);
+  ), [worldCoresQuery.data, worldCoresQuery.isError]);
+  const personas = useMemo(() => portfolioPersonas.map((persona) => ({
+    ...persona,
+    worldName: worldPresentationById.get(persona.worldId)?.worldName || null,
+  })), [portfolioPersonas, worldPresentationById]);
   const visiblePersonas = useMemo(
     () => applyOwnerPortfolioView(personas, { query: queryText, filter: 'all', sort }),
     [personas, queryText, sort],
@@ -474,6 +478,9 @@ export function PersonaListPage() {
                   onQueryChange={setQueryText}
                   onSortChange={setSort}
                 />
+                {worldCoresQuery.isError ? <InlineAlert tone="warning">
+                  {t('shared.worldUnavailable')} · {t(failureKindCopyKey(classifyPortfolioFailure(worldCoresQuery.error).kind))}
+                </InlineAlert> : null}
 
 
                 {visiblePersonas.length === 0 ? (
@@ -484,15 +491,13 @@ export function PersonaListPage() {
                 ) : (
                   <div className="ras-persona-grid">
                     {visiblePersonas.map((persona) => {
-                      const worldPresentation = persona.worldName
-                        ? worldPresentationById.get(persona.worldName)
-                        : undefined;
+                      const worldPresentation = worldPresentationById.get(persona.worldId);
                       return (
                         <PersonaCard
                           key={persona.id}
                           persona={persona}
                           worldBannerUrl={worldPresentation?.bannerUrl || null}
-                          worldName={worldPresentation?.worldName || persona.worldName}
+                          worldName={worldPresentation?.worldName || null}
                           active={false}
                           onSelect={() => navigate(`/portfolio/${persona.id}`)}
                         />

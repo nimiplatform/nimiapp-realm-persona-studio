@@ -7,6 +7,7 @@ import {
   registerNimiElectronAppAssetProtocolScheme,
   registerNimiElectronAppBridge,
 } from '@nimiplatform/kit/shell/electron/main';
+import { installStudioUnloadConfirmation } from './studio-unload-confirmation.js';
 
 const REALM_PERSONA_STUDIO_APP_ID = 'nimi.realm-persona-studio';
 const REALM_PERSONA_STUDIO_APP_NAME = 'Realm Persona Studio';
@@ -99,6 +100,7 @@ async function createMainWindow(): Promise<BrowserWindow> {
   });
   hardenRealmPersonaStudioWindowChrome(window);
   secureRealmPersonaStudioWindow(window);
+  installStudioUnloadConfirmation(window, app.getLocale());
   await loadRenderer(window);
   return window;
 }

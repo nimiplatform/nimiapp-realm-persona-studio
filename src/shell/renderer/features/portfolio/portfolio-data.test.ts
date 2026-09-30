@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { world } from './portfolio-client.test-helpers.js';
 import {
   applyOwnerPortfolioView,
   classifyPersonaDetailFailure,
@@ -70,6 +71,17 @@ const basePersona: OwnerPersonaCharacter = {
 };
 
 describe('owner portfolio normalization', () => {
+  it('keeps world identifiers distinct from unavailable WorldCore presentation', () => {
+    expect(normalizeOwnerPortfolioPersona(basePersona)).toMatchObject({ worldId: 'world-oasis', worldName: null });
+    expect(normalizeOwnerPortfolioPersonaDetail(basePersona).world).toMatchObject({
+      status: 'source-unavailable', value: '', source: 'Nimi App Access realm.worldCore.list',
+    });
+  });
+
+  it('admits only a matching WorldCore name for detail display', () => {
+    expect(normalizeOwnerPortfolioPersonaDetail(basePersona, world).world).toMatchObject({ status: 'available', value: 'OASIS' });
+    expect(normalizeOwnerPortfolioPersonaDetail(basePersona, { ...world, id: 'other-world' }).world.status).toBe('source-unavailable');
+  });
   it('keeps friendCount source-unavailable for PersonaCharacter list data', () => {
     const persona = normalizeOwnerPortfolioPersona(basePersona);
 
@@ -131,7 +143,7 @@ describe('owner portfolio local view controls', () => {
     normalizeOwnerPortfolioPersona({
       ...basePersona,
       id: 'persona-1',
-    }),
+    }, world),
     normalizeOwnerPortfolioPersona({
       ...basePersona,
       id: 'persona-2',
@@ -166,7 +178,7 @@ describe('owner portfolio local view controls', () => {
           profileLine: 'OASIS persona',
         },
       },
-    }),
+    }, world),
   ];
 
   it('searches local display, handle, world, and state fields without mutating the source list', () => {
@@ -251,7 +263,7 @@ describe('owner portfolio detail normalization', () => {
           intents: [],
         },
       },
-    });
+    }, world);
 
     expect(detail.source).toBe('Nimi App Access realm.personaCharacter.getOwned');
     expect(detail.displayName).toMatchObject({ value: 'Mira', readOnly: true, status: 'available' });
@@ -260,7 +272,7 @@ describe('owner portfolio detail normalization', () => {
     expect(detail.greeting.value).toBe('Welcome in.');
     expect(detail.profileCoverUrl.value).toBe('https://cdn.example.test/cover.png');
     expect(detail.ownership.value).toBe('owner-scoped PersonaCharacter');
-    expect(detail.world.value).toBe('world-oasis');
+    expect(detail.world.value).toBe('OASIS');
     expect(detail.visibility.value).toBe('public');
     expect(detail.voice).toBeUndefined();
     expect(detail.friendCount).toEqual({
@@ -279,7 +291,7 @@ describe('owner portfolio detail normalization', () => {
     expect(detail.greeting.status).toBe('source-unavailable');
     expect(detail.profileCoverUrl.status).toBe('available-empty');
     expect(detail.ownership.status).toBe('available');
-    expect(detail.world.status).toBe('available');
+    expect(detail.world.status).toBe('source-unavailable');
     expect(detail.visibility.value).toBe('public');
     expect(detail.voice).toBeUndefined();
     expect(detail.friendCount).toEqual({
@@ -318,7 +330,7 @@ describe('owner portfolio detail normalization', () => {
     });
     expect(detail.greeting.status).toBe('available-empty');
     expect(detail.profileCoverUrl.status).toBe('available-empty');
-    expect(detail.world.status).toBe('available');
+    expect(detail.world.status).toBe('source-unavailable');
     expect(detail.ownership.status).toBe('available');
     expect(detail.visibility.value).toBe('public');
     expect(detail.bio).not.toHaveProperty('unavailableLabel');
@@ -348,10 +360,11 @@ describe('owner portfolio detail normalization', () => {
     const detail = normalizeOwnerPortfolioPersonaDetail({
       ...basePersona,
       profile: basePersona.profile,
-    });
+    }, world);
 
     expect(detail.world.status).toBe('available');
-    expect(detail.world.value).toBe('world-oasis');
+    expect(detail.world.value).toBe('OASIS');
+    expect(detail.homeWorldId).toBe('world-oasis');
   });
 
   it('fails unknown detail errors closed as contract-invalid', () => {

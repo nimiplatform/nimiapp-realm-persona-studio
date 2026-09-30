@@ -4,6 +4,7 @@ import type {
   NimiLocalAppPersonaCharacterVisibility,
 } from '@nimiplatform/sdk/app';
 import { normalizeDisplaySafeHttpsUrl } from './persona-external-ref.js';
+import { studioWorldCardPresentation, type StudioWorldCoreDto } from '../../data/studio-world-core.js';
 
 export type OwnerPersonaCharacter = NimiLocalAppPersonaCharacter;
 
@@ -24,6 +25,7 @@ export type OwnerPortfolioPersona = {
   ownerScope: PortfolioPersonaOwnerScope;
   source: PortfolioPersonaListSource;
   visibility: NimiLocalAppPersonaCharacterVisibility;
+  worldId: string;
   worldName: string | null;
   updatedAt: string | null;
   friendCount: FriendCountMetric;
@@ -53,9 +55,10 @@ export type SettingField = {
   label: string;
   value: string;
   status: 'available' | 'available-empty' | 'source-unavailable';
-  source: PortfolioPersonaDetailSource;
+  source: PortfolioPersonaDetailSource | 'Nimi App Access realm.worldCore.list';
   readOnly: true;
   unavailableLabel?: 'setting source unavailable';
+  sourceFailure?: PortfolioFailureKind;
   emptyLabel?: 'not set';
 };
 
@@ -174,8 +177,10 @@ export function normalizeFriendCount(_persona: OwnerPersonaCharacter): FriendCou
   return { status: 'source-unavailable', label: 'friendCount source unavailable' };
 }
 
+// @nimi-authority: rule.realm-persona-studio.metrics.r004
 export function normalizeOwnerPortfolioPersona(
   persona: OwnerPersonaCharacter,
+  world: StudioWorldCoreDto | null = null,
 ): OwnerPortfolioPersona {
   const core = readPersonaCore(persona);
   const identity = readCoreSection(core, 'identity');
@@ -194,7 +199,8 @@ export function normalizeOwnerPortfolioPersona(
     ownerScope: 'owner-created',
     source: 'Nimi App Access realm.personaCharacter.listOwned',
     visibility: persona.visibility,
-    worldName: persona.worldId,
+    worldId: persona.worldId,
+    worldName: world?.id === persona.worldId ? studioWorldCardPresentation(world).worldName : null,
     updatedAt: persona.updatedAt,
     friendCount: normalizeFriendCount(persona),
   };
@@ -296,7 +302,7 @@ function settingField(
   key: SettingFieldKey,
   label: string,
   field: StringFieldRead,
-  source: PortfolioPersonaDetailSource,
+  source: SettingField['source'],
 ): SettingField {
   if (!field.present) {
     return {
@@ -332,8 +338,10 @@ function settingField(
   };
 }
 
+// @nimi-authority: rule.realm-persona-studio.metrics.r004
 export function normalizeOwnerPortfolioPersonaDetail(
   persona: OwnerPersonaCharacter,
+  world: StudioWorldCoreDto | null = null,
 ): OwnerPortfolioPersonaDetail {
   const core = readPersonaCore(persona);
   const identity = readCoreSection(core, 'identity');
@@ -341,6 +349,7 @@ export function normalizeOwnerPortfolioPersonaDetail(
   const interactionProfile = readCoreSection(core, 'interactionProfile');
   const bio = readFirstStringField(identity, ['summary', 'concept']);
   const source: PortfolioPersonaDetailSource = 'Nimi App Access realm.personaCharacter.getOwned';
+  const worldName = world?.id === persona.worldId ? studioWorldCardPresentation(world).worldName : null;
   return {
     id: persona.id,
     displayName: settingField('displayName', 'Display name', readStringField(presentation, 'displayName'), source),
@@ -354,7 +363,7 @@ export function normalizeOwnerPortfolioPersonaDetail(
       source,
     ),
     ownership: settingField('ownership', 'Ownership evidence', { present: true, value: 'owner-scoped PersonaCharacter' }, source),
-    world: settingField('world', 'World evidence', { present: true, value: persona.worldId }, source),
+    world: settingField('world', 'World', worldName ? { present: true, value: worldName } : { present: false }, 'Nimi App Access realm.worldCore.list'),
     visibility: settingField('visibility', 'Visibility', { present: true, value: persona.visibility }, source),
     avatarUrl: readExternalAssetUri(core, 'avatar')
       || readExternalAssetUri(core, 'referenceImage'),

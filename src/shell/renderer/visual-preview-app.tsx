@@ -1,4 +1,5 @@
 import { useRef, useState, type ComponentType } from 'react';
+import { StudioNavigationGuardProvider } from './app-shell/studio-navigation-guard.js';
 import {
   AmbientBackground,
   Button,
@@ -73,7 +74,7 @@ function useSeedPreviewSettingsCaches() {
   studioQueryClient.setQueryData(ownerPortfolioListQueryKey(), PERSONA_WORKSPACE_VISUAL_FIXTURE_LIST);
   studioQueryClient.setQueryData(['realm-world-core', 'portfolio-card-banners'], []);
   const previewWorlds = [...new Set(PERSONA_WORKSPACE_VISUAL_FIXTURE_LIST.map((persona) => persona.worldName).filter(Boolean))]
-    .map((worldName) => ({ id: worldName as string, name: worldName as string }));
+    .map((worldName) => ({ id: worldName as string, name: worldName as string, identityName: worldName as string }));
   studioQueryClient.setQueryData(['realm-persona-studio', 'create-persona-worlds'], previewWorlds);
   for (const persona of Object.values(PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS)) {
     studioQueryClient.setQueryData(
@@ -329,6 +330,7 @@ export function PreviewShell() {
   const [collapsed, setCollapsed] = useState(false);
   useSeedPreviewSettingsCaches();
   return (
+    <StudioNavigationGuardProvider>
     <AmbientBackground variant="mesh" className="ras-shell">
       <div className="ras-shell__body">
         <StudioSidebar
@@ -355,5 +357,6 @@ export function PreviewShell() {
         </main>
       </div>
     </AmbientBackground>
+    </StudioNavigationGuardProvider>
   );
 }

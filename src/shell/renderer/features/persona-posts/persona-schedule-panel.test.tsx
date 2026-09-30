@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ensureStudioI18nInitialized } from '@renderer/i18n/studio-i18n.js';
 import { PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS } from '../persona-detail/persona-workspace.visual-fixture.js';
@@ -32,9 +32,29 @@ beforeEach(async () => {
   removeJson.mockReset().mockImplementation(async (path: string) => ({ removed: values.delete(path) }));
   await ensureStudioI18nInitialized().changeLanguage('en');
 });
-afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); });
 
 describe('schedule review and storage failures', () => {
+  it('updates the due notice while open without changing or executing the local candidate', async () => {
+    const built = buildLocalPostScheduleCandidate(validateLocalPostDraft({
+      caption: 'Retained due copy', tagsText: '', humanReviewed: true,
+      attachmentEnabled: false, attachmentTargetType: 'RESOURCE', attachmentTargetId: '',
+    }, persona), { localDate: '2099-01-01', localTime: '10:01' });
+    if (!built.scheduleable) throw new Error(built.errors.join('; '));
+    const schedule = await saveLocalPostSchedule(persona.id, built.candidate);
+    const stored = JSON.stringify([...values.entries()]);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2099-01-01T10:00:00Z'));
+    const onChange = vi.fn();
+    render(<PersonaSchedulePanel persona={persona} schedule={schedule} onScheduleChange={onChange} />);
+    expect(screen.queryByText('time reached')).toBeNull();
+    act(() => { vi.advanceTimersByTime(60_000); });
+    expect(screen.getByText('time reached')).toBeTruthy();
+    expect(screen.getByText(/The planned time has been reached/)).toBeTruthy();
+    expect(onChange).not.toHaveBeenCalled();
+    expect(removeJson).not.toHaveBeenCalled();
+    expect(JSON.stringify([...values.entries()])).toBe(stored);
+  });
   it('requires renewed review after the caption changes', () => {
     render(<PersonaSchedulePanel persona={persona} schedule={null} onScheduleChange={vi.fn()} />);
     const reviewed = screen.getByRole('checkbox') as HTMLInputElement;

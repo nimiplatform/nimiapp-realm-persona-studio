@@ -30,7 +30,7 @@ import {
   firstInvalidCreateField,
   translateCreateFlowFailure,
 } from './create-flow-copy.js';
-import { focusCreateField, worldOptionLabel } from './draft-utils.js';
+import { focusCreateField } from './draft-utils.js';
 import { BehaviorFields } from './behavior-fields.js';
 import { HandleField } from './handle-field.js';
 import { PromptDisclosure } from './prompt-disclosure.js';
@@ -374,7 +374,7 @@ export function ReviewStage({
                   >
                     <Globe size={18} aria-hidden="true" />
                     <span className="min-w-0 flex-1">
-                      {selectedWorld ? worldOptionLabel(selectedWorld) : t('create.world.select')}
+                      {selectedWorld?.name || t('create.world.select')}
                     </span>
                     <ChevronDown size={14} aria-hidden="true" />
                   </FieldTrigger>
@@ -474,7 +474,6 @@ export function ReviewStage({
         selectedWorldId={draft.selectedWorldId}
         onSelect={(worldId) => {
           updateDraft({ selectedWorldId: worldId });
-          setWorldModalOpen(false);
         }}
         onClose={() => setWorldModalOpen(false)}
       />

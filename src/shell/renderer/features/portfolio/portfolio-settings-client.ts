@@ -124,12 +124,13 @@ function proposalContextText(field: SettingField): string | null {
   return null;
 }
 
+// @nimi-authority: rule.realm-persona-studio.setting.r012
 export function buildPortfolioSettingsProposalContext(persona: OwnerPortfolioPersonaDetail): OwnerPersonaSettingsProposalContext {
   return {
     ownerScope: persona.ownerScope,
     displayName: proposalContextText(persona.displayName),
     handle: proposalContextText(persona.handle),
-    worldId: proposalContextText(persona.world),
+    worldId: persona.homeWorldId,
     worldName: proposalContextText(persona.world),
   };
 }

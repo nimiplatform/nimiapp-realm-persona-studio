@@ -1,6 +1,7 @@
 // @nimi-authority: rule.realm-persona-studio.post.r009
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useStudioNavigationGuard } from '@renderer/app-shell/studio-navigation-guard.js';
 import {
   Archive,
   ImageOff,
@@ -11,7 +12,7 @@ import {
   UserRound,
   X,
 } from 'lucide-react';
-import { Button, IconButton, InlineAlert, NimiText, SelectField, StatusBadge, TextareaField, Tooltip, nimiToast } from '@nimiplatform/kit/ui';
+import { Button, ConfirmDialog, IconButton, InlineAlert, NimiText, SelectField, StatusBadge, TextareaField, Tooltip, nimiToast } from '@nimiplatform/kit/ui';
 import type { OwnerPortfolioPersonaDetail } from '@renderer/features/portfolio/portfolio-data.js';
 import { useLocalPostSchedule } from '@renderer/features/portfolio/use-local-post-schedule.js';
 import {
@@ -96,6 +97,12 @@ function toAttachmentMetadata(attachments: EditorAttachment[]): LocalPostDraftAt
   }));
 }
 
+function editorSnapshot(caption: string, tagsText: string, category: LocalPostCategory | null, attachments: EditorAttachment[]): string {
+  return JSON.stringify([caption, tagsText, category, toAttachmentMetadata(attachments)]);
+}
+
+type EditorChange = { kind: 'new' } | { kind: 'draft'; record: LocalPostDraftRecord };
+
 export function PersonaPostEditor({
   persona,
 }: {
@@ -115,11 +122,14 @@ export function PersonaPostEditor({
   const [drafts, setDrafts] = useState<LocalPostDraftRecord[]>([]);
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
   const [deletingDraftId, setDeletingDraftId] = useState<string | null>(null);
+  const [pendingDeleteDraftId, setPendingDeleteDraftId] = useState<string | null>(null);
   const [storageUnavailable, setStorageUnavailable] = useState(false);
   const [activeQueueItem, setActiveQueueItem] = useState<string | null>(null);
   const [polishing, setPolishing] = useState(false);
   const [polishFailure, setPolishFailure] = useState<StudioCopyKey | null>(null);
   const [polishProposal, setPolishProposal] = useState<RuntimePostCopyProposal | null>(null);
+  const [savedSnapshot, setSavedSnapshot] = useState(() => editorSnapshot(visualData?.initialPostCaption ?? '', visualData?.initialPostTags ?? '', null, []));
+  const [pendingEditorChange, setPendingEditorChange] = useState<EditorChange | null>(null);
   const scheduleState = useLocalPostSchedule(persona.id, Boolean(visualData));
   const { schedule: localSchedule, setSchedule: setLocalSchedule } = scheduleState;
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -127,7 +137,10 @@ export function PersonaPostEditor({
   const editorRevisionRef = useRef(0);
   const mountedRef = useRef(true);
   const mutationPending = saving || deletingDraftId !== null;
+  const dirty = editorSnapshot(caption, tagsText, category, attachments) !== savedSnapshot;
+  useStudioNavigationGuard('post', dirty, mutationPending);
   attachmentsRef.current = attachments;
+
 
   useEffect(() => {
     mountedRef.current = true;
@@ -154,6 +167,8 @@ export function PersonaPostEditor({
     setTagsText(visualData?.initialPostTags ?? '');
     setCategory(null);
     setAttachments([]);
+    setSavedSnapshot(editorSnapshot(visualData?.initialPostCaption ?? '', visualData?.initialPostTags ?? '', null, []));
+    setPendingEditorChange(null);
     setDrafts([]);
     setEditingDraftId(null);
     setDeletingDraftId(null);
@@ -179,7 +194,7 @@ export function PersonaPostEditor({
       setStorageUnavailable(false);
       setDrafts(result.records);
       const requestedDraft = result.records.find((record) => record.id === requestedDraftId);
-      if (requestedDraft) editDraft(requestedDraft);
+      if (requestedDraft) loadDraft(requestedDraft);
     });
     return () => {
       cancelled = true;
@@ -255,7 +270,7 @@ export function PersonaPostEditor({
     });
   }
 
-  function editDraft(record: LocalPostDraftRecord) {
+  function loadDraft(record: LocalPostDraftRecord) {
     if (editingDraftId === record.id) return;
     editorRevisionRef.current += 1;
     revokeEditorPreviewUrls();
@@ -263,29 +278,40 @@ export function PersonaPostEditor({
     setTagsText(record.tagsText);
     setCategory(record.category);
     setAttachments(record.attachments.map((attachment) => ({ ...attachment, previewUrl: null })));
+    setSavedSnapshot(editorSnapshot(record.caption, record.tagsText, record.category, record.attachments.map((attachment) => ({ ...attachment, previewUrl: null }))));
     setEditingDraftId(record.id);
     setActiveQueueItem(draftQueueItemId(record.id));
     setPolishProposal(null);
   }
 
-  function startNewDraft() {
+  function resetDraft() {
     editorRevisionRef.current += 1;
     revokeEditorPreviewUrls();
     setCaption(visualData?.initialPostCaption ?? '');
     setTagsText(visualData?.initialPostTags ?? '');
     setCategory(null);
     setAttachments([]);
+    setSavedSnapshot(editorSnapshot(visualData?.initialPostCaption ?? '', visualData?.initialPostTags ?? '', null, []));
     setEditingDraftId(null);
     setActiveQueueItem(null);
     setPolishProposal(null);
   }
+
+  function requestEditorChange(change: EditorChange) {
+    if (mutationPending || (change.kind === 'draft' && editingDraftId === change.record.id)) return;
+    if (dirty) { setPendingEditorChange(change); return; }
+    if (change.kind === 'new') resetDraft();
+    else loadDraft(change.record);
+  }
+
+  function startNewDraft() { requestEditorChange({ kind: 'new' }); }
 
   function handleQueueItemClick(item: PersonaWorkspaceQueueItem) {
     if (mutationPending) return;
     if (item.draftId) {
       const record = drafts.find((candidate) => candidate.id === item.draftId);
       if (record) {
-        editDraft(record);
+        requestEditorChange({ kind: 'draft', record });
         return;
       }
     }
@@ -335,6 +361,7 @@ export function PersonaPostEditor({
       return;
     }
     setSaving(true);
+    const submittedSnapshot = editorSnapshot(caption, tagsText, category, attachments);
     try {
       if (visualData?.developmentFixture) {
         const record: LocalPostDraftRecord = {
@@ -353,6 +380,7 @@ export function PersonaPostEditor({
         setDrafts((current) => [record, ...current.filter((candidate) => candidate.id !== record.id)]);
         setEditingDraftId(record.id);
         setActiveQueueItem(draftQueueItemId(record.id));
+        setSavedSnapshot(submittedSnapshot);
         nimiToast.info(t('posts.workspace.fixturePreviewSaved'));
         return;
       }
@@ -376,6 +404,7 @@ export function PersonaPostEditor({
       setStorageUnavailable(false);
       setEditingDraftId(result.record.id);
       setActiveQueueItem(draftQueueItemId(result.record.id));
+      setSavedSnapshot(submittedSnapshot);
       nimiToast.success(t('posts.workspace.savedLocally'));
     } finally {
       setSaving(false);
@@ -395,8 +424,9 @@ export function PersonaPostEditor({
       setDrafts(result.records);
       setStorageUnavailable(false);
       if (editingDraftId === draftId) {
-        startNewDraft();
+        resetDraft();
       }
+      setPendingDeleteDraftId(null);
       nimiToast.success(t('posts.workspace.deletedLocally'));
     } finally {
       setDeletingDraftId(null);
@@ -601,23 +631,13 @@ export function PersonaPostEditor({
             queueItems.map((item) => {
               const isActive = activeQueueItem === item.id;
               return (
-                <div
+                <article
                   key={item.id}
-                  role="button"
-                  tabIndex={0}
                   className="ras-post-card"
                   data-active={isActive}
-                  aria-pressed={isActive}
-                  aria-disabled={mutationPending}
-                  onClick={() => handleQueueItemClick(item)}
-                  onKeyDown={(event) => {
-                    if (event.target !== event.currentTarget) return;
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      handleQueueItemClick(item);
-                    }
-                  }}
                 >
+                  <button type="button" className="ras-post-card__open" aria-label={item.body || item.title}
+                    aria-pressed={isActive} disabled={mutationPending} onClick={() => handleQueueItemClick(item)} />
                   <span className="ras-post-card__header">
                     <span className="ras-post-card__avatar">
                       {persona.avatarUrl ? <img src={persona.avatarUrl} alt="" /> : <UserRound size={18} strokeWidth={1.8} />}
@@ -638,10 +658,7 @@ export function PersonaPostEditor({
                           disabled={mutationPending}
                           icon={<Trash2 size={14} strokeWidth={1.8} />}
                           aria-label={t('posts.workspace.deleteDraft')}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            void deleteDraft(item.draftId as string);
-                          }}
+                          onClick={() => setPendingDeleteDraftId(item.draftId as string)}
                         />
                       </span>
                     ) : null}
@@ -663,7 +680,7 @@ export function PersonaPostEditor({
                       <span className="ras-post-card__editing">{t('posts.workspace.editingDraft')}</span>
                     ) : null}
                   </span>
-                </div>
+                </article>
               );
             })
           )}
@@ -677,6 +694,31 @@ export function PersonaPostEditor({
       ) : null}
       <PersonaSchedulePanel persona={persona} schedule={localSchedule} onScheduleChange={setLocalSchedule}
         disabled={scheduleState.loading || scheduleState.unavailable} />
+      <ConfirmDialog
+        open={pendingEditorChange !== null}
+        title={t('posts.workspace.discardTitle')} message={t('posts.workspace.discardDescription')}
+        confirmLabel={t('persona.settings.discardConfirm')} cancelLabel={t('common.cancel')}
+        confirmTone="danger" loading={mutationPending}
+        onConfirm={() => {
+          if (mutationPending) return;
+          if (pendingEditorChange) {
+            const change = pendingEditorChange;
+            setPendingEditorChange(null);
+            if (change.kind === 'new') resetDraft();
+            else loadDraft(change.record);
+          }
+        }}
+        onClose={() => {
+          if (mutationPending) return;
+          setPendingEditorChange(null);
+        }}
+      />
+      <ConfirmDialog open={pendingDeleteDraftId !== null}
+        title={t('posts.workspace.deleteDraft')} message={t('posts.workspace.deleteDraftDescription')}
+        confirmLabel={t('posts.workspace.deleteDraft')} cancelLabel={t('common.cancel')}
+        confirmTone="danger" loading={deletingDraftId !== null}
+        onConfirm={() => { if (pendingDeleteDraftId) void deleteDraft(pendingDeleteDraftId); }}
+        onClose={() => { if (!deletingDraftId) setPendingDeleteDraftId(null); }} />
     </div>
   );
 }

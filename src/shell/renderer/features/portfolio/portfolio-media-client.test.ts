@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const personaCharacter = vi.hoisted(() => ({
+  getOwned: vi.fn(),
   replace: vi.fn(),
   toProfileInput: vi.fn(),
 }));
@@ -24,6 +25,7 @@ import {
 describe('owner portfolio media client', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    personaCharacter.getOwned.mockResolvedValue(personaFixture);
     const { profileHash: _profileHash, profileCoverage: _profileCoverage, ...input } = personaFixture.profile;
     personaCharacter.toProfileInput.mockReturnValue(input);
     personaCharacter.replace.mockImplementation(async (request) => ({
@@ -43,11 +45,19 @@ describe('owner portfolio media client', () => {
     const result = await selectReviewedPersonaAvatarUrl(detail, 'https://cdn.example.test/avatar.png');
 
     expect(result).toMatchObject({ ok: true, publicTruth: true });
+    expect(personaCharacter.getOwned).toHaveBeenCalledWith(personaFixture.id);
     expect(personaCharacter.toProfileInput).toHaveBeenCalledWith(personaFixture.profile);
     expect(personaCharacter.replace).toHaveBeenCalledWith(expect.objectContaining({
       personaCharacterId: personaFixture.id,
       baseContentHash: personaFixture.contentHash,
     }));
+  });
+
+  it('preserves the reviewed avatar on a changed Persona hash without replacing a stale profile', async () => {
+    personaCharacter.getOwned.mockResolvedValueOnce({ ...personaFixture, contentHash: 'changed-hash' });
+    expect(await selectReviewedPersonaAvatarUrl(ownerPersonaDetail(), 'https://cdn.example.test/avatar.png'))
+      .toMatchObject({ ok: false, failure: 'content-conflict', publicTruth: false });
+    expect(personaCharacter.replace).not.toHaveBeenCalled();
   });
 
   it('builds avatar selection data from a narrow URL allowlist', () => {

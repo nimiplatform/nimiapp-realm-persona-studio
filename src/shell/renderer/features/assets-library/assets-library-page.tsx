@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type Change
 import { AudioLines, Copy, ImageOff, Music2, Pause, Play, Trash2 } from 'lucide-react';
 import {
   Button,
+  ConfirmDialog,
   DataList,
   DashedAddButton,
   EmptyState,
@@ -181,7 +182,7 @@ function SourceBadge({ entry, t }: { entry: AssetLibraryEntry; t: ReturnType<typ
   );
 }
 
-function AssetImageGrid({
+export function AssetImageGrid({
   entries,
   onSelect,
   onRemove,
@@ -198,19 +199,10 @@ function AssetImageGrid({
           key={entry.id}
           as="div"
           tone="card"
-          interactive
-          role="button"
-          tabIndex={0}
-          aria-label={`${entry.title} · ${sourceLabel(entry, t)}`}
           className="group relative aspect-square overflow-hidden p-0"
-          onClick={() => onSelect(entry)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault();
-              onSelect(entry);
-            }
-          }}
         >
+          <button type="button" className="absolute inset-0 z-10 cursor-pointer rounded-[inherit] border-0 bg-transparent focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-[var(--nimi-action-primary-bg)]"
+            aria-label={`${entry.title} · ${sourceLabel(entry, t)}`} onClick={() => onSelect(entry)} />
           {entry.previewUrl ? (
             <img src={entry.previewUrl} alt={entry.title} className="absolute inset-0 h-full w-full object-cover" />
           ) : (
@@ -227,7 +219,7 @@ function AssetImageGrid({
               icon={<Trash2 size={15} strokeWidth={1.8} />}
               aria-label={t('assetsLibrary.upload.remove', { title: entry.title })}
               title={t('assetsLibrary.upload.remove', { title: entry.title })}
-              className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+              className="absolute right-2 top-2 z-20 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
               onClick={(event) => {
                 event.stopPropagation();
                 onRemove(entry);
@@ -465,6 +457,8 @@ export function AssetsLibraryPage() {
   const { t } = useStudioI18n();
   const [activeTab, setActiveTab] = useState<AssetLibraryTab>('images');
   const [selectedEntry, setSelectedEntry] = useState<AssetLibraryEntry | null>(null);
+  const [pendingRemoval, setPendingRemoval] = useState<AssetLibraryEntry | null>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
   const [capability] = useState<LocalImportCapabilityStatus>(() => getLocalAssetImportCapability());
   const [importedRecords, setImportedRecords] = useState<LocalImportedAssetRecord[]>([]);
   const [creativeHistoryRecords, setCreativeHistoryRecords] = useState<CreativeAssetHistoryRecord[]>([]);
@@ -570,14 +564,21 @@ export function AssetsLibraryPage() {
   }
 
   async function handleRemove(entry: AssetLibraryEntry) {
-    if (entry.provenance.kind !== 'local-import') return;
+    if (entry.provenance.kind !== 'local-import' || isRemoving) return;
+    setIsRemoving(true);
     const importId = entry.provenance.id;
-    const result = await removeLocalImportedAsset(importId, capability);
-    if (result.ok) {
-      setImportedRecords((current) => current.filter((record) => record.id !== importId));
-      if (selectedEntry?.id === entry.id) setSelectedEntry(null);
-    } else {
-      setImportFailure({ message: t('assetsLibrary.upload.removeFailed'), informational: false });
+    try {
+      const result = await removeLocalImportedAsset(importId, capability);
+      if (result.ok) {
+        setImportedRecords((current) => current.filter((record) => record.id !== importId));
+        if (selectedEntry?.id === entry.id) setSelectedEntry(null);
+        setPendingRemoval(null);
+      } else {
+        setImportFailure({ message: t('assetsLibrary.upload.removeFailed'), informational: false });
+        nimiToast.danger(t('assetsLibrary.upload.removeFailed'));
+      }
+    } finally {
+      setIsRemoving(false);
     }
   }
 
@@ -640,7 +641,7 @@ export function AssetsLibraryPage() {
             isImporting={isImporting}
             onChooseFile={() => fileInputRef.current?.click()}
             onSelect={setSelectedEntry}
-            onRemove={(entry) => void handleRemove(entry)}
+            onRemove={setPendingRemoval}
           />
         ) : null}
         <input
@@ -653,6 +654,12 @@ export function AssetsLibraryPage() {
 
       </div>
       <AssetPreviewOverlay entry={selectedEntry} onClose={() => setSelectedEntry(null)} />
+      <ConfirmDialog open={pendingRemoval !== null}
+        title={pendingRemoval ? t('assetsLibrary.upload.remove', { title: pendingRemoval.title }) : ''}
+        message={t('assetsLibrary.upload.removeDescription')}
+        confirmLabel={t('common.confirm')} cancelLabel={t('common.cancel')} confirmTone="danger" loading={isRemoving}
+        onConfirm={() => { if (pendingRemoval) void handleRemove(pendingRemoval); }}
+        onClose={() => { if (!isRemoving) setPendingRemoval(null); }} />
     </div>
   );
 }

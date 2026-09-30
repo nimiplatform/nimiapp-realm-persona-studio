@@ -1,7 +1,7 @@
 import {
   normalizeCreateRealmPersonaDraft,
   type CreateRealmPersonaDraftInput,
-  type SelectableRealmWorld,
+  type NamedSelectableRealmWorld,
 } from '../create-persona-draft.js';
 import { isCreationDraftKey } from '../creation-draft-store.js';
 import type { CreateValidationField } from './types.js';
@@ -43,7 +43,7 @@ export function selectedDraftKey(search: string): string | null {
   return isCreationDraftKey(value) ? value.trim() : null;
 }
 
-export function worldOptionLabel(world: SelectableRealmWorld): string {
+export function worldOptionLabel(world: NamedSelectableRealmWorld): string {
   return world.name;
 }
 

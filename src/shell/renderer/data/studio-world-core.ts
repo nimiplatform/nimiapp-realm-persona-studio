@@ -13,7 +13,7 @@ export type StudioWorldCoreClient = Pick<NimiLocalAppClient, 'realm'>;
 
 export type StudioWorldCardPresentation = {
   worldId: string;
-  worldName: string;
+  worldName: string | null;
   bannerUrl: string | null;
 };
 
@@ -25,6 +25,7 @@ function isRenderableImageUrl(value: string): boolean {
  * Resolves only WorldCore-owned presentation data for Persona list cards.
  * Persona profile covers must never be used as a fallback for a missing world banner.
  */
+// @nimi-authority: rule.realm-persona-studio.metrics.r004
 export function studioWorldCardPresentation(world: StudioWorldCoreDto): StudioWorldCardPresentation {
   const presentation = world.core.presentation;
   const bannerResourceRef = presentation.bannerResourceRef?.trim() || null;
@@ -46,7 +47,7 @@ export function studioWorldCardPresentation(world: StudioWorldCoreDto): StudioWo
     worldName: presentation.displayName?.trim()
       || presentation.title?.trim()
       || world.core.identity.name.trim()
-      || world.id,
+      || null,
     bannerUrl,
   };
 }

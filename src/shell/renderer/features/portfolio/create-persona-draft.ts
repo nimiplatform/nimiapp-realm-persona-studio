@@ -6,6 +6,7 @@ import type {
 import type {
   RealmModel,
 } from '@nimiplatform/sdk/realm/generated';
+import { studioWorldCardPresentation } from '../../data/studio-world-core.js';
 import { buildCharacterDeclaration, characterWritingIssues } from './persona-character-authoring.js';
 import { normalizeDisplaySafeHttpsUrl } from './persona-external-ref.js';
 import { referenceImageArtifactId, referenceImageCandidatePreviewUrl } from './reference-image-source.js';
@@ -155,7 +156,8 @@ export type NormalizedCreateRealmPersonaDraft = {
 
 export type SelectableRealmWorld = {
   id: string;
-  name: string;
+  name: string | null;
+  identityName: string | null;
   type: string | null;
   status: string | null;
   description: string;
@@ -165,7 +167,7 @@ export type SelectableRealmWorld = {
 
 export type SelectedWorldPreview = {
   id: string;
-  name: string;
+  name: string | null;
   type: string | null;
   status: string | null;
   contentRating: string | null;
@@ -428,13 +430,20 @@ export function normalizeRealmPersonaHandleAvailability(
   };
 }
 
+export type NamedSelectableRealmWorld = SelectableRealmWorld & { name: string };
+export function hasSelectableWorldName(world: SelectableRealmWorld): world is NamedSelectableRealmWorld {
+  return Boolean(world.name?.trim());
+}
+
+// @nimi-authority: rule.realm-persona-studio.metrics.r004
 export function normalizeSelectableWorld(world: RealmPersonaCreationWorldDto): SelectableRealmWorld {
   const core = readRecord(world.core);
   const identity = readRecord(core?.identity);
   const presentation = readRecord(core?.presentation);
   return {
     id: world.id,
-    name: readString(identity?.name) || readString(presentation?.displayName) || readString(presentation?.title) || world.id,
+    name: studioWorldCardPresentation(world).worldName,
+    identityName: readString(identity?.name) || null,
     type: readString(identity?.worldType) || world.visibility,
     status: world.visibility,
     description: readString(identity?.summary) || '',
@@ -447,24 +456,28 @@ export function normalizeSelectableWorlds(worlds: RealmPersonaCreationWorldDto[]
   return worlds.map(normalizeSelectableWorld);
 }
 
-export function selectOasisDefaultWorld(worlds: SelectableRealmWorld[]): SelectableRealmWorld | null {
+// @nimi-authority: rule.realm-persona-studio.create-flow.r010
+export function selectOasisDefaultWorld(input: SelectableRealmWorld[]): NamedSelectableRealmWorld | null {
+  const worlds = input.filter(hasSelectableWorldName);
   return worlds.find((world) => world.id === 'OASIS')
     || worlds.find((world) => world.type === 'OASIS')
     || worlds.find((world) => world.id.toLocaleLowerCase() === 'oasis')
-    || worlds.find((world) => world.name.toLocaleLowerCase() === 'oasis')
+    || worlds.find((world) => world.identityName?.toLocaleLowerCase() === 'oasis')
     || null;
 }
 
 export type SelectableRealmWorldGroups = {
-  recommended: SelectableRealmWorld[];
-  others: SelectableRealmWorld[];
+  recommended: NamedSelectableRealmWorld[];
+  others: NamedSelectableRealmWorld[];
 };
 
 /**
  * OASIS is a local presentation recommendation only. The source-backed world
- * list remains the complete selectable set and no other world is promoted.
+ * entries with an unavailable naming source stay outside the selectable set;
+ * no other world is promoted.
  */
-export function groupSelectableRealmWorldsForPicker(worlds: readonly SelectableRealmWorld[]): SelectableRealmWorldGroups {
+export function groupSelectableRealmWorldsForPicker(input: readonly SelectableRealmWorld[]): SelectableRealmWorldGroups {
+  const worlds = input.filter(hasSelectableWorldName);
   const oasis = selectOasisDefaultWorld([...worlds]);
   if (!oasis) {
     return { recommended: [], others: [...worlds] };
@@ -488,7 +501,7 @@ export function normalizeSelectedWorldPreview(world: RealmPersonaCreationWorldDe
 
   return {
     id: world.id,
-    name: readString(identity?.name) || readString(presentation?.displayName) || readString(presentation?.title) || world.id,
+    name: studioWorldCardPresentation(world).worldName,
     type: readString(identity?.worldType) || world.visibility,
     status: world.visibility,
     contentRating: null,

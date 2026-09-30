@@ -23,6 +23,7 @@ function persona(id: string): OwnerPortfolioPersona {
     source: 'Nimi App Access realm.personaCharacter.listOwned',
     visibility: 'private',
     worldName: null,
+    worldId: 'world-source-unavailable',
     updatedAt: null,
     friendCount: { status: 'source-unavailable', label: 'friendCount source unavailable' },
   };

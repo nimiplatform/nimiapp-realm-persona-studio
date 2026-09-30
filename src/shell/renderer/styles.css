@@ -3071,6 +3071,7 @@ a {
 }
 
 .ras-post-card {
+  position: relative;
   display: grid;
   width: 100%;
   min-width: 0;
@@ -3086,6 +3087,21 @@ a {
   transition:
     border-color var(--nimi-motion-fast) var(--nimi-motion-ease-standard),
     box-shadow var(--nimi-motion-fast) var(--nimi-motion-ease-standard);
+}
+
+.ras-post-card__open {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.ras-post-card__open:focus-visible {
+  outline: 2px solid var(--nimi-action-primary-bg);
+  outline-offset: -3px;
 }
 
 .ras-post-card:hover {
@@ -3206,6 +3222,8 @@ a {
 }
 
 .ras-post-card__actions {
+  position: relative;
+  z-index: 2;
   display: inline-flex;
   flex: none;
   align-items: center;

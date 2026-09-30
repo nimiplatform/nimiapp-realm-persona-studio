@@ -78,4 +78,11 @@ describe('Studio WorldCore App Access surface', () => {
       bannerUrl: null,
     });
   });
+
+  it('never substitutes a world id for missing WorldCore naming fields', () => {
+    expect(studioWorldCardPresentation({ ...worldFixture, core: {
+      ...worldFixture.core, identity: { ...worldFixture.core.identity, name: '' },
+      presentation: { ...worldFixture.core.presentation, displayName: '', title: '' },
+    } }).worldName).toBeNull();
+  });
 });

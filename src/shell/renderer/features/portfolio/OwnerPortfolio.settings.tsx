@@ -1,10 +1,10 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useBlocker, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { useStudioNavigationGuard } from '../../app-shell/studio-navigation-guard.js';
 import { useQuery } from '@tanstack/react-query';
 import { Check, Sparkles } from 'lucide-react';
 import {
   Button,
-  ConfirmDialog,
   FieldShell,
   InlineAlert,
   LoadingSkeleton,
@@ -146,19 +146,10 @@ export function PersonaSettingsForm({
     const original = createOwnerPersonaSettingsDraft(base);
     return SAVED_FIELDS.some((key) => draft[key] !== original[key]);
   }, [draft, base]);
-  const navigationBlocker = useBlocker(dirty || Boolean(draft?.naturalLanguageIntent.trim()));
+  useStudioNavigationGuard('profile', dirty || Boolean(draft?.naturalLanguageIntent.trim()), isSaving);
   useEffect(() => {
     onDirtyChange?.(dirty || Boolean(draft?.naturalLanguageIntent.trim()));
   }, [dirty, draft?.naturalLanguageIntent, onDirtyChange]);
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = '';
-    };
-    window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
-  }, [dirty]);
 
   function updateDraft(patch: Partial<OwnerPersonaSettingsDraft>) {
     setDraft((current) => (current ? { ...current, ...patch } : current));
@@ -249,28 +240,14 @@ export function PersonaSettingsForm({
   }
   const worldOptions = (worldsQuery.data || []).map((world) => ({
     value: world.id,
-    label: world.name,
+    label: world.name || t('shared.worldUnavailable'),
+    disabled: !world.name,
   }));
   if (draft.worldId && !worldOptions.some((option) => option.value === draft.worldId))
-    worldOptions.unshift({ value: draft.worldId, label: persona.world.value || draft.worldId });
+    worldOptions.unshift({ value: draft.worldId, label: persona.world.value || t('shared.worldUnavailable'), disabled: true });
   const invalidWriting = built && !built.ok && built.errors.includes('character-writing-invalid');
   return (
     <div className={`ras-maintenance ras-maintenance--${mode}`}>
-      <ConfirmDialog
-        open={navigationBlocker.state === 'blocked'}
-        title={t('persona.settings.discardTitle')}
-        message={t('persona.settings.discardDescription')}
-        confirmLabel={t('persona.settings.discardConfirm')}
-        cancelLabel={t('common.cancel')}
-        confirmTone="danger"
-        loading={isSaving}
-        onConfirm={() => {
-          if (!isSaving && navigationBlocker.state === 'blocked') navigationBlocker.proceed();
-        }}
-        onClose={() => {
-          if (navigationBlocker.state === 'blocked') navigationBlocker.reset();
-        }}
-      />
       <div className="ras-workshop-heading">
         <span className="ras-workshop-eyebrow">{t('workshop.hub.eyebrow')}</span>
         <h2>{t('workshop.maintain.title')}</h2>

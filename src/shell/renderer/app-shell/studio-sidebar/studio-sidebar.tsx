@@ -36,6 +36,7 @@ import { listOwnerPortfolioPersonas } from '../../features/portfolio/portfolio-c
 import type { OwnerPortfolioPersona } from '../../features/portfolio/portfolio-data.js';
 import { useStudioI18n } from '../../i18n/use-studio-i18n.js';
 import { ownerPortfolioListQueryKey } from '../../features/persona-detail/use-persona-detail-query.js';
+import { listStudioWorldCores, studioWorldCardPresentation } from '../../data/studio-world-core.js';
 import { persistThemeScheme } from '../theme-scheme.js';
 import { useAppStore } from '../app-store.js';
 
@@ -172,6 +173,7 @@ function PersonaRosterItem({
   onSelect: () => void;
 }) {
   const reducedMotion = useNimiReducedMotion();
+  const { t } = useStudioI18n();
   const label = persona.displayName || persona.id;
   const item = (
     <motion.button
@@ -204,7 +206,7 @@ function PersonaRosterItem({
       {collapsed ? null : (
         <span className="ras-sidebar-persona__copy">
           <strong>{label}</strong>
-          <small>{persona.worldName || '—'}</small>
+          <small>{persona.worldName || t('shared.worldUnavailable')}</small>
         </span>
       )}
     </motion.button>
@@ -344,6 +346,7 @@ function workspaceSuffix(pathname: string, personaId: string | null): string {
   return suffix.startsWith('/posts') || suffix.startsWith('/settings') || suffix.startsWith('/identity') ? suffix : '';
 }
 
+// @nimi-authority: rule.realm-persona-studio.metrics.r004
 export function StudioSidebar({
   collapsed,
   onCollapsedChange,
@@ -358,7 +361,17 @@ export function StudioSidebar({
     queryFn: () => listOwnerPortfolioPersonas(),
     enabled: !fixtureMode,
   });
-  const personas = visualFixturePersonas ?? portfolioQuery.data ?? [];
+  const worldsQuery = useQuery({
+    queryKey: ['realm-world-core', 'portfolio-card-banners'],
+    queryFn: () => listStudioWorldCores({ take: 100 }),
+    enabled: !fixtureMode && Boolean(portfolioQuery.data?.length),
+  });
+  const worldNames = new Map((worldsQuery.isError ? [] : worldsQuery.data ?? []).map((world) => [
+    world.id, studioWorldCardPresentation(world).worldName,
+  ]));
+  const personas = visualFixturePersonas ?? (portfolioQuery.data ?? []).map((persona) => ({
+    ...persona, worldName: worldNames.get(persona.worldId) || null,
+  }));
   const selectedPersonaId = currentPersonaId(location.pathname);
   const suffix = workspaceSuffix(location.pathname, selectedPersonaId);
 

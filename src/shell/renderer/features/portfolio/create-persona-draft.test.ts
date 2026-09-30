@@ -6,6 +6,7 @@ import {
   normalizeRealmPersonaHandleAvailability,
   normalizeCreateRealmPersonaDraft,
   normalizeSelectableWorlds,
+  hasSelectableWorldName,
   normalizeSelectedWorldPreview,
   groupSelectableRealmWorldsForPicker,
   selectOasisDefaultWorld,
@@ -102,6 +103,17 @@ const baseInput: CreateRealmPersonaDraftInput = {
 };
 
 describe('create Realm Persona draft normalization', () => {
+  it('preserves valid choices when another WorldCore has no naming source', () => {
+    const unavailable = { ...oasisWorld, id: 'unnamed-world', core: {
+      ...oasisWorld.core, identity: { ...oasisWorld.core.identity, name: '' },
+      presentation: { ...oasisWorld.core.presentation, displayName: '', title: '' },
+    } };
+    const normalized = normalizeSelectableWorlds([unavailable, oasisWorld]);
+    expect(normalized).toHaveLength(2);
+    expect(normalized[0]!.name).toBeNull();
+    expect(normalized.filter(hasSelectableWorldName).map((world) => world.id)).toEqual(['world-oasis']);
+    expect(selectOasisDefaultWorld(normalized)?.id).toBe('world-oasis');
+  });
   it('normalizes public identity and selected world fields for preview', () => {
     expect(normalizeCreateRealmPersonaDraft(baseInput)).toEqual({
       handle: 'mira.persona',
@@ -218,7 +230,7 @@ describe('create Realm Persona draft normalization', () => {
     expect(groups.others.map((world) => world.id)).toEqual(['world-creator']);
   });
 
-  it('falls back to id/name when OASIS type is unavailable', () => {
+  it('recognizes the source id when OASIS type is unavailable', () => {
     const worlds = normalizeSelectableWorlds([{
       ...creatorWorld,
       id: 'oasis',
@@ -233,6 +245,32 @@ describe('create Realm Persona draft normalization', () => {
     }]);
 
     expect(selectOasisDefaultWorld(worlds)?.id).toBe('oasis');
+  });
+
+  it('keeps OASIS recommended when its display name differs from its source identity', () => {
+    const worlds = normalizeSelectableWorlds([creatorWorld, {
+      ...oasisWorld,
+      core: {
+        ...oasisWorld.core,
+        identity: { ...oasisWorld.core.identity, worldType: 'system-default' },
+        presentation: { ...oasisWorld.core.presentation, displayName: '绿洲' },
+      },
+    }]);
+
+    expect(selectOasisDefaultWorld(worlds)).toMatchObject({ id: 'world-oasis', name: '绿洲' });
+    expect(groupSelectableRealmWorldsForPicker(worlds).recommended.map((world) => world.id)).toEqual(['world-oasis']);
+  });
+
+  it('does not treat an OASIS display label as the default world identity', () => {
+    const worlds = normalizeSelectableWorlds([{
+      ...creatorWorld,
+      core: {
+        ...creatorWorld.core,
+        presentation: { ...creatorWorld.core.presentation, displayName: 'OASIS' },
+      },
+    }]);
+    expect(selectOasisDefaultWorld(worlds)).toBeNull();
+    expect(groupSelectableRealmWorldsForPicker(worlds).recommended).toEqual([]);
   });
 });
 

@@ -13,6 +13,7 @@ import {
   type OwnerPortfolioPersonaDetail,
   normalizeOwnerPortfolio,
   normalizeOwnerPortfolioPersonaDetail,
+  classifyPersonaDetailFailure,
   personaCharacterFailureReason,
 } from './portfolio-data.js';
 import {
@@ -170,7 +171,13 @@ export async function getOwnerPortfolioPersonaDetail(
   personaId: string,
 ): Promise<OwnerPortfolioPersonaDetail> {
   const persona = await getStudioLocalAppClient().realm.personaCharacter.getOwned(personaId);
-  return normalizeOwnerPortfolioPersonaDetail(persona);
+  try {
+    const world = await getStudioWorldCoreById(persona.worldId);
+    return normalizeOwnerPortfolioPersonaDetail(persona, world);
+  } catch (error) {
+    const detail = normalizeOwnerPortfolioPersonaDetail(persona);
+    return { ...detail, world: { ...detail.world, sourceFailure: classifyPersonaDetailFailure(error).kind } };
+  }
 }
 
 // @nimi-authority: rule.realm-persona-studio.acceptance.r003
