@@ -21,3 +21,6 @@
 *.dll binary
 *.dylib binary
 *.so binary
+
+# Preserve the exact App-owned license bytes in release archives.
+LICENSE -text

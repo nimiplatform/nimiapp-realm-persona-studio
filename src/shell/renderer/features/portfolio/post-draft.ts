@@ -409,11 +409,7 @@ export function buildRuntimePostCopyPrompt(input: {
     errors: [],
     payload: {
       surfaceId: 'realm-persona-studio.post-copy',
-      params: {
-        maxTokens: 700,
-        temperature: 0.5,
-        topP: 1,
-      },
+      params: {},
       systemText: [
         'You draft candidate Realm Persona post copy for owner review.',
         'Return exactly one JSON object with caption, tagsText, and rationale only. No code fences, markdown wrappers, or text outside the JSON object.',

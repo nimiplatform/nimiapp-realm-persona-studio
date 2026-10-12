@@ -103,6 +103,14 @@ It is a Desktop-supervised App, not a login or OAuth broker:
 Realm and Runtime calls require separately admitted public Nimi kit / SDK
 operations delivered through the protected standard bridge.
 
+Electron uses the Desktop-prepared technical Host profile before loading Kit.
+When a bound session is invalidated, Studio retires its old renderer and opens a
+fresh one, which reads only the current account's protected App storage. Creation
+and post drafts, schedules, asset metadata and theme preferences use that managed
+storage; browser preferences are technical profile data, not a separate stable
+OS business store. This development repair has not undergone a real App journey
+or installation acceptance in this iteration.
+
 ## Creation and maintenance
 
 Start with an idea, choose an inspiration prompt, or ask AI to invent a character.

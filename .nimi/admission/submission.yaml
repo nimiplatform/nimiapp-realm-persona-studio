@@ -1,6 +1,6 @@
 app_id: nimi.realm-persona-studio
 display_name: Realm Persona Studio
-version: 0.1.5
+version: 0.1.6
 profile: standalone
 npm_package_name: nimiapp-realm-persona-studio
 cargo_package_name: nimiapp-realm-persona-studio-shell
@@ -13,14 +13,7 @@ capability_contract_refs:
   - audio.synthesize
 required_standardized_feature_refs: []
 storage_policy:
-  kind: app-owned-os-storage
-  os_storage_disclosure:
-    - path_pattern: <Electron userData>/Local Storage/**
-      purpose: Language preference only. Realm remains authoritative for Persona records.
-      expected_size_band: Typically KiB to a few MiB of JSON, subject to browser storage quota.
-    - path_pattern: <Nimi protected App storage>/**
-      purpose: Creation and post drafts, local schedules, creative-asset history, imported artifact metadata and theme preference through protected App operations. Media bytes remain in Runtime artifact custody.
-      expected_size_band: JSON metadata is typically KiB to a few MiB; imported image files in Runtime custody are limited to 8 MiB each.
+  kind: nimi-mediated-default
 safety_profile:
   ai:
     direct_interaction: true

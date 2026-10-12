@@ -63,11 +63,7 @@ function buildImagePromptOptimizePayload(input: PersonaImagePromptOptimizeInput)
 
   return {
     surfaceId: 'realm-persona-studio.persona-image-prompt',
-    params: {
-      maxTokens: 400,
-      temperature: 0.7,
-      topP: 1,
-    },
+    params: {},
     systemText: [
       'You rewrite character material into ONE visual prompt for an image-generation model drawing a character reference portrait.',
       `Write in ${outputLanguage}.`,

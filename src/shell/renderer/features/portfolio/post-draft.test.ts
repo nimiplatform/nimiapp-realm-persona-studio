@@ -207,11 +207,7 @@ describe('app-local post schedule candidate', () => {
     expect(result.ok).toBe(true);
     expect(result.payload).toMatchObject({
       surfaceId: 'realm-persona-studio.post-copy',
-      params: {
-        maxTokens: 700,
-        temperature: 0.5,
-        topP: 1,
-      },
+      params: {},
     });
     const userText = result.payload?.userText || '';
     expect(userText).not.toContain('LocalAgent');

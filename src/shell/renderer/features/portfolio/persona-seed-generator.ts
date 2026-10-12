@@ -134,11 +134,7 @@ function buildPersonaSeedPayload(
 
   return {
     surfaceId: 'realm-persona-studio.persona-seed',
-    params: {
-      maxTokens: 2200,
-      temperature: mode === 'creative' ? 0.9 : 0.7,
-      topP: 1,
-    },
+    params: {},
     systemText: [
       introLine,
       'Return ONE JSON object. No prose before or after. No code fences.',

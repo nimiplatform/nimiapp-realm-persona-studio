@@ -1,12 +1,23 @@
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { app, BrowserWindow, ipcMain, Menu, protocol, session, webContents } from 'electron';
-import {
+import { configureNimiElectronAppHostProfile } from '@nimiplatform/kit/shell/electron/host-profile';
+
+// @nimi-authority: rule.realm-persona-studio.runtime-ai.r009
+try {
+  configureNimiElectronAppHostProfile(app);
+} catch (error) {
+  process.stderr.write(`[nimi-app-host-profile] ${error instanceof Error ? error.message : String(error)}\n`);
+  app.exit(78);
+  throw error;
+}
+
+const {
   createNimiElectronStandardApplicationMenuTemplate,
   isAllowedElectronRendererUrl,
   registerNimiElectronAppAssetProtocolScheme,
   registerNimiElectronAppBridge,
-} from '@nimiplatform/kit/shell/electron/main';
+} = await import('@nimiplatform/kit/shell/electron/main');
 import { installStudioUnloadConfirmation } from './studio-unload-confirmation.js';
 
 const REALM_PERSONA_STUDIO_APP_ID = 'nimi.realm-persona-studio';
@@ -24,6 +35,8 @@ const rendererDistIndex = path.join(appRoot, 'dist', 'index.html');
 const rendererDistUrl = pathToFileURL(rendererDistIndex).toString();
 const developmentRendererUrl = readDevelopmentRendererUrl();
 const rendererUrl = developmentRendererUrl || rendererDistUrl;
+let resettingRenderer = false;
+let quitting = false;
 
 app.setName(REALM_PERSONA_STUDIO_APP_NAME);
 installRealmPersonaStudioStandardApplicationMenu();
@@ -44,6 +57,7 @@ async function bootstrapElectron(): Promise<void> {
     allowedRendererUrls: [rendererUrl],
     assetMediaPlatform: { protocol, webRequest: session.defaultSession.webRequest, webContents },
     ipcMain,
+    onSessionInvalidated: resetAccountScopedRenderer,
   });
 
   await createMainWindow();
@@ -78,10 +92,23 @@ function installRealmPersonaStudioStandardApplicationMenu(): void {
 }
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+  if (process.platform !== 'darwin' && !resettingRenderer && BrowserWindow.getAllWindows().length === 0) {
     app.quit();
   }
 });
+app.on('before-quit', () => { quitting = true; });
+
+function resetAccountScopedRenderer(): void {
+  const windows = BrowserWindow.getAllWindows();
+  if (quitting || windows.length === 0) return;
+  resettingRenderer = true;
+  try {
+    for (const window of windows) window.destroy();
+    void createMainWindow().catch((error: unknown) => {
+      process.stderr.write(`[nimi-app-session-reset] ${error instanceof Error ? error.message : String(error)}\n`);
+    });
+  } finally { resettingRenderer = false; }
+}
 
 async function createMainWindow(): Promise<BrowserWindow> {
   const window = new BrowserWindow({
@@ -106,7 +133,8 @@ async function createMainWindow(): Promise<BrowserWindow> {
 }
 
 async function loadRenderer(window: BrowserWindow): Promise<void> {
-  await window.loadURL(rendererUrl);
+  try { await window.loadURL(rendererUrl); }
+  catch (error) { if (!window.isDestroyed()) throw error; }
 }
 
 function hardenRealmPersonaStudioWindowChrome(window: BrowserWindow): void {

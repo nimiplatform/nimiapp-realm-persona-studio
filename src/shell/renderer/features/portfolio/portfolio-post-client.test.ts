@@ -137,7 +137,7 @@ describe('owner portfolio publication hardcut', () => {
     const submitted = runner.mock.calls[0]?.[0];
     expect(submitted).toMatchObject({
       surfaceId: 'realm-persona-studio.post-copy',
-      params: { maxTokens: 700, temperature: 0.5, topP: 1 },
+      params: {},
     });
     expect(submitted?.userText).not.toContain('LocalAgent');
     expect(result).toMatchObject({

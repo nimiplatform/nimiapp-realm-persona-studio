@@ -77,7 +77,7 @@ describe('persona seed generation through the injected text candidate runner', (
     const submitted = runner.mock.calls[0]?.[0];
     expect(submitted).toMatchObject({
       surfaceId: 'realm-persona-studio.persona-seed',
-      params: { maxTokens: 2200, temperature: 0.7, topP: 1 },
+      params: {},
     });
     expect(submitted?.systemText).toContain('owner-reviewed Realm Persona draft');
     expect(submitted?.userText).toContain('"mode":"completion"');
@@ -115,7 +115,7 @@ describe('persona seed generation through the injected text candidate runner', (
     const submitted = runner.mock.calls[0]?.[0];
     expect(submitted).toMatchObject({
       surfaceId: 'realm-persona-studio.persona-seed',
-      params: { maxTokens: 2200, temperature: 0.9, topP: 1 },
+      params: {},
     });
     expect(submitted?.systemText).toContain('invent an original, complete Realm Persona draft from scratch');
     expect(submitted?.systemText).toContain('write in Chinese');

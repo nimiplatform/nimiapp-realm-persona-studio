@@ -24,7 +24,7 @@ describe('persona description reroll through the injected text candidate runner'
     const submitted = runner.mock.calls[0]?.[0];
     expect(submitted).toMatchObject({
       surfaceId: 'realm-persona-studio.persona-description',
-      params: { maxTokens: 500, temperature: 1, topP: 1 },
+      params: {},
     });
     expect(submitted?.systemText).toContain('Write in Chinese');
     expect(submitted?.systemText).not.toContain('different concept');

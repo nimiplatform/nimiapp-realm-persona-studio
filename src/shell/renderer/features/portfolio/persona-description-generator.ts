@@ -65,11 +65,7 @@ function buildPersonaDescriptionPayload(input: PersonaDescriptionCandidateInput)
 
   return {
     surfaceId: 'realm-persona-studio.persona-description',
-    params: {
-      maxTokens: 500,
-      temperature: 1,
-      topP: 1,
-    },
+    params: {},
     systemText: [
       'You write ONE original character description for an owner collecting ideas through repeated rerolls.',
       `Write in ${outputLanguage}.`,

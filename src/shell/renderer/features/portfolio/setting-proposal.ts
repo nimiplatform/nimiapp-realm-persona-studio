@@ -138,7 +138,7 @@ export function buildRuntimeOwnerSettingsProposalPrompt(input: {
     errors: [],
     payload: {
       surfaceId: 'realm-persona-studio.settings-proposal',
-      params: { maxTokens: 2000, temperature: 0.3, topP: 1 },
+      params: {},
       systemText: [
         'Edit the owner draft to satisfy the explicit ownerIntent. This is a bounded edit request, not a request to redesign the character.',
         'Return ONE JSON object, no code fences. Allowed string fields: displayName, description, greeting, characterIdentity, behaviorText, speakingText, boundariesText, rationale.',

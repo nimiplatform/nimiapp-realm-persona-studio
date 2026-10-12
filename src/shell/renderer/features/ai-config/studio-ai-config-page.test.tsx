@@ -129,8 +129,11 @@ describe('Studio AIConfig self-owner page', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /Text Generate/u }));
     const save = await screen.findByTestId('model-config-save:text.generate');
+    const temperature = document.querySelector('[data-nimi-default-parameter="temperature"] input') as HTMLInputElement;
+    fireEvent.change(temperature, { target: { value: '0.5' } });
     fireEvent.click(save);
     await waitFor(() => expect(aiConfigManagerMock.overwrite).toHaveBeenCalledTimes(1));
+    fireEvent.change(temperature, { target: { value: '0.6' } });
     fireEvent.click(save);
     await waitFor(() => expect(aiConfigManagerMock.overwrite).toHaveBeenCalledTimes(2));
     expect(aiConfigManagerMock.overwrite.mock.calls[1]?.[0].expectedRevision).toBe('2');
