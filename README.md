@@ -1,5 +1,15 @@
 # nimiapp-realm-persona-studio
 
+## Published dependency and Catalog acceptance (2026-10-13)
+
+Current public release: [0.1.6](https://github.com/nimiplatform/nimiapp-realm-persona-studio/releases/tag/v0.1.6); [Registry admission #86](https://github.com/nimiplatform/nimi-app-registry/pull/86) is merged for macOS arm64 and Windows x64. Frozen locks use published SDK 0.21.0, Kit/native 0.19.3, App Tools 0.12.1 and nimi-coding 0.6.5; no local Nimi archive or source-link resolution is required.
+
+Repository checks and managed production builds, package provenance and immutable Release checks passed for both declared targets. Actual Catalog download, installation and AI acceptance ran on macOS arm64 through source Nimi Home and its matching protected Runtime (Nimi main 35498102b). Runtime identity and App Access checks remain enforced.
+
+Real AI generation produced the Bluebird-743 introduction, greeting, traits and behavioral rules. The local candidate survived a full Home stop/launch. After review, the App created the character privately in Realm in 云脉海层 (01M4RYXTBTGH90DKNE6W5VDADY), and the actual editor read back the saved private profile.
+
+**NOT-VERIFIED:** Windows GUI installation and AI use. Portrait, voice, friends and post publishing were not exercised.
+
 角色IP的孵化中心
 
 Realm Persona Studio — Owner-facing creation and operation desktop app for user-owned public Realm Personas. Packaged as a Electron 42 + React 19 desktop app.
