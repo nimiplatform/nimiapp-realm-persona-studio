@@ -28,6 +28,47 @@
   --ras-page-gutter: clamp(16px, 2.2vw, 28px);
 }
 
+/* AI configuration: one recovery message, with diagnostics on demand. */
+.ras-ai-config-recovery {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: clamp(16px, 2vw, 24px);
+  border: 1px solid var(--nimi-border-subtle);
+  border-radius: var(--nimi-radius-lg);
+  background: var(--nimi-surface-panel);
+}
+
+.ras-ai-config-recovery__icon {
+  display: grid;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid var(--nimi-border-subtle);
+  border-radius: var(--nimi-radius-md);
+  color: var(--nimi-text-secondary);
+  background: var(--nimi-surface-card);
+}
+
+.ras-ai-config-diagnostics {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--nimi-border-subtle);
+}
+
+.ras-ai-config-diagnostics summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--nimi-text-secondary);
+  font-size: var(--nimi-type-body-sm-size);
+}
+
+.ras-ai-config-diagnostics summary:focus-visible {
+  outline: 2px solid var(--nimi-text-primary);
+  outline-offset: 4px;
+}
+
 html,
 body,
 #root {

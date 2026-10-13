@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import '@testing-library/jest-dom/vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StudioAIConfigPage } from './studio-ai-config-page.js';
@@ -80,9 +81,9 @@ describe('Studio AIConfig self-owner page', () => {
     renderPage();
 
     await screen.findByRole('button', { name: /Text Generate/u });
-    fireEvent.click(screen.getByRole('button', { name: 'Open AI models in Nimi Desktop' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open in Nimi Desktop' }));
 
-    await screen.findByText('Nimi Desktop accepted the request and opened Realm Persona Studio’s AI models. Complete the configuration there, then return and refresh.');
+    await screen.findByText('AI models opened. Return and refresh when finished.');
   });
 
   it('shows Desktop navigation rejection with typed copy and clipboard diagnostics', async () => {
@@ -98,11 +99,12 @@ describe('Studio AIConfig self-owner page', () => {
     renderPage();
 
     await screen.findByRole('button', { name: /Text Generate/u });
-    fireEvent.click(screen.getByRole('button', { name: 'Open AI models in Nimi Desktop' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open in Nimi Desktop' }));
 
-    await screen.findByText('Nimi Desktop could not open Realm Persona Studio’s AI models. No configuration was changed.');
-    await screen.findByText('Something went wrong. Try again.');
-    expect(document.querySelector('details')).toBeNull();
+    await screen.findByText(/Could not open AI models\. In Nimi Desktop/u);
+    expect(document.querySelector('details')?.open).toBe(false);
+    expect(screen.getByRole('button', { name: 'Copy diagnostics' })).not.toBeVisible();
+    fireEvent.click(screen.getByText('Troubleshooting details'));
 
     fireEvent.click(screen.getByRole('button', { name: 'Copy diagnostics' }));
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
@@ -111,7 +113,7 @@ describe('Studio AIConfig self-owner page', () => {
     expect(payload).toContain('wait_for_desktop_ready');
   });
 
-  it('uses the mutation acknowledgement revision before background effective refresh completes', async () => {
+  it('blocks stale edits after a failed refresh and retains the editor through recovery', async () => {
     const initialSnapshot = await loadStudioAIConfigMock();
     loadStudioAIConfigMock
       .mockReset()
@@ -133,10 +135,31 @@ describe('Studio AIConfig self-owner page', () => {
     fireEvent.change(temperature, { target: { value: '0.5' } });
     fireEvent.click(save);
     await waitFor(() => expect(aiConfigManagerMock.overwrite).toHaveBeenCalledTimes(1));
+    await screen.findByRole('heading', { name: 'Unable to load AI configuration' });
+    expect(save).not.toBeVisible();
+    expect(save).toBeDisabled();
+    const committed = await aiConfigManagerMock.overwrite.mock.results[0]?.value;
+    loadStudioAIConfigMock.mockResolvedValue({ ...initialSnapshot, config: committed.config, revision: committed.revision });
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(save).toBeVisible());
     fireEvent.change(temperature, { target: { value: '0.6' } });
     fireEvent.click(save);
     await waitFor(() => expect(aiConfigManagerMock.overwrite).toHaveBeenCalledTimes(2));
     expect(aiConfigManagerMock.overwrite.mock.calls[1]?.[0].expectedRevision).toBe('2');
+  });
+
+  it('shows one recovery path without mounting model controls on an initial read failure', async () => {
+    loadStudioAIConfigMock.mockRejectedValue(new Error('Runtime unavailable'));
+    renderPage();
+
+    await screen.findByRole('heading', { name: 'Unable to load AI configuration' });
+    expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: 'Refresh' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Text Generate/u })).toBeNull();
+    expect(aiConfigManagerMock.listOptions).not.toHaveBeenCalled();
+    expect(document.querySelector('details')?.open).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(loadStudioAIConfigMock).toHaveBeenCalledTimes(2));
   });
 });
 

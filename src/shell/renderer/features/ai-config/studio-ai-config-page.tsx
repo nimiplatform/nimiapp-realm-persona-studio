@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, InlineAlert, NimiText, StatusBadge, Surface, nimiToast } from '@nimiplatform/kit/ui';
+import { Button, LoadingSkeleton, NimiText, StatusBadge, Surface, nimiToast } from '@nimiplatform/kit/ui';
+import { Info, ExternalLink, RefreshCw } from 'lucide-react';
 import { ModelConfigAIConfigSurface, type ModelConfigCopy } from '@nimiplatform/kit/features/model-config';
 import { failureKindCopyKey } from '@renderer/features/portfolio/failure-copy.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
@@ -152,85 +153,98 @@ export function StudioAIConfigPage() {
               {t('aiConfig.description')}
             </p>
           </div>
-          <StatusBadge
-            tone={configQuery.isPending ? 'neutral' : configQuery.isError || (configured && !effectiveReady) ? 'warning' : configured ? 'success' : 'info'}
-            shape="dot"
-          >
-            {configQuery.isPending
-              ? t('common.loading')
-              : configQuery.isError
-                ? t('aiConfig.state.unavailable')
-                : configured && effectiveReady
+          {!configQuery.isError ? (
+            <StatusBadge
+              tone={configQuery.isPending ? 'neutral' : configured && !effectiveReady ? 'warning' : configured ? 'success' : 'info'}
+              shape="dot"
+            >
+              {configQuery.isPending
+                ? t('common.loading')
+                : effectiveReady
                   ? t('aiConfig.state.configured')
                   : configured
                     ? t('aiConfig.state.unavailable')
                     : t('aiConfig.state.notConfigured')}
-          </StatusBadge>
+            </StatusBadge>
+          ) : null}
         </div>
 
-        {configQuery.isSuccess && !configured ? (
-          <InlineAlert tone="warning" className="mb-4">
-            {t('aiConfig.notConfiguredDetail')}
-          </InlineAlert>
+        {configQuery.isPending ? <LoadingSkeleton lines={3} label={t('common.loading')} /> : null}
+        {configQuery.isError ? (
+          <section aria-labelledby="ai-config-recovery-title" className="ras-ai-config-recovery">
+            <div className="ras-ai-config-recovery__icon"><Info size={22} aria-hidden="true" /></div>
+            <div className="min-w-0">
+              <h2 id="ai-config-recovery-title" className="m-0 text-base font-semibold">{t('aiConfig.unavailableTitle')}</h2>
+              <p role="status" className="m-0 mt-2 text-sm text-[var(--nimi-text-secondary)]">{t('aiConfig.unavailableDetail')}</p>
+            </div>
+          </section>
         ) : null}
-        <ModelConfigAIConfigSurface
-          className="mb-4"
-          context={{ owner: 'app-ai-config', appId: 'nimi.realm-persona-studio' }}
-          capabilityContracts={STUDIO_AI_CAPABILITIES}
-          capabilities={snapshot?.config?.capabilities ?? (configQuery.isSuccess ? null : undefined)}
-          revision={snapshot?.revision}
-          effectiveSelections={snapshot?.effectiveSelections}
-          listOptions={(query) => aiConfigManager.listOptions(query)}
-          onOverwrite={async (input) => {
-            const result = await aiConfigManager.overwrite(input);
-            queryClient.setQueryData(STUDIO_AI_CONFIG_QUERY_KEY, {
-              config: result.config,
-              revision: result.revision,
-              effectiveSelections: [],
-            });
-            void configQuery.refetch();
-            return result;
-          }}
-          onOpenOwnerConfiguration={() => ownerConfigurationMutation.mutate()}
-          loadError={configQuery.isError ? t('aiConfig.unavailableDetail') : null}
-          onRetry={() => { void configQuery.refetch(); }}
-          copy={modelConfigCopy}
-          language={locale}
-        />
+        {configQuery.isSuccess && !configured ? (
+          <p className="mb-4 text-sm text-[var(--nimi-text-secondary)]">
+            {t('aiConfig.notConfiguredDetail')}
+          </p>
+        ) : null}
+        {snapshot ? (
+          // Keep the editor mounted so a failed refresh does not discard the owner's draft.
+          <div hidden={configQuery.isError}>
+            <ModelConfigAIConfigSurface
+              className="mb-4"
+              context={{ owner: 'app-ai-config', appId: 'nimi.realm-persona-studio' }}
+              capabilityContracts={STUDIO_AI_CAPABILITIES}
+              capabilities={snapshot.config?.capabilities ?? null}
+              revision={snapshot.revision}
+              effectiveSelections={snapshot.effectiveSelections}
+              listOptions={(query) => aiConfigManager.listOptions(query)}
+              onOverwrite={async (input) => {
+                const result = await aiConfigManager.overwrite(input);
+                queryClient.setQueryData(STUDIO_AI_CONFIG_QUERY_KEY, {
+                  config: result.config,
+                  revision: result.revision,
+                  effectiveSelections: [],
+                });
+                void configQuery.refetch();
+                return result;
+              }}
+              onOpenOwnerConfiguration={() => ownerConfigurationMutation.mutate()}
+              disabled={configQuery.isError}
+              copy={modelConfigCopy}
+              language={locale}
+            />
+          </div>
+        ) : null}
 
-        <div className="flex flex-wrap gap-3">
+        <div className="mt-5 flex flex-wrap gap-3">
           <Button
-            tone="secondary"
+            tone={configQuery.isError ? 'primary' : 'secondary'}
             disabled={configQuery.isFetching}
             loading={configQuery.isFetching}
             onClick={() => void configQuery.refetch()}
           >
-            {t('common.refresh')}
+            <RefreshCw size={15} aria-hidden="true" />
+            {t(configQuery.isError ? 'aiConfig.action.retry' : 'common.refresh')}
           </Button>
           <Button
-            tone="primary"
+            tone="secondary"
             disabled={ownerConfigurationMutation.isPending}
             loading={ownerConfigurationMutation.isPending}
             onClick={() => ownerConfigurationMutation.mutate()}
           >
+            <ExternalLink size={15} aria-hidden="true" />
             {t('aiConfig.action.openOwnerConfiguration')}
           </Button>
         </div>
         {ownerConfigurationMutation.isSuccess ? (
-          <InlineAlert tone="success" className="mt-3">
+          <p role="status" className="mt-3 text-sm text-[var(--nimi-text-secondary)]">
             {t('aiConfig.handoffAccepted')}
-          </InlineAlert>
+          </p>
         ) : null}
         {ownerConfigurationMutation.isError ? (
-          <InlineAlert tone="warning" className="mt-3">
+          <p role="status" className="mt-3 text-sm text-[var(--nimi-text-secondary)]">
             {t('aiConfig.handoffRejected')}
-          </InlineAlert>
+          </p>
         ) : null}
-        {navigationErrorDetails ? (
-          <AIConfigFailureAlert details={navigationErrorDetails} />
-        ) : null}
-        {readErrorDetails ? (
-          <AIConfigFailureAlert details={readErrorDetails} />
+        {readErrorDetails || navigationErrorDetails ? (
+          <AIConfigDiagnostics read={readErrorDetails} navigation={navigationErrorDetails} />
         ) : null}
       </Surface>
     </div>
@@ -260,7 +274,10 @@ function describeAIConfigFailure(error: unknown): AIConfigFailureDetail | null {
   };
 }
 
-function AIConfigFailureAlert({ details }: { details: AIConfigFailureDetail }) {
+function AIConfigDiagnostics({ read, navigation }: {
+  read: AIConfigFailureDetail | null;
+  navigation: AIConfigFailureDetail | null;
+}) {
   const { t } = useStudioI18n();
 
   const copyDiagnostics = async () => {
@@ -269,7 +286,7 @@ function AIConfigFailureAlert({ details }: { details: AIConfigFailureDetail }) {
       return;
     }
     try {
-      await navigator.clipboard.writeText(JSON.stringify(details, null, 2));
+      await navigator.clipboard.writeText(JSON.stringify({ read, navigation }, null, 2));
       nimiToast.success(t('aiConfig.diagnosticsCopied'));
     } catch {
       nimiToast.danger(t('aiConfig.diagnosticsCopyFailed'));
@@ -277,13 +294,21 @@ function AIConfigFailureAlert({ details }: { details: AIConfigFailureDetail }) {
   };
 
   return (
-    <InlineAlert tone="danger" className="mt-3">
-      <div>{t(failureKindCopyKey(details.reasonCode ?? ''))}</div>
+    <details className="ras-ai-config-diagnostics">
+      <summary>{t('aiConfig.diagnosticsTitle')}</summary>
+      <p className="text-sm text-[var(--nimi-text-muted)]">{t('aiConfig.diagnosticsHint')}</p>
+      {([['aiConfig.diagnosticsRead', read], ['aiConfig.diagnosticsNavigation', navigation]] as const).map(([label, details]) => details ? (
+        <div key={label} className="mb-3 text-sm">
+          <h3 className="m-0 text-sm font-semibold">{t(label)}</h3>
+          <p className="my-1">{t(failureKindCopyKey(details.reasonCode ?? ''))}</p>
+          <pre className="m-0 whitespace-pre-wrap break-words text-xs text-[var(--nimi-text-muted)]">{[details.message, details.reasonCode, details.actionHint].filter(Boolean).join('\n')}</pre>
+        </div>
+      ) : null)}
       <div className="mt-2">
         <Button tone="secondary" size="sm" onClick={() => void copyDiagnostics()}>
           {t('aiConfig.copyDiagnostics')}
         </Button>
       </div>
-    </InlineAlert>
+    </details>
   );
 }
