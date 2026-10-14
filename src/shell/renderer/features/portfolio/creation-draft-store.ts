@@ -261,7 +261,7 @@ export async function persistCreationDraft(
     return persistFailure('persona-traits-too-many', 'Draft contains more than 3 persona traits.');
   }
   if (draft.personaTraits.some((trait) => !isKnownTrait(trait))) {
-    return persistFailure('persona-traits-outside-closed-set', 'Draft contains a persona trait outside the closed value set.');
+    return persistFailure('persona-traits-outside-closed-set', "Draft contains an unsupported persona trait.");
   }
   if (!Array.isArray(draft.referenceImageCandidates)) {
     return persistFailure('draft-candidate-invalid', 'Draft contains an invalid reference image candidate.');

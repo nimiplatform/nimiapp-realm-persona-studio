@@ -66,7 +66,7 @@ describe('Studio AIConfig self-owner page', () => {
     renderPage();
 
     await screen.findByText('1/3 Configured');
-    await screen.findByRole('button', { name: /Text Generate/u });
+    await screen.findByRole('button', { name: /Text Generation/u });
     expect(screen.queryByRole('button', { name: /World Generate/u })).toBeNull();
     expect(screen.queryByRole('button', { name: /Music Generate/u })).toBeNull();
     expect(screen.getByRole('button', { name: 'Refresh' })).toBeTruthy();
@@ -80,10 +80,10 @@ describe('Studio AIConfig self-owner page', () => {
     openStudioAIConfigurationInDesktopMock.mockResolvedValue(undefined);
     renderPage();
 
-    await screen.findByRole('button', { name: /Text Generate/u });
+    await screen.findByRole('button', { name: /Text Generation/u });
     fireEvent.click(screen.getByRole('button', { name: 'Open in Nimi Desktop' }));
 
-    await screen.findByText('AI models opened. Return and refresh when finished.');
+    await screen.findByText('Navigation request accepted. Check AI models in Nimi Desktop, then return here and refresh.');
   });
 
   it('shows Desktop navigation rejection with typed copy and clipboard diagnostics', async () => {
@@ -98,7 +98,7 @@ describe('Studio AIConfig self-owner page', () => {
     ));
     renderPage();
 
-    await screen.findByRole('button', { name: /Text Generate/u });
+    await screen.findByRole('button', { name: /Text Generation/u });
     fireEvent.click(screen.getByRole('button', { name: 'Open in Nimi Desktop' }));
 
     await screen.findByText(/Could not open AI models\. In Nimi Desktop/u);
@@ -129,7 +129,7 @@ describe('Studio AIConfig self-owner page', () => {
     }));
     renderPage();
 
-    fireEvent.click(await screen.findByRole('button', { name: /Text Generate/u }));
+    fireEvent.click(await screen.findByRole('button', { name: /Text Generation/u }));
     const save = await screen.findByTestId('model-config-save:text.generate');
     const temperature = document.querySelector('[data-nimi-default-parameter="temperature"] input') as HTMLInputElement;
     fireEvent.change(temperature, { target: { value: '0.5' } });
@@ -155,7 +155,7 @@ describe('Studio AIConfig self-owner page', () => {
     await screen.findByRole('heading', { name: 'Unable to load AI configuration' });
     expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1);
     expect(screen.queryByRole('button', { name: 'Refresh' })).toBeNull();
-    expect(screen.queryByRole('button', { name: /Text Generate/u })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Text Generation/u })).toBeNull();
     expect(aiConfigManagerMock.listOptions).not.toHaveBeenCalled();
     expect(document.querySelector('details')?.open).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));

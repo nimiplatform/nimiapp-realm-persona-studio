@@ -292,7 +292,7 @@ export function buildPersonaCreationGraphFromDraft(
     buildSection({
       key: 'contentVoice',
       title: 'Content Voice',
-      summary: 'Content voice is retained as a post-studio candidate, not a create write.',
+      summary: "Content voice is retained as a post-studio candidate and is not written during creation.",
       fields: [],
       missing: ['content voice examples'],
       risks: [],
@@ -310,7 +310,7 @@ export function buildPersonaCreationGraphFromDraft(
     buildSection({
       key: 'voiceBrief',
       title: 'Voice Brief',
-      summary: 'Voice demo belongs to Identity Studio and remains candidate-only in create.',
+      summary: "Voice demo belongs to Identity Studio and remains candidate-only during creation.",
       fields: [],
       missing: ['voice brief'],
       risks: [],
@@ -319,7 +319,7 @@ export function buildPersonaCreationGraphFromDraft(
     buildSection({
       key: 'postBrief',
       title: 'Post Brief',
-      summary: 'Post ideas belong to Content Studio and remain candidate-only in create.',
+      summary: "Post ideas belong to Content Studio and remain candidate-only during creation.",
       fields: [],
       missing: ['first post brief'],
       risks: [],
@@ -340,7 +340,7 @@ export function buildPersonaCreationGraphFromDraft(
     buildSection({
       key: 'missingDecisions',
       title: 'Missing Decisions',
-      summary: 'Unresolved decisions are explicit and do not block create unless they are required Realm create fields.',
+      summary: "Unresolved decisions are listed explicitly and only block creation if Realm requires those fields.",
       fields: [],
       missing: [
         ...(draft.description ? [] : ['profile description']),
@@ -377,7 +377,7 @@ export function buildPersonaCreationGraphFromDraft(
     },
     {
       target: 'owner-settings',
-      label: 'Review native profile after create',
+      label: "Review native profile after creation",
       status: 'deferred',
       reason: 'The reviewed description is included in create; later changes use a complete PersonaCharacter replace.',
       ruleIds: ['R-RPS-GRAPH-017', 'R-RPS-GRAPH-020'],

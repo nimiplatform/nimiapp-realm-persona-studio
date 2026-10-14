@@ -46,6 +46,18 @@ describe('studio i18n resources', () => {
     expect(normalizeStudioLocale('fr-FR')).toBeNull();
   });
 
+  it('renders unavailable asset counts without unsupported plural markup', async () => {
+    ensureStudioI18nInitialized();
+    for (const locale of ['en', 'zh']) {
+      await studioI18n.changeLanguage(locale);
+      for (const count of [1, 2]) {
+        const text = translateStudioCopy('assetsLibrary.unavailableCount', { count });
+        expect(text).toContain(String(count));
+        expect(text).not.toMatch(/[{}]/);
+      }
+    }
+  });
+
   it('translates typed Studio copy keys through the active language', async () => {
     ensureStudioI18nInitialized();
     await studioI18n.changeLanguage('zh');
@@ -59,18 +71,18 @@ describe('studio i18n resources', () => {
     ensureStudioI18nInitialized();
     await studioI18n.changeLanguage('zh');
     const chineseTraitLabels = [
-      ['HUMOROUS', '幽默 · 机智且有节奏感'],
-      ['SARCASTIC', '讽刺 · 干练、反讽的锋芒'],
+      ['HUMOROUS', '幽默 · 风趣机智，妙语连珠'],
+      ['SARCASTIC', '讽刺 · 言辞犀利，带点反讽锋芒'],
       ['GENTLE', '温和 · 语气柔和、措辞克制'],
-      ['DIRECT', '直率 · 直白，切中要点'],
-      ['OPTIMISTIC', '乐观 · 看到积极面'],
-      ['REALISTIC', '务实 · 预期扎实'],
-      ['DRAMATIC', '戏剧化 · 情绪摆幅大'],
-      ['PASSIONATE', '热情 · 投入强烈'],
-      ['REBELLIOUS', '叛逆 · 反抗常规'],
-      ['INNOCENT', '天真 · 真诚、坦率的视角'],
-      ['WISE', '睿智 · 善于反思并提供视角'],
-      ['ECCENTRIC', '古怪 · 角度和引用不寻常'],
+      ['DIRECT', '直率 · 说话直白，直奔主题'],
+      ['OPTIMISTIC', '乐观 · 总能看到事物积极的一面'],
+      ['REALISTIC', '务实 · 脚踏实地，看重现实可行性'],
+      ['DRAMATIC', '戏剧化 · 情感浓烈，极具戏剧张力'],
+      ['PASSIONATE', '热情 · 全情投入，充满热忱'],
+      ['REBELLIOUS', '叛逆 · 打破常规，不喜束缚'],
+      ['INNOCENT', '天真 · 目光纯粹，真诚率直'],
+      ['WISE', '睿智 · 深思熟虑，善于提供独到见解'],
+      ['ECCENTRIC', '古怪 · 脑回路独特，视角与联想与众不同'],
     ] as const;
     for (const [trait, expected] of chineseTraitLabels) {
       const label = translatePersonaTraitLabel(trait);
@@ -87,8 +99,8 @@ describe('studio i18n resources', () => {
     ensureStudioI18nInitialized();
     await studioI18n.changeLanguage('zh');
     const chineseArchetypeLabels = [
-      ['CARING', '照护型'],
-      ['PLAYFUL', '顽皮型'],
+      ['CARING', '关怀型'],
+      ['PLAYFUL', '俏皮型'],
       ['INTELLECTUAL', '理智型'],
       ['CONFIDENT', '自信型'],
       ['MYSTERIOUS', '神秘型'],

@@ -50,7 +50,7 @@ describe('schedule review and storage failures', () => {
     expect(screen.queryByText('time reached')).toBeNull();
     act(() => { vi.advanceTimersByTime(60_000); });
     expect(screen.getByText('time reached')).toBeTruthy();
-    expect(screen.getByText(/The planned time has been reached/)).toBeTruthy();
+    expect(screen.getByText(/The planned time has arrived/)).toBeTruthy();
     expect(onChange).not.toHaveBeenCalled();
     expect(removeJson).not.toHaveBeenCalled();
     expect(JSON.stringify([...values.entries()])).toBe(stored);

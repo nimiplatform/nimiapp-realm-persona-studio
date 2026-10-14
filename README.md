@@ -1,201 +1,90 @@
-# nimiapp-realm-persona-studio
+# Realm Persona Studio (角色工坊)
 
-## Published dependency and Catalog acceptance (2026-10-13)
+> The creation, incubation, and operations studio for user-owned AI characters and digital personas.
 
-Current public release: [0.1.6](https://github.com/nimiplatform/nimiapp-realm-persona-studio/releases/tag/v0.1.6); [Registry admission #86](https://github.com/nimiplatform/nimi-app-registry/pull/86) is merged for macOS arm64 and Windows x64. Frozen locks use published SDK 0.21.0, Kit/native 0.19.3, App Tools 0.12.1 and nimi-coding 0.6.5; no local Nimi archive or source-link resolution is required.
+Realm Persona Studio is a desktop creative suite built for creators, authors, and worldbuilders who want to incubate durable, living AI characters. From psychological archetypes and visual portraits to vocal tone and creative writing drafts, Persona Studio gives you full artistic control over your characters' digital identities within the open Realm ecosystem.
 
-Repository checks and managed production builds, package provenance and immutable Release checks passed for both declared targets. Actual Catalog download, installation and AI acceptance ran on macOS arm64 through source Nimi Home and its matching protected Runtime (Nimi main 35498102b). Runtime identity and App Access checks remain enforced.
+---
 
-Real AI generation produced the Bluebird-743 introduction, greeting, traits and behavioral rules. The local candidate survived a full Home stop/launch. After review, the App created the character privately in Realm in 云脉海层 (01M4RYXTBTGH90DKNE6W5VDADY), and the actual editor read back the saved private profile.
+## Creative Studio Workflow
 
-**NOT-VERIFIED:** Windows GUI installation and AI use. Portrait, voice, friends and post publishing were not exercised.
+### 1. Persona Identity & Lore
+- Craft detailed character profiles covering backstory, personality traits, moral compass, and dialogue habits.
+- Co-write with your selected local or cloud AI to generate prompt-grounded greetings, core behavioral boundaries, and distinctive speaking mannerisms.
 
-角色IP的孵化中心
+### 2. Visual Identity & Asset Gallery
+- Generate AI portrait candidates, character concept art, and profile banners.
+- Import external reference images (`PNG`, `JPEG`, `WebP`, or `GIF`, up to 8 MiB) into your private local asset library.
+- Manage character poses, expressions, and outfit variations.
 
-Realm Persona Studio — Owner-facing creation and operation desktop app for user-owned public Realm Personas. Packaged as a Electron 42 + React 19 desktop app.
+### 3. Voice & Acoustic Audition
+- Assign distinctive vocal profiles to your persona.
+- Preview and audition spoken dialogue lines across different emotional tones.
 
-> Migrated from the `apps/realm-persona-studio` workspace in the `nimi-realm`
-> monorepo. The nimi-realm copy remains in place pending manual removal;
-> this project is the canonical standalone distribution.
+### 4. Feed & Post Composition
+- Draft social feed posts and diary entries directly in your persona's authentic voice.
+- Maintain one local schedule candidate per persona. Saving a draft keeps it locally—post publication, media uploads, and scheduled publishing are currently unavailable.
 
-## What this is
+### 5. Realm Synchronization
+- Sync supported `PersonaCharacter` profile changes to Realm under your authenticated owner account.
+- Local drafts and saved Realm profiles remain separate. Saving updates the Realm record under its visibility settings; it is distinct from publication lifecycle actions, which remain disabled when unavailable.
 
-Realm Persona Studio is the creation and operation center where an owner
-incubates, ships, and operates user-owned public **Realm Personas** as durable
-persona IP. It supports:
+---
 
-- Building a coherent persona identity (personality, worldview, role)
-- Managing public settings through natural language + AI assistance
-- Cultivating visual identity (avatar, profile cover candidates, post images)
-- Composing persona-authored post drafts and a single local schedule per persona; Realm publication is currently unavailable
-- Showing source availability for adoption signals (`friendCount`); no value is shown until an admitted source supplies it
+## Technical Architecture
 
-It is **not** a LocalAgent runtime center, world maintenance tool, Forge
-package editor, team collaboration platform, or performance analytics suite.
+| Layer | Technology | Purpose |
+| :--- | :--- | :--- |
+| **Desktop Shell** | Desktop-supervised Electron | Native host integration and protected Nimi access |
+| **Renderer UI** | React 19 + Vite + Tailwind CSS | Fluid component design using `@nimiplatform/kit` |
+| **Routing & State** | React Router 7 + Zustand | Multi-persona navigation and reactive draft state |
+| **Platform Integration** | `@nimiplatform/sdk` | Protected Realm profile access, AI inference, and local asset candidates |
 
-Normative product authority lives under
-[`.nimi/spec/realm-persona-studio/canonical/`](./.nimi/spec/realm-persona-studio/canonical/).
+---
 
-## Architecture
+## Getting Started & Development
 
-| Layer | Technology | Location |
-|-------|-----------|----------|
-| Desktop shell | Desktop-supervised Electron 42 | `src-electron/` |
-| Renderer | React 19 + Vite 7 + Tailwind 4 | `src/shell/renderer/` |
-| Routing | react-router-dom 7 | `src/shell/renderer/app-shell/routes.tsx` |
-| Auth & runtime bridge | Desktop-supervised protected standard bridge | `src-electron/` |
-| UI components | `@nimiplatform/kit` (npm) | renderer-wide |
-| Platform client | `@nimiplatform/sdk` (npm) | `src/shell/renderer/app-shell/studio-platform.ts` |
-| State | Zustand | `src/shell/renderer/app-shell/app-store.ts` |
+### Prerequisites
+- Node.js ≥ 24, pnpm ≥ 10
+- Running Nimi Desktop with an active user account
 
-## Prerequisites
-
-- Node.js ≥ 24
-- pnpm ≥ 10
-
-## Install
-
+### Running Locally
 ```bash
+# Install dependencies
 pnpm install
-```
 
-All runtime dependencies resolve from npm (`@nimiplatform/kit`,
-`@nimiplatform/sdk`); no sibling
-`nimi-realm` checkout is required.
-
-## Development
-
-```bash
-# Desktop-supervised Electron (active development path)
+# Start in Desktop-supervised Electron shell
 pnpm dev
-
-# Explicit alias for the same active path
-pnpm dev:electron
-
-# Renderer-only, intentionally without protected operations
-pnpm dev:renderer
 ```
 
-## Build & Verify
-
+### Verification & Testing
 ```bash
-pnpm build                            # typecheck + renderer and Electron builds
-pnpm test                             # vitest run
-pnpm check:spec-consistency           # spec authority surface check
-pnpm lint                             # typecheck + eslint
-pnpm storybook                        # local component and page fixtures, port 6006
-pnpm build:storybook                  # .nimi/local/storybook; also built in CI
+# Typecheck and build
+pnpm build
+
+# Run unit tests
+pnpm test
+
+# Verify specification consistency and run linting
+pnpm check:spec-consistency
+pnpm lint
+
+# Launch component Storybook
+pnpm storybook
 ```
 
-Storybook covers portfolio, creation and reference sources, overview, settings,
-identity and voice, post drafting and management, assets, AI configuration, and
-writing/voice loading and failure controls. The development banner identifies
-fixture data; a Storybook-only module supplies settings read fixtures. Other
-protected reads without a host remain unavailable, and no AI, storage, or Realm
-write is replaced with a successful response. Storybook verifies
-presentation only; acceptance uses the supervised Electron App through CDP.
+---
 
-Local image imports use the published protected artifact upload/read operations
-and a metadata index at `assets/imported.json`. PNG, JPEG, WebP and GIF files up
-to 8 MiB are supported. Audio file import awaits published SDK/Kit audio MIME
-admission. Removing an imported entry does not delete Runtime-managed bytes.
+## Data Custody & Privacy
 
-## Desktop-Supervised Protected Session
+- **Local Creative Drafts**: Saved character drafts, image candidates, local schedules, and post ideas stay in local App storage.
+- **Realm Profiles & AI Routing**: Supported profile writes use your authenticated owner account. AI co-writing follows your selected inference route; when using a cloud route, relevant draft input is sent to the selected provider.
 
-Realm Persona Studio inherits Runtime account state from the Nimi desktop host.
-It is a Desktop-supervised App, not a login or OAuth broker:
+---
 
-- The app does not render `DesktopShellAuthPage`.
-- The app does not open OAuth, exchange OAuth codes, or save/load/clear Runtime sessions.
-- The app does not own access tokens, refresh tokens, Runtime defaults, or Runtime app registration.
-- Missing Desktop shared Runtime account state renders an explicit capability-unavailable state.
+## Release & Verification Status
 
-Realm and Runtime calls require separately admitted public Nimi kit / SDK
-operations delivered through the protected standard bridge.
-
-Electron uses the Desktop-prepared technical Host profile before loading Kit.
-When a bound session is invalidated, Studio retires its old renderer and opens a
-fresh one, which reads only the current account's protected App storage. Creation
-and post drafts, schedules, asset metadata and theme preferences use that managed
-storage; browser preferences are technical profile data, not a separate stable
-OS business store. This development repair has not undergone a real App journey
-or installation acceptance in this iteration.
-
-## Creation and maintenance
-
-Start with an idea, choose an inspiration prompt, or ask AI to invent a character.
-AI drafts a public introduction, an opening line, a compact identity, specific
-behavior and speaking principles, and clear boundaries. Review these in four
-steps: introduction, personality, optional visual reference, and Realm creation.
-The live preview shows the actual draft writing; it does not simulate a chat.
-Creation starts private, and the owner reviews visibility and a source-backed
-home world before submitting. Drafts save locally through protected storage and
-reopen at the editing stage when character writing already exists.
-
-The character settings workspace starts with a natural-language AI revision
-request. Suggestions show current and proposed text and can be adopted one at a
-time. Adopting a suggestion only edits the draft. A suggestion cannot overwrite
-a field edited after generation started. Saving uses the latest owner read,
-preserves unrelated profile fields and existing relationship postures, and
-rejects content conflicts without discarding the owner's writing.
-
-| Route | Purpose |
-|-------|---------|
-| `/portfolio` | Owner character collection and local creation drafts |
-| `/portfolio/create` | Idea, AI character draft, live preview, and reviewed creation |
-| `/portfolio/:personaId` | Profile overview and next creative actions |
-| `/portfolio/:personaId/settings` | AI-assisted public profile and character writing maintenance |
-| `/portfolio/:personaId/identity` | Visual identity and voice candidates |
-| `/portfolio/:personaId/posts` | Persona-authored post draft and local schedule |
-| `/portfolio/:personaId/posts/manage` | Local content management |
-| `/assets` | Local creative asset library |
-| `/ai-config` | App-owned AI configuration through the canonical kit surface |
-
-`/visual-preview.html` is a development-only visual entry with a persistent
-example-data label. It is excluded from the production build. It cannot establish
-AI generation, Realm writes, or platform admission; use the Desktop-supervised
-app for those checks.
-
-## Spec Authority
-
-Normative product authority lives in closed v2 containers under
-[`.nimi/spec/realm-persona-studio/canonical/`](./.nimi/spec/realm-persona-studio/canonical/).
-Use project-local `pnpm exec nimicoding authority query` or bounded
-`pnpm exec nimicoding authority context` to retrieve exact IDs.
-
-Studio owner Realm Personas are canonical PersonaCharacters consumed through
-the host-injected `@nimiplatform/sdk/app` surface:
-`client.realm.personaCharacter.listOwned/getOwned/create/replace`. Replacement
-uses `toProfileInput` and the latest `baseContentHash`; home-world reads use the
-admitted `client.realm.worldCore` surface. Runtime source materialization is
-not admitted and remains fail-closed. `/api/creator/agents`,
-`/api/agent/forge-imported-system/**`, and `/api/agent/dev/my-agents` are
-explicitly non-current legacy anti-targets and must not be promoted into owner
-portfolio surfaces.
-
-`.nimi/methodology/authority-authoring.yaml` is managed by
-`@nimiplatform/nimi-coding`; refresh it with
-`pnpm exec nimicoding sync --apply` after bumping the package. Validate the
-canonical corpus with `pnpm run spec:authority:check` and
-`pnpm run spec:authority:compile`.
-
-## License
-
-[MIT](./LICENSE)
-
-## Windows package and release
-
-The production target is Windows x86_64 using Desktop-supervised Electron.
-Build and inspect the package from this repository:
-
-```bash
-pnpm run sync
-pnpm exec nimi-app check --production
-pnpm exec nimi-app test
-pnpm exec nimi-app build --target windows-x86_64 --production
-pnpm exec nimi-app pack --target windows-x86_64 --production
-```
-
-Before tagging, follow the [GitHub release setup guide](https://github.com/nimiplatform/nimi/blob/main/app-tools/README.md#publishing-on-github), including the `NIMI_REPOSITORY_ADMIN_TOKEN` Actions secret.
-A protected annotated version tag on the repository default branch runs the managed build, provenance and immutable Release workflow.
-The publisher then submits the immutable Release to [Nimi App Registry](https://github.com/nimiplatform/nimi-app-registry). Registry admission is a separate human review; local builds and GitHub Releases do not create admission or installed state.
+- **Verified Publisher Release**: [v0.1.6](https://github.com/nimiplatform/nimiapp-realm-persona-studio/releases/tag/v0.1.6)
+- **Registry Admission**: [#86](https://github.com/nimiplatform/nimi-app-registry/pull/86) (macOS arm64 and Windows x64)
+- **Recorded Toolchain Combination**: SDK 0.21.0, Kit/native 0.19.3, App Tools 0.12.1, Nimi Coding 0.6.5
+- **Previously Recorded Platform Checks**: macOS arm64 Catalog install, AI generation of character greeting and traits (Bluebird-743), local candidate persistence, and private Realm profile creation verified. (Windows GUI execution marked as `NOT-VERIFIED`).

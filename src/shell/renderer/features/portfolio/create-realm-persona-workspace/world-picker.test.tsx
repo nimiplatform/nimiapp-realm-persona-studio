@@ -65,7 +65,7 @@ describe('world selection keyboard interaction', () => {
     render(<WorldPicker open worlds={[{ ...worlds[0]!, id: 'missing-name', name: null }, ...worlds]}
       selectedWorldId="A" onSelect={select} onClose={vi.fn()} />);
     expect(screen.getAllByRole('radio')).toHaveLength(3);
-    expect(screen.getByText(/Unavailable world names: 1/)).toBeTruthy();
+    expect(screen.getByText(/Unavailable worlds: 1/)).toBeTruthy();
     expect(screen.getByText('World temporarily unavailable')).toBeTruthy();
     fireEvent.click(screen.getAllByRole('radio')[1]!);
     expect(select).toHaveBeenCalledWith('B');

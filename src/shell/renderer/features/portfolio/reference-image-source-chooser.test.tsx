@@ -38,6 +38,6 @@ describe('ReferenceImageSourceChooser', () => {
       />,
     );
     expect(screen.getByRole('button', { name: 'Use existing asset' }).getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByRole('button', { name: 'AI generate' }).getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getByRole('button', { name: 'Generate with AI' }).getAttribute('aria-pressed')).toBe('false');
   });
 });

@@ -1,101 +1,72 @@
 # Realm Persona Studio Nimi Listing Request
 
-This document is a developer-submitted listing request. It is not an approval, release descriptor, permission grant, or install truth.
+This document is a developer-submitted listing request. It is not an approval, release descriptor, operational access grant, or install truth. Release and signing governance are documented in `README.md` and `RELEASE_NOTES.md`.
 
 ## Developer Runbook
 
-```bash
-pnpm install
-pnpm run check
-pnpm exec nimi-app build --target windows-x86_64 --production
-pnpm exec nimi-app pack --target windows-x86_64 --production
-```
+Realm Persona Studio targets the Desktop-supervised Electron host with `@nimiplatform/sdk` (`^0.21.0`), `@nimiplatform/kit` (`^0.19.0`), `@nimiplatform/app-tools` (`^0.12.1`), and `@nimiplatform/nimi-coding` (`0.6.5`).
 
-For protected local development through the Desktop-owned supervisor:
+Install dependencies and start protected local development through the Desktop-supervised Electron host (`pnpm dev` runs `nimi-app dev --shell electron`; `pnpm dev:shell` runs `nimi-app dev`):
 
 ```bash
+pnpm install --frozen-lockfile
 pnpm dev
-pnpm dev:electron
 ```
 
-`pnpm dev:renderer` is renderer-only and cannot perform protected operations.
-The active production shell is Desktop-supervised Electron.
+`pnpm dev:renderer` starts only the unprivileged renderer and cannot perform protected operations.
 
-For this workspace's current source-development environment, use the launcher
-from `/Users/snwozy/nimi-realm/nimi` while keeping Studio's installed dependencies:
+Because `pnpm dev` is a blocking process, open a separate terminal to run project checks, target builds, and packaging. Build and package commands must run on the matching host OS with an explicit target (`windows-x86_64` on Windows; replace with `macos-aarch64` on Apple Silicon macOS):
 
 ```bash
-cd /Users/snwozy/nimi-realm/nimi
-pnpm --filter @nimiplatform/app-tools exec node bin/nimi-app.mjs dev --dir /Users/snwozy/nimi-realm/nimi-apps/nimiapp-realm-persona-studio --list-registrations
-pnpm --filter @nimiplatform/app-tools exec node bin/nimi-app.mjs dev --dir /Users/snwozy/nimi-realm/nimi-apps/nimiapp-realm-persona-studio --resume <current-selector>
+pnpm check
+pnpm exec nimi-app check
+pnpm exec nimi-app build --target windows-x86_64
+pnpm exec nimi-app pack --target windows-x86_64
 ```
 
-Select the existing registration from the fresh list; do not save its selector.
-This is an external development launcher, not a Studio SDK/Kit dependency or
-an installed-App acceptance claim. It speaks the current dev Desktop's caller
-authentication protocol; Studio remains on app-tools 0.7.5, SDK 0.11 and Kit 0.7.
-
-Source-development verification on 2026-09-30 used that external launcher and
-the existing Studio registration, with the installed dependency versions unchanged:
-
-- Verified: Desktop-supervised Studio launch, protected account status, owner
-  PersonaCharacter reads, and source-backed WorldCore names.
-- Verified through the actual App UI: local Post draft save/reopen, unsaved
-  navigation cancellation, deletion cancellation/confirmation, and local schedule
-  save/reopen, foreground due notice and clearing. The test draft and schedule
-  were removed after verification; no Realm profile or Post was written.
-- Artifact upload passed, but artifact read failed with
-  `runtime-service-untrusted`. The running App loaded the source environment's
-  native bridge. Its current artifact read projection emits base64, while Kit
-  0.7 validates a numeric byte array. Successful edited-image candidate
-  persistence and reopening remain NOT-VERIFIED under this combination.
-- Real AI generation, owner PersonaCharacter create/replace/delete, and
-  installed production-App journeys remain NOT-VERIFIED. These results do not
-  establish release or admission readiness. Runtime test uploads are not Studio
-  history entries; the current public artifact surface exposes no delete call.
-
-Additional window-close verification used Studio's actual navigation guard and
-Host unload handler in an isolated Electron window. The native Cancel button
-preserved the dirty editor state; Discard and leave closed the window. This
-checks native window behavior, not Desktop supervision or protected access.
-
-The current App Tools authoring schema still requires `cargo_package_name` and
-`tauri_identifier` metadata in generated identity and submission inputs. These
-fields do not select the shell or provide a Tauri runtime path.
+Current App Tools authoring and submission schemas may still retain `cargo_package_name` and `tauri_identifier` metadata fields. These fields do not select the runtime shell or enable a Tauri IPC path; the active host shell is Electron.
 
 ## Submission Inputs
 
-- `nimi.app.yaml` declares app identity and requested Nimi API scopes.
-- `.nimi/admission/submission.yaml` records publish-readiness commands and review inputs.
-- `.nimi/config/build-profile.yaml` selects the actual target build and payload; `.nimi/admission/build-profile.yaml` summarizes the developer workflow for review.
-- `.nimi/spec/realm-persona-studio/canonical/**` is the canonical v2 product/app authority surface.
-- `nimi-app pack` packages the selected production payload after a successful target build.
+- `nimi.app.yaml` declares `app_id`, requested `app_access` domains, and app metadata.
+- `.nimi/config/build-profile.yaml` defines the target builds, payload paths, and lockfile policy.
+- `.nimi/admission/submission.yaml` references `.nimi/config/build-profile.yaml` and records publish-readiness commands and review inputs.
+- `.nimi/spec/**` is the product and app specification authority surface for this repository.
+- The scaffold boundary declaration is a candidate review input rendered by App Tools; it records a boundary for this existing App and does not claim fresh scaffold creation, a scaffold lock, or platform admission.
+- `nimi-app pack --target <target>` outputs `dist/nimi-app/*.nimiapp`, `dist/nimi-app/*.target.json`, and `dist/nimi-app/*.app-info.json` after a successful target build, while `nimi-app pack --aggregate` outputs `dist/nimi-app/*.candidate.json`.
 
 ### Requested access purposes
 
-- `realm.data` — purpose: read the owner's PersonaCharacter portfolio and WorldCore presentation, and create, replace or delete Personas through the admitted owner operations.
-- `runtime.consume` — purpose: generate owner-reviewed text, image and voice candidates through the SDK/Kit carrier and keep local image artifacts under protected Runtime custody.
+- `realm.data` — purpose: read the owner's PersonaCharacter portfolio and WorldCore presentation, and create, replace, or delete Personas through admitted owner operations.
+- `runtime.consume` — purpose: generate owner-reviewed text, image, and voice candidates through the SDK/Kit carrier and keep local image artifacts under protected Runtime custody.
 
-These purposes explain the existing requested domains; they do not grant access.
-The manifest keeps the string-list format required by App Tools 0.7.5.
+These entries explain the declared `app_access` domains in `nimi.app.yaml`; declarations themselves do not grant operational authorization.
 
-The submission's scaffold boundary review input is the candidate-only declaration
-rendered by the selected App Tools package. It records a review boundary for this
-existing App; it does not claim fresh scaffold creation, a scaffold intent/lock,
-or platform admission.
+## Governance and Reviewer Boundary
 
-## Reviewer Boundary
+- **Runtime** owns app registration, active session admission, operation access enforcement, and Nimi credential custody.
+- **Desktop** provides exact Host supervision, process lifecycle management, and user management entrypoints.
+- **Registry / Platform review** governs catalog review, ordinary-user listing visibility, and approved release descriptors (while any separate Integration standing resource permissions remain governed by their own resource model).
 
-Nimi Platform review owns final admission, release descriptors, ordinary-user visibility, install availability, and permission grants. Local configuration, build results and submission archives do not constitute those grants or descriptors.
+Local configuration, build results, and packaged files under `dist/nimi-app/` do not constitute active session admission, operational authorization, or an approved release descriptor. See `README.md` and `RELEASE_NOTES.md` for release and signing details.
 
-## Pre-submission self-check
+## Pre-submission Self-Check
 
-Local checks are pre-submission self-checks only; passing them does not establish admission truth.
+Local checks are pre-submission self-checks only; passing them does not establish admission truth. Run them in a separate terminal from `pnpm dev` (replace `windows-x86_64` with `macos-aarch64` on macOS):
 
 ```bash
-pnpm run validate      # validate the published App Tools project configuration
-pnpm run check         # configuration, authority, i18n, types, lint and tests
+pnpm check
 pnpm exec nimi-app check --production
 pnpm exec nimi-app build --target windows-x86_64 --production
 pnpm exec nimi-app pack --target windows-x86_64 --production
 ```
+
+## Historical Verification Record (2026-09-30)
+
+The following verification was recorded on `2026-09-30` using an external development launcher against an existing Studio registration while the repository was on `@nimiplatform/app-tools` `0.7.5`, `@nimiplatform/sdk` `0.11`, and `@nimiplatform/kit` `0.7`. Upgrading dependencies to the current toolchain does not constitute re-verification of the `NOT-VERIFIED` items below:
+
+- **Verified (2026-09-30):** Desktop-supervised Studio launch, protected account status, owner PersonaCharacter reads, and source-backed WorldCore names.
+- **Verified via App UI (2026-09-30):** Local Post draft save/reopen, unsaved navigation cancellation, deletion cancellation/confirmation, and local schedule save/reopen, foreground due notice, and clearing. The test draft and schedule were removed after verification; no Realm profile or Post was written.
+- **Artifact read mismatch (`NOT-VERIFIED`):** On `2026-09-30`, artifact upload passed, but artifact read failed with `runtime-service-untrusted` because the native bridge artifact read projection emitted base64 while Kit `0.7` validated a numeric byte array. Successful edited-image candidate persistence and reopening remain `NOT-VERIFIED` until re-tested.
+- **Remaining journeys (`NOT-VERIFIED`):** Real AI generation, owner PersonaCharacter create/replace/delete, and installed production-App journeys remain `NOT-VERIFIED`. Runtime test uploads are not Studio history entries, and the public artifact surface exposed no delete call.
+- **Additional isolated window-close check:** Additional window-close verification used Studio's navigation guard and Host unload handler in an isolated Electron window. The native Cancel button preserved the dirty editor state, and Discard and leave closed the window. This verified native window behavior only, not Desktop supervision or protected access.

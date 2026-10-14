@@ -107,7 +107,7 @@ describe('reference image source adoption', () => {
       error={null} referenceAssets={{ loadState: 'ready', entries: [], unavailableCount: 0, sourceUnavailable: false }}
       referenceSourceFailure={null} referenceImageSourceMode="ai" referenceImageEditorOpen referenceImageLoadFailed={false}
       referenceImage={state.hook.result.current} onEditorOpenChange={vi.fn()} onReferenceImagePromptChange={vi.fn()} />);
-    const generate = screen.getByRole('button', { name: /^(?:re)?generate /i });
+    const generate = screen.getByRole('button', { name: /^Generate reference image$/i });
     expect((generate as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(generate);
     await waitFor(() => expect(state.draft().referenceImageCandidates).toMatchObject([

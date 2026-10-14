@@ -30,7 +30,7 @@ it('keeps a dirty post protected beside a clean profile form, and confirms both 
   fireEvent.change(profile, { target: { value: 'Owner profile writing' } });
   await act(async () => { await router.navigate('/away'); });
   expect(screen.getAllByRole('dialog')).toHaveLength(1);
-  expect(screen.getByText(/Your post and Persona settings have unsaved changes/)).toBeTruthy();
+  expect(screen.getByText(/You have unsaved changes in your post and Persona settings/)).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }));
   expect(await screen.findByText('Destination')).toBeTruthy();
   expect(warnings.mock.calls.flat().join(' ')).not.toContain('router only supports one blocker');

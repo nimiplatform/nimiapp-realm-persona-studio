@@ -107,8 +107,8 @@ async function readPreview(asset: LocalImportedAssetRecord, artifacts: LocalAsse
 }
 export async function importLocalAssetFile(file: LocalImportFile, capability = getLocalAssetImportCapability()): Promise<LocalImportResult> {
   const mimeType = LOCAL_IMPORT_MIME_TYPES.find((mime) => mime === file.type.trim().toLowerCase());
-  if (!mimeType || !file.name.trim() || file.name.length > 255 || file.size <= 0) return failure('unsupported-media-type', 'Choose a nonempty PNG, JPEG, WebP or GIF image.');
-  if (file.size > LOCAL_IMPORT_MAX_BYTES) return failure('file-too-large', 'Imported files must be at most 8 MiB.');
+  if (!mimeType || !file.name.trim() || file.name.length > 255 || file.size <= 0) return failure('unsupported-media-type', "Choose a non-empty PNG, JPEG, WebP, or GIF image.");
+  if (file.size > LOCAL_IMPORT_MAX_BYTES) return failure('file-too-large', "Imported files must be 8 MiB or less.");
   if (!capability.available) return failure('capability-unavailable', capability.reason);
   try {
     const bytes = new Uint8Array(await file.arrayBuffer());
