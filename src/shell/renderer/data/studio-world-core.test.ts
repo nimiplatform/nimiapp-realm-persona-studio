@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   getStudioWorldCoreById,
+  getStudioWorldCores,
   listStudioWorldCores,
   studioWorldCardPresentation,
   type StudioWorldCoreClient,
@@ -14,17 +15,30 @@ const worlds = [
 
 function worldClient() {
   const list = vi.fn(async () => worlds);
+  const get = vi.fn(async (id: string) => {
+    const world = worlds.find((item) => item.id === id);
+    if (!world) throw new Error('not-found');
+    return world;
+  });
   return {
     list,
+    get,
     client: {
       realm: {
-        worldCore: { list },
+        worldCore: { list, get },
       },
     } as unknown as StudioWorldCoreClient,
   };
 }
 
 describe('Studio WorldCore App Access surface', () => {
+  it('resolves referenced worlds outside the discovery list once per identity', async () => {
+    const { client, list, get } = worldClient();
+    await expect(getStudioWorldCores(['world-atlas', worldFixture.id, 'world-atlas'], client)).resolves.toEqual([worlds[1], worlds[0]]);
+    expect(list).not.toHaveBeenCalled();
+    expect(get).toHaveBeenCalledTimes(2);
+    await expect(getStudioWorldCores(['world-missing'], client)).rejects.toThrow('not-found');
+  });
   it('lists source-backed WorldCore DTOs with the bounded take value', async () => {
     const { client, list } = worldClient();
 
@@ -32,14 +46,15 @@ describe('Studio WorldCore App Access surface', () => {
     expect(list).toHaveBeenCalledWith({ take: 5 });
   });
 
-  it('gets a world through list and find without fabricating missing data', async () => {
-    const { client, list } = worldClient();
+  it('gets the exact world without fetching an oversized unrelated world list', async () => {
+    const { client, list, get } = worldClient();
 
     await expect(getStudioWorldCoreById(' world-atlas ', client)).resolves.toEqual(worlds[1]);
-    await expect(getStudioWorldCoreById('world-missing', client)).resolves.toBeNull();
+    await expect(getStudioWorldCoreById('world-missing', client)).rejects.toThrow('not-found');
     await expect(getStudioWorldCoreById('   ', client)).resolves.toBeNull();
-    expect(list).toHaveBeenCalledTimes(2);
-    expect(list).toHaveBeenCalledWith({ take: 100 });
+    expect(list).not.toHaveBeenCalled();
+    expect(get).toHaveBeenCalledTimes(2);
+    expect(get).toHaveBeenCalledWith('world-atlas');
   });
 
   it('resolves a card banner from the WorldCore presentation reference', () => {

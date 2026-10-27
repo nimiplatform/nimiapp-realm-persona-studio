@@ -8,7 +8,7 @@ const personaCharacter = vi.hoisted(() => ({
   delete: vi.fn(),
   toProfileInput: vi.fn(),
 }));
-const worldCore = vi.hoisted(() => ({ list: vi.fn() }));
+const worldCore = vi.hoisted(() => ({ list: vi.fn(), get: vi.fn() }));
 
 vi.mock('@renderer/app-shell/studio-platform.js', () => ({
   getStudioLocalAppClient: () => ({ realm: { personaCharacter, worldCore } }),
@@ -33,6 +33,7 @@ describe('owner PersonaCharacter portfolio client', () => {
     personaCharacter.create.mockResolvedValue(persona);
     personaCharacter.delete.mockResolvedValue({ personaCharacterId: persona.id, deleted: true });
     worldCore.list.mockResolvedValue([world]);
+    worldCore.get.mockResolvedValue(world);
   });
 
   it('deletes an owner private Persona through the exact App client acknowledgement', async () => {
@@ -78,21 +79,21 @@ describe('owner PersonaCharacter portfolio client', () => {
       visibility: { value: 'public' },
     });
     expect(detail.canonical).toBe(persona);
-    expect(detail.world).toMatchObject({ value: 'OASIS', source: 'Nimi App Access realm.worldCore.list' });
+    expect(detail.world).toMatchObject({ value: 'OASIS', source: 'Nimi App Access realm.worldCore.get' });
   });
 
   it('keeps Persona detail usable with an explicit unavailable world on WorldCore failure', async () => {
-    worldCore.list.mockRejectedValueOnce(Object.assign(new Error('World unavailable'), { reasonCode: 'realm-unavailable' }));
+    worldCore.get.mockRejectedValueOnce(Object.assign(new Error('World unavailable'), { reasonCode: 'realm-unavailable' }));
     expect(await getOwnerPortfolioPersonaDetail(persona.id)).toMatchObject({
       id: persona.id, world: { value: '', status: 'source-unavailable', sourceFailure: 'realm-unavailable' },
     });
   });
 
   it('distinguishes an absent WorldCore match from a failed source read', async () => {
-    worldCore.list.mockResolvedValueOnce([]);
+    worldCore.get.mockRejectedValueOnce(Object.assign(new Error('World not found'), { reasonCode: 'not-found' }));
     const detail = await getOwnerPortfolioPersonaDetail(persona.id);
     expect(detail.world.status).toBe('source-unavailable');
-    expect(detail.world.sourceFailure).toBeUndefined();
+    expect(detail.world.sourceFailure).toBe('not-found');
   });
 
   it('uses the complete owner portfolio only as an advisory handle preflight', async () => {

@@ -42,7 +42,7 @@ import { translatePersonaArchetypeLabel } from '@renderer/i18n/studio-i18n.js';
 import { useStudioI18n } from '@renderer/i18n/use-studio-i18n.js';
 import type { StudioCopyKey } from '@renderer/i18n/studio-copy.js';
 import {
-  listStudioWorldCores,
+  getStudioWorldCores,
   studioWorldCardPresentation,
 } from '@renderer/data/studio-world-core.js';
 
@@ -353,9 +353,10 @@ export function PersonaListPage() {
   }, [refreshDraftHistory]);
 
   const portfolioPersonas = portfolioQuery.data || [];
+  const worldIds = portfolioPersonas.map(persona => persona.worldId);
   const worldCoresQuery = useQuery({
-    queryKey: ['realm-world-core', 'portfolio-card-banners'],
-    queryFn: () => listStudioWorldCores({ take: 100 }),
+    queryKey: ['realm-world-core', 'portfolio-card-banners', ...worldIds],
+    queryFn: () => getStudioWorldCores(worldIds),
     enabled: activeView === 'personas' && portfolioPersonas.length > 0,
   });
   const worldPresentationById = useMemo(() => new Map(

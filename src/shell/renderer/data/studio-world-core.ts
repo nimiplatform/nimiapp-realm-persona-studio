@@ -3,8 +3,8 @@ import type { RealmModel } from '@nimiplatform/sdk/realm/generated';
 import { getStudioLocalAppClient } from '@renderer/app-shell/studio-platform.js';
 
 /**
- * Studio world reads on the Nimi App Access contract. `realm.worldCore.list`
- * is the only Realm surface currently exposed to Studio; errors propagate typed from
+ * Studio world reads on the Nimi App Access list and exact-get contracts;
+ * errors propagate typed from
  * the SDK without local fallback or fabricated worlds.
  */
 
@@ -67,6 +67,14 @@ export async function getStudioWorldCoreById(
   if (!normalized) {
     return null;
   }
-  const worlds = await listStudioWorldCores(undefined, client);
-  return worlds.find((world) => world.id === normalized) ?? null;
+  return client.realm.worldCore.get(normalized);
+}
+
+export async function getStudioWorldCores(
+  worldIds: readonly string[],
+  client: StudioWorldCoreClient = getStudioLocalAppClient(),
+): Promise<readonly StudioWorldCoreDto[]> {
+  const worlds: StudioWorldCoreDto[] = [];
+  for (const id of new Set(worldIds)) worlds.push(await client.realm.worldCore.get(id));
+  return worlds;
 }

@@ -36,7 +36,7 @@ import { listOwnerPortfolioPersonas } from '../../features/portfolio/portfolio-c
 import type { OwnerPortfolioPersona } from '../../features/portfolio/portfolio-data.js';
 import { useStudioI18n } from '../../i18n/use-studio-i18n.js';
 import { ownerPortfolioListQueryKey } from '../../features/persona-detail/use-persona-detail-query.js';
-import { listStudioWorldCores, studioWorldCardPresentation } from '../../data/studio-world-core.js';
+import { getStudioWorldCores, studioWorldCardPresentation } from '../../data/studio-world-core.js';
 import { persistThemeScheme } from '../theme-scheme.js';
 import { useAppStore } from '../app-store.js';
 
@@ -361,9 +361,10 @@ export function StudioSidebar({
     queryFn: () => listOwnerPortfolioPersonas(),
     enabled: !fixtureMode,
   });
+  const worldIds = (portfolioQuery.data ?? []).map(persona => persona.worldId);
   const worldsQuery = useQuery({
-    queryKey: ['realm-world-core', 'portfolio-card-banners'],
-    queryFn: () => listStudioWorldCores({ take: 100 }),
+    queryKey: ['realm-world-core', 'portfolio-card-banners', ...worldIds],
+    queryFn: () => getStudioWorldCores(worldIds),
     enabled: !fixtureMode && Boolean(portfolioQuery.data?.length),
   });
   const worldNames = new Map((worldsQuery.isError ? [] : worldsQuery.data ?? []).map((world) => [

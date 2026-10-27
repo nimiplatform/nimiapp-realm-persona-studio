@@ -74,7 +74,7 @@ describe('owner portfolio normalization', () => {
   it('keeps world identifiers distinct from unavailable WorldCore presentation', () => {
     expect(normalizeOwnerPortfolioPersona(basePersona)).toMatchObject({ worldId: 'world-oasis', worldName: null });
     expect(normalizeOwnerPortfolioPersonaDetail(basePersona).world).toMatchObject({
-      status: 'source-unavailable', value: '', source: 'Nimi App Access realm.worldCore.list',
+      status: 'source-unavailable', value: '', source: 'Nimi App Access realm.worldCore.get',
     });
   });
 

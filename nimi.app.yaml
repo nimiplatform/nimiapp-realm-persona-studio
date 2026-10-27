@@ -12,7 +12,6 @@ local_development:
 metadata:
   summary: 创建和管理自己的 Realm Persona，维护角色资料与创作草稿。
   icon: src/shell/renderer/assets/brand/studio-logo.png
-  readme: APP_GUIDE.md
   release_notes: RELEASE_NOTES.md
   author: Nimi Team
   homepage_url: https://github.com/nimiplatform/nimiapp-realm-persona-studio

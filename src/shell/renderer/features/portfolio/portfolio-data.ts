@@ -55,7 +55,7 @@ export type SettingField = {
   label: string;
   value: string;
   status: 'available' | 'available-empty' | 'source-unavailable';
-  source: PortfolioPersonaDetailSource | 'Nimi App Access realm.worldCore.list';
+  source: PortfolioPersonaDetailSource | 'Nimi App Access realm.worldCore.get';
   readOnly: true;
   unavailableLabel?: 'setting source unavailable';
   sourceFailure?: PortfolioFailureKind;
@@ -363,7 +363,7 @@ export function normalizeOwnerPortfolioPersonaDetail(
       source,
     ),
     ownership: settingField('ownership', 'Ownership evidence', { present: true, value: 'owner-scoped PersonaCharacter' }, source),
-    world: settingField('world', 'World', worldName ? { present: true, value: worldName } : { present: false }, 'Nimi App Access realm.worldCore.list'),
+    world: settingField('world', 'World', worldName ? { present: true, value: worldName } : { present: false }, 'Nimi App Access realm.worldCore.get'),
     visibility: settingField('visibility', 'Visibility', { present: true, value: persona.visibility }, source),
     avatarUrl: readExternalAssetUri(core, 'avatar')
       || readExternalAssetUri(core, 'referenceImage'),

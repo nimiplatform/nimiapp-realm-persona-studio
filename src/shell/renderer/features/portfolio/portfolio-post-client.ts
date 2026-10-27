@@ -1,7 +1,3 @@
-import type {
-  PostDto,
-  RealmModel,
-} from '@nimiplatform/sdk/realm/generated';
 import {
   runStudioTextCandidate,
   type StudioTextCandidatePrompt,
@@ -17,12 +13,35 @@ import {
   type RuntimePostCopyProposal,
 } from './post-draft.js';
 
-type RealmCreatePostResponse = PostDto;
-type RealmCreateTextResourceInput = RealmModel<'CreateTextResourceDto'>;
-type RealmCreateTextResourceResponse = RealmModel<'ResourceDetailDto'>;
-type RealmResourceListResponse = RealmModel<'ResourceListDto'>;
-type RealmFinalizeResourceInput = RealmModel<'FinalizeResourceDto'>;
-type RealmFinalizeResourceResponse = RealmModel<'ResourceDetailDto'>;
+// These are App-owned review candidates, never Realm upload or finalize requests.
+// Publication is unavailable through the current protected App surface.
+type ReviewedResourceCandidate = {
+  deliveryAccess: 'SIGNED';
+  label: string;
+  mimeType: string;
+  sourceRef: string;
+  title: string;
+  tags?: string[];
+  metadata: {
+    source: string;
+    sourceKind: 'personaCharacter';
+    attachmentPurpose: 'post' | 'identity';
+    humanReviewed: true;
+  };
+};
+type ReviewedMediaCandidate = ReviewedResourceCandidate & {
+  sizeBytes: number;
+  metadata: ReviewedResourceCandidate['metadata'] & {
+    sourceId: string;
+    sourceWorldId: string;
+    sourceContentHash: string;
+    resourceType: DirectMediaResourceType;
+  };
+};
+type ReviewedTextCandidate = ReviewedResourceCandidate & {
+  content: string;
+  metadata: ReviewedResourceCandidate['metadata'] & { sourceRef: string };
+};
 
 export const REALM_POST_PUBLISH_SOURCE = 'Nimi App Access Persona post publication (unavailable)';
 export const REALM_TEXT_RESOURCE_SOURCE = 'Nimi App Access Persona text resource publication (unavailable)';
@@ -31,57 +50,21 @@ export const REALM_MEDIA_RESOURCE_UPLOAD_SOURCE = 'Nimi App Access Persona media
 export const PERSONA_PUBLICATION_UNAVAILABLE_MESSAGE = 'Nimi App Access does not provide Persona post or media publication yet.';
 export const PERSONA_PUBLICATION_AVAILABLE = false;
 
-export type RealmPostPublishCanonicalFields = {
-  id: string;
-  worldId?: string;
-  moderationStatus?: string;
-  status?: string;
-  visibility?: string;
-  contentRating?: string;
+export type RealmPostPublishResult = {
+  ok: false;
+  source: typeof REALM_POST_PUBLISH_SOURCE;
+  failure: 'persona-post-publication-unavailable';
+  message: string;
 };
 
-export type RealmPostPublishResult =
-  | {
-    ok: true;
-    source: typeof REALM_POST_PUBLISH_SOURCE;
-    post: RealmCreatePostResponse;
-    canonical: RealmPostPublishCanonicalFields;
-  }
-  | {
-    ok: false;
-    source: typeof REALM_POST_PUBLISH_SOURCE;
-    failure: 'persona-post-publication-unavailable' | 'realm-create-post-failed' | 'realm-create-post-missing-canonical-id';
-    message: string;
-  };
-
-export type RealmTextResourceCanonicalFields = {
-  id: string;
-  resourceType: string;
-  status: string;
-  deliveryAccess?: string;
+export type RealmTextResourceCreateResult = {
+  ok: false;
+  source: typeof REALM_TEXT_RESOURCE_SOURCE;
+  attachmentTruth: false;
+  failure: 'post-text-resource-payload-invalid' | 'persona-text-resource-publication-unavailable';
+  message: string;
+  submitted: ReviewedTextCandidate | null;
 };
-
-export type RealmTextResourceCreateResult =
-  | {
-    ok: true;
-    source: typeof REALM_TEXT_RESOURCE_SOURCE;
-    attachmentTruth: true;
-    resource: RealmCreateTextResourceResponse;
-    canonical: RealmTextResourceCanonicalFields;
-  }
-  | {
-    ok: false;
-    source: typeof REALM_TEXT_RESOURCE_SOURCE;
-    attachmentTruth: false;
-    failure:
-      | 'post-text-resource-payload-invalid'
-      | 'persona-text-resource-publication-unavailable'
-      | 'realm-create-text-resource-failed'
-      | 'realm-create-text-resource-missing-id'
-      | 'realm-create-text-resource-not-ready';
-    message: string;
-    submitted: RealmCreateTextResourceInput | null;
-  };
 
 export type PostAttachmentResourceOption = {
   id: string;
@@ -108,44 +91,15 @@ export type DirectMediaResourceUploadInput = {
   tags?: string[];
 };
 
-type DirectMediaResourceCanonicalFields = {
-  id: string;
-  resourceType: DirectMediaResourceType;
-  status: 'READY';
-  deliveryAccess?: string;
+export type DirectMediaResourceUploadResult = {
+  ok: false;
+  source: typeof REALM_MEDIA_RESOURCE_UPLOAD_SOURCE;
+  attachmentTruth: false;
+  publicTruth: false;
+  failure: 'media-upload-file-invalid' | 'media-upload-type-invalid' | 'persona-media-publication-unavailable';
+  message: string;
+  submitted: ReviewedMediaCandidate | null;
 };
-
-export type DirectMediaResourceUploadResult =
-  | {
-    ok: true;
-    source: typeof REALM_MEDIA_RESOURCE_UPLOAD_SOURCE;
-    attachmentTruth: true;
-    publicTruth: false;
-    session: {
-      resourceId: string;
-      resourceType: DirectMediaResourceType;
-      status: string;
-    };
-    resource: RealmFinalizeResourceResponse;
-    canonical: DirectMediaResourceCanonicalFields;
-  }
-  | {
-    ok: false;
-    source: typeof REALM_MEDIA_RESOURCE_UPLOAD_SOURCE;
-    attachmentTruth: false;
-    publicTruth: false;
-    failure:
-      | 'media-upload-file-invalid'
-      | 'media-upload-type-invalid'
-      | 'persona-media-publication-unavailable'
-      | 'realm-direct-upload-session-failed'
-      | 'realm-direct-upload-session-invalid'
-      | 'storage-direct-upload-failed'
-      | 'realm-finalize-resource-failed'
-      | 'realm-finalize-resource-not-ready';
-    message: string;
-      submitted: RealmFinalizeResourceInput | null;
-  };
 export type RuntimePostCopyProposalResult =
   | {
     ok: true;
@@ -172,15 +126,6 @@ export type RuntimePostCopyProposalResult =
     submitted: StudioTextCandidatePrompt | null;
   };
 
-function readOptionalString(record: Record<string, unknown>, key: string): string | undefined {
-  const value = record[key];
-  return typeof value === 'string' && value.trim() ? value : undefined;
-}
-
-function isPostAttachmentResourceType(value: string): value is PostAttachmentResourceOption['resourceType'] {
-  return value === 'IMAGE' || value === 'VIDEO' || value === 'AUDIO' || value === 'TEXT';
-}
-
 function isDirectMediaResourceType(value: string): value is DirectMediaResourceType {
   return value === 'IMAGE' || value === 'VIDEO' || value === 'AUDIO';
 }
@@ -188,40 +133,6 @@ function isDirectMediaResourceType(value: string): value is DirectMediaResourceT
 function normalizeResourceTitle(value: string): string {
   const normalized = value.replace(/\s+/g, ' ').trim();
   return normalized.length > 80 ? `${normalized.slice(0, 77)}...` : normalized;
-}
-
-export function normalizePostAttachmentResourceOptions(response: RealmResourceListResponse): PostAttachmentResourceOption[] {
-  const responseRecord = response as unknown as Record<string, unknown>;
-  const items = response && typeof response === 'object' && Array.isArray(responseRecord.items)
-    ? responseRecord.items
-    : [];
-
-  return items.flatMap((item) => {
-    if (!item || typeof item !== 'object') {
-      return [];
-    }
-    const record = item as Record<string, unknown>;
-    const id = readOptionalString(record, 'id');
-    const resourceType = readOptionalString(record, 'resourceType');
-    const status = readOptionalString(record, 'status');
-    if (!id || !resourceType || !isPostAttachmentResourceType(resourceType) || status !== 'READY') {
-      return [];
-    }
-
-    const title = readOptionalString(record, 'title');
-    const label = readOptionalString(record, 'label');
-    const storageRef = readOptionalString(record, 'storageRef');
-    const deliveryAccess = readOptionalString(record, 'deliveryAccess');
-
-    return [{
-      id,
-      resourceType,
-      status,
-      label: title || label || storageRef || id,
-      ...(deliveryAccess ? { deliveryAccess } : {}),
-      source: REALM_RESOURCE_LIST_SOURCE,
-    }];
-  });
 }
 
 function isUploadableMediaFile(input: DirectMediaResourceUploadInput): boolean {
@@ -248,7 +159,7 @@ function personaCharacterSourceRef(persona: OwnerPortfolioPersonaDetail): string
   return `personaCharacter:${persona.homeWorldId}:${persona.id}:${persona.contentHash}`;
 }
 
-export function buildFinalizeDirectMediaResourceInput(input: DirectMediaResourceUploadInput): RealmFinalizeResourceInput | null {
+function buildReviewedMediaCandidate(input: DirectMediaResourceUploadInput): ReviewedMediaCandidate | null {
   if (!isUploadableMediaFile(input)) {
     return null;
   }
@@ -279,29 +190,7 @@ export function buildFinalizeDirectMediaResourceInput(input: DirectMediaResource
   };
 }
 
-export function normalizeFinalizedDirectMediaResource(
-  resource: RealmFinalizeResourceResponse,
-  expectedResourceType: DirectMediaResourceType,
-): DirectMediaResourceCanonicalFields | null {
-  if (!resource || typeof resource !== 'object') {
-    return null;
-  }
-  const record = resource as unknown as Record<string, unknown>;
-  const id = readOptionalString(record, 'id');
-  const resourceType = readOptionalString(record, 'resourceType');
-  const status = readOptionalString(record, 'status');
-  const deliveryAccess = readOptionalString(record, 'deliveryAccess');
-  if (!id || resourceType !== expectedResourceType || status !== 'READY') {
-    return null;
-  }
-  return {
-    id,
-    resourceType,
-    status,
-    ...(deliveryAccess ? { deliveryAccess } : {}),
-  };
-}
-export function buildRealmPostTextResourceInput(payload: CandidatePostPayload): RealmCreateTextResourceInput | null {
+function buildReviewedTextCandidate(payload: CandidatePostPayload): ReviewedTextCandidate | null {
   const content = payload.realmCreatePost.caption?.trim();
   if (!content) {
     return null;
@@ -325,103 +214,6 @@ export function buildRealmPostTextResourceInput(payload: CandidatePostPayload): 
   };
 }
 
-export function normalizeRealmTextResourceCreateResult(
-  resource: RealmCreateTextResourceResponse,
-  submitted: RealmCreateTextResourceInput,
-): RealmTextResourceCreateResult {
-  if (!resource || typeof resource !== 'object') {
-    return {
-      ok: false,
-      source: REALM_TEXT_RESOURCE_SOURCE,
-      attachmentTruth: false,
-      failure: 'realm-create-text-resource-missing-id',
-      message: 'Realm Create Text Resource returned no resource object.',
-      submitted,
-    };
-  }
-
-  const record = resource as unknown as Record<string, unknown>;
-  const id = readOptionalString(record, 'id');
-  if (!id) {
-    return {
-      ok: false,
-      source: REALM_TEXT_RESOURCE_SOURCE,
-      attachmentTruth: false,
-      failure: 'realm-create-text-resource-missing-id',
-      message: 'Realm Create Text Resource returned no canonical resource id.',
-      submitted,
-    };
-  }
-
-  const resourceType = readOptionalString(record, 'resourceType');
-  const status = readOptionalString(record, 'status');
-  const deliveryAccess = readOptionalString(record, 'deliveryAccess');
-  if (resourceType !== 'TEXT' || status !== 'READY') {
-    return {
-      ok: false,
-      source: REALM_TEXT_RESOURCE_SOURCE,
-      attachmentTruth: false,
-      failure: 'realm-create-text-resource-not-ready',
-      message: `Realm text resource ${id} is not a READY TEXT resource.`,
-      submitted,
-    };
-  }
-
-  return {
-    ok: true,
-    source: REALM_TEXT_RESOURCE_SOURCE,
-    attachmentTruth: true,
-    resource,
-    canonical: {
-      id,
-      resourceType,
-      status,
-      ...(deliveryAccess ? { deliveryAccess } : {}),
-    },
-  };
-}
-
-export function normalizeRealmPostPublishResult(post: RealmCreatePostResponse): RealmPostPublishResult {
-  if (!post || typeof post !== 'object') {
-    return {
-      ok: false,
-      source: REALM_POST_PUBLISH_SOURCE,
-      failure: 'realm-create-post-missing-canonical-id',
-      message: 'Realm Create Post returned no post object.',
-    };
-  }
-
-  const record = post as unknown as Record<string, unknown>;
-  const id = readOptionalString(record, 'id');
-  if (!id) {
-    return {
-      ok: false,
-      source: REALM_POST_PUBLISH_SOURCE,
-      failure: 'realm-create-post-missing-canonical-id',
-      message: 'Realm Create Post returned no canonical post id.',
-    };
-  }
-
-  const worldId = readOptionalString(record, 'worldId');
-  const moderationStatus = readOptionalString(record, 'moderationStatus');
-  const status = readOptionalString(record, 'status');
-  const visibility = readOptionalString(record, 'visibility');
-  const contentRating = readOptionalString(record, 'contentRating');
-
-  return {
-    ok: true,
-    source: REALM_POST_PUBLISH_SOURCE,
-    post,
-    canonical: {
-      id,
-      ...(worldId ? { worldId } : {}),
-      ...(moderationStatus ? { moderationStatus } : {}),
-      ...(status ? { status } : {}),
-      ...(visibility ? { visibility } : {}),
-      ...(contentRating ? { contentRating } : {}),
-    },
-  };
-}
 export async function proposeReviewedPostCopy(
   persona: OwnerPortfolioPersonaDetail,
   draft: LocalPostDraftInput,
@@ -503,7 +295,7 @@ export async function listReadyPostAttachmentResources(): Promise<PostAttachment
 export async function uploadReviewedPostMediaResource(
   input: DirectMediaResourceUploadInput,
 ): Promise<DirectMediaResourceUploadResult> {
-  const finalizeInput = buildFinalizeDirectMediaResourceInput(input);
+  const finalizeInput = buildReviewedMediaCandidate(input);
   if (!finalizeInput) {
     return {
       ok: false,
@@ -535,7 +327,7 @@ export async function uploadReviewedIdentityMediaResource(
 export async function createReviewedPostTextResource(
   payload: CandidatePostPayload,
 ): Promise<RealmTextResourceCreateResult> {
-  const submitted = buildRealmPostTextResourceInput(payload);
+  const submitted = buildReviewedTextCandidate(payload);
   if (!submitted) {
     return {
       ok: false,

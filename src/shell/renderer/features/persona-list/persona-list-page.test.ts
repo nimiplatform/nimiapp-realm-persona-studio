@@ -83,7 +83,7 @@ describe('persona list read boundaries', () => {
     const source = personaListSource();
     const sharedSource = sharedPortfolioSource();
 
-    expect(source).toContain('listStudioWorldCores({ take: 100 })');
+    expect(source).toContain('getStudioWorldCores(worldIds)');
     expect(source).toContain('studioWorldCardPresentation(world)');
     expect(source).toContain('worldBannerUrl={worldPresentation?.bannerUrl || null}');
     expect(source).not.toContain('worldBannerUrl={persona.coverUrl}');
