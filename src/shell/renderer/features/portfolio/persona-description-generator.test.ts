@@ -1,3 +1,4 @@
+import { studioTestScope } from '../../../../test/studio-scope.js';
 import { describe, expect, it, vi } from 'vitest';
 import { generatePersonaDescriptionCandidate } from './persona-description-generator.js';
 import type { StudioTextCandidateRunner } from './studio-text-candidate.js';
@@ -15,7 +16,7 @@ describe('persona description reroll through the injected text candidate runner'
   it('runs zero-input reroll bound to the active locale', async () => {
     const runner = vi.fn(fakeTextCandidateRunner('  一个经营深夜茶馆的退休侠客，话不多，但记得每位熟客的口味。  '));
 
-    const result = await generatePersonaDescriptionCandidate(
+    const result = await generatePersonaDescriptionCandidate(studioTestScope,
       { locale: 'zh' },
       runner,
     );
@@ -41,7 +42,7 @@ describe('persona description reroll through the injected text candidate runner'
   it('steers away from the previous idea and treats supplements as hard constraints', async () => {
     const runner = vi.fn(fakeTextCandidateRunner('A retired cartographer who maps dreams.'));
 
-    await generatePersonaDescriptionCandidate(
+    await generatePersonaDescriptionCandidate(studioTestScope,
       {
         previousDescription: 'A cheerful tavern bard.',
         supplements: {
@@ -63,7 +64,7 @@ describe('persona description reroll through the injected text candidate runner'
   });
 
   it('maps empty or structured candidate text to persona-description-invalid-output', async () => {
-    const empty = await generatePersonaDescriptionCandidate(
+    const empty = await generatePersonaDescriptionCandidate(studioTestScope,
       { locale: 'en' },
       fakeTextCandidateRunner('   '),
     );
@@ -72,7 +73,7 @@ describe('persona description reroll through the injected text candidate runner'
       failure: 'persona-description-invalid-output',
     });
 
-    const structured = await generatePersonaDescriptionCandidate(
+    const structured = await generatePersonaDescriptionCandidate(studioTestScope,
       { locale: 'en' },
       fakeTextCandidateRunner('{"description":"json drift"}'),
     );
@@ -87,7 +88,7 @@ describe('persona description reroll through the injected text candidate runner'
       throw new Error('local app surface unavailable');
     };
 
-    const result = await generatePersonaDescriptionCandidate({ locale: 'en' }, runner);
+    const result = await generatePersonaDescriptionCandidate(studioTestScope, { locale: 'en' }, runner);
 
     expect(result).toMatchObject({
       ok: false,
@@ -101,7 +102,7 @@ describe('persona description reroll through the injected text candidate runner'
       throw Object.assign(new Error('AI route is not configured.'), { reasonCode: 'AI_LOCAL_CONFIGURATION_NOT_CONFIGURED' });
     };
 
-    const result = await generatePersonaDescriptionCandidate({ locale: 'en' }, runner);
+    const result = await generatePersonaDescriptionCandidate(studioTestScope, { locale: 'en' }, runner);
 
     expect(result).toMatchObject({
       ok: false,

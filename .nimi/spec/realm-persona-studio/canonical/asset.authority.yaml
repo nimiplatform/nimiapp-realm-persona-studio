@@ -94,9 +94,9 @@ units:
     kind: rule
     title: Local asset shell boundary
     modality: must
-    statement: Local asset URL resolution, app data paths, and local JSON persistence use protected local-assets, data, storage, or config operations delivered through the Desktop-supervised standard bridge; Studio exposes no raw Node filesystem or raw Electron IPC to the renderer.
+    statement: Local media and JSON persistence use the admitted public SDK App artifact/storage operations through the protected Desktop or direct Web carrier; data remains in its Runtime-owned App partition, and Studio exposes no raw Node filesystem or raw Electron IPC to the renderer.
     condition: Whenever Studio resolves a local asset URL or accesses app data, local storage, or local configuration.
-    failure: Return capability-unavailable when the required protected standard-bridge operation is unavailable and expose no raw filesystem or IPC fallback.
+    failure: Return typed unavailable when the admitted SDK operation is unavailable, without a raw filesystem, IPC or browser-private-data fallback.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.core.standard-shell

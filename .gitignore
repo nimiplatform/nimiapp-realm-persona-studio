@@ -32,3 +32,5 @@ docs/superpowers/
 
 # Windows production package
 dist-electron-package/
+
+dist-web/

@@ -1,3 +1,4 @@
+import { type StudioScope } from '@renderer/app-shell/studio-scope.js';
 import { getLocalAssetImportCapability, LOCAL_IMPORT_MAX_BYTES, type LocalImportCapabilityStatus } from '../assets-library/local-import-store.js';
 import { appendLocalCreativeAssetHistory } from './creative-asset-history.js';
 import type { OwnerPortfolioPersonaDetail } from './portfolio-data.js';
@@ -10,11 +11,11 @@ export type LocalImageEditSaveResult =
 
 // @nimi-authority: rule.realm-persona-studio.asset.r014
 // @nimi-authority: rule.realm-persona-studio.asset.r015
-export async function saveLocalImageEditCandidate(
+export async function saveLocalImageEditCandidate(scope: StudioScope,
   persona: Pick<OwnerPortfolioPersonaDetail, 'id' | 'contentHash'>,
   bytes: Uint8Array,
   detail: string,
-  capability: LocalImportCapabilityStatus = getLocalAssetImportCapability(),
+  capability: LocalImportCapabilityStatus = getLocalAssetImportCapability(scope),
 ): Promise<LocalImageEditSaveResult> {
   if (bytes.byteLength > LOCAL_IMPORT_MAX_BYTES) return { ok: false, failure: 'file-too-large' };
   if (!capability.available) return { ok: false, failure: 'capability-unavailable' };
@@ -32,7 +33,7 @@ export async function saveLocalImageEditCandidate(
     if (read.mimeType !== uploaded.mimeType || read.sizeBytes !== uploaded.sizeBytes || read.bytes.byteLength !== uploaded.sizeBytes) {
       return { ok: false, failure: 'artifact-unavailable' };
     }
-    const saved = await appendLocalCreativeAssetHistory(persona.id, {
+    const saved = await appendLocalCreativeAssetHistory(scope, persona.id, {
       sourceContentHash: persona.contentHash,
       kind: 'local-image-edit-candidate',
       sourceKind: 'imported',

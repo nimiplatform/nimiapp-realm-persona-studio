@@ -1,3 +1,4 @@
+import { type StudioScope } from '@renderer/app-shell/studio-scope.js';
 import {
   isStudioTextRouteUnboundError,
   runStudioTextCandidate,
@@ -104,9 +105,9 @@ function readDescriptionCandidate(raw: string): string {
  *
  * @nimi-authority: rule.realm-persona-studio.create-flow.r015
  */
-export async function generatePersonaDescriptionCandidate(
+export async function generatePersonaDescriptionCandidate(scope: StudioScope,
   input: PersonaDescriptionCandidateInput,
-  runner: StudioTextCandidateRunner = runStudioTextCandidate,
+  runner: StudioTextCandidateRunner = runStudioTextCandidate.bind(null, scope),
 ): Promise<PersonaDescriptionGenerationResult> {
   const payload = buildPersonaDescriptionPayload(input);
   try {

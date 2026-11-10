@@ -12,7 +12,7 @@ const rendererStylesSource = () =>
   readFileSync(join(process.cwd(), 'src/shell/renderer/styles.css'), 'utf8');
 
 const rendererEntrySource = () =>
-  readFileSync(join(process.cwd(), 'src/shell/renderer/main.tsx'), 'utf8');
+  readFileSync(join(process.cwd(), 'src/shell/renderer/mount-studio.tsx'), 'utf8');
 
 describe('Studio shell kit boundary', () => {
   it('uses governed kit primitives for the mesh shell and v2 sidebar', () => {
@@ -39,7 +39,9 @@ describe('Studio shell kit boundary', () => {
 
     expect(sidebar).not.toContain('document.addEventListener');
     expect(sidebar).not.toContain(['re', 'questAnimationFrame'].join(''));
-    expect(sidebar).not.toContain('signOut');
+    expect(sidebar).toContain('useNimiAppSession');
+    expect(sidebar).toContain('requestLeave');
+    expect(sidebar).toContain('session.account.signOut()');
     expect(sidebar).not.toContain('logout');
   });
 
@@ -77,7 +79,7 @@ describe('Studio shell kit boundary', () => {
     const styles = rendererStylesSource();
 
     expect(shell).toContain('STUDIO_SIDEBAR_PREFERENCE_STORAGE_PATH');
-    expect(shell).toContain('getStudioProtectedJsonStorage().writeJson');
+    expect(shell).toContain('getStudioProtectedJsonStorage(scope).writeJson');
     expect(shell).toContain("t('shell.sidebar.preferenceUnavailable')");
     expect(shell).not.toContain('window.localStorage');
     expect(styles).toContain('width: 260px;');
@@ -155,10 +157,8 @@ describe('Studio shell kit boundary', () => {
   it('does not use a blank renderer-entry lazy fallback', () => {
     const source = rendererEntrySource();
 
-    expect(source).toContain('function EntryFallback');
-    expect(source).toContain('AmbientBackground');
     expect(source).toContain('LoadingSkeleton');
-    expect(source).toContain('fallback={<EntryFallback />}');
+    expect(source).toContain('fallback={<LoadingSkeleton');
     expect(source).not.toContain('fallback={null}');
   });
 });

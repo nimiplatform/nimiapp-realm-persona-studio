@@ -1,3 +1,4 @@
+import { useStudioScope } from '@renderer/app-shell/studio-scope.js';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -307,6 +308,7 @@ function LocalDraftList({
 }
 
 export function PersonaListPage() {
+  const scope = useStudioScope();
   const { t } = useStudioI18n();
   const navigate = useNavigate();
   const [activeView, setActiveView] = useState<PortfolioView>('personas');
@@ -319,12 +321,12 @@ export function PersonaListPage() {
 
   const portfolioQuery = useQuery({
     queryKey: ownerPortfolioListQueryKey(),
-    queryFn: () => listOwnerPortfolioPersonas(),
+    queryFn: () => listOwnerPortfolioPersonas(scope),
   });
 
   const refreshDraftHistory = useCallback(async () => {
     setDraftHistoryStatus('loading');
-    const result = await loadCreationDraftHistory();
+    const result = await loadCreationDraftHistory(scope);
     if (!result.ok) {
       setDraftEntries([]);
       setDraftImages({});
@@ -334,7 +336,7 @@ export function PersonaListPage() {
     }
 
     const imageEntries = await Promise.all(result.entries.map(async (entry) => {
-      const draft = await loadCreationDraft(entry.draftKey);
+      const draft = await loadCreationDraft(scope, entry.draftKey);
       const referenceImageUrl = draft.ok && draft.record ? draft.record.referenceImageUrl || null : null;
       return [entry.draftKey, referenceImageUrl] as const;
     }));
@@ -356,7 +358,7 @@ export function PersonaListPage() {
   const worldIds = portfolioPersonas.map(persona => persona.worldId);
   const worldCoresQuery = useQuery({
     queryKey: ['realm-world-core', 'portfolio-card-banners', ...worldIds],
-    queryFn: () => getStudioWorldCores(worldIds),
+    queryFn: () => getStudioWorldCores(scope, worldIds),
     enabled: activeView === 'personas' && portfolioPersonas.length > 0,
   });
   const worldPresentationById = useMemo(() => new Map(

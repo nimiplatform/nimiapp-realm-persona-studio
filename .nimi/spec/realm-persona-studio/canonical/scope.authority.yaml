@@ -6,7 +6,7 @@ units:
     kind: rule
     title: Owner persona scope
     modality: must
-    statement: The app manages current-user-owned PersonaCharacter source objects exclusively through the owner-scoped host-injected App client while presenting Realm Persona as the product name.
+    statement: The app manages current-user-owned PersonaCharacter source objects exclusively through the owner-scoped admitted SDK App client while presenting Realm Persona as the product name.
     condition: Always.
     failure: Treat persona management as unavailable when the object is not returned as owned by the current user.
     relations:

@@ -1,3 +1,4 @@
+import { useStudioScope } from '@renderer/app-shell/studio-scope.js';
 import { useEffect, useState } from 'react';
 import {
   CREATIVE_ASSET_HISTORY_UPDATED_EVENT,
@@ -13,6 +14,7 @@ export type LocalCreativeAssetHistoryState = {
 };
 
 export function useLocalCreativeAssetHistory(personaId: string): LocalCreativeAssetHistoryState {
+  const scope = useStudioScope();
   const [state, setState] = useState<LocalCreativeAssetHistoryState>({
     records: [],
     loading: true,
@@ -23,7 +25,7 @@ export function useLocalCreativeAssetHistory(personaId: string): LocalCreativeAs
   useEffect(() => {
     let cancelled = false;
     const refresh = async () => {
-      const result = await loadLocalCreativeAssetHistory(personaId);
+      const result = await loadLocalCreativeAssetHistory(scope, personaId);
       if (cancelled) return;
       setState(result.ok
         ? {

@@ -92,9 +92,9 @@ units:
     kind: rule
     title: No app-owned Runtime auth
     modality: must_not
-    statement: Studio logs in, opens OAuth, exchanges tokens, stores sessions, refreshes tokens, or accesses tokens instead of consuming host-owned Desktop shared Runtime account state.
+    statement: Studio implements its own identity verification, passwords, token exchange or durable credential custody instead of the shared Kit session; Desktop follows Home identity and Web follows official Nimi login without a separate Studio account.
     condition: Always.
-    failure: Return capability-unavailable when host-owned Desktop shared Runtime account state is missing and expose no app-owned authentication fallback.
+    failure: Use the shared Kit access gate and remain unavailable without the current admitted context; do not provide an App-owned authentication fallback.
     relations:
       - type: applies_to
         target: definition.realm-persona-studio.core.standard-shell
@@ -102,7 +102,7 @@ units:
     kind: rule
     title: Forbidden Runtime transports
     modality: must_not
-    statement: Studio implements custom Realm unary transport, generic Runtime bridge access, auth envelopes, caller metadata, Runtime app registration, renderer launch binding, or Runtime defaults bootstrap instead of using an admitted public SDK or Kit protected operation delivered through the Desktop-supervised standard bridge.
+    statement: Studio implements custom Realm unary transport, generic Runtime bridge access, auth envelopes, caller metadata, Runtime app registration, renderer launch binding, or Runtime defaults bootstrap instead of using an admitted public SDK or Kit protected operation delivered through the protected Desktop or admitted direct Web carrier.
     condition: Always.
     failure: Return capability-unavailable before transport and expose no custom or generic fallback.
     relations:

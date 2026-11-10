@@ -1,3 +1,4 @@
+import { studioTestScope } from '../../../../test/studio-scope.js';
 import { describe, expect, it, vi } from 'vitest';
 import {
   CREATIVE_ASSET_HISTORY_STORAGE_PATH,
@@ -30,7 +31,7 @@ describe('app-local creative asset history', () => {
   it('stores compact artifact identity and restores the preview through the protected artifact reader', async () => {
     const storage = createStorage();
     const previewUrl = `data:image/png;base64,${'a'.repeat(400_000)}`;
-    const saved = await appendLocalCreativeAssetHistory('persona-image', {
+    const saved = await appendLocalCreativeAssetHistory(studioTestScope, 'persona-image', {
       sourceContentHash: 'hash-persona-image', kind: 'runtime-image-candidate',
       sourceKind: 'generated', reviewState: 'candidate-only', label: 'Image candidate',
       source: 'Nimi App Access ai.scenarioJobs', detail: previewUrl, previewUrl,
@@ -41,14 +42,14 @@ describe('app-local creative asset history', () => {
     expect(JSON.stringify(stored).length).toBeLessThan(2000);
     expect(JSON.stringify(stored)).not.toContain('data:image');
     readPreview.mockResolvedValueOnce(previewUrl);
-    const loaded = await loadLocalCreativeAssetHistory('persona-image', storage);
-    expect(readPreview).toHaveBeenCalledWith('artifact-image-large', 'image/');
+    const loaded = await loadLocalCreativeAssetHistory(studioTestScope, 'persona-image', storage);
+    expect(readPreview).toHaveBeenCalledWith(studioTestScope, 'artifact-image-large', 'image/');
     expect(loaded).toMatchObject({ ok: true, unavailableCount: 0, records: [{ previewUrl }] });
   });
 
   it('persists persona provenance and keeps histories isolated by persona', async () => {
     const storage = createStorage();
-    const next = await appendLocalCreativeAssetHistory('persona-1', {
+    const next = await appendLocalCreativeAssetHistory(studioTestScope, 'persona-1', {
       id: '01J00000000000000000000011',
       createdAt: '2026-05-22T00:00:00.000Z',
       sourceContentHash: 'hash-persona-1',
@@ -71,12 +72,12 @@ describe('app-local creative asset history', () => {
         publicTruth: false,
       }],
     });
-    expect(await loadLocalCreativeAssetHistory('persona-1', storage)).toMatchObject({ ok: true, records: next.records });
-    expect(await loadLocalCreativeAssetHistory('persona-2', storage)).toMatchObject({ ok: true, records: [] });
+    expect(await loadLocalCreativeAssetHistory(studioTestScope, 'persona-1', storage)).toMatchObject({ ok: true, records: next.records });
+    expect(await loadLocalCreativeAssetHistory(studioTestScope, 'persona-2', storage)).toMatchObject({ ok: true, records: [] });
     if (!next.ok) throw new Error('Expected persisted candidate');
-    await appendLocalCreativeAssetHistory('persona-2', { ...next.record, id: '01J00000000000000000000012' }, storage);
-    expect(await loadLocalCreativeAssetHistory('persona-1', storage)).toMatchObject({ ok: true, records: next.records });
-    expect((await loadAllLocalCreativeAssetHistory(storage)).records).toHaveLength(2);
+    await appendLocalCreativeAssetHistory(studioTestScope, 'persona-2', { ...next.record, id: '01J00000000000000000000012' }, storage);
+    expect(await loadLocalCreativeAssetHistory(studioTestScope, 'persona-1', storage)).toMatchObject({ ok: true, records: next.records });
+    expect((await loadAllLocalCreativeAssetHistory(studioTestScope, storage)).records).toHaveLength(2);
   });
 
   it('drops malformed records while reporting their source unavailability', async () => {
@@ -110,14 +111,14 @@ describe('app-local creative asset history', () => {
       },
     ]);
 
-    const loaded = await loadAllLocalCreativeAssetHistory(storage);
+    const loaded = await loadAllLocalCreativeAssetHistory(studioTestScope, storage);
     expect(loaded).toMatchObject({ ok: true, unavailableCount: 1 });
     expect(loaded.records).toHaveLength(1);
   });
 
   it('retains origin draft provenance only after canonical creation rebinding', async () => {
     const storage = createStorage();
-    const persisted = await appendLocalCreativeAssetHistory('persona-1', {
+    const persisted = await appendLocalCreativeAssetHistory(studioTestScope, 'persona-1', {
       id: '01J00000000000000000000013',
       createdAt: '2026-05-22T00:00:00.000Z',
       sourceContentHash: 'hash-persona-1',

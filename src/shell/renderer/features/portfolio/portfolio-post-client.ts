@@ -1,3 +1,4 @@
+import { type StudioScope } from '@renderer/app-shell/studio-scope.js';
 import {
   runStudioTextCandidate,
   type StudioTextCandidatePrompt,
@@ -214,11 +215,11 @@ function buildReviewedTextCandidate(payload: CandidatePostPayload): ReviewedText
   };
 }
 
-export async function proposeReviewedPostCopy(
+export async function proposeReviewedPostCopy(scope: StudioScope,
   persona: OwnerPortfolioPersonaDetail,
   draft: LocalPostDraftInput,
   intent: string,
-  runner: StudioTextCandidateRunner = runStudioTextCandidate,
+  runner: StudioTextCandidateRunner = runStudioTextCandidate.bind(null, scope),
 ): Promise<RuntimePostCopyProposalResult> {
   const built = buildRuntimePostCopyPrompt({
     persona,

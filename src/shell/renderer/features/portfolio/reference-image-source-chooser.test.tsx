@@ -1,5 +1,6 @@
+import { renderStudio as render } from '../../../../test/studio-scope.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, screen } from '@testing-library/react';
 import { ensureStudioI18nInitialized, studioI18n } from '../../i18n/studio-i18n.js';
 import { ReferenceImageSourceChooser } from './reference-image-source-chooser.js';
 

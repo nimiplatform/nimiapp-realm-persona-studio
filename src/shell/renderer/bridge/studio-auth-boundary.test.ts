@@ -1,49 +1,19 @@
-import { existsSync, readFileSync } from 'node:fs';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, it } from 'vitest';
 
-function readOptionalSource(path: string): string {
-  return existsSync(path) ? readFileSync(path, 'utf8') : '';
-}
-
-describe('studio Desktop-supervised auth boundary', () => {
-  let bridgeSource = '';
-  let authProviderSource = '';
-  let bootstrapSource = '';
-
-  beforeAll(() => {
-    bridgeSource = readFileSync(join(process.cwd(), 'src/shell/renderer/bridge/index.ts'), 'utf8');
-    authProviderSource = readFileSync(join(process.cwd(), 'src/shell/renderer/app-shell/auth-provider.tsx'), 'utf8');
-    bootstrapSource = readFileSync(join(process.cwd(), 'src/shell/renderer/infra/studio-bootstrap.ts'), 'utf8');
-  });
-
-  it('does not expose renderer OAuth, credential, launch-binding, or Runtime defaults helpers', () => {
-    expect(bridgeSource).toContain('createNimiLocalAppStandardShellSurface');
-    expect(bridgeSource).not.toContain('createInstalledNimiAppStandardShellSurface');
-    expect(bridgeSource).not.toMatch(/oauth|TokenExchange|getStudioRuntimeDefaults|readInstalledNimiAppLaunchBinding/);
-    expect(bridgeSource).not.toMatch(/NIMI_REALM_URL|VITE_NIMI_REALM_BASE_URL|localhost:3002/);
-  });
-
-  it('removes app-local login and shows an actionable capability-unavailable state', () => {
-    const removedAuthSources = [
-      'src/shell/renderer/features/auth/studio-auth-adapter.ts',
-      'src/shell/renderer/features/auth/studio-login-page.tsx',
-    ].map((path) => readOptionalSource(join(process.cwd(), path))).join('\n');
-
-    expect(removedAuthSources).not.toMatch(/DesktopShellAuthPage|createRuntimeAccountBrowserBroker|oauthLogin/);
-    expect(authProviderSource).toContain("t('shell.nimiAccess.requiredTitle')");
-    expect(authProviderSource).toContain("t('shell.nimiAccess.requiredReason')");
-    expect(authProviderSource).toContain("t('shell.nimiAccess.operationsUnavailable')");
-    expect(authProviderSource).toContain('disabled');
-    expect(authProviderSource).toContain("t('common.retry')");
-  });
-
-  it('keeps bootstrap fail closed without app-owned Runtime defaults', () => {
-    expect(bootstrapSource).not.toMatch(/RuntimeDefaults|VITE_NIMI_REALM_BASE_URL|getStudioRuntimeDefaults/);
-    expect(bootstrapSource).toContain('getStudioLocalAppClient().auth.status()');
-    // CP3: the Runtime client gate was removed with the scenario execution
-    // layer; bootstrap now only verifies the Desktop-supervised session
-    // through the local App client.
-    expect(bootstrapSource).toContain('store.setBootstrapReady(true)');
+// Public-entry checks complement shared Kit lifecycle tests; they are not
+// evidence of a live Host or an admitted website.
+describe('Studio delegates identity and transport to the selected public Kit entry', () => {
+  it('keeps Desktop bridge setup separate from the official Web account factory', () => {
+    const read = (file: string) => readFileSync(join(process.cwd(), 'src/shell/renderer', file), 'utf8');
+    const native = read('main.tsx'), web = read('main.web.tsx'), platform = read('app-shell/studio-platform.ts');
+    assert.match(native, /createDesktopNimiAppSession/);
+    assert.match(native, /installNimiShellRuntimeBridge/);
+    assert.match(web, /createWebNimiAppSession/);
+    assert.doesNotMatch(web, /installNimiShellRuntimeBridge|createNimiLocalAppStandardShellSurface/);
+    assert.doesNotMatch(native + web + platform, /oauthLogin|tokenExchange|accessToken|refreshToken|sessionProof|launchNonce/);
+    assert.doesNotMatch(platform, /createRuntimeAccountMediatedRealmTransport|createRealmFetchTransport/);
   });
 });

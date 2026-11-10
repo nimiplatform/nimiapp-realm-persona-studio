@@ -1,9 +1,10 @@
+import { renderStudio as render } from '../../../test/studio-scope.js';
 import { useState } from 'react';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ensureStudioI18nInitialized } from '../i18n/studio-i18n.js';
-import { StudioNavigationGuardProvider, useStudioNavigationGuard } from './studio-navigation-guard.js';
+import { StudioNavigationGuardProvider, useStudioNavigationGuard, useStudioLeaveRequest } from './studio-navigation-guard.js';
 
 beforeEach(async () => { await ensureStudioI18nInitialized().changeLanguage('en'); });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
@@ -34,4 +35,21 @@ it('keeps a dirty post protected beside a clean profile form, and confirms both 
   fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }));
   expect(await screen.findByText('Destination')).toBeTruthy();
   expect(warnings.mock.calls.flat().join(' ')).not.toContain('router only supports one blocker');
+});
+
+it('protects explicit account exit and completes it only after an in-flight autosave settles', async () => {
+  const exit = vi.fn();
+  function Actions() {
+    const requestLeave = useStudioLeaveRequest();
+    const [saving, setSaving] = useState(true);
+    useStudioNavigationGuard('profile', saving, saving);
+    return <><button onClick={() => requestLeave(exit)}>End App session</button><button onClick={() => setSaving(false)}>Finish fixture save</button></>;
+  }
+  const router = createMemoryRouter([{ path: '/', element: <StudioNavigationGuardProvider><Actions /></StudioNavigationGuardProvider> }]);
+  render(<RouterProvider router={router} />);
+  fireEvent.click(screen.getByRole('button', { name: 'End App session' }));
+  expect(exit).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByText('Finish fixture save'));
+  await act(async () => {});
+  expect(exit).toHaveBeenCalledOnce();
 });

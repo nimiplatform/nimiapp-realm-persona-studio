@@ -1,3 +1,4 @@
+import { type StudioScope } from '@renderer/app-shell/studio-scope.js';
 import type { StudioCopyKey } from '../../i18n/studio-copy.js';
 import {
   getStudioProtectedJsonStorage,
@@ -51,10 +52,10 @@ export type CreationDraftHistoryGroup = {
   entries: CreationDraftHistoryEntry[];
 };
 
-function resolveStorage(storage?: CreationDraftHistoryStorage | null): CreationDraftHistoryStorage | null {
+function resolveStorage(scope: StudioScope, storage?: CreationDraftHistoryStorage | null): CreationDraftHistoryStorage | null {
   if (storage !== undefined) return storage;
   try {
-    return getStudioProtectedJsonStorage();
+    return getStudioProtectedJsonStorage(scope);
   } catch {
     return null;
   }
@@ -115,10 +116,10 @@ function normalizeEntries(value: unknown): { entries: CreationDraftHistoryEntry[
   return { entries, unavailableCount };
 }
 
-export async function loadCreationDraftHistory(
+export async function loadCreationDraftHistory(scope: StudioScope,
   storage?: CreationDraftHistoryStorage | null,
 ): Promise<CreationDraftHistoryLoadResult> {
-  const targetStorage = resolveStorage(storage);
+  const targetStorage = resolveStorage(scope, storage);
   if (!targetStorage) {
     return {
       ok: false,
@@ -150,11 +151,11 @@ export async function loadCreationDraftHistory(
   }
 }
 
-export async function upsertCreationDraftHistoryEntry(
+export async function upsertCreationDraftHistoryEntry(scope: StudioScope,
   entry: CreationDraftHistoryEntry,
   storage?: CreationDraftHistoryStorage | null,
 ): Promise<CreationDraftHistoryPersistResult> {
-  const targetStorage = resolveStorage(storage);
+  const targetStorage = resolveStorage(scope, storage);
   if (!targetStorage) {
     return {
       ok: false,
@@ -162,7 +163,7 @@ export async function upsertCreationDraftHistoryEntry(
       entries: [],
     };
   }
-  const loaded = await loadCreationDraftHistory(targetStorage);
+  const loaded = await loadCreationDraftHistory(scope, targetStorage);
   if (!loaded.ok) return loaded;
   const normalized = normalizeEntry(entry);
   if (!normalized) {
@@ -189,11 +190,11 @@ export async function upsertCreationDraftHistoryEntry(
   }
 }
 
-export async function removeCreationDraftHistoryEntry(
+export async function removeCreationDraftHistoryEntry(scope: StudioScope,
   draftKey: string,
   storage?: CreationDraftHistoryStorage | null,
 ): Promise<CreationDraftHistoryPersistResult> {
-  const targetStorage = resolveStorage(storage);
+  const targetStorage = resolveStorage(scope, storage);
   if (!targetStorage) {
     return {
       ok: false,
@@ -201,7 +202,7 @@ export async function removeCreationDraftHistoryEntry(
       entries: [],
     };
   }
-  const loaded = await loadCreationDraftHistory(targetStorage);
+  const loaded = await loadCreationDraftHistory(scope, targetStorage);
   if (!loaded.ok) return loaded;
   if (!isUlid(draftKey)) {
     return {

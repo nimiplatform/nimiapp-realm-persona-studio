@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { PreviewShell } from '../src/shell/renderer/visual-preview-app.js';
-import { studioQueryClient } from '../src/shell/renderer/infra/query-client.js';
+import { studioQueryClient } from '../src/shell/renderer/visual-preview-app.js';
 import { PersonaVisualPreviewProvider } from '../src/shell/renderer/features/persona-detail/persona-visual-preview-context.js';
 import { PERSONA_WORKSPACE_VISUAL_FIXTURE_DATA, PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS } from '../src/shell/renderer/features/persona-detail/persona-workspace.visual-fixture.js';
 import { configureSettingsFixture } from './settings-fixture.js';

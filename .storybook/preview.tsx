@@ -1,3 +1,4 @@
+import { StudioTestProviders } from '../src/test/studio-scope-context.js';
 import type { Preview } from '@storybook/react-vite';
 import { NimiThemeProvider, NimiToaster, TooltipProvider } from '@nimiplatform/kit/ui';
 import { ensureStudioI18nInitialized } from '../src/shell/renderer/i18n/studio-i18n.js';
@@ -16,7 +17,7 @@ const preview: Preview = {
   }],
   decorators: [(Story, { globals }) => (
     <NimiThemeProvider key={globals.scheme} accentPack="nimi-accent" defaultScheme={globals.scheme} defaultDensity="compact">
-      <TooltipProvider><Story /><NimiToaster /></TooltipProvider>
+      <StudioTestProviders><TooltipProvider><Story /><NimiToaster /></TooltipProvider></StudioTestProviders>
     </NimiThemeProvider>
   )],
 };

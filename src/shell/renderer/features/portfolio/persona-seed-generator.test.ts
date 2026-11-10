@@ -1,3 +1,4 @@
+import { studioTestScope } from '../../../../test/studio-scope.js';
 import { describe, expect, it, vi } from 'vitest';
 import {
   generatePersonaSeedFromDescription,
@@ -61,7 +62,7 @@ describe('persona seed generation through the injected text candidate runner', (
   it('submits the owner-reviewed prompt and supplements to the injected runner in completion mode', async () => {
     const runner = vi.fn(fakeTextCandidateRunner(JSON.stringify(validSeed)));
 
-    const result = await generatePersonaSeedFromDescription(
+    const result = await generatePersonaSeedFromDescription(studioTestScope,
       'A calm artifact review guide.',
       runner,
       {
@@ -109,7 +110,7 @@ describe('persona seed generation through the injected text candidate runner', (
       behaviorBoundary: '绝不泄露守夜路线。',
     })));
 
-    const result = await generatePersonaSeedFromDescription('   ', runner, {}, { locale: 'zh' });
+    const result = await generatePersonaSeedFromDescription(studioTestScope, '   ', runner, {}, { locale: 'zh' });
 
     expect(runner).toHaveBeenCalledTimes(1);
     const submitted = runner.mock.calls[0]?.[0];
@@ -133,7 +134,7 @@ describe('persona seed generation through the injected text candidate runner', (
   it('treats supplements without a description as creative-mode hard constraints', async () => {
     const runner = vi.fn(fakeTextCandidateRunner(JSON.stringify(validSeed)));
 
-    await generatePersonaSeedFromDescription(
+    await generatePersonaSeedFromDescription(studioTestScope,
       '',
       runner,
       { speechSupplement: 'Speak in calm, direct sentences.' },
@@ -151,7 +152,7 @@ describe('persona seed generation through the injected text candidate runner', (
       throw new Error('local app surface unavailable');
     };
 
-    const result = await generatePersonaSeedFromDescription('A calm artifact review guide.', runner, {}, { locale: 'en' });
+    const result = await generatePersonaSeedFromDescription(studioTestScope, 'A calm artifact review guide.', runner, {}, { locale: 'en' });
 
     expect(result).toMatchObject({
       ok: false,
@@ -165,7 +166,7 @@ describe('persona seed generation through the injected text candidate runner', (
       throw Object.assign(new Error('AI route is not configured.'), { reasonCode: 'AI_CONFIG_NOT_FOUND' });
     };
 
-    const result = await generatePersonaSeedFromDescription('A calm artifact review guide.', runner, {}, { locale: 'en' });
+    const result = await generatePersonaSeedFromDescription(studioTestScope, 'A calm artifact review guide.', runner, {}, { locale: 'en' });
 
     expect(result).toMatchObject({
       ok: false,
@@ -175,7 +176,7 @@ describe('persona seed generation through the injected text candidate runner', (
   });
 
   it('maps unparseable candidate text to persona-seed-invalid-output', async () => {
-    const result = await generatePersonaSeedFromDescription(
+    const result = await generatePersonaSeedFromDescription(studioTestScope,
       'A calm artifact review guide.',
       fakeTextCandidateRunner('not json at all'),
       {},
@@ -203,7 +204,7 @@ describe('complete character generation', () => {
       .mockImplementationOnce(fakeTextCandidateRunner(malformedSeed))
       .mockImplementationOnce(fakeTextCandidateRunner(JSON.stringify(validSeed)));
 
-    const result = await generatePersonaSeedFromDescription('', runner, {}, { locale: 'zh' });
+    const result = await generatePersonaSeedFromDescription(studioTestScope, '', runner, {}, { locale: 'zh' });
 
     expect(runner).toHaveBeenCalledTimes(2);
     expect(runner.mock.calls[1]?.[0].userText).toContain('Fields ruleText, speechStyle, behaviorBoundary must be JSON strings');

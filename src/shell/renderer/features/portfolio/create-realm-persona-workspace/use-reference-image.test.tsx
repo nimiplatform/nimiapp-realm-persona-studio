@@ -1,4 +1,6 @@
-import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
+import { renderStudioHook as renderHook } from '../../../../../test/studio-scope.js';
+import { renderStudio as render } from '../../../../../test/studio-scope.js';
+import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { detectLocalAssetImportCapability } from '../../assets-library/local-import-store.js';
 import { normalizeCreateRealmPersonaDraft, type CreateRealmPersonaDraftInput } from '../create-persona-draft.js';

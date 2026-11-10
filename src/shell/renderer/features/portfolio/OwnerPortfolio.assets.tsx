@@ -1,3 +1,4 @@
+import { useStudioScope } from '@renderer/app-shell/studio-scope.js';
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import {
   ArrowUp,
@@ -139,11 +140,12 @@ function formatActivityDate(value: string, locale: 'en' | 'zh'): string {
 }
 
 function useCreativeAssetHistory(personaId: string) {
+  const scope = useStudioScope();
   const [creativeHistory, setCreativeHistory] = useState<CreativeAssetHistoryRecord[]>([]);
   const [creativeHistoryUnavailable, setCreativeHistoryUnavailable] = useState(false);
 
   const refreshCreativeHistory = useCallback(async () => {
-    const result = await loadLocalCreativeAssetHistory(personaId);
+    const result = await loadLocalCreativeAssetHistory(scope, personaId);
     setCreativeHistory(result.records);
     setCreativeHistoryUnavailable(!result.ok || result.unavailableCount > 0);
   }, [personaId]);
@@ -363,6 +365,7 @@ function VisualIdentityChangeEditor({
   onPersonaWrite: () => Promise<void>;
   onEditUpload: (file: File) => void;
 }) {
+  const scope = useStudioScope();
   const { t } = useStudioI18n();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<VisualIdentityMode | null>(null);
@@ -451,14 +454,14 @@ function VisualIdentityChangeEditor({
     setIsGenerating(true);
     setGenerationResult(null);
     try {
-      const result = await generateReviewedVisualImageCandidate({
+      const result = await generateReviewedVisualImageCandidate(scope, {
         ...createVisualImageGenerationDraft(),
         prompt: normalizedPrompt,
       }, persona);
       setGenerationResult(result);
       if (result.ok) {
         const previewUrl = result.runtime.previewUrls[0];
-        const persisted = await appendLocalCreativeAssetHistory(persona.id, {
+        const persisted = await appendLocalCreativeAssetHistory(scope, persona.id, {
           sourceContentHash: persona.contentHash,
           kind: 'runtime-image-candidate',
           sourceKind: 'generated',
@@ -494,7 +497,7 @@ function VisualIdentityChangeEditor({
     setIsSelectingAvatar(true);
     setAvatarResult(null);
     try {
-      const result = await selectReviewedPersonaAvatarUrl(persona, avatarUrlDraft);
+      const result = await selectReviewedPersonaAvatarUrl(scope, persona, avatarUrlDraft);
       setAvatarResult(result);
       if (result.ok) {
         nimiToast.success(t('assets.avatarUrl.saved'));
@@ -737,6 +740,7 @@ function VoiceChangeEditor({
   creativeHistory: CreativeAssetHistoryRecord[];
   onHistoryUpdated: () => Promise<void>;
 }) {
+  const scope = useStudioScope();
   const { locale, t } = useStudioI18n();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<VoiceChangeMode | null>(null);
@@ -797,11 +801,11 @@ function VoiceChangeEditor({
     setIsSynthesizing(true);
     setSynthesisResult(null);
     try {
-      const result = await synthesizeReviewedVoiceDemo(voiceDraft, persona);
+      const result = await synthesizeReviewedVoiceDemo(scope, voiceDraft, persona);
       setSynthesisResult(result);
       if (result.ok) {
         const previewUrl = result.runtime.previewUrls[0];
-        const persisted = await appendLocalCreativeAssetHistory(persona.id, {
+        const persisted = await appendLocalCreativeAssetHistory(scope, persona.id, {
           sourceContentHash: persona.contentHash,
           kind: 'voice-demo-candidate',
           sourceKind: 'generated',

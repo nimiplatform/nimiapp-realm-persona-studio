@@ -1,3 +1,4 @@
+import { studioTestScope } from '../../../../test/studio-scope.js';
 import { describe, expect, it } from 'vitest';
 import {
   buildPersonaReferenceImagePayload,
@@ -28,7 +29,7 @@ describe('persona reference image generation', () => {
     expect(invalid.ok).toBe(false);
     expect(invalid.errors.map((error) => error.kind)).toEqual(['reference-prompt-empty']);
 
-    const result = await generatePersonaReferenceImage({ prompt: ' ' });
+    const result = await generatePersonaReferenceImage(studioTestScope, { prompt: ' ' });
     expect(result).toMatchObject({
       ok: false,
       failure: 'persona-reference-image-payload-invalid',
@@ -49,7 +50,7 @@ describe('persona reference image generation', () => {
   });
 
   it('uses a reviewed Nimi image candidate only when Runtime returns a display-safe HTTPS URI', async () => {
-    const result = await generatePersonaReferenceImage({
+    const result = await generatePersonaReferenceImage(studioTestScope, {
       prompt: 'A reviewed public Realm Persona portrait',
       aspectRatio: '16:9',
     }, async () => ({
@@ -81,7 +82,7 @@ describe('persona reference image generation', () => {
   });
 
   it('keeps an HTTP artifact local instead of writing it into PersonaCharacter', async () => {
-    const result = await generatePersonaReferenceImage({
+    const result = await generatePersonaReferenceImage(studioTestScope, {
       prompt: 'A reviewed public Realm Persona portrait',
       aspectRatio: '16:9',
     }, async () => ({
@@ -94,7 +95,7 @@ describe('persona reference image generation', () => {
   });
 
   it('keeps credential-bearing HTTPS artifacts local', async () => {
-    const result = await generatePersonaReferenceImage({
+    const result = await generatePersonaReferenceImage(studioTestScope, {
       prompt: 'A reviewed public Realm Persona portrait',
     }, async () => ({
       ok: true,
@@ -109,7 +110,7 @@ describe('persona reference image generation', () => {
   });
 
   it('returns an artifact-backed local candidate without requiring a public URL', async () => {
-    const result = await generatePersonaReferenceImage({
+    const result = await generatePersonaReferenceImage(studioTestScope, {
       prompt: 'A reviewed public Realm Persona portrait',
     }, async () => ({
       ok: true,

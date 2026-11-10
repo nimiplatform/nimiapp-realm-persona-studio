@@ -1,3 +1,4 @@
+import { useStudioScope } from '@renderer/app-shell/studio-scope.js';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { EyeOff, Globe, Lock, ShieldCheck, TriangleAlert } from 'lucide-react';
@@ -59,11 +60,12 @@ export function VisibilityInlineSelect({
 }: {
   persona: OwnerPortfolioPersonaDetail;
 }) {
+  const scope = useStudioScope();
   const { t } = useStudioI18n();
   const refreshPersonaReads = useRefreshPersonaReads(persona.id, 'owner');
   const visibilityQuery = useQuery({
     queryKey: ['realm-persona-studio', 'owner-persona-visibility', persona.id],
-    queryFn: () => getPersonaVisibilitySettings(persona.id),
+    queryFn: () => getPersonaVisibilitySettings(scope, persona.id),
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -84,7 +86,7 @@ export function VisibilityInlineSelect({
     }
     setIsSaving(true);
     try {
-      const result = await updateReviewedPersonaVisibility(persona.id, { visibility: next }, current);
+      const result = await updateReviewedPersonaVisibility(scope, persona.id, { visibility: next }, current);
       if (result.ok) {
         nimiToast.success(t('visibility.saved'));
         await visibilityQuery.refetch();

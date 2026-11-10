@@ -20,7 +20,7 @@ units:
     kind: rule
     title: Owner PersonaCharacter source reads
     modality: must
-    statement: Persona source reads use client.realm.personaCharacter.listOwned and getOwned, while selectable home-world reads use client.realm.worldCore.list, exclusively through the host-injected App client.
+    statement: Persona source reads use client.realm.personaCharacter.listOwned and getOwned, while selectable home-world reads use client.realm.worldCore.list and exact portfolio-world reads use get, exclusively through the admitted SDK App client.
     condition: Whenever Studio reads persona source state.
     failure: Reject acceptance when a source read uses a generic SDK, direct REST, controller, Desktop first-party, raw forwarding, creator, world-maintainer, or dev fallback.
     relations:
@@ -30,7 +30,7 @@ units:
     kind: rule
     title: Owner PersonaCharacter writes
     modality: must
-    statement: Persona create, replace, and delete writes use the exact host-injected App PersonaCharacter methods only; replacement starts from toProfileInput on the latest owner detail and carries the latest baseContentHash, while ordinary delete is exposed only from a latest owner detail whose visibility is private and succeeds only after the exact acknowledgement matches the requested personaCharacterId.
+    statement: Persona create, replace, and delete writes use the exact admitted SDK App PersonaCharacter methods only; replacement starts from toProfileInput on the latest owner detail and carries the latest baseContentHash, while ordinary delete is exposed only from a latest owner detail whose visibility is private and succeeds only after the exact acknowledgement matches the requested personaCharacterId.
     condition: Whenever Studio creates, updates, or deletes a persona.
     failure: Reject the write and acceptance when the exact App input, latest owner detail, latest baseContentHash, private delete eligibility, or matching delete acknowledgement is missing, and preserve not-found, access-denied, and content-conflict without fallback.
     relations:

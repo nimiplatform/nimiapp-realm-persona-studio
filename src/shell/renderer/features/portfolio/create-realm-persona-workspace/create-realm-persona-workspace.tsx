@@ -1,3 +1,5 @@
+import { useStudioNavigationGuard } from '@renderer/app-shell/studio-navigation-guard.js';
+import { useStudioScope } from '@renderer/app-shell/studio-scope.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -69,6 +71,7 @@ import type {
 // @nimi-authority: rule.realm-persona-studio.create-flow.r004
 // @nimi-authority: rule.realm-persona-studio.create-flow.r006
 export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }: CreateRealmPersonaWorkspaceProps) {
+  const scope = useStudioScope();
   const { t, locale } = useStudioI18n();
   const location = useLocation();
   const navigate = useNavigate();
@@ -99,7 +102,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
   const [validationAttempt, setValidationAttempt] = useState(0);
   const translatorRef = useRef(t);
   translatorRef.current = t;
-  const [localImportCapability] = useState<LocalImportCapabilityStatus>(() => getLocalAssetImportCapability());
+  const [localImportCapability] = useState<LocalImportCapabilityStatus>(() => getLocalAssetImportCapability(scope));
 
   const selectedKey = selectedDraftKey(location.search);
   useEffect(() => {
@@ -119,7 +122,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
 
   useEffect(() => {
     let cancelled = false;
-    void loadCreationDraft(draftKey).then((result) => {
+    void loadCreationDraft(scope, draftKey).then((result) => {
       if (cancelled) return;
       if (!result.ok) {
         logCreateFlowFailure('create-flow.draft-load', result.failure);
@@ -140,7 +143,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
 
   const worldsQuery = useQuery({
     queryKey: ['realm-persona-studio', 'create-persona-worlds'],
-    queryFn: () => listCreateRealmPersonaSelectableWorlds(),
+    queryFn: () => listCreateRealmPersonaSelectableWorlds(scope),
   });
   const worlds = worldsQuery.data || [];
   const selectableWorldIds = useMemo(() => worlds.filter((world) => Boolean(world.name)).map((world) => world.id), [worlds]);
@@ -173,6 +176,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
     extraSourceFields: [],
     acceptedForCreateFingerprint: graphAcceptedFingerprint,
   }), [draft, graphAcceptedFingerprint, seedResult, sourceMode]);
+  useStudioNavigationGuard('profile', edited && autosaveState !== 'saved', autosaveState === 'saving');
   const flushDraft = useAutosaveDraft({
     draftKey,
     draft,
@@ -213,12 +217,12 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
   });
 
   const createMutation = useMutation<RealmPersonaCreateWithProfileSettingsResult, Error, ReviewedCreateRealmPersonaPayload>({
-    mutationFn: (payload) => createReviewedRealmPersonaWithProfileSettings(payload),
+    mutationFn: (payload) => createReviewedRealmPersonaWithProfileSettings(scope, payload),
     onSuccess: async (result) => {
       const canonical = result.ok ? result.canonical : result.createdCanonical;
       if (canonical && normalizedDraft.referenceImageCandidates.length > 0) {
         const rebound = await Promise.all(normalizedDraft.referenceImageCandidates.map((candidate) => (
-          appendLocalCreativeAssetHistory(canonical.id, {
+          appendLocalCreativeAssetHistory(scope, canonical.id, {
             sourceContentHash: canonical.contentHash,
             kind: 'runtime-image-candidate',
             sourceKind: candidate.sourceKind,
@@ -237,7 +241,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
       }
       if (result.ok) {
         await flushDraft();
-        const finishedDraft = await removeCreationDraftHistoryEntry(draftKey);
+        const finishedDraft = await removeCreationDraftHistoryEntry(scope, draftKey);
         if (finishedDraft.ok) dispatchCreationDraftHistoryUpdated();
         else nimiToast.info(t('workshop.finish.draftCleanupFailed'));
         const currentDraft = normalizeCreateRealmPersonaDraft(draft);
@@ -253,7 +257,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
         try {
           await queryClient.fetchQuery({
             queryKey: ownerPersonaDetailQueryKey(result.canonical.id),
-            queryFn: () => getOwnerPortfolioPersonaDetail(result.canonical.id),
+            queryFn: () => getOwnerPortfolioPersonaDetail(scope, result.canonical.id),
           });
         } catch (error) {
           const reason = personaCharacterFailureReason(error);

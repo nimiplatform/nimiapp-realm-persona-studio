@@ -39,7 +39,7 @@ describe('visual identity change dialog', () => {
 
     expect(component).toContain('data-testid="reviewed-avatar-url-editor"');
     expect(component).toContain('buildRealmSelectAvatarInput(avatarUrlDraft)');
-    expect(component).toContain('selectReviewedPersonaAvatarUrl(persona, avatarUrlDraft)');
+    expect(component).toContain('selectReviewedPersonaAvatarUrl(scope, persona, avatarUrlDraft)');
     expect(component).toContain('await onPersonaWrite()');
     expect(component).toContain("t('persona.failure.sanitized', { reason: t(failureKindCopyKey(result.failure)) })");
   });

@@ -1,3 +1,4 @@
+import { useStudioScope } from '@renderer/app-shell/studio-scope.js';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -27,6 +28,7 @@ export function PersonaSettingsModal({
   onClose: () => void;
   onPersonaWrite: () => Promise<void>;
 }) {
+  const scope = useStudioScope();
   const { t } = useStudioI18n();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -52,7 +54,7 @@ export function PersonaSettingsModal({
     setDeleting(true);
     setDeleteFailure(null);
     try {
-      const result = await deleteOwnerPortfolioPersona(persona.id);
+      const result = await deleteOwnerPortfolioPersona(scope, persona.id);
       if (!result.ok) {
         setDeleteFailure(result.failure);
         setConfirmOpen(false);

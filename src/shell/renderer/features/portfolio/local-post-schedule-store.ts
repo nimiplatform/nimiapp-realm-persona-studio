@@ -1,3 +1,4 @@
+import { type StudioScope } from '@renderer/app-shell/studio-scope.js';
 import type { LocalPostScheduleCandidate } from './post-draft.js';
 import {
   getStudioProtectedJsonStorage,
@@ -75,9 +76,9 @@ function isLocalPostScheduleCandidate(value: unknown): value is LocalPostSchedul
     && review?.humanReviewed === true;
 }
 
-function resolveStorage(storage?: LocalScheduleStorage | null): LocalScheduleStorage {
+function resolveStorage(scope: StudioScope, storage?: LocalScheduleStorage | null): LocalScheduleStorage {
   if (storage === null) throw new Error('Local post schedule storage is unavailable.');
-  return storage ?? getStudioProtectedJsonStorage();
+  return storage ?? getStudioProtectedJsonStorage(scope);
 }
 
 function normalizeRecord(value: unknown, personaId: string): LocalPostScheduleRecord | null {
@@ -121,9 +122,9 @@ function normalizeRecord(value: unknown, personaId: string): LocalPostScheduleRe
 }
 
 // @nimi-authority: rule.realm-persona-studio.asset.r009
-export async function loadLocalPostSchedule(personaId: string, storage?: LocalScheduleStorage | null): Promise<LocalPostScheduleRecord | null> {
+export async function loadLocalPostSchedule(scope: StudioScope, personaId: string, storage?: LocalScheduleStorage | null): Promise<LocalPostScheduleRecord | null> {
   try {
-    const targetStorage = resolveStorage(storage);
+    const targetStorage = resolveStorage(scope, storage);
     const document = await targetStorage.readJson(scheduleKey(personaId));
     const record = normalizeRecord(document.value, personaId);
     if (!record) throw new Error('Stored local post schedule is invalid.');
@@ -134,7 +135,7 @@ export async function loadLocalPostSchedule(personaId: string, storage?: LocalSc
   }
 }
 
-export async function saveLocalPostSchedule(
+export async function saveLocalPostSchedule(scope: StudioScope,
   personaId: string,
   candidate: LocalPostScheduleCandidate,
   storage?: LocalScheduleStorage | null,
@@ -160,7 +161,7 @@ export async function saveLocalPostSchedule(
     },
     candidate,
   };
-  const targetStorage = resolveStorage(storage);
+  const targetStorage = resolveStorage(scope, storage);
   try {
     await targetStorage.writeJson(scheduleKey(personaId), record);
   } catch {
@@ -169,8 +170,8 @@ export async function saveLocalPostSchedule(
   return record;
 }
 
-export async function clearLocalPostSchedule(personaId: string, storage?: LocalScheduleStorage | null): Promise<void> {
-  const targetStorage = resolveStorage(storage);
+export async function clearLocalPostSchedule(scope: StudioScope, personaId: string, storage?: LocalScheduleStorage | null): Promise<void> {
+  const targetStorage = resolveStorage(scope, storage);
   await targetStorage.removeJson(scheduleKey(personaId));
 }
 

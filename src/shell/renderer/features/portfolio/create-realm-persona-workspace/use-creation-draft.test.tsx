@@ -1,4 +1,5 @@
-import { act, cleanup, renderHook } from '@testing-library/react';
+import { renderStudioHook as renderHook } from '../../../../../test/studio-scope.js';
+import { act, cleanup } from '@testing-library/react';
 import { afterEach, expect, it } from 'vitest';
 import { useCreationDraft } from './use-creation-draft.js';
 import { createEmptyDraft } from './draft-utils.js';

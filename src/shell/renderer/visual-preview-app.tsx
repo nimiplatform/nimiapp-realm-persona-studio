@@ -45,7 +45,8 @@ import {
   ReferenceImageSourceChooser,
   type ReferenceImageSourceMode,
 } from './features/portfolio/reference-image-source-chooser.js';
-import { studioQueryClient } from './infra/query-client.js';
+import { createStudioQueryClient } from './infra/query-client.js';
+export const studioQueryClient = createStudioQueryClient();
 import {
   ensureStudioI18nInitialized,
   translatePersonaArchetypeLabel,

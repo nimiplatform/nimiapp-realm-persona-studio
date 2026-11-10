@@ -1,4 +1,5 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { studioTestScope, renderStudio as render } from '../../../../test/studio-scope.js';
+import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { TooltipProvider } from '@nimiplatform/kit/ui';
 import { StudioNavigationGuardProvider } from '../../app-shell/studio-navigation-guard.js';
@@ -39,7 +40,7 @@ function showEditor(path = '/') {
   return router;
 }
 async function seedDraft(caption: string) {
-  const saved = await saveLocalPostDraft({ personaId: persona.id, caption, tagsText: '', visibility: 'private', category: null, attachments: [] });
+  const saved = await saveLocalPostDraft(studioTestScope, { personaId: persona.id, caption, tagsText: '', visibility: 'private', category: null, attachments: [] });
   if (!saved.ok) throw new Error('Expected persisted draft');
   return saved.record;
 }

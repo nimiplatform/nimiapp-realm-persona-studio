@@ -17,7 +17,7 @@ units:
   - id: definition.realm-persona-studio.create-flow.draft-autosave-record
     kind: definition
     title: Draft autosave record
-    meaning: A local autosave record for a creation draft containing draft fields, a draft key, and a local timestamp; it is persisted on the desktop and is candidate material only.
+    meaning: A local autosave record for a creation draft containing draft fields, a draft key, and a local timestamp; it is persisted in the PC Runtime App partition and is candidate material only.
   - id: definition.realm-persona-studio.create-flow.creation-draft-history
     kind: definition
     title: Creation draft history

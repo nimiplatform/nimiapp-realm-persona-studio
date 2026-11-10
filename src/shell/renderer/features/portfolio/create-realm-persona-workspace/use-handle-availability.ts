@@ -1,3 +1,4 @@
+import { useStudioScope } from '@renderer/app-shell/studio-scope.js';
 import { useQuery } from '@tanstack/react-query';
 import type { NormalizedRealmPersonaHandleAvailability } from '../create-persona-draft.js';
 import {
@@ -17,9 +18,10 @@ export function useHandleAvailability(normalizedHandle: string): {
   };
   availability: NormalizedRealmPersonaHandleAvailability | null;
 } {
+  const scope = useStudioScope();
   const query = useQuery<RealmPersonaHandleAvailabilityResult>({
     queryKey: ['realm-persona-studio', 'create-persona-handle-availability', normalizedHandle],
-    queryFn: () => checkCreateRealmPersonaHandleAvailability(normalizedHandle),
+    queryFn: () => checkCreateRealmPersonaHandleAvailability(scope, normalizedHandle),
     enabled: normalizedHandle.length > 0,
   });
   const availability = query.data?.ok ? query.data.availability : null;

@@ -1,6 +1,7 @@
+import { type StudioScope } from '@renderer/app-shell/studio-scope.js';
 import {
   createNimiLocalAppRuntimeScenarioJobClient,
-  type NimiLocalAppClient,
+  type NimiAppRuntimeClient,
 } from '@nimiplatform/sdk/app';
 import {
   runRuntimeImageGenerate,
@@ -8,7 +9,7 @@ import {
   type RuntimeImageGenerateResult,
   type RuntimeSpeechSynthesizeResult,
 } from '@nimiplatform/kit/features/generation/runtime';
-import { STUDIO_RUNTIME_APP_ID, getStudioLocalAppClient } from '@renderer/app-shell/studio-platform.js';
+import { STUDIO_RUNTIME_APP_ID, getStudioClient } from '@renderer/app-shell/studio-platform.js';
 import type {
   StudioImageCandidatePreview,
   StudioVoiceCandidatePreview,
@@ -55,13 +56,14 @@ export type StudioVoiceCandidateRunner = (
   input: StudioVoiceCandidatePreview,
 ) => Promise<StudioMediaCandidateExecutionResult>;
 
-type StudioAIConsumptionClient = Pick<NimiLocalAppClient, 'ai'>;
+type StudioAIConsumptionClient = Pick<NimiAppRuntimeClient, 'ai'>;
 type ScenarioJobClientFactory = typeof createNimiLocalAppRuntimeScenarioJobClient;
 type ImageGenerate = typeof runRuntimeImageGenerate;
 type SpeechSynthesize = typeof runRuntimeSpeechSynthesize;
 
 export type StudioMediaCandidateRunnerDependencies = {
   client: StudioAIConsumptionClient;
+  signal?: AbortSignal;
   createScenarioJobClient?: ScenarioJobClientFactory;
   imageGenerate?: ImageGenerate;
   speechSynthesize?: SpeechSynthesize;
@@ -83,6 +85,8 @@ export function createStudioMediaCandidateRunners(
     image: async (input) => {
       const result = await imageGenerate({
         runtime: { ai: scenarioJobs },
+        signal: dependencies.signal,
+        abortReason: 'studio-connection-ended',
         appId: STUDIO_RUNTIME_APP_ID,
         prompt: input.prompt,
         ...(input.count !== undefined ? { count: input.count } : {}),
@@ -90,32 +94,40 @@ export function createStudioMediaCandidateRunners(
         scenarioId: input.surfaceId,
         surfaceId: input.surfaceId,
       });
+      dependencies.signal?.throwIfAborted();
       return projectImageResult(result, dependencies.client);
     },
     voice: async (input) => {
       const result = await speechSynthesize({
         runtime: { ai: scenarioJobs },
+        signal: dependencies.signal,
+        abortReason: 'studio-connection-ended',
         appId: STUDIO_RUNTIME_APP_ID,
         text: input.text,
         voiceRef: { kind: 'preset_voice_id', presetVoiceId: input.presetVoiceId },
         scenarioId: input.surfaceId,
         surfaceId: input.surfaceId,
       });
+      dependencies.signal?.throwIfAborted();
       return projectSpeechResult(result, dependencies.client);
     },
   });
 }
 
-export async function runStudioImageCandidate(
+export async function runStudioImageCandidate(scope: StudioScope,
   input: StudioImageCandidatePreview,
 ): Promise<StudioMediaCandidateExecutionResult> {
-  return createStudioMediaCandidateRunners({ client: getStudioLocalAppClient() }).image(input);
+  const result = await createStudioMediaCandidateRunners({ client: getStudioClient(scope), signal: scope.signal }).image(input);
+  scope.signal.throwIfAborted();
+  return result;
 }
 
-export async function runStudioVoiceCandidate(
+export async function runStudioVoiceCandidate(scope: StudioScope,
   input: StudioVoiceCandidatePreview,
 ): Promise<StudioMediaCandidateExecutionResult> {
-  return createStudioMediaCandidateRunners({ client: getStudioLocalAppClient() }).voice(input);
+  const result = await createStudioMediaCandidateRunners({ client: getStudioClient(scope), signal: scope.signal }).voice(input);
+  scope.signal.throwIfAborted();
+  return result;
 }
 
 async function projectImageResult(
@@ -172,8 +184,9 @@ async function projectSpeechResult(
   }
 }
 
-export async function readStudioMediaArtifactPreview(artifactId: string, expectedMimePrefix: 'image/' | 'audio/'): Promise<string | undefined> {
-  const artifact = await projectArtifact({ artifactId, mimeType: '' }, getStudioLocalAppClient(), expectedMimePrefix);
+export async function readStudioMediaArtifactPreview(scope: StudioScope, artifactId: string, expectedMimePrefix: 'image/' | 'audio/'): Promise<string | undefined> {
+  const artifact = await projectArtifact({ artifactId, mimeType: '' }, getStudioClient(scope), expectedMimePrefix);
+  scope.signal.throwIfAborted();
   return artifact.previewUrl;
 }
 

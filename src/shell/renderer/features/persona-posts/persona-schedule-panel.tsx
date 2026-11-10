@@ -1,3 +1,4 @@
+import { useStudioScope } from '@renderer/app-shell/studio-scope.js';
 // @nimi-authority: rule.realm-persona-studio.post.r009
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarClock } from 'lucide-react';
@@ -64,6 +65,7 @@ export function PersonaSchedulePanel({
   onScheduleChange: (next: LocalPostScheduleRecord | null) => void;
   disabled?: boolean;
 }) {
+  const scope = useStudioScope();
   const { t } = useStudioI18n();
   const developmentFixture = Boolean(usePersonaVisualPreview()?.visualData[persona.id]?.developmentFixture);
   const [caption, setCaption] = useState(() => schedule?.candidate.postCandidate.realmCreatePost.caption ?? '');
@@ -141,7 +143,7 @@ export function PersonaSchedulePanel({
     }
     setPending(true);
     try {
-      const saved = await saveLocalPostSchedule(persona.id, result.candidate);
+      const saved = await saveLocalPostSchedule(scope, persona.id, result.candidate);
       onScheduleChange(saved);
       nimiToast.success(t('posts.schedule.savedFor', { time: saved.localRunAt }));
     } catch {
@@ -156,7 +158,7 @@ export function PersonaSchedulePanel({
     setClearFailed(false);
     setPending(true);
     try {
-      if (!developmentFixture) await clearLocalPostSchedule(persona.id);
+      if (!developmentFixture) await clearLocalPostSchedule(scope, persona.id);
       onScheduleChange(null);
       nimiToast.success(t('posts.schedule.cleared'));
     } catch {

@@ -1,3 +1,4 @@
+import { studioTestScope } from '../../../../test/studio-scope.js';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
@@ -124,7 +125,7 @@ describe('owner portfolio publication hardcut', () => {
       submitted: prompt,
     }));
 
-    const result = await proposeReviewedPostCopy(ownerPersonaDetail(), {
+    const result = await proposeReviewedPostCopy(studioTestScope, ownerPersonaDetail(), {
       caption: '',
       tagsText: '',
       humanReviewed: false,
@@ -165,7 +166,7 @@ describe('owner portfolio publication hardcut', () => {
       submitted: prompt,
     }));
 
-    const result = await proposeReviewedPostCopy(ownerPersonaDetail(), {
+    const result = await proposeReviewedPostCopy(studioTestScope, ownerPersonaDetail(), {
       caption: '',
       tagsText: '',
       humanReviewed: false,
@@ -187,7 +188,7 @@ describe('owner portfolio publication hardcut', () => {
       throw new Error('local app surface unavailable');
     };
 
-    const result = await proposeReviewedPostCopy(ownerPersonaDetail(), {
+    const result = await proposeReviewedPostCopy(studioTestScope, ownerPersonaDetail(), {
       caption: '',
       tagsText: '',
       humanReviewed: false,
@@ -213,7 +214,7 @@ describe('owner portfolio publication hardcut', () => {
       submitted: prompt,
     });
 
-    const result = await proposeReviewedPostCopy(ownerPersonaDetail(), {
+    const result = await proposeReviewedPostCopy(studioTestScope, ownerPersonaDetail(), {
       caption: '',
       tagsText: '',
       humanReviewed: false,

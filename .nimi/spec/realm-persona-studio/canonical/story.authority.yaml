@@ -80,7 +80,7 @@ units:
     kind: rule
     title: "Story: schedule locally"
     modality: must
-    statement: The local schedule is one foreground desktop operation per persona, not public schedule state.
+    statement: The local schedule is one foreground App-view operation per persona, not public schedule state.
     condition: Whenever the owner schedules a post locally.
     failure: Reject a second foreground operation for the persona and expose no public schedule-state claim.
     relations:

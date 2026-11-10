@@ -1,9 +1,10 @@
+import { type StudioScope } from '@renderer/app-shell/studio-scope.js';
 import type {
   NimiLocalAppPersonaCharacter,
   NimiLocalAppPersonaCharacterFailureReason,
   NimiLocalAppPersonaCharacterProfileInput,
 } from '@nimiplatform/sdk/app';
-import { getStudioLocalAppClient } from '@renderer/app-shell/studio-platform.js';
+import { getStudioClient } from '@renderer/app-shell/studio-platform.js';
 import {
   personaCharacterFailureReason,
   type OwnerPortfolioPersonaDetail,
@@ -191,7 +192,7 @@ export function withSelectedAvatarExternalRef(
 }
 
 // @nimi-authority: rule.realm-persona-studio.asset.r004
-export async function selectReviewedPersonaAvatarUrl(
+export async function selectReviewedPersonaAvatarUrl(scope: StudioScope,
   persona: OwnerPortfolioPersonaDetail,
   avatarUrl: string,
 ): Promise<RealmPersonaAvatarSelectResult> {
@@ -218,7 +219,7 @@ export async function selectReviewedPersonaAvatarUrl(
     };
   }
   try {
-    const client = getStudioLocalAppClient().realm.personaCharacter;
+    const client = getStudioClient(scope).realm.personaCharacter;
     const latest = await client.getOwned(current.id);
     if (latest.id !== current.id || latest.visibility === 'system') {
       return { ok: false, source: REALM_PERSONA_AVATAR_SELECT_SOURCE, publicTruth: false,
@@ -230,6 +231,7 @@ export async function selectReviewedPersonaAvatarUrl(
     }
     const profile = withSelectedAvatarExternalRef(client.toProfileInput(latest.profile), submitted.avatarUrl);
     if (!latest.lorebookDeclaration) throw new Error('Character lorebook declaration is required before replace.');
+    scope.signal.throwIfAborted();
     const replaced = await client.replace({
       personaCharacterId: latest.id,
       baseContentHash: latest.contentHash,
@@ -239,6 +241,7 @@ export async function selectReviewedPersonaAvatarUrl(
       lorebookDeclaration: latest.lorebookDeclaration,
       profile,
     });
+    scope.signal.throwIfAborted();
     return normalizeRealmPersonaAvatarSelectResult(replaced, submitted);
   } catch (error) {
     const reason = personaCharacterFailureReason(error);
@@ -253,10 +256,10 @@ export async function selectReviewedPersonaAvatarUrl(
   }
 }
 
-export async function synthesizeReviewedVoiceDemo(
+export async function synthesizeReviewedVoiceDemo(scope: StudioScope,
   input: VoiceDemoCandidateInput,
   persona: OwnerPortfolioPersonaDetail,
-  runner: StudioVoiceCandidateRunner = runStudioVoiceCandidate,
+  runner: StudioVoiceCandidateRunner = runStudioVoiceCandidate.bind(null, scope),
 ): Promise<RuntimeVoiceDemoSynthesisResult> {
   const draft = buildReviewedVoiceDemoCandidatePayload(input, persona);
 
@@ -307,10 +310,10 @@ export async function synthesizeReviewedVoiceDemo(
   };
 }
 
-export async function generateReviewedVisualImageCandidate(
+export async function generateReviewedVisualImageCandidate(scope: StudioScope,
   input: VisualImageGenerationInput,
   persona: OwnerPortfolioPersonaDetail,
-  runner: StudioImageCandidateRunner = runStudioImageCandidate,
+  runner: StudioImageCandidateRunner = runStudioImageCandidate.bind(null, scope),
 ): Promise<RuntimeVisualImageGenerationResult> {
   const draft = buildReviewedVisualImageCandidatePayload(input, persona);
   return runReviewedImageCandidate(
@@ -320,10 +323,10 @@ export async function generateReviewedVisualImageCandidate(
   );
 }
 
-export async function generateReviewedAvatarPackageCandidate(
+export async function generateReviewedAvatarPackageCandidate(scope: StudioScope,
   input: AvatarPackageCandidateInput,
   persona: OwnerPortfolioPersonaDetail,
-  runner: StudioImageCandidateRunner = runStudioImageCandidate,
+  runner: StudioImageCandidateRunner = runStudioImageCandidate.bind(null, scope),
 ): Promise<RuntimeVisualImageGenerationResult> {
   const draft = buildReviewedAvatarPackageCandidatePayload(input, persona);
   return runReviewedImageCandidate(

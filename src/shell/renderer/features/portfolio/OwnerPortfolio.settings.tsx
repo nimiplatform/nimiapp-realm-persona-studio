@@ -1,3 +1,4 @@
+import { useStudioScope } from '@renderer/app-shell/studio-scope.js';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStudioNavigationGuard } from '../../app-shell/studio-navigation-guard.js';
@@ -100,6 +101,7 @@ export function PersonaSettingsForm({
   onDirtyChange?: (dirty: boolean) => void;
   mode?: 'page' | 'dialog';
 }) {
+  const scope = useStudioScope();
   const { t, locale } = useStudioI18n();
   const navigate = useNavigate();
   const id = useId();
@@ -122,13 +124,13 @@ export function PersonaSettingsForm({
   }, []);
   const settingsQuery = useQuery({
     queryKey: ['realm-persona-studio', 'persona-settings', persona.ownerScope, persona.id],
-    queryFn: () => getPortfolioPersonaSettings(persona),
+    queryFn: () => getPortfolioPersonaSettings(scope, persona),
     refetchOnWindowFocus: false,
     refetchOnMount: 'always',
   });
   const worldsQuery = useQuery({
     queryKey: ['realm-persona-studio', 'create-persona-worlds'],
-    queryFn: () => listCreateRealmPersonaSelectableWorlds(),
+    queryFn: () => listCreateRealmPersonaSelectableWorlds(scope),
   });
   // A refetch must not erase an owner's unsaved writing or silently advance its base hash.
   useEffect(() => {
@@ -163,7 +165,7 @@ export function PersonaSettingsForm({
     setAppliedKeys(new Set());
     setReviewBase({ ...draft });
     try {
-      const result = await proposeReviewedPortfolioPersonaSettings(persona, draft, base, undefined, locale);
+      const result = await proposeReviewedPortfolioPersonaSettings(scope, persona, draft, base, undefined, locale);
       if (mounted.current) setReviewResult(result);
     } catch {
       if (mounted.current) setAiRequestFailed(true);
@@ -190,7 +192,7 @@ export function PersonaSettingsForm({
     setIsSaving(true);
     setSaveMessage(null);
     try {
-      const result = await updateReviewedPortfolioPersonaSettings(persona, draft, base);
+      const result = await updateReviewedPortfolioPersonaSettings(scope, persona, draft, base);
       if (!mounted.current) return;
       if (!result.ok) {
         setSaveMessage(

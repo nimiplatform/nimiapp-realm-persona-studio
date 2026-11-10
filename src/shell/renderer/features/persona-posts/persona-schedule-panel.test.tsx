@@ -1,4 +1,5 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { studioTestScope, renderStudio as render } from '../../../../test/studio-scope.js';
+import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ensureStudioI18nInitialized } from '@renderer/i18n/studio-i18n.js';
 import { PERSONA_WORKSPACE_VISUAL_FIXTURE_DETAILS } from '../persona-detail/persona-workspace.visual-fixture.js';
@@ -41,7 +42,7 @@ describe('schedule review and storage failures', () => {
       attachmentEnabled: false, attachmentTargetType: 'RESOURCE', attachmentTargetId: '',
     }, persona), { localDate: '2099-01-01', localTime: '10:01' });
     if (!built.scheduleable) throw new Error(built.errors.join('; '));
-    const schedule = await saveLocalPostSchedule(persona.id, built.candidate);
+    const schedule = await saveLocalPostSchedule(studioTestScope, persona.id, built.candidate);
     const stored = JSON.stringify([...values.entries()]);
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2099-01-01T10:00:00Z'));
@@ -70,13 +71,13 @@ describe('schedule review and storage failures', () => {
       attachmentEnabled: false, attachmentTargetType: 'RESOURCE', attachmentTargetId: '',
     }, persona), { localDate: '2099-01-01', localTime: '10:00' });
     if (!built.scheduleable) throw new Error(built.errors.join('; '));
-    const schedule = await saveLocalPostSchedule(persona.id, built.candidate);
+    const schedule = await saveLocalPostSchedule(studioTestScope, persona.id, built.candidate);
     const onChange = vi.fn();
     render(<PersonaSchedulePanel persona={persona} schedule={schedule} onScheduleChange={onChange} />);
     removeJson.mockRejectedValueOnce(new Error('Storage denied'));
     fireEvent.click(screen.getAllByRole('button', { name: 'Clear local schedule' })[0]!);
     expect(onChange).not.toHaveBeenCalled();
-    expect(await loadLocalPostSchedule(persona.id)).toEqual(schedule);
+    expect(await loadLocalPostSchedule(studioTestScope, persona.id)).toEqual(schedule);
     expect(await screen.findByText('The local schedule could not be cleared. It is still saved.')).toBeTruthy();
   });
 
@@ -92,7 +93,7 @@ describe('schedule review and storage failures', () => {
     fireEvent.click(screen.getByRole('checkbox'));
     fireEvent.click(screen.getByRole('button', { name: 'Save local schedule' }));
     await waitFor(() => expect(onChange).toHaveBeenCalledOnce());
-    expect(await loadLocalPostSchedule(persona.id)).toMatchObject({
+    expect(await loadLocalPostSchedule(studioTestScope, persona.id)).toMatchObject({
       localRunAt: '2099-01-01T10:00',
       candidate: { postCandidate: { realmCreatePost: { caption: 'Future reviewed copy' } } },
     });

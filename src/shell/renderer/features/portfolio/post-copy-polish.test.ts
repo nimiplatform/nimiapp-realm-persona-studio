@@ -1,3 +1,4 @@
+import { studioTestScope } from '../../../../test/studio-scope.js';
 import { describe, expect, it, vi } from 'vitest';
 import type { OwnerPortfolioPersonaDetail } from './portfolio-data.js';
 import type { LocalPostDraftInput } from './post-draft.js';
@@ -48,7 +49,7 @@ describe('post copy polish candidate', () => {
     const runner = vi.fn<StudioTextCandidateRunner>(async (prompt) => ({
       text: outputs.shift()!, submitted: prompt, finishReason: 'stop', traceId: 'test-correction',
     }));
-    expect(await requestPostCopyPolish({ persona, draft, intent: 'Polish the copy.' }, runner)).toMatchObject({
+    expect(await requestPostCopyPolish(studioTestScope, { persona, draft, intent: 'Polish the copy.' }, runner)).toMatchObject({
       ok: true, proposal: { draftPatch: { caption: 'A reviewed candidate.' }, truthWrite: false },
     });
     expect(runner).toHaveBeenCalledTimes(2);
@@ -57,7 +58,7 @@ describe('post copy polish candidate', () => {
     expect(draft).toEqual(before);
   });
   it('returns a reviewable proposal built from owner-visible draft state', async () => {
-    const result = await requestPostCopyPolish(
+    const result = await requestPostCopyPolish(studioTestScope,
       { persona, draft, intent: 'Polish the copy.' },
       runnerReturning(JSON.stringify({
         caption: 'A polished first pass.',
@@ -78,7 +79,7 @@ describe('post copy polish candidate', () => {
   });
 
   it('fails closed with route-unbound when no text generation route is configured', async () => {
-    const result = await requestPostCopyPolish(
+    const result = await requestPostCopyPolish(studioTestScope,
       { persona, draft, intent: 'Polish the copy.' },
       runnerThrowing(Object.assign(new Error('no route'), { reasonCode: 'AI_CONFIG_NOT_FOUND' })),
     );
@@ -87,7 +88,7 @@ describe('post copy polish candidate', () => {
   });
 
   it('fails closed with generate-failed on other runner errors', async () => {
-    const result = await requestPostCopyPolish(
+    const result = await requestPostCopyPolish(studioTestScope,
       { persona, draft, intent: 'Polish the copy.' },
       runnerThrowing(new Error('transport exploded')),
     );
@@ -96,17 +97,17 @@ describe('post copy polish candidate', () => {
   });
 
   it('fails closed with invalid-output on prose, unchanged copy, or forbidden fields', async () => {
-    expect(await requestPostCopyPolish(
+    expect(await requestPostCopyPolish(studioTestScope,
       { persona, draft, intent: 'Polish the copy.' },
       runnerReturning('Here is your polished post, hope you like it!'),
     )).toEqual({ ok: false, failure: 'post-copy-polish-invalid-output' });
 
-    expect(await requestPostCopyPolish(
+    expect(await requestPostCopyPolish(studioTestScope,
       { persona, draft, intent: 'Polish the copy.' },
       runnerReturning(JSON.stringify({ caption: draft.caption, rationale: 'No changes needed.' })),
     )).toEqual({ ok: false, failure: 'post-copy-polish-invalid-output' });
 
-    expect(await requestPostCopyPolish(
+    expect(await requestPostCopyPolish(studioTestScope,
       { persona, draft, intent: 'Polish the copy.' },
       runnerReturning(JSON.stringify({ caption: 'Sneaky.', publishSuccess: true })),
     )).toEqual({ ok: false, failure: 'post-copy-polish-invalid-output' });

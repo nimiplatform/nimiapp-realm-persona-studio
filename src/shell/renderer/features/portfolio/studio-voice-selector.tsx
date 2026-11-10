@@ -1,13 +1,15 @@
+import { useStudioScope } from '@renderer/app-shell/studio-scope.js';
 import { useCallback, useEffect, useState } from 'react';
 import { Button, FieldShell, InlineAlert, SelectField } from '@nimiplatform/kit/ui';
 import type { NimiAIConfigOptionsResult } from '@nimiplatform/sdk/ai';
-import { getStudioLocalAppClient } from '../../app-shell/studio-platform.js';
+import { getStudioClient } from '../../app-shell/studio-platform.js';
 import { useStudioI18n } from '../../i18n/use-studio-i18n.js';
 
 type PresetVoice = Extract<NimiAIConfigOptionsResult, { kind: 'preset-voices' }>['options'][number];
 
 // @nimi-authority: rule.realm-persona-studio.runtime-ai.r012
 export function useStudioVoicePresets() {
+  const scope = useStudioScope();
   const [voices, setVoices] = useState<readonly PresetVoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [unavailable, setUnavailable] = useState(false);
@@ -17,7 +19,7 @@ export function useStudioVoicePresets() {
     let cancelled = false;
     setLoading(true);
     setUnavailable(false);
-    void Promise.resolve().then(() => getStudioLocalAppClient().aiConfig.listOptions({ kind: 'preset-voices' })).then((result) => {
+    void Promise.resolve().then(() => getStudioClient(scope).aiConfig.listOptions({ kind: 'preset-voices' })).then((result) => {
       if (cancelled) return;
       if (result.kind !== 'preset-voices') throw new Error('Unexpected voice catalogue response.');
       setVoices(result.options);

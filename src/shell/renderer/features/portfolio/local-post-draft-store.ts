@@ -1,3 +1,4 @@
+import { type StudioScope } from '@renderer/app-shell/studio-scope.js';
 import {
   getStudioProtectedJsonStorage,
   isStudioStorageNotFoundError,
@@ -91,10 +92,10 @@ function isIsoDateTime(value: unknown): value is string {
     && !Number.isNaN(Date.parse(value));
 }
 
-function resolveStorage(storage?: LocalPostDraftStorage | null): LocalPostDraftStorage | null {
+function resolveStorage(scope: StudioScope, storage?: LocalPostDraftStorage | null): LocalPostDraftStorage | null {
   if (storage !== undefined) return storage;
   try {
-    return getStudioProtectedJsonStorage();
+    return getStudioProtectedJsonStorage(scope);
   } catch {
     return null;
   }
@@ -201,7 +202,7 @@ export function getLocalPostDraftStoragePath(personaId: string): string {
   return `${LOCAL_POST_DRAFT_STORAGE_PATH_PREFIX}${encodeURIComponent(personaId.trim())}.json`;
 }
 
-export async function loadLocalPostDrafts(
+export async function loadLocalPostDrafts(scope: StudioScope,
   personaId: string,
   storage?: LocalPostDraftStorage | null,
 ): Promise<LocalPostDraftLoadResult> {
@@ -209,7 +210,7 @@ export async function loadLocalPostDrafts(
   if (!normalizedPersonaId) {
     return { ok: false, failure: 'local-post-draft-load-failed', message: 'Persona id is required.' };
   }
-  const targetStorage = resolveStorage(storage);
+  const targetStorage = resolveStorage(scope, storage);
   if (!targetStorage) {
     return { ok: false, failure: 'local-post-draft-load-failed', message: 'Protected draft storage is unavailable.' };
   }
@@ -226,7 +227,7 @@ export async function loadLocalPostDrafts(
   }
 }
 
-export async function saveLocalPostDraft(
+export async function saveLocalPostDraft(scope: StudioScope,
   input: Pick<LocalPostDraftRecord, 'personaId' | 'caption' | 'tagsText' | 'visibility' | 'category' | 'attachments'>
     & { draftId?: string },
   storage?: LocalPostDraftStorage | null,
@@ -271,7 +272,7 @@ export async function saveLocalPostDraft(
       message: 'A valid local post draft id is required.',
     };
   }
-  const targetStorage = resolveStorage(storage);
+  const targetStorage = resolveStorage(scope, storage);
   if (!targetStorage) {
     return {
       ok: false,
@@ -281,7 +282,7 @@ export async function saveLocalPostDraft(
   }
 
   return mutateDrafts<LocalPostDraftSaveResult>(personaId, async () => {
-    const loaded = await loadLocalPostDrafts(personaId, targetStorage);
+    const loaded = await loadLocalPostDrafts(scope, personaId, targetStorage);
     if (!loaded.ok) {
       return {
         ok: false,
@@ -324,7 +325,7 @@ export async function saveLocalPostDraft(
   });
 }
 
-export async function deleteLocalPostDraft(
+export async function deleteLocalPostDraft(scope: StudioScope,
   personaId: string,
   draftId: string,
   storage?: LocalPostDraftStorage | null,
@@ -338,7 +339,7 @@ export async function deleteLocalPostDraft(
       message: 'Persona id and a valid local post draft id are required.',
     };
   }
-  const targetStorage = resolveStorage(storage);
+  const targetStorage = resolveStorage(scope, storage);
   if (!targetStorage) {
     return {
       ok: false,
@@ -348,7 +349,7 @@ export async function deleteLocalPostDraft(
   }
 
   return mutateDrafts<LocalPostDraftDeleteResult>(normalizedPersonaId, async () => {
-    const loaded = await loadLocalPostDrafts(normalizedPersonaId, targetStorage);
+    const loaded = await loadLocalPostDrafts(scope, normalizedPersonaId, targetStorage);
     if (!loaded.ok) {
       return {
         ok: false,

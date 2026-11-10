@@ -1,3 +1,4 @@
+import { useStudioScope } from '@renderer/app-shell/studio-scope.js';
 // @nimi-authority: rule.realm-persona-studio.post.r009
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -108,6 +109,7 @@ export function PersonaPostEditor({
 }: {
   persona: OwnerPortfolioPersonaDetail;
 }) {
+  const scope = useStudioScope();
   const { t } = useStudioI18n();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -184,7 +186,7 @@ export function PersonaPostEditor({
 
     let cancelled = false;
     setLoading(true);
-    void loadLocalPostDrafts(persona.id).then((result) => {
+    void loadLocalPostDrafts(scope, persona.id).then((result) => {
       if (cancelled) return;
       setLoading(false);
       if (!result.ok) {
@@ -328,7 +330,7 @@ export function PersonaPostEditor({
     setPolishing(true);
     const revision = editorRevisionRef.current;
     try {
-      const result = await requestPostCopyPolish({
+      const result = await requestPostCopyPolish(scope, {
         persona,
         draft: currentDraftInput(caption, tagsText),
         intent: t('posts.workspace.aiPolishIntent'),
@@ -385,7 +387,7 @@ export function PersonaPostEditor({
         return;
       }
 
-      const result = await saveLocalPostDraft({
+      const result = await saveLocalPostDraft(scope, {
         ...(editingDraftId ? { draftId: editingDraftId } : {}),
         personaId: persona.id,
         caption,
@@ -415,7 +417,7 @@ export function PersonaPostEditor({
     if (mutationPending) return;
     setDeletingDraftId(draftId);
     try {
-      const result = await deleteLocalPostDraft(persona.id, draftId);
+      const result = await deleteLocalPostDraft(scope, persona.id, draftId);
       if (!mountedRef.current) return;
       if (!result.ok) {
         nimiToast.danger(t('posts.workspace.deleteFailed'));

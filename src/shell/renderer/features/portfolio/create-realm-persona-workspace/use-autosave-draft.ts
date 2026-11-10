@@ -1,3 +1,4 @@
+import { useStudioScope } from '@renderer/app-shell/studio-scope.js';
 import { useCallback, useEffect, useRef } from 'react';
 import type {
   CreateRealmPersonaDraftInput,
@@ -43,6 +44,7 @@ export function useAutosaveDraft({
   t,
   setAutosave,
 }: UseAutosaveDraftParams): () => Promise<void> {
+  const scope = useStudioScope();
   const autosaveSequence = useRef(0);
   const autosaveQueue = useRef<Promise<void>>(Promise.resolve());
   const pendingSave = useRef<(() => Promise<void>) | null>(null);
@@ -50,11 +52,12 @@ export function useAutosaveDraft({
   const mounted = useRef(true);
   const flush = useCallback(async () => {
     if (timer.current !== null) window.clearTimeout(timer.current);
+    if (scope.signal.aborted) { pendingSave.current = null; return; }
     const pending = pendingSave.current;
     pendingSave.current = null;
     if (pending) autosaveQueue.current = autosaveQueue.current.catch(() => undefined).then(pending);
     await autosaveQueue.current;
-  }, []);
+  }, [scope]);
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -71,7 +74,7 @@ export function useAutosaveDraft({
     autosaveSequence.current = sequence;
     setAutosave('saving', null);
     pendingSave.current = async () => {
-      const result: CreationDraftPersistResult = await persistCreationDraft(draftKey, draft);
+      const result: CreationDraftPersistResult = await persistCreationDraft(scope, draftKey, draft);
       if (!result.ok) {
         if (mounted.current && autosaveSequence.current === sequence) {
           logCreateFlowFailure('create-flow.autosave', result.failure);
@@ -80,7 +83,7 @@ export function useAutosaveDraft({
         return;
       }
       if (draftHistoryLabel) {
-        const historyResult = await upsertCreationDraftHistoryEntry({
+        const historyResult = await upsertCreationDraftHistoryEntry(scope, {
           draftKey,
           displayName: draftHistoryLabel,
           ...(selectedWorldName ? { worldName: selectedWorldName } : {}),

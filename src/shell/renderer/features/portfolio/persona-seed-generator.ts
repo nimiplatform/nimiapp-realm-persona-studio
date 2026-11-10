@@ -1,3 +1,4 @@
+import { type StudioScope } from '@renderer/app-shell/studio-scope.js';
 import {
   PERSONA_ARCHETYPES,
   PERSONA_TRAITS,
@@ -254,15 +255,15 @@ export function parsePersonaSeedOutput(raw: string): { seed: GeneratedPersonaSee
 }
 
 // @nimi-authority: rule.realm-persona-studio.create-flow.r012
-export async function generatePersonaSeedFromDescription(
+export async function generatePersonaSeedFromDescription(scope: StudioScope,
   description: string,
-  runner: StudioTextCandidateRunner = runStudioTextCandidate,
+  runner: StudioTextCandidateRunner = runStudioTextCandidate.bind(null, scope),
   supplements: PersonaSeedPromptSupplements = {},
   options: PersonaSeedGenerationOptions,
 ): Promise<PersonaSeedGenerationResult> {
   const payload = buildPersonaSeedPayload(description, supplements, options);
   try {
-    const { output, value: parsed } = await runValidatedStudioTextCandidate(payload, parsePersonaSeedOutput, runner);
+    const { output, value: parsed } = await runValidatedStudioTextCandidate(scope, payload, parsePersonaSeedOutput, runner);
     return {
       ok: true,
       source: PERSONA_SEED_SOURCE,

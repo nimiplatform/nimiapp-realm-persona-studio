@@ -17,7 +17,7 @@ describe('persona list read boundaries', () => {
     const source = personaListSource();
 
     expect(source).toContain('listOwnerPortfolioPersonas');
-    expect(source).toContain('queryFn: () => listOwnerPortfolioPersonas()');
+    expect(source).toContain('queryFn: () => listOwnerPortfolioPersonas(scope)');
     expect(source).not.toContain('listForgeImportedSystemPortfolioPersonas');
     expect(source).not.toContain('queryFn: () => listForgeImportedSystemPortfolioPersonas()');
     expect(source).not.toContain('System curation unavailable for this Runtime account.');
@@ -47,8 +47,8 @@ describe('persona list read boundaries', () => {
     const source = personaListSource();
     const sharedSource = sharedPortfolioSource();
 
-    expect(source).toContain('loadCreationDraftHistory()');
-    expect(source).toContain('loadCreationDraft(entry.draftKey)');
+    expect(source).toContain('loadCreationDraftHistory(scope)');
+    expect(source).toContain('loadCreationDraft(scope, entry.draftKey)');
     expect(source).toContain('CREATION_DRAFT_HISTORY_UPDATED_EVENT');
     expect(source).toContain('draft.record.referenceImageUrl || null');
     expect(source).toContain('`/portfolio/create?draft=${encodeURIComponent(draftKey)}`');
@@ -83,7 +83,7 @@ describe('persona list read boundaries', () => {
     const source = personaListSource();
     const sharedSource = sharedPortfolioSource();
 
-    expect(source).toContain('getStudioWorldCores(worldIds)');
+    expect(source).toContain('getStudioWorldCores(scope, worldIds)');
     expect(source).toContain('studioWorldCardPresentation(world)');
     expect(source).toContain('worldBannerUrl={worldPresentation?.bannerUrl || null}');
     expect(source).not.toContain('worldBannerUrl={persona.coverUrl}');

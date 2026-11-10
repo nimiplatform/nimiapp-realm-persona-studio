@@ -1,3 +1,4 @@
+import { type StudioScope } from '@renderer/app-shell/studio-scope.js';
 import type {
   NimiLocalAppPersonaCharacter,
   NimiLocalAppPersonaCharacterFailureReason,
@@ -6,7 +7,7 @@ import type {
   NimiLocalAppPersonaCharacterVisibility,
   NimiLocalAppPersonaCharacterWritableVisibility,
 } from '@nimiplatform/sdk/app';
-import { getStudioLocalAppClient } from '@renderer/app-shell/studio-platform.js';
+import { getStudioClient } from '@renderer/app-shell/studio-platform.js';
 import {
   runStudioTextCandidate,
   runValidatedStudioTextCandidate,
@@ -258,27 +259,27 @@ export function buildRealmUpdateVisibilityInput(
   }
   return { input: { visibility: draft.visibility }, errors: [] };
 }
-export async function getPersonaVisibilitySettings(
+export async function getPersonaVisibilitySettings(scope: StudioScope,
   personaId: string,
 ): Promise<RealmPersonaVisibilitySettings> {
-  const persona = await getStudioLocalAppClient().realm.personaCharacter.getOwned(personaId);
+  const persona = await getStudioClient(scope).realm.personaCharacter.getOwned(personaId);
   return readPersonaVisibility(persona);
 }
 
-export async function getOwnerPersonaSettings(
+export async function getOwnerPersonaSettings(scope: StudioScope,
   personaId: string,
 ): Promise<RealmOwnerPersonaSettings> {
-  const persona = await getStudioLocalAppClient().realm.personaCharacter.getOwned(personaId);
+  const persona = await getStudioClient(scope).realm.personaCharacter.getOwned(personaId);
   return readPersonaSettings(persona);
 }
 
-export async function getPortfolioPersonaSettings(
+export async function getPortfolioPersonaSettings(scope: StudioScope,
   persona: OwnerPortfolioPersonaDetail,
 ): Promise<RealmOwnerPersonaSettings> {
-  return getOwnerPersonaSettings(persona.id);
+  return getOwnerPersonaSettings(scope, persona.id);
 }
 
-export async function updateReviewedPersonaVisibility(
+export async function updateReviewedPersonaVisibility(scope: StudioScope,
   personaId: string,
   draft: PersonaVisibilityDraft,
   current: RealmPersonaVisibilitySettings,
@@ -296,7 +297,7 @@ export async function updateReviewedPersonaVisibility(
     };
   }
   try {
-    const client = getStudioLocalAppClient().realm.personaCharacter;
+    const client = getStudioClient(scope).realm.personaCharacter;
     const latest = await client.getOwned(personaId);
     if (latest.contentHash !== current.persona.contentHash) {
       return { ok: false, source: REALM_PERSONA_VISIBILITY_SOURCE, lifecycleTruth: false,
@@ -313,7 +314,9 @@ export async function updateReviewedPersonaVisibility(
       lorebookDeclaration: latest.lorebookDeclaration,
       profile,
     };
+    scope.signal.throwIfAborted();
     const replaced = await client.replace(submitted);
+    scope.signal.throwIfAborted();
     return {
       ok: true,
       source: REALM_PERSONA_VISIBILITY_SOURCE,
@@ -335,11 +338,11 @@ export async function updateReviewedPersonaVisibility(
   }
 }
 
-export async function proposeReviewedOwnerPersonaSettings(
+export async function proposeReviewedOwnerPersonaSettings(scope: StudioScope,
   personaId: string,
   draft: OwnerPersonaSettingsDraft,
   current: RealmOwnerPersonaSettings,
-  runner: StudioTextCandidateRunner = runStudioTextCandidate,
+  runner: StudioTextCandidateRunner = runStudioTextCandidate.bind(null, scope),
   personaContext?: OwnerPersonaSettingsProposalContext,
   locale?: 'zh' | 'en',
 ): Promise<RuntimeOwnerSettingsProposalResult> {
@@ -374,7 +377,7 @@ export async function proposeReviewedOwnerPersonaSettings(
   }
 
   try {
-    const { output, value: proposal } = await runValidatedStudioTextCandidate(
+    const { output, value: proposal } = await runValidatedStudioTextCandidate(scope,
       built.payload, (text) => normalizeRuntimeOwnerSettingsProposal(text, draft), runner,
     );
     return {
@@ -408,14 +411,14 @@ export async function proposeReviewedOwnerPersonaSettings(
   }
 }
 
-export async function proposeReviewedPortfolioPersonaSettings(
+export async function proposeReviewedPortfolioPersonaSettings(scope: StudioScope,
   persona: OwnerPortfolioPersonaDetail,
   draft: OwnerPersonaSettingsDraft,
   current: RealmOwnerPersonaSettings,
   runner?: StudioTextCandidateRunner,
   locale?: 'zh' | 'en',
 ): Promise<RuntimeOwnerSettingsProposalResult> {
-  return proposeReviewedOwnerPersonaSettings(
+  return proposeReviewedOwnerPersonaSettings(scope,
     persona.id,
     draft,
     current,
@@ -424,7 +427,7 @@ export async function proposeReviewedPortfolioPersonaSettings(
     locale,
   );
 }
-export async function updateReviewedOwnerPersonaSettings(
+export async function updateReviewedOwnerPersonaSettings(scope: StudioScope,
   personaId: string,
   draft: OwnerPersonaSettingsDraft,
   current: RealmOwnerPersonaSettings,
@@ -443,7 +446,7 @@ export async function updateReviewedOwnerPersonaSettings(
   }
   let submitted: NimiLocalAppPersonaCharacterReplaceInput | null = null;
   try {
-    const client = getStudioLocalAppClient().realm.personaCharacter;
+    const client = getStudioClient(scope).realm.personaCharacter;
     const latest = await client.getOwned(personaId);
     if (latest.contentHash !== current.contentHash) {
       return { ok: false, source: OWNER_SETTINGS_SAVE_SOURCE, truthWrite: false,
@@ -458,7 +461,9 @@ export async function updateReviewedOwnerPersonaSettings(
       built.preview.submitted.worldId,
       built.preview.submitted.lorebookDeclaration ?? latest.lorebookDeclaration,
     );
+    scope.signal.throwIfAborted();
     const replaced = await client.replace(submitted);
+    scope.signal.throwIfAborted();
     return {
       ok: true,
       source: OWNER_SETTINGS_SAVE_SOURCE,
@@ -481,10 +486,10 @@ export async function updateReviewedOwnerPersonaSettings(
 }
 
 // @nimi-authority: rule.realm-persona-studio.setting.r009
-export async function updateReviewedPortfolioPersonaSettings(
+export async function updateReviewedPortfolioPersonaSettings(scope: StudioScope,
   persona: OwnerPortfolioPersonaDetail,
   draft: OwnerPersonaSettingsDraft,
   current: RealmOwnerPersonaSettings,
 ): Promise<RealmOwnerPersonaSettingsUpdateResult> {
-  return updateReviewedOwnerPersonaSettings(persona.id, draft, current);
+  return updateReviewedOwnerPersonaSettings(scope, persona.id, draft, current);
 }

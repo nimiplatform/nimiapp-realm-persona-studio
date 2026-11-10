@@ -1,4 +1,5 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { renderStudio as render } from '../../../../test/studio-scope.js';
+import { cleanup, fireEvent, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ensureStudioI18nInitialized } from '../../i18n/studio-i18n.js';
 import { AssetImageGrid } from './assets-library-page.js';

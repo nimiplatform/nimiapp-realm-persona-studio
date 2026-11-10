@@ -1,5 +1,6 @@
+import { renderStudio as render } from '../../../../../test/studio-scope.js';
 import { useState } from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ensureStudioI18nInitialized } from '../../../i18n/studio-i18n.js';
 import { REALM_WORLD_CORE_LIST_SOURCE, type SelectableRealmWorld } from '../create-persona-draft.js';
@@ -56,7 +57,7 @@ describe('world selection keyboard interaction', () => {
 
   it('keeps a tab stop after the selected world is filtered out', () => {
     showPicker();
-    fireEvent.change(screen.getByRole('textbox', { name: 'Search world names' }), { target: { value: 'B' } });
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search world names' }), { target: { value: 'B' } });
     expect(screen.getAllByRole('radio').map((radio) => radio.tabIndex)).toEqual([0]);
   });
 

@@ -1,3 +1,4 @@
+import { studioTestScope } from '../../../../test/studio-scope.js';
 import { describe, expect, it, vi } from 'vitest';
 import type {
   NimiAIConfigSnapshot,
@@ -33,13 +34,13 @@ function fakeClient(input: {
 
 describe('studio App AIConfig store on the Nimi App Access contract', () => {
   it('treats a null canonical snapshot as unconfigured without swallowing transport failure', async () => {
-    await expect(loadStudioAIConfig(fakeClient({
+    await expect(loadStudioAIConfig(studioTestScope, fakeClient({
       async get() {
         return { config: null, revision: '0', effectiveSelections: [] };
       },
     }))).resolves.toEqual({ config: null, revision: '0', effectiveSelections: [] });
 
-    await expect(loadStudioAIConfig(fakeClient({
+    await expect(loadStudioAIConfig(studioTestScope, fakeClient({
       async get() {
         throw { reasonCode: 'AI_CONFIG_PERSISTENCE_UNAVAILABLE' };
       },
@@ -62,7 +63,7 @@ describe('studio App AIConfig store on the Nimi App Access contract', () => {
         effectiveSelections: [],
       }),
     });
-    await expect(loadStudioAIConfig(client))
+    await expect(loadStudioAIConfig(studioTestScope, client))
       .rejects.toThrow(/exact nimi\.realm-persona-studio App/u);
   });
 

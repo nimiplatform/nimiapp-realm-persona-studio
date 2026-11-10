@@ -53,7 +53,7 @@ describe('Create Realm Persona workspace v2 shell', () => {
     expect(source).toContain('speechSupplement');
     expect(source).toContain('boundarySupplement');
     expect(source).toContain('visualSupplement');
-    expect(source).toContain('generatePersonaSeedFromDescription(seedDescription, undefined, supplements, { locale })');
+    expect(source).toContain('generatePersonaSeedFromDescription(appScope, seedDescription, undefined, supplements, { locale })');
     expect(source).toContain('create.supplement.speech');
     expect(source).toContain('create.supplement.boundary');
     expect(source).toContain('create.supplement.visual');
@@ -117,7 +117,7 @@ describe('Create Realm Persona workspace v2 shell', () => {
 
     expect(source).toContain("t('create.descriptionReroll.label')");
     expect(source).toContain("t('create.descriptionReroll.generating')");
-    expect(source).toContain('generatePersonaDescriptionCandidate({');
+    expect(source).toContain('generatePersonaDescriptionCandidate(appScope, {');
     expect(source).toContain('updateDraft({ originalDescription: result.description })');
     expect(source).toContain('create.descriptionGenerationFailed');
     expect(source).toContain('disabled={isGeneratingDescription}');
@@ -131,7 +131,7 @@ describe('Create Realm Persona workspace v2 shell', () => {
 
     expect(source).toContain('CREATION_DRAFT_AUTOSAVE_DEBOUNCE_MS');
     expect(source).toContain('create.autosave.failed');
-    expect(source).toContain('persistCreationDraft(draftKey, draft)');
+    expect(source).toContain('persistCreationDraft(scope, draftKey, draft)');
     expect(source).toContain('upsertCreationDraftHistoryEntry');
     expect(source).toContain('normalizedDraft.displayName || normalizedDraft.originalDescription');
     expect(source).toContain('if (draftHistoryLabel)');
@@ -154,7 +154,7 @@ describe('Create Realm Persona workspace v2 shell', () => {
     expect(source).toContain('const createDisabled = createMutation.isPending');
     expect(source).toContain('!readiness.ready');
     expect(source).toContain('queryClient.fetchQuery({');
-    expect(source).toContain('getOwnerPortfolioPersonaDetail(result.canonical.id)');
+    expect(source).toContain('getOwnerPortfolioPersonaDetail(scope, result.canonical.id)');
     expect(source).toContain("onOpenCreatedPersona(result.canonical.id)");
     expect(source).not.toContain('!creationGraphReview.canAccept');
     expect(source).not.toContain('handleCheckBlocking');

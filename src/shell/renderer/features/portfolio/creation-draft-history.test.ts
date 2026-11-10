@@ -1,3 +1,4 @@
+import { studioTestScope } from '../../../../test/studio-scope.js';
 import { describe, expect, it, vi } from 'vitest';
 import {
   CREATION_DRAFT_HISTORY_STORAGE_PATH,
@@ -55,7 +56,7 @@ describe('creation draft history protected storage', () => {
       { ...entries[2]!, displayName: '  Earlier draft  ', extra: 'ignored' },
     ]);
 
-    expect(await loadCreationDraftHistory(storage)).toEqual({
+    expect(await loadCreationDraftHistory(studioTestScope, storage)).toEqual({
       ok: true,
       entries: [entries[0]!, { ...entries[2]!, displayName: 'Earlier draft' }],
       unavailableCount: 2,
@@ -64,9 +65,9 @@ describe('creation draft history protected storage', () => {
 
   it('upserts by draft key, moves the row to the front, and removes it', async () => {
     const storage = createStorage();
-    await upsertCreationDraftHistoryEntry(entries[0]!, storage);
-    await upsertCreationDraftHistoryEntry(entries[1]!, storage);
-    const updated = await upsertCreationDraftHistoryEntry({
+    await upsertCreationDraftHistoryEntry(studioTestScope, entries[0]!, storage);
+    await upsertCreationDraftHistoryEntry(studioTestScope, entries[1]!, storage);
+    const updated = await upsertCreationDraftHistoryEntry(studioTestScope, {
       ...entries[0]!,
       displayName: 'Renamed draft',
       updatedAt: '2026-08-04T13:00:00.000Z',
@@ -79,8 +80,8 @@ describe('creation draft history protected storage', () => {
         entries[1]!,
       ],
     });
-    expect(await removeCreationDraftHistoryEntry(entries[0]!.draftKey, storage)).toEqual({ ok: true, entries: [entries[1]!] });
-    expect(await loadCreationDraftHistory(storage)).toEqual({ ok: true, entries: [entries[1]!], unavailableCount: 0 });
+    expect(await removeCreationDraftHistoryEntry(studioTestScope, entries[0]!.draftKey, storage)).toEqual({ ok: true, entries: [entries[1]!] });
+    expect(await loadCreationDraftHistory(studioTestScope, storage)).toEqual({ ok: true, entries: [entries[1]!], unavailableCount: 0 });
   });
 
   it('caps history at fifty normalized rows', async () => {
@@ -91,9 +92,9 @@ describe('creation draft history protected storage', () => {
       updatedAt: `2026-08-04T12:${String(index % 60).padStart(2, '0')}:00.000Z`,
     }));
 
-    for (const entry of manyEntries) await upsertCreationDraftHistoryEntry(entry, storage);
+    for (const entry of manyEntries) await upsertCreationDraftHistoryEntry(studioTestScope, entry, storage);
 
-    const loaded = await loadCreationDraftHistory(storage);
+    const loaded = await loadCreationDraftHistory(studioTestScope, storage);
     expect(loaded.entries).toHaveLength(50);
     expect(loaded.entries[0]?.draftKey).toBe(manyEntries[50]!.draftKey);
   });

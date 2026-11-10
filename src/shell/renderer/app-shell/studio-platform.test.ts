@@ -20,14 +20,13 @@ describe('studio Desktop-supervised protected boundary', () => {
       'utf8',
     );
     const bootstrapSource = readFileSync(
-      join(process.cwd(), 'src/shell/renderer/infra/studio-bootstrap.ts'),
+      join(process.cwd(), 'src/shell/renderer/main.tsx'),
       'utf8',
     );
     const combined = `${studioPlatformSource}\n${bootstrapSource}`;
 
-    expect(studioPlatformSource).toContain('createNimiClient');
-    expect(studioPlatformSource).toContain('createNimiLocalAppStandardShellSurface');
-    expect(studioPlatformSource).toContain('standardShell: createNimiLocalAppStandardShellSurface()');
+    expect(bootstrapSource).toContain('createDesktopNimiAppSession');
+    expect(studioPlatformSource).toContain('scope.signal.throwIfAborted()');
     expect(studioPlatformSource).toContain('REALM_PERSONA_STUDIO_APP_ID');
     expect(studioPlatformSource).toContain("reasonCode: STUDIO_CAPABILITY_UNAVAILABLE_REASON");
     expect(studioPlatformSource).not.toContain('createInstalledNimiAppBootstrap');
@@ -38,11 +37,6 @@ describe('studio Desktop-supervised protected boundary', () => {
     expect(studioPlatformSource).not.toContain('caller:');
     expect(studioPlatformSource).not.toContain('realmBaseUrl');
     expect(combined).not.toMatch(/accessToken|refreshToken|sessionProof|launchNonce|releaseDigest/);
-    expect(bootstrapSource).toContain('getStudioLocalAppClient().auth.status()');
-    expect(bootstrapSource).toContain('session.sessionBound');
-    expect(bootstrapSource).toContain('store.setProtectedSessionBound()');
-    expect(bootstrapSource).toContain('store.setBootstrapReady(true)');
-    expect(bootstrapSource).toContain('store.clearAuthSession()');
   });
 
   it('consumes SDK and Kit through public package exports', () => {
@@ -97,8 +91,8 @@ describe('studio renderer transport gate', () => {
     expect(existsSync(removedRealmTransportPath)).toBe(false);
     expect(existsSync(removedRealmClientPath)).toBe(false);
     expect(combined).not.toMatch(portableRealmAuthorityPattern);
-    expect(studioPlatformSource).toContain('localApp:');
-    expect(studioPlatformSource).toContain('createNimiLocalAppStandardShellSurface');
+    expect(studioPlatformSource).toContain('return scope.client');
+    expect(studioPlatformSource).toContain('scope.signal.throwIfAborted()');
     expect(studioPlatformSource).not.toMatch(/createStudioRealmBridgeOptions|createRuntimeAccountMediatedRealmTransport/);
     expect(studioPlatformSource).not.toMatch(/getAccessToken|createRealmFetchTransport|refreshToken|sessionStore/);
     expect(studioPlatformSource).not.toMatch(/appId:|runtime:|realm:/);

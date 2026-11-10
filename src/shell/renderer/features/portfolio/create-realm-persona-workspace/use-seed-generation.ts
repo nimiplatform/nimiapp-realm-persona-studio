@@ -1,3 +1,4 @@
+import { useStudioScope } from '@renderer/app-shell/studio-scope.js';
 import { useEffect, useRef, useState } from 'react';
 import { nimiToast } from '@nimiplatform/kit/ui';
 import {
@@ -44,6 +45,7 @@ export function useSeedGeneration({
   locale: StudioLocale;
   actions: SeedActions;
 }): { isGeneratingSeed: boolean; runSeedGeneration: () => Promise<void> } {
+  const appScope = useStudioScope();
   const [isGeneratingSeed, setIsGeneratingSeed] = useState(false);
   const scope = useRef({ key: draftKey, mounted: true });
   // Returning to the same key starts a new editing scope; old requests stay stale.
@@ -68,7 +70,7 @@ export function useSeedGeneration({
       },
     };
     try {
-      const result = await generatePersonaSeedFromDescription(seedDescription, undefined, supplements, { locale });
+      const result = await generatePersonaSeedFromDescription(appScope, seedDescription, undefined, supplements, { locale });
       if (!scope.current.mounted || scope.current !== requestScope) return;
       if (result.ok) {
         actions.setStageReviewViaSeed(result, seedDescription);
@@ -105,6 +107,7 @@ export function useDescriptionReroll({
   isGeneratingSeed: boolean;
   updateDraft: (patch: { originalDescription: string }) => void;
 }): { isGeneratingDescription: boolean; runDescriptionReroll: () => Promise<void> } {
+  const appScope = useStudioScope();
   const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
   const scope = useRef({ key: draftKey, mounted: true });
   // Returning to the same key starts a new editing scope; old requests stay stale.
@@ -117,7 +120,7 @@ export function useDescriptionReroll({
     const requestScope = scope.current;
     setIsGeneratingDescription(true);
     try {
-      const result = await generatePersonaDescriptionCandidate({
+      const result = await generatePersonaDescriptionCandidate(appScope, {
         previousDescription: normalizedDraft.originalDescription,
         supplements: {
           speechSupplement: normalizedDraft.speechSupplement,

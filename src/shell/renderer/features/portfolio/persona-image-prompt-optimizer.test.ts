@@ -1,3 +1,4 @@
+import { studioTestScope } from '../../../../test/studio-scope.js';
 import { describe, expect, it, vi } from 'vitest';
 import { optimizePersonaImagePrompt } from './persona-image-prompt-optimizer.js';
 import type { StudioTextCandidateRunner } from './studio-text-candidate.js';
@@ -24,7 +25,7 @@ describe('persona image prompt optimization through the injected text candidate 
   it('returns a visual prompt bound to the active locale', async () => {
     const runner = vi.fn(fakeTextCandidateRunner('  银灰色长发的年轻女性，眼神安静而神秘，身着缀有碎光纹样的深色长袍，全身像，电影感打光，柔和冷色调，背景虚化的梦境碎片。  '));
 
-    const result = await optimizePersonaImagePrompt(BASE_INPUT, runner);
+    const result = await optimizePersonaImagePrompt(studioTestScope, BASE_INPUT, runner);
 
     expect(runner).toHaveBeenCalledTimes(1);
     const submitted = runner.mock.calls[0]?.[0];
@@ -48,7 +49,7 @@ describe('persona image prompt optimization through the injected text candidate 
   it('treats the current prompt as owner intent and the visual supplement as a hard constraint', async () => {
     const runner = vi.fn(fakeTextCandidateRunner('A refined visual prompt.'));
 
-    await optimizePersonaImagePrompt(
+    await optimizePersonaImagePrompt(studioTestScope,
       {
         ...BASE_INPUT,
         locale: 'en',
@@ -66,7 +67,7 @@ describe('persona image prompt optimization through the injected text candidate 
   });
 
   it('maps empty or structured candidate text to persona-image-prompt-invalid-output', async () => {
-    const empty = await optimizePersonaImagePrompt(
+    const empty = await optimizePersonaImagePrompt(studioTestScope,
       BASE_INPUT,
       fakeTextCandidateRunner('   '),
     );
@@ -76,7 +77,7 @@ describe('persona image prompt optimization through the injected text candidate 
       cause: { kind: 'image-prompt-invalid-output' },
     });
 
-    const structured = await optimizePersonaImagePrompt(
+    const structured = await optimizePersonaImagePrompt(studioTestScope,
       BASE_INPUT,
       fakeTextCandidateRunner('{"prompt":"json drift"}'),
     );
@@ -91,7 +92,7 @@ describe('persona image prompt optimization through the injected text candidate 
       throw new Error('local app surface unavailable');
     };
 
-    const result = await optimizePersonaImagePrompt(BASE_INPUT, runner);
+    const result = await optimizePersonaImagePrompt(studioTestScope, BASE_INPUT, runner);
 
     expect(result).toMatchObject({
       ok: false,

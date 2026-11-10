@@ -1,3 +1,4 @@
+import { useStudioScope } from '@renderer/app-shell/studio-scope.js';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent } from 'react';
 import { AudioLines, Copy, ImageOff, Music2, Pause, Play, Trash2 } from 'lucide-react';
 import {
@@ -454,12 +455,13 @@ function UploadTab({
 }
 
 export function AssetsLibraryPage() {
+  const scope = useStudioScope();
   const { t } = useStudioI18n();
   const [activeTab, setActiveTab] = useState<AssetLibraryTab>('images');
   const [selectedEntry, setSelectedEntry] = useState<AssetLibraryEntry | null>(null);
   const [pendingRemoval, setPendingRemoval] = useState<AssetLibraryEntry | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
-  const [capability] = useState<LocalImportCapabilityStatus>(() => getLocalAssetImportCapability());
+  const [capability] = useState<LocalImportCapabilityStatus>(() => getLocalAssetImportCapability(scope));
   const [importedRecords, setImportedRecords] = useState<LocalImportedAssetRecord[]>([]);
   const [creativeHistoryRecords, setCreativeHistoryRecords] = useState<CreativeAssetHistoryRecord[]>([]);
   const [creationDraftRecords, setCreationDraftRecords] = useState<CreationDraftAutosaveRecord[]>([]);
@@ -495,9 +497,9 @@ export function AssetsLibraryPage() {
     let cancelled = false;
     const refreshSources = async () => {
       const [imported, creative, history] = await Promise.all([
-        loadLocalImportedAssetRecords(capability),
-        loadAllLocalCreativeAssetHistory(),
-        loadCreationDraftHistory(),
+        loadLocalImportedAssetRecords(scope, capability),
+        loadAllLocalCreativeAssetHistory(scope),
+        loadCreationDraftHistory(scope),
       ]);
       if (cancelled) return;
       setImportedRecords(imported.records);
@@ -513,7 +515,7 @@ export function AssetsLibraryPage() {
       let unavailableCount = creative.unavailableCount + history.unavailableCount;
       let storageUnavailable = !creative.ok || !history.ok;
       if (history.ok) {
-        const loadedDrafts = await Promise.all(history.entries.map((entry) => loadCreationDraft(entry.draftKey)));
+        const loadedDrafts = await Promise.all(history.entries.map((entry) => loadCreationDraft(scope, entry.draftKey)));
         if (cancelled) return;
         for (const loaded of loadedDrafts) {
           if (loaded.ok && loaded.record) draftRecords.push(loaded.record);
@@ -545,7 +547,7 @@ export function AssetsLibraryPage() {
     setImportFailure(null);
     setIsImporting(true);
     try {
-      const result = await importLocalAssetFile(file, capability);
+      const result = await importLocalAssetFile(scope, file, capability);
       if (result.ok) {
         setImportedRecords((current) => [result.record, ...current.filter((record) => record.id !== result.record.id)]);
         nimiToast.success(t('assetsLibrary.upload.success', { title: result.record.title }));
@@ -568,7 +570,7 @@ export function AssetsLibraryPage() {
     setIsRemoving(true);
     const importId = entry.provenance.id;
     try {
-      const result = await removeLocalImportedAsset(importId, capability);
+      const result = await removeLocalImportedAsset(scope, importId, capability);
       if (result.ok) {
         setImportedRecords((current) => current.filter((record) => record.id !== importId));
         if (selectedEntry?.id === entry.id) setSelectedEntry(null);

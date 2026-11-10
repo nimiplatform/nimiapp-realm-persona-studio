@@ -5,11 +5,11 @@ units:
   - id: definition.realm-persona-studio.core.realm-persona
     kind: definition
     title: Realm persona
-    meaning: Realm Persona is the Studio product name for a current-user-owned canonical PersonaCharacter projected by the host-injected App client; source truth contains id, worldId, schemaVersion, contentHash, contentRevision, sourceHash, visibility, origin, profile, validity, materializationReadiness, createdAt, and updatedAt and never exposes ownerAccountId.
+    meaning: Realm Persona is the Studio product name for a current-user-owned canonical PersonaCharacter projected by the admitted SDK App client; source truth contains id, worldId, schemaVersion, contentHash, contentRevision, sourceHash, visibility, origin, profile, validity, materializationReadiness, createdAt, and updatedAt and never exposes ownerAccountId.
   - id: definition.realm-persona-studio.core.world-core
     kind: definition
     title: World core
-    meaning: Realm WorldCore data projected by client.realm.worldCore.list through the host-injected App client is the selectable home-world source; Studio has no App get-by-id fallback and resolves a selected preview from that list.
+    meaning: WorldCore list supplies the selectable home-world source, while exact WorldCore get supplies portfolio world names and banners. Both use the admitted SDK App client; missing source data remains unavailable and a local catalog never substitutes for Realm.
   - id: definition.realm-persona-studio.core.source-materialization-packet
     kind: definition
     title: Source materialization packet
@@ -17,11 +17,11 @@ units:
   - id: definition.realm-persona-studio.core.realm-core-surfaces
     kind: definition
     title: Realm core surfaces
-    meaning: The admitted current Studio Realm data plane is client.realm.personaCharacter.listOwned, getOwned, create, replace, and delete plus client.realm.worldCore.list and create through the host-injected App SDK under realm.data; ordinary delete is shown only for an owner-created private PersonaCharacter and preserves Realm not-found, access-denied, and content-conflict failures, while post, media publication, materialization, friendCount, unpublish, retirement, and public lifecycle mutation remain unadmitted.
+    meaning: The admitted current Studio Realm data plane is client.realm.personaCharacter.listOwned, getOwned, create, replace, and delete plus client.realm.worldCore.list and exact get through the admitted App SDK under realm.data; ordinary delete is shown only for an owner-created private PersonaCharacter and preserves Realm not-found, access-denied, and content-conflict failures, while native WorldCore creation remains separately governed by its platform admission and is not added to the Web carrier; post, media publication, materialization, friendCount, unpublish, retirement, and public lifecycle mutation remain unadmitted.
   - id: definition.realm-persona-studio.core.local-candidate
     kind: definition
     title: Local candidate
-    meaning: Desktop-local candidate material includes drafts, Runtime output, generated media, and creative history pending owner review and is never Realm authority by itself.
+    meaning: Runtime App-private candidate material includes drafts, Runtime output, generated media, and creative history pending owner review and is never Realm authority by itself.
   - id: definition.realm-persona-studio.core.local-agent
     kind: definition
     title: LocalAgent
@@ -29,7 +29,7 @@ units:
   - id: definition.realm-persona-studio.core.standard-shell
     kind: definition
     title: Desktop-supervised standard shell
-    meaning: The Desktop-supervised local-app protected standard bridge is the shell boundary for Realm Persona Studio; Desktop owns admission, start, identity, authorization, and permission posture.
+    meaning: Desktop uses the Desktop-supervised protected standard bridge. Web uses the shared Kit Nimi-account session and an admitted exact HTTPS source to the personal primary Runtime. Realm and Runtime retain identity, resource ownership and operation admission; Studio owns its product state and presentation.
   - id: definition.realm-persona-studio.core.non-current-surfaces
     kind: definition
     title: Non-current surfaces
@@ -112,7 +112,7 @@ units:
     kind: rule
     title: Runtime candidate boundary
     modality: must
-    statement: Runtime output remains candidate material until an owner-reviewed PersonaCharacter create or replace succeeds through the host-injected App client.
+    statement: Runtime output remains candidate material until an owner-reviewed PersonaCharacter create or replace succeeds through the admitted SDK App client.
     condition: Whenever Runtime returns output.
     failure: Keep the output local and do not present it as Realm source state before an owner-reviewed PersonaCharacter write succeeds.
     relations:
@@ -163,7 +163,7 @@ units:
     title: Standard shell boundary
     modality: must
     statement: Realm Persona Studio is a Desktop-supervised installed App whose Electron main and preload expose only the protected standard bridge; renderer, argv, environment, preload, and app-owned host code receive no launch metadata, nonce, caller identity, release identity, Realm or Runtime endpoint, session proof, or credential material.
-    condition: Always.
+    condition: When the Desktop Host or its renderer runs.
     failure: Fail shell capability initialization and expose none of the listed identity, endpoint, session, or credential material.
     relations:
       - type: applies_to
@@ -176,5 +176,17 @@ units:
     condition: Always.
     failure: Fail closed without an app-local fallback when a protected standard-bridge operation is not admitted by the Desktop supervisor.
     relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.standard-shell
+  - id: rule.realm-persona-studio.core.r015
+    kind: rule
+    title: Shared App session and private view lifetime
+    modality: must
+    statement: The Web entry uses official Nimi login and Kit session composition with no separate Studio account, and its exact source and first PC Home confirmation remain independent prerequisites. Each connected product view owns its query cache and captures one SDK client and abort signal for Realm resources, AI, drafts, assets, preferences and queued writes. Connection or identity loss retires private data and late work before another scope mounts, with no workflow replay or background publication. Explicit user disconnect or sign-out respects the existing pending-write and unsaved-editor guard; externally invalid identity always closes the private view. Existing Realm hash-CAS, owner review and unavailable publication operations remain unchanged. Local draft files do not acquire automatic concurrent-edit merging.
+    condition: Whenever a Desktop or Web product view mounts, performs work, disconnects or changes its Nimi context.
+    failure: Keep private content unmounted without the admitted connection, preserve unsaved work until explicit user discard where the context is still valid, and never write or display one scope through another.
+    relations:
+      - type: applies_to
+        target: definition.realm-persona-studio.core.local-candidate
       - type: applies_to
         target: definition.realm-persona-studio.core.standard-shell

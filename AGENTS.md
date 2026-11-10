@@ -7,20 +7,20 @@
 - **App name (English)**: Realm Persona Studio
 - **Canonical Nimi app_id**: `nimi.realm-persona-studio`
 - **Electron App Access id**: `nimi.realm-persona-studio`
-- **One-line**: Owner-facing creation and operation desktop app for user-owned public Realm Personas.
+- **One-line**: Owner-facing Desktop and Web creation app for user-owned Realm Personas.
 - **Status**: Pre-Alpha, not yet launched.
 
 ## Architecture
 
 | Layer | Technology | Location |
 |-------|-----------|----------|
-| Desktop shell | Desktop-supervised Electron 42 | `src-electron/` |
+| Desktop shell | Desktop-supervised Electron 45 | `src-electron/` |
 | Renderer | React 19 + Vite 7 + Tailwind 4 | `src/shell/renderer/` |
 | Routing | react-router-dom 7 | `src/shell/renderer/app-shell/routes.tsx` |
-| Auth & runtime bridge | Desktop-supervised protected standard bridge | `src-electron/` |
+| Auth & runtime bridge | Shared Kit sessions; protected Desktop or admitted direct Web carrier | `src-electron/`, renderer entries |
 | UI components | `@nimiplatform/kit` (npm) | renderer-wide |
 | Platform client | `@nimiplatform/sdk` (npm) | `app-shell/studio-platform.ts` |
-| State | Zustand | `app-shell/app-store.ts` |
+| State | Connection-scoped React state and QueryClient | `App.tsx`, `app-shell/studio-scope.tsx` |
 | Dev port | 1450 | `vite.config.ts` |
 | Dev port cleanup | Manual stale-listener cleanup; never wired into the exact doctor-controlled renderer command | `scripts/ensure-dev-renderer-port.mjs` |
 
@@ -68,9 +68,9 @@ unavailable — render an explicit "source unavailable" state.
 
 ### Auth boundary
 - Studio does **not** own access or refresh tokens (mirrors parentos PO-SHELL-008 / K-ACCSVC-008).
-- Studio does **not** render app-local login, open OAuth, exchange OAuth codes, save Runtime sessions, load Runtime sessions, clear Runtime sessions, or bootstrap Runtime defaults.
-- All Runtime account state is Desktop shared auth owned by the supervisor and consumed through the protected standard bridge / public SDK Runtime account surface.
-- Missing Desktop shared Runtime account state is a fail-closed capability-unavailable product state, not a redirect to a Studio-owned login flow.
+- Studio does not implement passwords, token exchange, durable credential custody or Runtime defaults. Desktop follows Home; Web uses the shared Kit official Nimi login and direct carrier.
+- Keep query caches, client references, private drafts and pending work inside the captured connection scope. Explicit exits use the existing dirty/pending form guard; invalid identity always retires the view.
+- Registry source admission and first Home confirmation remain real prerequisites. Public operation failures never become empty data or a synthetic successful result.
 
 ## Development Principles
 
@@ -164,7 +164,7 @@ Skip: `node_modules/`, `dist/`, `src-tauri/target/`, `src-tauri/gen/`, lockfiles
 ## Nimi App development
 
 - For auditing adaptation feasibility or cost, creating, adapting, upgrading or releasing this App, read [the lifecycle skill](.agents/skills/nimi-app-lifecycle/SKILL.md) and only the relevant scenario. Audit-only requests do not begin implementation; prior reports remain evidence-dependent.
-- For first integration or foundation wiring changes, use the selected app-tools package's generated reference and reuse its Host, preload, renderer, session, App Access, AIConfig and AI call wiring. Follow the adaptation guide's baseline checks and reuse passing results for ordinary business edits.
+- For first integration or foundation wiring changes, use the selected app-tools package's generated reference for the same carrier and reuse its renderer, session, App Access, AIConfig and AI call wiring; Host/preload apply only to native Desktop, while Web uses official scoped login and its admitted HTTPS source. Follow the adaptation guide's baseline checks and reuse passing results for ordinary business edits.
 - Keep App-owned product behavior, Host code, business accounts and non-AI services with this repository. Use the SDK/Kit Local App carrier for Nimi AI, configuration, storage and session access.
 - Development may consume complete local npm tarballs through the supported explicit overrides and version matrix; public-release preflight uses registry resolutions. Do not substitute source-workspace or directory links.
 - App Tools owns its lifecycle skill, this block, managed workflow and declared engineering fields; preserve other instructions, product source and licenses. Existing adoption does not create fresh scaffold intent or lock.

@@ -1,8 +1,10 @@
+import { useStudioScope } from '@renderer/app-shell/studio-scope.js';
 import { useCallback, useEffect, useState } from 'react';
 import { loadLocalPostSchedule, type LocalPostScheduleRecord } from './local-post-schedule-store.js';
 
 // @nimi-authority: rule.realm-persona-studio.failure.r001
 export function useLocalPostSchedule(personaId: string, disabled = false) {
+  const scope = useStudioScope();
   const [schedule, setSchedule] = useState<LocalPostScheduleRecord | null>(null);
   const [loading, setLoading] = useState(!disabled);
   const [unavailable, setUnavailable] = useState(false);
@@ -15,7 +17,7 @@ export function useLocalPostSchedule(personaId: string, disabled = false) {
     setUnavailable(false);
     setLoading(!disabled);
     if (disabled) return;
-    void loadLocalPostSchedule(personaId).then((record) => {
+    void loadLocalPostSchedule(scope, personaId).then((record) => {
       if (!cancelled) setSchedule(record);
     }).catch(() => {
       if (!cancelled) setUnavailable(true);

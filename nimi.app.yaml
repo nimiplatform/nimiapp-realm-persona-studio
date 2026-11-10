@@ -9,6 +9,14 @@ app_access:
 local_development:
   electron:
     renderer_origin: http://127.0.0.1:1450
+  web:
+    origin: https://127.0.0.1:4477
+    redirect_uri: https://127.0.0.1:4477/
+    client_id: nimi.realm-persona-studio.web.dev
+    realm_environment_id: dev
+    realm_url: http://127.0.0.1:3002
+    official_web_url: http://localhost:3000
+    command: pnpm run dev:web-renderer
 metadata:
   summary: 创建和管理自己的 Realm Persona，维护角色资料与创作草稿。
   icon: src/shell/renderer/assets/brand/studio-logo.png

@@ -1,3 +1,4 @@
+import { useStudioScope } from '@renderer/app-shell/studio-scope.js';
 import { type QueryClient, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getOwnerPortfolioPersonaDetail } from '@renderer/features/portfolio/portfolio-client.js';
 import type { OwnerPortfolioPersona } from '@renderer/features/portfolio/portfolio-data.js';
@@ -21,9 +22,10 @@ export function usePersonaDetailQuery(
   scope: PersonaDetailReadScope = 'owner',
   options: { enabled?: boolean } = {},
 ) {
+  const appScope = useStudioScope();
   return useQuery({
     queryKey: personaDetailQueryKey(personaId, scope),
-    queryFn: () => getOwnerPortfolioPersonaDetail(personaId),
+    queryFn: () => getOwnerPortfolioPersonaDetail(appScope, personaId),
     enabled: personaId.length > 0 && options.enabled !== false,
   });
 }

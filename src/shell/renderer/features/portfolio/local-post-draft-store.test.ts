@@ -1,3 +1,4 @@
+import { studioTestScope } from '../../../../test/studio-scope.js';
 import { describe, expect, it, vi } from 'vitest';
 import { isAppUlid } from '@renderer/app-shell/app-ulid.js';
 import {
@@ -40,11 +41,11 @@ describe('local persona post draft store', () => {
   it('keeps both drafts when saves start concurrently', async () => {
     const storage = createStorage();
     const results = await Promise.all([
-      saveLocalPostDraft(draftInput('First concurrent draft.'), storage),
-      saveLocalPostDraft(draftInput('Second concurrent draft.'), storage),
+      saveLocalPostDraft(studioTestScope, draftInput('First concurrent draft.'), storage),
+      saveLocalPostDraft(studioTestScope, draftInput('Second concurrent draft.'), storage),
     ]);
     expect(results.every((result) => result.ok)).toBe(true);
-    const loaded = await loadLocalPostDrafts('persona-1', storage);
+    const loaded = await loadLocalPostDrafts(studioTestScope, 'persona-1', storage);
     expect(loaded.ok && loaded.records.map((record) => record.caption)).toEqual([
       'Second concurrent draft.', 'First concurrent draft.',
     ]);
@@ -52,19 +53,19 @@ describe('local persona post draft store', () => {
 
   it('does not resurrect a deleted draft when another save overlaps', async () => {
     const storage = createStorage();
-    const created = await saveLocalPostDraft(draftInput('Delete me.'), storage);
+    const created = await saveLocalPostDraft(studioTestScope, draftInput('Delete me.'), storage);
     if (!created.ok) throw new Error('Expected a persisted draft');
     await Promise.all([
-      deleteLocalPostDraft('persona-1', created.record.id, storage),
-      saveLocalPostDraft(draftInput('Keep me.'), storage),
+      deleteLocalPostDraft(studioTestScope, 'persona-1', created.record.id, storage),
+      saveLocalPostDraft(studioTestScope, draftInput('Keep me.'), storage),
     ]);
-    const loaded = await loadLocalPostDrafts('persona-1', storage);
+    const loaded = await loadLocalPostDrafts(studioTestScope, 'persona-1', storage);
     expect(loaded.ok && loaded.records.map((record) => record.caption)).toEqual(['Keep me.']);
   });
 
   it('persists a local candidate with a stable ULID through protected JSON storage', async () => {
     const storage = createStorage();
-    const result = await saveLocalPostDraft({
+    const result = await saveLocalPostDraft(studioTestScope, {
       personaId: 'persona/one',
       caption: '  A source-backed local draft.  ',
       tagsText: '  #OASIS  ',
@@ -89,31 +90,31 @@ describe('local persona post draft store', () => {
       publicTruth: false,
     });
     expect(getLocalPostDraftStoragePath('persona/one')).toBe('posts/drafts/persona%2Fone.json');
-    expect(await loadLocalPostDrafts('persona/one', storage)).toEqual({ ok: true, records: [result.record] });
+    expect(await loadLocalPostDrafts(studioTestScope, 'persona/one', storage)).toEqual({ ok: true, records: [result.record] });
   });
 
   it('keeps multiple drafts per persona without a count limit, newest first', async () => {
     const storage = createStorage();
-    const first = await saveLocalPostDraft(draftInput('First draft.'), storage, new Date('2026-08-10T12:00:00.000Z'));
-    const second = await saveLocalPostDraft(draftInput('Second draft.'), storage, new Date('2026-08-10T13:00:00.000Z'));
-    const third = await saveLocalPostDraft(draftInput('Third draft.'), storage, new Date('2026-08-10T14:00:00.000Z'));
+    const first = await saveLocalPostDraft(studioTestScope, draftInput('First draft.'), storage, new Date('2026-08-10T12:00:00.000Z'));
+    const second = await saveLocalPostDraft(studioTestScope, draftInput('Second draft.'), storage, new Date('2026-08-10T13:00:00.000Z'));
+    const third = await saveLocalPostDraft(studioTestScope, draftInput('Third draft.'), storage, new Date('2026-08-10T14:00:00.000Z'));
     expect(first.ok && second.ok && third.ok).toBe(true);
     if (!first.ok || !second.ok || !third.ok) return;
 
     expect(third.records.map((record) => record.id)).toEqual([third.record.id, second.record.id, first.record.id]);
     expect(third.records.map((record) => record.caption)).toEqual(['Third draft.', 'Second draft.', 'First draft.']);
 
-    const loaded = await loadLocalPostDrafts('persona-1', storage);
+    const loaded = await loadLocalPostDrafts(studioTestScope, 'persona-1', storage);
     expect(loaded).toEqual({ ok: true, records: third.records });
   });
 
   it('updates an existing draft in place when its draftId is saved again', async () => {
     const storage = createStorage();
-    const created = await saveLocalPostDraft(draftInput('Original copy.'), storage, new Date('2026-08-10T12:00:00.000Z'));
+    const created = await saveLocalPostDraft(studioTestScope, draftInput('Original copy.'), storage, new Date('2026-08-10T12:00:00.000Z'));
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const updated = await saveLocalPostDraft({
+    const updated = await saveLocalPostDraft(studioTestScope, {
       ...draftInput('Revised copy.'),
       draftId: created.record.id,
     }, storage, new Date('2026-08-11T09:30:00.000Z'));
@@ -126,36 +127,36 @@ describe('local persona post draft store', () => {
       caption: 'Revised copy.',
       updatedAt: '2026-08-11T09:30:00.000Z',
     });
-    expect(await loadLocalPostDrafts('persona-1', storage)).toEqual({ ok: true, records: [updated.record] });
+    expect(await loadLocalPostDrafts(studioTestScope, 'persona-1', storage)).toEqual({ ok: true, records: [updated.record] });
   });
 
   it('deletes drafts one by one and removes the document when the last draft goes away', async () => {
     const storage = createStorage();
-    const first = await saveLocalPostDraft(draftInput('First draft.'), storage, new Date('2026-08-10T12:00:00.000Z'));
-    const second = await saveLocalPostDraft(draftInput('Second draft.'), storage, new Date('2026-08-10T13:00:00.000Z'));
+    const first = await saveLocalPostDraft(studioTestScope, draftInput('First draft.'), storage, new Date('2026-08-10T12:00:00.000Z'));
+    const second = await saveLocalPostDraft(studioTestScope, draftInput('Second draft.'), storage, new Date('2026-08-10T13:00:00.000Z'));
     expect(first.ok && second.ok).toBe(true);
     if (!first.ok || !second.ok) return;
 
-    expect(await deleteLocalPostDraft('persona-1', second.record.id, storage)).toEqual({
+    expect(await deleteLocalPostDraft(studioTestScope, 'persona-1', second.record.id, storage)).toEqual({
       ok: true,
       records: [first.record],
     });
     expect(storage.values.has(getLocalPostDraftStoragePath('persona-1'))).toBe(true);
 
-    expect(await deleteLocalPostDraft('persona-1', first.record.id, storage)).toEqual({ ok: true, records: [] });
+    expect(await deleteLocalPostDraft(studioTestScope, 'persona-1', first.record.id, storage)).toEqual({ ok: true, records: [] });
     expect(storage.removeJson).toHaveBeenCalledWith(getLocalPostDraftStoragePath('persona-1'));
     expect(storage.values.has(getLocalPostDraftStoragePath('persona-1'))).toBe(false);
-    expect(await loadLocalPostDrafts('persona-1', storage)).toEqual({ ok: true, records: [] });
+    expect(await loadLocalPostDrafts(studioTestScope, 'persona-1', storage)).toEqual({ ok: true, records: [] });
   });
 
   it('treats deleting an unknown draft id as a no-op success', async () => {
     const storage = createStorage();
-    const created = await saveLocalPostDraft(draftInput('Kept draft.'), storage);
+    const created = await saveLocalPostDraft(studioTestScope, draftInput('Kept draft.'), storage);
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
     const unknownId = created.record.id.replace(/^./, created.record.id[0] === '0' ? '1' : '0');
-    expect(await deleteLocalPostDraft('persona-1', unknownId, storage)).toEqual({
+    expect(await deleteLocalPostDraft(studioTestScope, 'persona-1', unknownId, storage)).toEqual({
       ok: true,
       records: [created.record],
     });
@@ -163,7 +164,7 @@ describe('local persona post draft store', () => {
 
   it('persists attachment metadata only and restores it without media bytes', async () => {
     const storage = createStorage();
-    const result = await saveLocalPostDraft({
+    const result = await saveLocalPostDraft(studioTestScope, {
       ...draftInput('Draft with media candidates.'),
       attachments: [
         { id: 'att-1', mediaKind: 'image', fileName: ' cover.png ', mimeType: 'image/png', sizeBytes: 1204 },
@@ -177,9 +178,9 @@ describe('local persona post draft store', () => {
       { id: 'att-1', mediaKind: 'image', fileName: 'cover.png', mimeType: 'image/png', sizeBytes: 1204 },
       { id: 'att-2', mediaKind: 'video', fileName: 'clip.mp4', mimeType: 'video/mp4', sizeBytes: 98301 },
     ]);
-    expect(await loadLocalPostDrafts('persona-1', storage)).toEqual({ ok: true, records: [result.record] });
+    expect(await loadLocalPostDrafts(studioTestScope, 'persona-1', storage)).toEqual({ ok: true, records: [result.record] });
 
-    expect(await saveLocalPostDraft({
+    expect(await saveLocalPostDraft(studioTestScope, {
       ...draftInput('Draft'),
       attachments: [{ id: 'att-3', mediaKind: 'image', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 10 } as never],
     }, storage)).toMatchObject({
@@ -198,7 +199,7 @@ describe('local persona post draft store', () => {
       publicTruth: false,
       attachments: [{ id: 'att-4', mediaKind: 'image', fileName: 'fake.png', mimeType: 'text/plain', sizeBytes: 10 }],
     }]);
-    expect(await loadLocalPostDrafts('persona-1', storage)).toMatchObject({
+    expect(await loadLocalPostDrafts(studioTestScope, 'persona-1', storage)).toMatchObject({
       ok: false,
       failure: 'local-post-draft-load-failed',
     });
@@ -206,32 +207,32 @@ describe('local persona post draft store', () => {
 
   it('fails closed for missing capability, invalid input, and invalid stored documents', async () => {
     const storage = createStorage();
-    expect(await loadLocalPostDrafts('missing', storage)).toEqual({ ok: true, records: [] });
-    expect(await saveLocalPostDraft({ ...draftInput(' ') }, storage)).toMatchObject({
+    expect(await loadLocalPostDrafts(studioTestScope, 'missing', storage)).toEqual({ ok: true, records: [] });
+    expect(await saveLocalPostDraft(studioTestScope, { ...draftInput(' ') }, storage)).toMatchObject({
       ok: false,
       failure: 'local-post-draft-not-persistable',
     });
-    expect(await saveLocalPostDraft(draftInput('Draft'), null)).toMatchObject({
+    expect(await saveLocalPostDraft(studioTestScope, draftInput('Draft'), null)).toMatchObject({
       ok: false,
       failure: 'local-post-draft-not-persistable',
     });
-    expect(await saveLocalPostDraft({ ...draftInput('Draft'), visibility: 'everyone' as never }, storage)).toMatchObject({
+    expect(await saveLocalPostDraft(studioTestScope, { ...draftInput('Draft'), visibility: 'everyone' as never }, storage)).toMatchObject({
       ok: false,
       failure: 'local-post-draft-not-persistable',
     });
-    expect(await saveLocalPostDraft({ ...draftInput('Draft'), category: 'random' as never }, storage)).toMatchObject({
+    expect(await saveLocalPostDraft(studioTestScope, { ...draftInput('Draft'), category: 'random' as never }, storage)).toMatchObject({
       ok: false,
       failure: 'local-post-draft-not-persistable',
     });
-    expect(await saveLocalPostDraft({ ...draftInput('Draft'), draftId: 'not-a-ulid' }, storage)).toMatchObject({
+    expect(await saveLocalPostDraft(studioTestScope, { ...draftInput('Draft'), draftId: 'not-a-ulid' }, storage)).toMatchObject({
       ok: false,
       failure: 'local-post-draft-not-persistable',
     });
-    expect(await deleteLocalPostDraft('persona-1', 'not-a-ulid', storage)).toMatchObject({
+    expect(await deleteLocalPostDraft(studioTestScope, 'persona-1', 'not-a-ulid', storage)).toMatchObject({
       ok: false,
       failure: 'local-post-draft-delete-failed',
     });
-    expect(await deleteLocalPostDraft('persona-1', '01ARZ3NDEKTSV4RRFFQ69G5FAV', null)).toMatchObject({
+    expect(await deleteLocalPostDraft(studioTestScope, 'persona-1', '01ARZ3NDEKTSV4RRFFQ69G5FAV', null)).toMatchObject({
       ok: false,
       failure: 'local-post-draft-delete-failed',
     });
@@ -247,7 +248,7 @@ describe('local persona post draft store', () => {
       candidateOnly: true,
       publicTruth: false,
     });
-    expect(await loadLocalPostDrafts('persona-1', storage)).toMatchObject({
+    expect(await loadLocalPostDrafts(studioTestScope, 'persona-1', storage)).toMatchObject({
       ok: false,
       failure: 'local-post-draft-load-failed',
     });
@@ -262,7 +263,7 @@ describe('local persona post draft store', () => {
       candidateOnly: true,
       publicTruth: true,
     }]);
-    expect(await loadLocalPostDrafts('persona-1', storage)).toMatchObject({
+    expect(await loadLocalPostDrafts(studioTestScope, 'persona-1', storage)).toMatchObject({
       ok: false,
       failure: 'local-post-draft-load-failed',
     });
@@ -289,7 +290,7 @@ describe('local persona post draft store', () => {
         publicTruth: false,
       },
     ]);
-    expect(await loadLocalPostDrafts('persona-1', storage)).toMatchObject({
+    expect(await loadLocalPostDrafts(studioTestScope, 'persona-1', storage)).toMatchObject({
       ok: false,
       failure: 'local-post-draft-load-failed',
     });
@@ -307,7 +308,7 @@ describe('local persona post draft store', () => {
       candidateOnly: true,
       publicTruth: false,
     }]);
-    expect(await loadLocalPostDrafts('persona-1', storage)).toMatchObject({
+    expect(await loadLocalPostDrafts(studioTestScope, 'persona-1', storage)).toMatchObject({
       ok: false,
       failure: 'local-post-draft-load-failed',
     });
@@ -323,7 +324,7 @@ describe('local persona post draft store', () => {
       candidateOnly: true,
       publicTruth: false,
     }]);
-    expect(await loadLocalPostDrafts('persona-1', storage)).toMatchObject({
+    expect(await loadLocalPostDrafts(studioTestScope, 'persona-1', storage)).toMatchObject({
       ok: false,
       failure: 'local-post-draft-load-failed',
     });

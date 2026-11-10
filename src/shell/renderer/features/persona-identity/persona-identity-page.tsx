@@ -1,3 +1,4 @@
+import { useStudioScope } from '@renderer/app-shell/studio-scope.js';
 // @nimi-authority: rule.realm-persona-studio.asset.r003
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -92,6 +93,7 @@ function VisualIdentitySection({ persona }: { persona: OwnerPortfolioPersonaDeta
 }
 
 function VoiceDemoSection({ persona }: { persona: OwnerPortfolioPersonaDetail }) {
+  const scope = useStudioScope();
   const { t } = useStudioI18n();
   const navigate = useNavigate();
   const openVoiceEditor = useOpenPersonaVoiceEditor();
@@ -109,11 +111,11 @@ function VoiceDemoSection({ persona }: { persona: OwnerPortfolioPersonaDetail })
     setIsSynthesizing(true);
     setResult(null);
     try {
-      const next = await synthesizeReviewedVoiceDemo(draft, persona);
+      const next = await synthesizeReviewedVoiceDemo(scope, draft, persona);
       setResult(next);
       if (next.ok) {
         nimiToast.success(t('voiceConfig.generated'));
-        const persisted = await appendLocalCreativeAssetHistory(persona.id, {
+        const persisted = await appendLocalCreativeAssetHistory(scope, persona.id, {
           sourceContentHash: persona.contentHash,
           kind: 'voice-demo-candidate',
           sourceKind: 'generated',

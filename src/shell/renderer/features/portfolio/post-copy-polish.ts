@@ -1,3 +1,4 @@
+import { type StudioScope } from '@renderer/app-shell/studio-scope.js';
 import type { OwnerPortfolioPersonaDetail } from './portfolio-data.js';
 import {
   buildRuntimePostCopyPrompt,
@@ -30,13 +31,13 @@ export type PostCopyPolishResult =
   | { ok: true; proposal: RuntimePostCopyProposal }
   | { ok: false; failure: PostCopyPolishFailure };
 
-export async function requestPostCopyPolish(
+export async function requestPostCopyPolish(scope: StudioScope,
   input: {
     persona: OwnerPortfolioPersonaDetail;
     draft: LocalPostDraftInput;
     intent: string;
   },
-  runner: StudioTextCandidateRunner = runStudioTextCandidate,
+  runner: StudioTextCandidateRunner = runStudioTextCandidate.bind(null, scope),
 ): Promise<PostCopyPolishResult> {
   const prompt = buildRuntimePostCopyPrompt(input);
   if (!prompt.ok) {
@@ -44,7 +45,7 @@ export async function requestPostCopyPolish(
   }
 
   try {
-    const { value: proposal } = await runValidatedStudioTextCandidate(
+    const { value: proposal } = await runValidatedStudioTextCandidate(scope,
       prompt.payload, (text) => normalizeRuntimePostCopyProposal(text, input.draft), runner,
     );
     return { ok: true, proposal };

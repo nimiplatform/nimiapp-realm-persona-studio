@@ -1,9 +1,10 @@
+import { type StudioScope } from '@renderer/app-shell/studio-scope.js';
 import type {
   NimiLocalAppPersonaCharacter,
   NimiLocalAppPersonaCharacterFailureReason,
 } from '@nimiplatform/sdk/app';
 import { createNimiError } from '@nimiplatform/sdk/types';
-import { getStudioLocalAppClient } from '@renderer/app-shell/studio-platform.js';
+import { getStudioClient } from '@renderer/app-shell/studio-platform.js';
 import {
   getStudioWorldCoreById,
   listStudioWorldCores,
@@ -124,8 +125,8 @@ export function normalizeRealmPersonaCreateResult(persona: RealmCreatePersonaRes
   };
 }
 
-async function listAllOwnedPersonaCharacters(): Promise<readonly NimiLocalAppPersonaCharacter[]> {
-  const client = getStudioLocalAppClient().realm.personaCharacter;
+async function listAllOwnedPersonaCharacters(scope: StudioScope): Promise<readonly NimiLocalAppPersonaCharacter[]> {
+  const client = getStudioClient(scope).realm.personaCharacter;
   const items: NimiLocalAppPersonaCharacter[] = [];
   const seenCursors = new Set<string>();
   const seenPersonaIds = new Set<string>();
@@ -163,16 +164,16 @@ async function listAllOwnedPersonaCharacters(): Promise<readonly NimiLocalAppPer
 }
 
 // @nimi-authority: rule.realm-persona-studio.persona.r003
-export async function listOwnerPortfolioPersonas(): Promise<OwnerPortfolioPersona[]> {
-  return normalizeOwnerPortfolio(await listAllOwnedPersonaCharacters());
+export async function listOwnerPortfolioPersonas(scope: StudioScope): Promise<OwnerPortfolioPersona[]> {
+  return normalizeOwnerPortfolio(await listAllOwnedPersonaCharacters(scope));
 }
 
-export async function getOwnerPortfolioPersonaDetail(
+export async function getOwnerPortfolioPersonaDetail(scope: StudioScope,
   personaId: string,
 ): Promise<OwnerPortfolioPersonaDetail> {
-  const persona = await getStudioLocalAppClient().realm.personaCharacter.getOwned(personaId);
+  const persona = await getStudioClient(scope).realm.personaCharacter.getOwned(personaId);
   try {
-    const world = await getStudioWorldCoreById(persona.worldId);
+    const world = await getStudioWorldCoreById(scope, persona.worldId);
     return normalizeOwnerPortfolioPersonaDetail(persona, world);
   } catch (error) {
     const detail = normalizeOwnerPortfolioPersonaDetail(persona);
@@ -181,9 +182,10 @@ export async function getOwnerPortfolioPersonaDetail(
 }
 
 // @nimi-authority: rule.realm-persona-studio.acceptance.r003
-export async function deleteOwnerPortfolioPersona(personaId: string): Promise<RealmPersonaDeleteResult> {
+export async function deleteOwnerPortfolioPersona(scope: StudioScope, personaId: string): Promise<RealmPersonaDeleteResult> {
   try {
-    const result = await getStudioLocalAppClient().realm.personaCharacter.delete(personaId);
+    const result = await getStudioClient(scope).realm.personaCharacter.delete(personaId);
+    scope.signal.throwIfAborted();
     return {
       ok: true,
       source: REALM_PERSONA_DELETE_SOURCE,
@@ -198,19 +200,19 @@ export async function deleteOwnerPortfolioPersona(personaId: string): Promise<Re
   }
 }
 
-export async function listCreateRealmPersonaSelectableWorlds(): Promise<SelectableRealmWorld[]> {
-  const worlds = await listStudioWorldCores({ take: 100 });
+export async function listCreateRealmPersonaSelectableWorlds(scope: StudioScope): Promise<SelectableRealmWorld[]> {
+  const worlds = await listStudioWorldCores(scope, { take: 100 });
   return normalizeSelectableWorlds([...worlds] as RealmPersonaCreationWorldDto[]);
 }
 
-export async function getCreateRealmPersonaWorldPreview(
+export async function getCreateRealmPersonaWorldPreview(scope: StudioScope,
   worldId: string,
 ): Promise<SelectedWorldPreview | null> {
-  const world = await getStudioWorldCoreById(worldId);
+  const world = await getStudioWorldCoreById(scope, worldId);
   return world ? normalizeSelectedWorldPreview(world) : null;
 }
 
-export async function checkCreateRealmPersonaHandleAvailability(
+export async function checkCreateRealmPersonaHandleAvailability(scope: StudioScope,
   handle: string,
 ): Promise<RealmPersonaHandleAvailabilityResult> {
   const normalized = handle.trim().replace(/^@+/u, '').toLocaleLowerCase();
@@ -224,7 +226,7 @@ export async function checkCreateRealmPersonaHandleAvailability(
     };
   }
   try {
-    const personas = await listAllOwnedPersonaCharacters();
+    const personas = await listAllOwnedPersonaCharacters(scope);
     const conflict = personas.some((persona) => persona.profile.identity.handle?.trim().toLocaleLowerCase() === normalized);
     return {
       ok: true,
@@ -258,13 +260,14 @@ export async function checkCreateRealmPersonaHandleAvailability(
 }
 
 // @nimi-authority: rule.realm-persona-studio.persona.r009
-export async function createReviewedRealmPersona(
+export async function createReviewedRealmPersona(scope: StudioScope,
   payload: ReviewedCreateRealmPersonaPayload,
 ): Promise<RealmPersonaCreateResult> {
   try {
-    const persona = await getStudioLocalAppClient().realm.personaCharacter.create(
+    const persona = await getStudioClient(scope).realm.personaCharacter.create(
       buildRealmCreatePersonaInput(payload),
     );
+    scope.signal.throwIfAborted();
     return normalizeRealmPersonaCreateResult(persona);
   } catch (error) {
     const reason = personaCharacterFailureReason(error);
@@ -277,10 +280,10 @@ export async function createReviewedRealmPersona(
   }
 }
 
-export async function createReviewedRealmPersonaWithProfileSettings(
+export async function createReviewedRealmPersonaWithProfileSettings(scope: StudioScope,
   payload: ReviewedCreateRealmPersonaPayload,
 ): Promise<RealmPersonaCreateWithProfileSettingsResult> {
-  const result = await createReviewedRealmPersona(payload);
+  const result = await createReviewedRealmPersona(scope, payload);
   if (!result.ok) return result;
   return {
     ...result,

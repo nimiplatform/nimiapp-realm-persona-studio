@@ -1,3 +1,4 @@
+import { useStudioScope } from '@renderer/app-shell/studio-scope.js';
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -38,7 +39,8 @@ import { useStudioI18n } from '../../i18n/use-studio-i18n.js';
 import { ownerPortfolioListQueryKey } from '../../features/persona-detail/use-persona-detail-query.js';
 import { getStudioWorldCores, studioWorldCardPresentation } from '../../data/studio-world-core.js';
 import { persistThemeScheme } from '../theme-scheme.js';
-import { useAppStore } from '../app-store.js';
+import { useNimiAppSession } from '@nimiplatform/kit/auth/app';
+import { useStudioLeaveRequest } from '../studio-navigation-guard.js';
 
 export const STUDIO_SIDEBAR_PREFERENCE_STORAGE_PATH = 'shell/sidebar.json';
 
@@ -215,14 +217,18 @@ function PersonaRosterItem({
 }
 
 function AccountMenu({ collapsed }: { collapsed: boolean }) {
+  const scope = useStudioScope();
   const { locale, setLocale, t } = useStudioI18n();
   const { scheme, setScheme } = useNimiTheme();
-  const authUser = useAppStore((state) => state.auth.user);
+  const { session, snapshot } = useNimiAppSession();
+  const requestLeave = useStudioLeaveRequest();
+  const authUser = snapshot.identity.status === 'signed-in' ? snapshot.identity.user : null;
+  const [accountError, setAccountError] = useState<string | undefined>();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [schemePersistFailed, setSchemePersistFailed] = useState(false);
   const displayName = authUser?.displayName?.trim() || t('shell.account.ownerFallback');
-  const email = authUser?.email?.trim() || t('shell.account.runtimeAccount');
+  const email = authUser?.handle?.trim() || t('shell.account.runtimeAccount');
   const avatarUrl = authUser?.avatarUrl ?? null;
   const initial = displayName.charAt(0).toUpperCase() || t('shell.account.ownerFallback').charAt(0).toUpperCase();
   const accountUser = {
@@ -242,7 +248,7 @@ function AccountMenu({ collapsed }: { collapsed: boolean }) {
   const switchScheme = () => {
     const next = scheme === 'dark' ? 'light' : 'dark';
     setScheme(next);
-    void persistThemeScheme(next).then((persisted) => {
+    void persistThemeScheme(scope, next).then((persisted) => {
       if (persisted) {
         setSchemePersistFailed(false);
         setOpen(false);
@@ -298,7 +304,7 @@ function AccountMenu({ collapsed }: { collapsed: boolean }) {
           user={accountUser}
           ariaLabel={t('shell.account.menu')}
           className="w-[min(320px,calc(100vw-24px))]"
-          statusMessage={schemePersistFailed ? t('shell.account.schemePersistFailed') : undefined}
+          statusMessage={accountError ?? (schemePersistFailed ? t('shell.account.schemePersistFailed') : undefined)}
           items={[
             {
               id: 'owner-portfolio',
@@ -314,6 +320,10 @@ function AccountMenu({ collapsed }: { collapsed: boolean }) {
             },
           ]}
           footerItems={[
+            ...(session.account.kind === 'app-session' ? [
+              { id: 'nimi-disconnect', label: t('shell.account.disconnect'), onSelect: () => { setOpen(false); requestLeave(() => session.disconnectRuntime()); } },
+              { id: 'nimi-sign-out', label: t('shell.account.signOut'), onSelect: () => { setOpen(false); requestLeave(() => { if (session.account.kind === 'app-session') void session.account.signOut(); }); } },
+            ] : [{ id: 'nimi-owner', label: t('shell.account.manageNimi'), onSelect: () => { setOpen(false); if (session.account.kind === 'home-managed') void session.account.openAccountOwner().catch(error => { if (!scope.signal.aborted) setAccountError(error instanceof Error ? error.message : String(error)); }); } }]),
             {
               id: 'language',
               label: t(locale === 'en' ? 'locale.switchToChinese' : 'locale.switchToEnglish'),
@@ -352,19 +362,20 @@ export function StudioSidebar({
   onCollapsedChange,
   visualFixturePersonas,
 }: StudioSidebarProps) {
+  const scope = useStudioScope();
   const { t } = useStudioI18n();
   const location = useLocation();
   const navigate = useNavigate();
   const fixtureMode = visualFixturePersonas !== undefined;
   const portfolioQuery = useQuery({
     queryKey: ownerPortfolioListQueryKey(),
-    queryFn: () => listOwnerPortfolioPersonas(),
+    queryFn: () => listOwnerPortfolioPersonas(scope),
     enabled: !fixtureMode,
   });
   const worldIds = (portfolioQuery.data ?? []).map(persona => persona.worldId);
   const worldsQuery = useQuery({
     queryKey: ['realm-world-core', 'portfolio-card-banners', ...worldIds],
-    queryFn: () => getStudioWorldCores(worldIds),
+    queryFn: () => getStudioWorldCores(scope, worldIds),
     enabled: !fixtureMode && Boolean(portfolioQuery.data?.length),
   });
   const worldNames = new Map((worldsQuery.isError ? [] : worldsQuery.data ?? []).map((world) => [

@@ -1,3 +1,4 @@
+import { useStudioScope } from '@renderer/app-shell/studio-scope.js';
 // @nimi-authority: rule.realm-persona-studio.post.r001
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -82,6 +83,7 @@ function DraftBoxEntryCard({ entry }: { entry: DraftBoxEntry }) {
 }
 
 function ContentManagementBody({ persona }: { persona: OwnerPortfolioPersonaDetail }) {
+  const scope = useStudioScope();
   const { t } = useStudioI18n();
   const navigate = useNavigate();
   const creativeHistoryState = useLocalCreativeAssetHistory(persona.id);
@@ -94,7 +96,7 @@ function ContentManagementBody({ persona }: { persona: OwnerPortfolioPersonaDeta
     setPostDrafts([]);
     setPostsLoading(true);
     setPostsUnavailable(false);
-    void loadLocalPostDrafts(persona.id).then((result) => {
+    void loadLocalPostDrafts(scope, persona.id).then((result) => {
       if (cancelled) return;
       setPostsLoading(false);
       setPostsUnavailable(!result.ok);

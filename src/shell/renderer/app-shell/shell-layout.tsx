@@ -1,3 +1,4 @@
+import { useStudioScope, type StudioScope } from '@renderer/app-shell/studio-scope.js';
 import { useEffect, useState, type ReactNode } from 'react';
 import { AmbientBackground, InlineAlert } from '@nimiplatform/kit/ui';
 import { StudioSidebar, STUDIO_SIDEBAR_PREFERENCE_STORAGE_PATH } from './studio-sidebar/index.js';
@@ -21,9 +22,9 @@ type SidebarPreferenceReadResult =
   | { ok: true; collapsed: boolean }
   | { ok: false };
 
-async function readStoredSidebarCollapsed(): Promise<SidebarPreferenceReadResult> {
+async function readStoredSidebarCollapsed(scope: StudioScope): Promise<SidebarPreferenceReadResult> {
   try {
-    const document = await getStudioProtectedJsonStorage().readJson(STUDIO_SIDEBAR_PREFERENCE_STORAGE_PATH);
+    const document = await getStudioProtectedJsonStorage(scope).readJson(STUDIO_SIDEBAR_PREFERENCE_STORAGE_PATH);
     if (!document.value || typeof document.value !== 'object' || Array.isArray(document.value)) return { ok: false };
     const collapsed = (document.value as Record<string, unknown>).collapsed;
     return typeof collapsed === 'boolean' ? { ok: true, collapsed } : { ok: false };
@@ -32,9 +33,9 @@ async function readStoredSidebarCollapsed(): Promise<SidebarPreferenceReadResult
   }
 }
 
-async function persistSidebarCollapsed(collapsed: boolean): Promise<boolean> {
+async function persistSidebarCollapsed(scope: StudioScope, collapsed: boolean): Promise<boolean> {
   try {
-    await getStudioProtectedJsonStorage().writeJson(STUDIO_SIDEBAR_PREFERENCE_STORAGE_PATH, { collapsed });
+    await getStudioProtectedJsonStorage(scope).writeJson(STUDIO_SIDEBAR_PREFERENCE_STORAGE_PATH, { collapsed });
     return true;
   } catch {
     return false;
@@ -42,12 +43,13 @@ async function persistSidebarCollapsed(collapsed: boolean): Promise<boolean> {
 }
 
 export function ShellLayout({ children }: { children: ReactNode }) {
+  const scope = useStudioScope();
   const { t } = useStudioI18n();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarPreferenceUnavailable, setSidebarPreferenceUnavailable] = useState(false);
   useEffect(() => {
     let cancelled = false;
-    void readStoredSidebarCollapsed().then((result) => {
+    void readStoredSidebarCollapsed(scope).then((result) => {
       if (cancelled) return;
       if (result.ok) {
         setSidebarCollapsed(result.collapsed);
@@ -64,7 +66,7 @@ export function ShellLayout({ children }: { children: ReactNode }) {
 
   const handleSidebarCollapsedChange = (collapsed: boolean) => {
     setSidebarCollapsed(collapsed);
-    void persistSidebarCollapsed(collapsed).then((persisted) => {
+    void persistSidebarCollapsed(scope, collapsed).then((persisted) => {
       if (!persisted) setSidebarPreferenceUnavailable(true);
     });
   };

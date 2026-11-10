@@ -1,3 +1,4 @@
+import { useStudioScope } from '@renderer/app-shell/studio-scope.js';
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import {
   FlipHorizontal2,
@@ -111,6 +112,7 @@ export function VisualImageEditorWorkspace({
   onHistoryUpdated: () => Promise<void>;
   initialFile?: File | null;
 }) {
+  const scope = useStudioScope();
   const { t } = useStudioI18n();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -296,7 +298,7 @@ export function VisualImageEditorWorkspace({
         nimiToast.danger(t('assets.imageEditor.exportFailed'));
         return;
       }
-      const persisted = await saveLocalImageEditCandidate(persona, new Uint8Array(await blob.arrayBuffer()),
+      const persisted = await saveLocalImageEditCandidate(scope, persona, new Uint8Array(await blob.arrayBuffer()),
         buildVisualImageEditDetail({
           aspectId,
           rotation,

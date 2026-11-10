@@ -1,12 +1,13 @@
+import type { StudioScope } from '../src/shell/renderer/app-shell/studio-scope.js';
 import type { RealmOwnerPersonaSettings } from '../src/shell/renderer/features/portfolio/portfolio-settings-client.js';
 import type { OwnerPortfolioPersonaDetail } from '../src/shell/renderer/features/portfolio/portfolio-data.js';
 import { persona as example } from '../src/shell/renderer/features/portfolio/portfolio-client.test-helpers.js';
 // This Vite alias exists only in Storybook. Mutations still use the real client
-// and fail without a protected host; these reads are explicitly labelled fixtures.
+// and remain unavailable in this display-only context; these reads are explicitly labelled fixtures.
 export * from '../src/shell/renderer/features/portfolio/portfolio-settings-client.js';
 let unavailable = false;
 export function configureSettingsFixture(fail: boolean) { unavailable = fail; }
-export async function getPortfolioPersonaSettings(detail: OwnerPortfolioPersonaDetail): Promise<RealmOwnerPersonaSettings> {
+export async function getPortfolioPersonaSettings(_scope: StudioScope, detail: OwnerPortfolioPersonaDetail): Promise<RealmOwnerPersonaSettings> {
   if (unavailable) throw Object.assign(new Error('Storybook unavailable read fixture'), { reasonCode: 'realm-unavailable' });
   const displayName = detail.displayName.value || '';
   const description = detail.bio.value || '';

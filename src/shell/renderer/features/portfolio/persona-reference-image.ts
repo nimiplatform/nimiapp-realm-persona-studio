@@ -1,3 +1,4 @@
+import { type StudioScope } from '@renderer/app-shell/studio-scope.js';
 import type { StudioImageCandidatePreview } from './media-voice-candidate.js';
 import {
   runStudioImageCandidate,
@@ -71,9 +72,9 @@ export function buildPersonaReferenceImagePayload(input: PersonaReferenceImageIn
   };
 }
 
-export async function generatePersonaReferenceImage(
+export async function generatePersonaReferenceImage(scope: StudioScope,
   input: PersonaReferenceImageInput,
-  runner: StudioImageCandidateRunner = runStudioImageCandidate,
+  runner: StudioImageCandidateRunner = runStudioImageCandidate.bind(null, scope),
 ): Promise<PersonaReferenceImageResult> {
   const built = buildPersonaReferenceImagePayload(input);
   if (!built.ok || !built.payload) {

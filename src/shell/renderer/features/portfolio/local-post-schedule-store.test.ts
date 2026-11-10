@@ -1,3 +1,4 @@
+import { studioTestScope } from '../../../../test/studio-scope.js';
 import { describe, expect, it, vi } from 'vitest';
 import {
   clearLocalPostSchedule,
@@ -65,7 +66,7 @@ const candidate: LocalPostScheduleCandidate = {
 describe('local post schedule store', () => {
   it('persists one app-local executable schedule per persona', async () => {
     const storage = createStorage();
-    const record = await saveLocalPostSchedule('persona-1', candidate, storage, new Date('2026-05-21T00:00:00'));
+    const record = await saveLocalPostSchedule(studioTestScope, 'persona-1', candidate, storage, new Date('2026-05-21T00:00:00'));
 
     expect(record).toMatchObject({
       localKey: 'persona-1:2026-05-22T09:30',
@@ -78,18 +79,18 @@ describe('local post schedule store', () => {
       },
       candidate,
     });
-    expect(await loadLocalPostSchedule('persona-1', storage)).toEqual(record);
-    expect(await loadLocalPostSchedule('persona-2', storage)).toBeNull();
+    expect(await loadLocalPostSchedule(studioTestScope, 'persona-1', storage)).toEqual(record);
+    expect(await loadLocalPostSchedule(studioTestScope, 'persona-2', storage)).toBeNull();
   });
 
   it('computes foreground due state and clears only after storage acknowledges removal', async () => {
     const storage = createStorage();
-    const record = await saveLocalPostSchedule('persona-1', candidate, storage, new Date('2026-05-21T00:00:00'));
+    const record = await saveLocalPostSchedule(studioTestScope, 'persona-1', candidate, storage, new Date('2026-05-21T00:00:00'));
 
     expect(isLocalPostScheduleDue(record, new Date('2026-05-22T09:29:00'))).toBe(false);
     expect(isLocalPostScheduleDue(record, new Date('2026-05-22T09:30:00'))).toBe(true);
-    await clearLocalPostSchedule('persona-1', storage);
-    expect(await loadLocalPostSchedule('persona-1', storage)).toBeNull();
+    await clearLocalPostSchedule(studioTestScope, 'persona-1', storage);
+    expect(await loadLocalPostSchedule(studioTestScope, 'persona-1', storage)).toBeNull();
   });
 
   it('fails closed on old local candidates with string sourceRef', async () => {
@@ -111,8 +112,8 @@ describe('local post schedule store', () => {
 
     await storage.writeJson('posts/schedules/persona-1.json', oldRecord as ScheduleJson);
 
-    await expect(loadLocalPostSchedule('persona-1', storage)).rejects.toThrow('Stored local post schedule is invalid');
-    await expect(saveLocalPostSchedule(
+    await expect(loadLocalPostSchedule(studioTestScope, 'persona-1', storage)).rejects.toThrow('Stored local post schedule is invalid');
+    await expect(saveLocalPostSchedule(studioTestScope,
       'persona-1',
       oldCandidate as unknown as LocalPostScheduleCandidate,
       storage,
@@ -122,22 +123,22 @@ describe('local post schedule store', () => {
   it('rejects a schedule stored under a different persona than its sourceRef', async () => {
     const storage = createStorage();
 
-    await expect(saveLocalPostSchedule('persona-2', candidate, storage)).rejects.toThrow(/persona identity does not match/u);
+    await expect(saveLocalPostSchedule(studioTestScope, 'persona-2', candidate, storage)).rejects.toThrow(/persona identity does not match/u);
     expect(storage.writeJson).not.toHaveBeenCalled();
   });
 
   it('does not report a cleared schedule when storage is unavailable', async () => {
-    await expect(clearLocalPostSchedule('persona-1', null)).rejects.toThrow(/storage is unavailable/u);
+    await expect(clearLocalPostSchedule(studioTestScope, 'persona-1', null)).rejects.toThrow(/storage is unavailable/u);
   });
 
   it('does not report a saved schedule when local storage is unavailable', async () => {
-    await expect(saveLocalPostSchedule('persona-1', candidate, null)).rejects.toThrow(/storage is unavailable/u);
+    await expect(saveLocalPostSchedule(studioTestScope, 'persona-1', candidate, null)).rejects.toThrow(/storage is unavailable/u);
   });
 
   it('distinguishes an unavailable protected read from an absent schedule', async () => {
     const storage = createStorage();
     storage.readJson.mockRejectedValueOnce(new Error('Access denied'));
-    await expect(loadLocalPostSchedule('persona-1', storage)).rejects.toThrow('Access denied');
-    await expect(loadLocalPostSchedule('persona-1', storage)).resolves.toBeNull();
+    await expect(loadLocalPostSchedule(studioTestScope, 'persona-1', storage)).rejects.toThrow('Access denied');
+    await expect(loadLocalPostSchedule(studioTestScope, 'persona-1', storage)).resolves.toBeNull();
   });
 });

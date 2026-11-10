@@ -1,3 +1,4 @@
+import { type StudioScope } from '@renderer/app-shell/studio-scope.js';
 import {
   getStudioProtectedJsonStorage,
   isStudioStorageNotFoundError,
@@ -63,10 +64,10 @@ function isValidDraftKey(value: unknown): value is string {
   return isAppUlid(value);
 }
 
-function resolveStorage(storage?: CreationDraftStorage | null): CreationDraftStorage | null {
+function resolveStorage(scope: StudioScope, storage?: CreationDraftStorage | null): CreationDraftStorage | null {
   if (storage !== undefined) return storage;
   try {
-    return getStudioProtectedJsonStorage();
+    return getStudioProtectedJsonStorage(scope);
   } catch {
     return null;
   }
@@ -205,7 +206,7 @@ export function createCreationDraftKey(now = Date.now()): string {
   return createAppUlid(now);
 }
 
-export async function loadCreationDraft(
+export async function loadCreationDraft(scope: StudioScope,
   draftKey: string,
   storage?: CreationDraftStorage | null,
 ): Promise<CreationDraftLoadResult> {
@@ -213,7 +214,7 @@ export async function loadCreationDraft(
     return { ok: false, failure: createFlowFailure('draft-key-invalid', { detail: 'Draft key must be a valid ULID.' }) };
   }
   const normalizedDraftKey = draftKey.trim();
-  const targetStorage = resolveStorage(storage);
+  const targetStorage = resolveStorage(scope, storage);
   if (!targetStorage) {
     return { ok: false, failure: createFlowFailure('draft-storage-unavailable', { detail: 'Draft storage is unavailable.' }) };
   }
@@ -225,7 +226,7 @@ export async function loadCreationDraft(
     const candidates = await Promise.all(record.referenceImageCandidates.map(async (candidate) => {
       if (candidate.url || !candidate.artifactId) return candidate;
       try {
-        const url = await readStudioMediaArtifactPreview(candidate.artifactId, 'image/');
+        const url = await readStudioMediaArtifactPreview(scope, candidate.artifactId, 'image/');
         return { ...candidate, url: referenceImageCandidatePreviewUrl(url, candidate.artifactId) };
       } catch { return candidate; }
     }));
@@ -237,7 +238,7 @@ export async function loadCreationDraft(
   }
 }
 
-export async function persistCreationDraft(
+export async function persistCreationDraft(scope: StudioScope,
   draftKey: string,
   draft: CreateRealmPersonaDraftInput,
   storage?: CreationDraftStorage | null,
@@ -281,7 +282,7 @@ export async function persistCreationDraft(
     return persistFailure('reference-selection-invalid', 'Draft reference image is not an owner-selected candidate.');
   }
 
-  const targetStorage = resolveStorage(storage);
+  const targetStorage = resolveStorage(scope, storage);
   if (!targetStorage) {
     return persistFailure('draft-storage-unavailable', 'Draft storage is unavailable.');
   }

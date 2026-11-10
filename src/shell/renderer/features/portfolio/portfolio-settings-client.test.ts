@@ -1,3 +1,4 @@
+import { studioTestScope } from '../../../../test/studio-scope.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const personaCharacter = vi.hoisted(() => ({
@@ -7,7 +8,7 @@ const personaCharacter = vi.hoisted(() => ({
 }));
 
 vi.mock('@renderer/app-shell/studio-platform.js', () => ({
-  getStudioLocalAppClient: () => ({ realm: { personaCharacter } }),
+  getStudioClient: () => ({ realm: { personaCharacter } }),
 }));
 
 import {
@@ -78,13 +79,13 @@ describe('owner PersonaCharacter settings client', () => {
   });
 
   it('reads native settings and canonical visibility through getOwned', async () => {
-    await expect(getPersonaVisibilitySettings('persona-1')).resolves.toMatchObject({ visibility: 'public' });
-    await expect(getOwnerPersonaSettings('persona-1')).resolves.toMatchObject({
+    await expect(getPersonaVisibilitySettings(studioTestScope, 'persona-1')).resolves.toMatchObject({ visibility: 'public' });
+    await expect(getOwnerPersonaSettings(studioTestScope, 'persona-1')).resolves.toMatchObject({
       displayName: 'Mira',
       description: 'Quiet strategist',
       greeting: 'Welcome in.',
     });
-    await expect(getPortfolioPersonaSettings(ownerPersonaDetail())).resolves.toMatchObject({ id: 'persona-1' });
+    await expect(getPortfolioPersonaSettings(studioTestScope, ownerPersonaDetail())).resolves.toMatchObject({ id: 'persona-1' });
     expect(personaCharacter.getOwned).toHaveBeenCalledTimes(3);
   });
 
@@ -111,7 +112,7 @@ describe('owner PersonaCharacter settings client', () => {
   });
 
   it('replaces visibility with toProfileInput and the latest canonical hash', async () => {
-    const result = await updateReviewedPersonaVisibility('persona-1', { visibility: 'unlisted' }, visibility);
+    const result = await updateReviewedPersonaVisibility(studioTestScope, 'persona-1', { visibility: 'unlisted' }, visibility);
 
     expect(personaCharacter.toProfileInput).toHaveBeenCalledWith(persona.profile);
     expect(personaCharacter.replace).toHaveBeenCalledWith({
@@ -135,7 +136,7 @@ describe('owner PersonaCharacter settings client', () => {
       greeting: 'Welcome back.',
     };
 
-    const result = await updateReviewedOwnerPersonaSettings('persona-1', draft, settings);
+    const result = await updateReviewedOwnerPersonaSettings(studioTestScope, 'persona-1', draft, settings);
     const submitted = personaCharacter.replace.mock.calls[0]?.[0];
 
     expect(result.ok).toBe(true);
@@ -156,7 +157,7 @@ describe('owner PersonaCharacter settings client', () => {
       worldId: 'world-eden',
     };
 
-    const result = await updateReviewedOwnerPersonaSettings('persona-1', draft, settings);
+    const result = await updateReviewedOwnerPersonaSettings(studioTestScope, 'persona-1', draft, settings);
     const submitted = personaCharacter.replace.mock.calls[0]?.[0];
 
     expect(result.ok).toBe(true);
@@ -171,7 +172,7 @@ describe('owner PersonaCharacter settings client', () => {
       handle: '',
     };
 
-    const result = await updateReviewedOwnerPersonaSettings('persona-1', draft, settings);
+    const result = await updateReviewedOwnerPersonaSettings(studioTestScope, 'persona-1', draft, settings);
     const submitted = personaCharacter.replace.mock.calls[0]?.[0];
 
     expect(result.ok).toBe(true);
@@ -183,7 +184,7 @@ describe('owner PersonaCharacter settings client', () => {
     personaCharacter.replace.mockRejectedValue(Object.assign(new Error('private Realm body'), {
       reasonCode: 'content-conflict',
     }));
-    const result = await updateReviewedPersonaVisibility('persona-1', { visibility: 'unlisted' }, visibility);
+    const result = await updateReviewedPersonaVisibility(studioTestScope, 'persona-1', { visibility: 'unlisted' }, visibility);
 
     expect(result).toMatchObject({ ok: false, failure: 'content-conflict', message: 'content-conflict' });
     expect(JSON.stringify(result)).not.toContain('private Realm body');
@@ -194,19 +195,19 @@ describe('owner PersonaCharacter settings client', () => {
       throw Object.assign(new Error('private profile detail'), { reasonCode: 'contract-invalid' });
     });
 
-    const result = await updateReviewedPersonaVisibility('persona-1', { visibility: 'unlisted' }, visibility);
+    const result = await updateReviewedPersonaVisibility(studioTestScope, 'persona-1', { visibility: 'unlisted' }, visibility);
 
     expect(result).toMatchObject({ ok: false, failure: 'contract-invalid', message: 'contract-invalid' });
     expect(personaCharacter.replace).not.toHaveBeenCalled();
   });
 
   it('rejects settings and visibility writes when the current detail belongs to another persona', async () => {
-    const mismatchedSettings = await updateReviewedOwnerPersonaSettings(
+    const mismatchedSettings = await updateReviewedOwnerPersonaSettings(studioTestScope,
       'persona-2',
       { ...createOwnerPersonaSettingsDraft(currentSettings()), displayName: 'Mira Prime' },
       currentSettings(),
     );
-    const mismatchedVisibility = await updateReviewedPersonaVisibility(
+    const mismatchedVisibility = await updateReviewedPersonaVisibility(studioTestScope,
       'persona-2',
       { visibility: 'unlisted' },
       visibility,
@@ -233,7 +234,7 @@ describe('owner PersonaCharacter settings client', () => {
       submitted: prompt,
     }));
 
-    const result = await proposeReviewedOwnerPersonaSettings('persona-1', draft, settings, runner);
+    const result = await proposeReviewedOwnerPersonaSettings(studioTestScope, 'persona-1', draft, settings, runner);
 
     expect(result).toMatchObject({
       ok: true,
@@ -250,7 +251,7 @@ it('does not replace a character changed in Realm while its owner was editing', 
   personaCharacter.getOwned.mockResolvedValue({ ...persona, contentHash: '9'.repeat(64) });
   const settings = currentSettings();
   const draft = { ...createOwnerPersonaSettingsDraft(settings), greeting: 'An unsaved greeting.' };
-  const result = await updateReviewedOwnerPersonaSettings(persona.id, draft, settings);
+  const result = await updateReviewedOwnerPersonaSettings(studioTestScope, persona.id, draft, settings);
   expect(result).toMatchObject({ ok: false, failure: 'content-conflict', draft: { greeting: 'An unsaved greeting.' } });
   expect(personaCharacter.replace).not.toHaveBeenCalled();
 });
@@ -260,7 +261,7 @@ it('replaces a reviewed declaration with the latest complete profile, preserving
   personaCharacter.toProfileInput.mockImplementation(profileInput);
   personaCharacter.replace.mockImplementation(async (input) => ({ ...persona, contentHash: '8'.repeat(64), contentRevision: 2, lorebookDeclaration: input.lorebookDeclaration }));
   const settings = currentSettings();
-  const result = await updateReviewedOwnerPersonaSettings(persona.id, { ...createOwnerPersonaSettingsDraft(settings), speakingText: 'Short sentences.\nDry humor.' }, settings);
+  const result = await updateReviewedOwnerPersonaSettings(studioTestScope, persona.id, { ...createOwnerPersonaSettingsDraft(settings), speakingText: 'Short sentences.\nDry humor.' }, settings);
   expect(result.ok).toBe(true);
   expect(personaCharacter.replace).toHaveBeenLastCalledWith(expect.objectContaining({
     baseContentHash: persona.contentHash,

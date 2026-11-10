@@ -1,3 +1,4 @@
+import { useStudioScope } from '@renderer/app-shell/studio-scope.js';
 import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, LoadingSkeleton, NimiText, StatusBadge, Surface, nimiToast } from '@nimiplatform/kit/ui';
@@ -114,12 +115,13 @@ function buildStudioModelConfigCopy(t: StudioCopyTranslator): ModelConfigCopy {
 }
 
 export function StudioAIConfigPage() {
+  const scope = useStudioScope();
   const { locale, t } = useStudioI18n();
   const queryClient = useQueryClient();
-  const aiConfigManager = getStudioAIConfigManager();
+  const aiConfigManager = getStudioAIConfigManager(scope);
   const configQuery = useQuery({
     queryKey: STUDIO_AI_CONFIG_QUERY_KEY,
-    queryFn: () => loadStudioAIConfig(),
+    queryFn: () => loadStudioAIConfig(scope),
     retry: false,
     refetchOnWindowFocus: 'always',
   });

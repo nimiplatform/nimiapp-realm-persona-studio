@@ -1,3 +1,4 @@
+import { type StudioScope } from '@renderer/app-shell/studio-scope.js';
 import {
   runStudioTextCandidate,
   type StudioTextCandidatePrompt,
@@ -110,9 +111,9 @@ function readImagePromptCandidate(raw: string): string {
  *
  * @nimi-authority: rule.realm-persona-studio.create-flow.r011
  */
-export async function optimizePersonaImagePrompt(
+export async function optimizePersonaImagePrompt(scope: StudioScope,
   input: PersonaImagePromptOptimizeInput,
-  runner: StudioTextCandidateRunner = runStudioTextCandidate,
+  runner: StudioTextCandidateRunner = runStudioTextCandidate.bind(null, scope),
 ): Promise<PersonaImagePromptOptimizeResult> {
   const payload = buildImagePromptOptimizePayload(input);
   try {

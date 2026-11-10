@@ -36,7 +36,10 @@
     "nimicoding:doctor": "pnpm exec nimicoding doctor",
     "sync": "nimi-app sync",
     "postinstall": "install-electron",
-    "build:electron:production": "node scripts/clean-electron-production.mjs && pnpm run build && node scripts/package-electron-production.mjs"
+    "build:electron:production": "node scripts/clean-electron-production.mjs && pnpm run build && node scripts/package-electron-production.mjs",
+    "dev:web": "nimi-app dev --platform web",
+    "dev:web-renderer": "vite --config vite.web.config.ts --mode web",
+    "build:web": "pnpm run typecheck:renderer && vite build --config vite.web.config.ts --mode web"
   },
   "devDependencies": {
     "@electron/packager": "^20.3.0",
@@ -49,7 +52,7 @@
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.1.2",
-    "electron": "^44.5.1",
+    "electron": "^45.0.0",
     "esbuild": "^0.28.0",
     "eslint": "^10.4.0",
     "globals": "^17.6.0",

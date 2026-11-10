@@ -1,3 +1,4 @@
+import { studioTestScope, deferred } from '../../../../test/studio-scope.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const personaCharacter = vi.hoisted(() => ({
@@ -7,7 +8,7 @@ const personaCharacter = vi.hoisted(() => ({
 }));
 
 vi.mock('@renderer/app-shell/studio-platform.js', () => ({
-  getStudioLocalAppClient: () => ({ realm: { personaCharacter } }),
+  getStudioClient: () => ({ realm: { personaCharacter } }),
 }));
 import {
   buildRealmSelectAvatarInput,
@@ -42,7 +43,7 @@ describe('owner portfolio media client', () => {
 
   it('selects an HTTPS avatar through a complete PersonaCharacter replace', async () => {
     const detail = ownerPersonaDetail();
-    const result = await selectReviewedPersonaAvatarUrl(detail, 'https://cdn.example.test/avatar.png');
+    const result = await selectReviewedPersonaAvatarUrl(studioTestScope, detail, 'https://cdn.example.test/avatar.png');
 
     expect(result).toMatchObject({ ok: true, publicTruth: true });
     expect(personaCharacter.getOwned).toHaveBeenCalledWith(personaFixture.id);
@@ -53,9 +54,21 @@ describe('owner portfolio media client', () => {
     }));
   });
 
+  it('does not replace a Persona after its connection ended during the owner read', async () => {
+    const read = deferred<typeof personaFixture>();
+    personaCharacter.getOwned.mockReturnValueOnce(read.promise);
+    const controller = new AbortController();
+    const scope = { ...studioTestScope, signal: controller.signal };
+    const pending = selectReviewedPersonaAvatarUrl(scope, ownerPersonaDetail(), 'https://cdn.example.test/avatar.png');
+    expect(personaCharacter.getOwned).toHaveBeenCalledOnce();
+    controller.abort(); read.resolve(personaFixture);
+    expect(await pending).toMatchObject({ ok: false });
+    expect(personaCharacter.replace).not.toHaveBeenCalled();
+  });
+
   it('preserves the reviewed avatar on a changed Persona hash without replacing a stale profile', async () => {
     personaCharacter.getOwned.mockResolvedValueOnce({ ...personaFixture, contentHash: 'changed-hash' });
-    expect(await selectReviewedPersonaAvatarUrl(ownerPersonaDetail(), 'https://cdn.example.test/avatar.png'))
+    expect(await selectReviewedPersonaAvatarUrl(studioTestScope, ownerPersonaDetail(), 'https://cdn.example.test/avatar.png'))
       .toMatchObject({ ok: false, failure: 'content-conflict', publicTruth: false });
     expect(personaCharacter.replace).not.toHaveBeenCalled();
   });
@@ -73,7 +86,7 @@ describe('owner portfolio media client', () => {
   });
 
   it('rejects avatar replacement when detail identity and canonical identity diverge', async () => {
-    const result = await selectReviewedPersonaAvatarUrl(
+    const result = await selectReviewedPersonaAvatarUrl(studioTestScope,
       { ...ownerPersonaDetail(), id: 'persona-2' },
       'https://cdn.example.test/avatar.png',
     );
@@ -87,7 +100,7 @@ describe('owner portfolio media client', () => {
       throw Object.assign(new Error('private profile detail'), { reasonCode: 'contract-invalid' });
     });
 
-    const result = await selectReviewedPersonaAvatarUrl(
+    const result = await selectReviewedPersonaAvatarUrl(studioTestScope,
       ownerPersonaDetail(),
       'https://cdn.example.test/avatar.png',
     );
@@ -138,7 +151,7 @@ describe('owner portfolio media client', () => {
   });
 
   it('runs reviewed visual and voice candidates through the Nimi AI consumption runner', async () => {
-    const visual = await generateReviewedVisualImageCandidate({
+    const visual = await generateReviewedVisualImageCandidate(studioTestScope, {
       resourceType: 'IMAGE',
       bindingPoint: 'PERSONA_CANDIDATE',
       prompt: 'Warm profile portrait.',
@@ -156,7 +169,7 @@ describe('owner portfolio media client', () => {
         sizeBytes: '3',
       }],
     }));
-    const voice = await synthesizeReviewedVoiceDemo({
+    const voice = await synthesizeReviewedVoiceDemo(studioTestScope, {
       scriptText: 'Welcome in.',
       presetVoiceId: 'catalogue-voice',
     }, ownerPersonaDetail(), async (input) => ({
@@ -197,7 +210,7 @@ describe('owner portfolio media client', () => {
   });
 
   it('preserves structured Nimi AI capability failures without candidate success', async () => {
-    const result = await generateReviewedVisualImageCandidate({
+    const result = await generateReviewedVisualImageCandidate(studioTestScope, {
       resourceType: 'IMAGE',
       bindingPoint: 'PERSONA_CANDIDATE',
       prompt: 'Warm profile portrait.',
@@ -217,14 +230,14 @@ describe('owner portfolio media client', () => {
   });
 
   it('validates missing media inputs before the unavailable result', async () => {
-    const visual = await generateReviewedVisualImageCandidate({
+    const visual = await generateReviewedVisualImageCandidate(studioTestScope, {
       resourceType: 'IMAGE',
       bindingPoint: 'PERSONA_CANDIDATE',
       prompt: ' ',
       notes: '',
       aspectRatio: '1:1',
     }, ownerPersonaDetail());
-    const voice = await synthesizeReviewedVoiceDemo({
+    const voice = await synthesizeReviewedVoiceDemo(studioTestScope, {
       scriptText: ' ',
       presetVoiceId: 'catalogue-voice',
     }, ownerPersonaDetail());

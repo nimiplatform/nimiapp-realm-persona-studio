@@ -1,3 +1,4 @@
+import { useStudioScope, type StudioScope } from '@renderer/app-shell/studio-scope.js';
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { nimiToast } from '@nimiplatform/kit/ui';
 import {
@@ -57,17 +58,17 @@ type ExistingReferenceAssetLoadResult = {
   sourceUnavailable: boolean;
 };
 
-async function loadExistingReferenceAssets(
+async function loadExistingReferenceAssets(scope: StudioScope,
   currentDraftKey: string,
   capability: LocalImportCapabilityStatus,
 ): Promise<ExistingReferenceAssetLoadResult> {
   const [imported, creative, history] = await Promise.all([
-    loadLocalImportedAssetRecords(capability),
-    loadAllLocalCreativeAssetHistory(),
-    loadCreationDraftHistory(),
+    loadLocalImportedAssetRecords(scope, capability),
+    loadAllLocalCreativeAssetHistory(scope),
+    loadCreationDraftHistory(scope),
   ]);
   const draftRecords = history.ok
-    ? (await Promise.all(history.entries.map((entry) => loadCreationDraft(entry.draftKey))))
+    ? (await Promise.all(history.entries.map((entry) => loadCreationDraft(scope, entry.draftKey))))
       .flatMap((loaded) => loaded.ok && loaded.record ? [loaded.record] : [])
     : [];
   const unavailableCount = imported.unavailableCount
@@ -122,6 +123,7 @@ export function useReferenceImage({
   t: StudioTranslator;
   actions: ReferenceImageActions;
 }) {
+  const scope = useStudioScope();
   const draftRef = useRef(draft);
   draftRef.current = draft;
   const [referenceImageGenerationTarget, setReferenceImageGenerationTarget] = useState<ReferenceImageGenerationTarget | null>(null);
@@ -133,7 +135,7 @@ export function useReferenceImage({
 
   const refreshReferenceAssets = useCallback(async () => {
     actions.setReferenceAssetsLoading();
-    const result = await loadExistingReferenceAssets(draftKey, localImportCapability);
+    const result = await loadExistingReferenceAssets(scope, draftKey, localImportCapability);
     actions.setReferenceAssets({
       entries: result.entries,
       unavailableCount: result.unavailableCount,
@@ -171,7 +173,7 @@ export function useReferenceImage({
     setReferenceImageFailure(null);
     const prompt = currentDraft.referenceImagePrompt;
     try {
-      const result = await generatePersonaReferenceImage({ prompt, count: 1 });
+      const result = await generatePersonaReferenceImage(scope, { prompt, count: 1 });
       if (!result.ok) {
         logCreateFlowFailure('create-flow.reference-image', result.cause);
         const message = translateCreateFlowFailure(result.cause, t);
@@ -257,7 +259,7 @@ export function useReferenceImage({
     setIsOptimizingImagePrompt(true);
     setReferenceImageFailure(null);
     try {
-      const result = await optimizePersonaImagePrompt({
+      const result = await optimizePersonaImagePrompt(scope, {
         currentPrompt: draft.referenceImagePrompt,
         originalDescription: draft.originalDescription,
         description: draft.description,
@@ -342,7 +344,7 @@ export function useReferenceImage({
     setIsImportingReferenceImage(true);
     actions.setReferenceSourceFailure(null);
     try {
-      const result = await importLocalAssetFile(file, localImportCapability);
+      const result = await importLocalAssetFile(scope, file, localImportCapability);
       if (!result.ok) {
         actions.setReferenceSourceFailure(t(result.failure === 'capability-unavailable'
           ? 'create.reference.uploadUnavailable'

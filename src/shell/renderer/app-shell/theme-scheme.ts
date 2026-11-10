@@ -1,3 +1,4 @@
+import { type StudioScope } from '@renderer/app-shell/studio-scope.js';
 import type { NimiThemeScheme } from '@nimiplatform/kit/ui';
 import { getStudioProtectedJsonStorage } from './studio-storage.js';
 
@@ -10,9 +11,9 @@ export const STUDIO_THEME_SCHEME_STORAGE_PATH = 'shell/theme-scheme.json';
  * failure (missing Desktop bridge, absent key, malformed value) resolves to
  * null so the provider falls back to its light default.
  */
-export async function readStoredThemeScheme(): Promise<NimiThemeScheme | null> {
+export async function readStoredThemeScheme(scope: StudioScope): Promise<NimiThemeScheme | null> {
   try {
-    const document = await getStudioProtectedJsonStorage().readJson(STUDIO_THEME_SCHEME_STORAGE_PATH);
+    const document = await getStudioProtectedJsonStorage(scope).readJson(STUDIO_THEME_SCHEME_STORAGE_PATH);
     if (!document.value || typeof document.value !== 'object' || Array.isArray(document.value)) return null;
     const scheme = (document.value as Record<string, unknown>).scheme;
     return scheme === 'dark' || scheme === 'light' ? scheme : null;
@@ -21,9 +22,9 @@ export async function readStoredThemeScheme(): Promise<NimiThemeScheme | null> {
   }
 }
 
-export async function persistThemeScheme(scheme: NimiThemeScheme): Promise<boolean> {
+export async function persistThemeScheme(scope: StudioScope, scheme: NimiThemeScheme): Promise<boolean> {
   try {
-    await getStudioProtectedJsonStorage().writeJson(STUDIO_THEME_SCHEME_STORAGE_PATH, { scheme });
+    await getStudioProtectedJsonStorage(scope).writeJson(STUDIO_THEME_SCHEME_STORAGE_PATH, { scheme });
     return true;
   } catch {
     return false;

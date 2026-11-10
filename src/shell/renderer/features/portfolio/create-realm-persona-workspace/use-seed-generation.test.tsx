@@ -1,4 +1,5 @@
-import { act, cleanup, renderHook } from '@testing-library/react';
+import { renderStudioHook as renderHook } from '../../../../../test/studio-scope.js';
+import { act, cleanup } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { normalizeCreateRealmPersonaDraft } from '../create-persona-draft.js';
 import type { PersonaSeedGenerationResult } from '../persona-seed-generator.js';

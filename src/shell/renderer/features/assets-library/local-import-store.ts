@@ -1,13 +1,14 @@
-import type { NimiLocalAppClient } from '@nimiplatform/sdk/app';
+import { type StudioScope } from '@renderer/app-shell/studio-scope.js';
+import type { NimiAppRuntimeClient } from '@nimiplatform/sdk/app';
 import { createAppUlid, isAppUlid } from '@renderer/app-shell/app-ulid.js';
-import { getStudioLocalAppClient } from '@renderer/app-shell/studio-platform.js';
-import { isStudioStorageNotFoundError, type StudioProtectedJsonStorage } from '@renderer/app-shell/studio-storage.js';
+import { getStudioClient } from '@renderer/app-shell/studio-platform.js';
+import { getStudioProtectedJsonStorage, isStudioStorageNotFoundError, type StudioProtectedJsonStorage } from '@renderer/app-shell/studio-storage.js';
 import { bytesToDataUrl } from '../portfolio/studio-media-candidate.js';
 import { referenceImageArtifactId } from '../portfolio/reference-image-source.js';
 import type { AssetLibraryMediaKind } from './asset-library-data.js';
 
 // @nimi-authority: rule.realm-persona-studio.asset.r015
-type Artifacts = NimiLocalAppClient['ai']['artifacts'];
+type Artifacts = NimiAppRuntimeClient['ai']['artifacts'];
 type UploadMime = Parameters<Artifacts['upload']>[0]['mimeType'];
 // Keep this set within the installed SDK/Kit contract. Audio admission requires the upstream release.
 export const LOCAL_IMPORT_MIME_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'] as const satisfies readonly UploadMime[];
@@ -47,7 +48,7 @@ const unavailable: LocalImportCapabilityStatus = {
   reason: 'Protected Runtime artifact and local metadata storage operations are unavailable.',
   evidence: LOCAL_IMPORT_CAPABILITY_EVIDENCE,
 };
-let writeQueue: Promise<void> = Promise.resolve();
+const writeQueues = new WeakMap<LocalAssetImportOperation['storage'], Promise<void>>();
 function record(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -59,11 +60,11 @@ export function detectLocalAssetImportCapability(client: unknown): LocalImportCa
   if (!record(client) || !record(client.ai) || !record(client.ai.artifacts) || !record(client.storage)
     || typeof client.ai.artifacts.upload !== 'function' || typeof client.ai.artifacts.read !== 'function'
     || typeof client.storage.readJson !== 'function' || typeof client.storage.writeJson !== 'function') return unavailable;
-  const typed = client as unknown as NimiLocalAppClient;
+  const typed = client as unknown as NimiAppRuntimeClient;
   return { available: true, operations: { artifacts: typed.ai.artifacts, storage: typed.storage }, evidence: LOCAL_IMPORT_CAPABILITY_EVIDENCE };
 }
-export function getLocalAssetImportCapability(): LocalImportCapabilityStatus {
-  try { return detectLocalAssetImportCapability(getStudioLocalAppClient()); } catch { return unavailable; }
+export function getLocalAssetImportCapability(scope: StudioScope): LocalImportCapabilityStatus {
+  try { const client = getStudioClient(scope); return detectLocalAssetImportCapability({ ai: client.ai, storage: getStudioProtectedJsonStorage(scope) }); } catch { return unavailable; }
 }
 export function normalizeLocalImportedAssetRecord(value: unknown): LocalImportedAssetRecord | null {
   if (!record(value) || typeof value.id !== 'string' || !isAppUlid(value.id) || value.sourceKind !== 'imported'
@@ -88,11 +89,11 @@ async function readIndex(storage: LocalAssetImportOperation['storage']): Promise
   return values as LocalImportedAssetRecord[];
 }
 async function editIndex(operations: LocalAssetImportOperation, edit: (values: LocalImportedAssetRecord[]) => LocalImportedAssetRecord[]): Promise<void> {
-  const task = writeQueue.catch(() => undefined).then(async () => {
+  const task = (writeQueues.get(operations.storage) ?? Promise.resolve()).then(async () => {
     const next = edit(await readIndex(operations.storage));
     await operations.storage.writeJson(LOCAL_IMPORT_STORAGE_PATH, next.map(({ previewUrl: _preview, ...metadata }) => metadata));
   });
-  writeQueue = task.then(() => undefined, () => undefined);
+  writeQueues.set(operations.storage, task.then(() => undefined, () => undefined));
   await task;
 }
 function failure(kind: LocalImportFailure, message: string): LocalImportResult {
@@ -105,7 +106,7 @@ async function readPreview(asset: LocalImportedAssetRecord, artifacts: LocalAsse
   }
   return bytesToDataUrl(read.bytes, read.mimeType);
 }
-export async function importLocalAssetFile(file: LocalImportFile, capability = getLocalAssetImportCapability()): Promise<LocalImportResult> {
+export async function importLocalAssetFile(scope: StudioScope, file: LocalImportFile, capability = getLocalAssetImportCapability(scope)): Promise<LocalImportResult> {
   const mimeType = LOCAL_IMPORT_MIME_TYPES.find((mime) => mime === file.type.trim().toLowerCase());
   if (!mimeType || !file.name.trim() || file.name.length > 255 || file.size <= 0) return failure('unsupported-media-type', "Choose a non-empty PNG, JPEG, WebP, or GIF image.");
   if (file.size > LOCAL_IMPORT_MAX_BYTES) return failure('file-too-large', "Imported files must be 8 MiB or less.");
@@ -113,6 +114,7 @@ export async function importLocalAssetFile(file: LocalImportFile, capability = g
   try {
     const bytes = new Uint8Array(await file.arrayBuffer());
     if (bytes.byteLength !== file.size) return failure('local-import-result-invalid', 'The selected file changed while being read.');
+    scope.signal.throwIfAborted();
     const uploaded = await capability.operations.artifacts.upload({ bytes, mimeType });
     const asset = normalizeLocalImportedAssetRecord({
       ...uploaded, id: createLocalAssetId(), sourceKind: 'imported', mediaKind: classifyLocalImportMime(mimeType),
@@ -120,16 +122,18 @@ export async function importLocalAssetFile(file: LocalImportFile, capability = g
     });
     if (!asset || asset.mimeType !== mimeType || asset.sizeBytes !== bytes.byteLength) return failure('local-import-result-invalid', 'Runtime returned invalid artifact metadata.');
     asset.previewUrl = await readPreview(asset, capability.operations.artifacts);
+    scope.signal.throwIfAborted();
     await editIndex(capability.operations, (values) => [...values, asset]);
+    scope.signal.throwIfAborted();
     return { ok: true, source: 'protected-runtime-artifact', record: asset };
   } catch (error) {
     return failure('local-import-failed', error instanceof Error ? error.message : 'Protected artifact import failed.');
   }
 }
-export async function loadLocalImportedAssetRecords(capability = getLocalAssetImportCapability()): Promise<LocalImportedAssetLoadResult> {
+export async function loadLocalImportedAssetRecords(scope: StudioScope, capability = getLocalAssetImportCapability(scope)): Promise<LocalImportedAssetLoadResult> {
   if (!capability.available) return { records: [], unavailableCount: 0, failure: 'local-import-list-failed' };
   try {
-    await writeQueue;
+    await writeQueues.get(capability.operations.storage);
     const values = await readIndex(capability.operations.storage);
     let unavailableCount = 0;
     const records = await Promise.all(values.map(async (asset) => {
@@ -139,7 +143,7 @@ export async function loadLocalImportedAssetRecords(capability = getLocalAssetIm
     return { records, unavailableCount, failure: null };
   } catch { return { records: [], unavailableCount: 0, failure: 'local-import-list-failed' }; }
 }
-export async function removeLocalImportedAsset(id: string, capability = getLocalAssetImportCapability()): Promise<
+export async function removeLocalImportedAsset(scope: StudioScope, id: string, capability = getLocalAssetImportCapability(scope)): Promise<
   { ok: true } | { ok: false; failure: 'capability-unavailable' | 'local-import-remove-failed' }
 > {
   if (!isAppUlid(id)) return { ok: false, failure: 'local-import-remove-failed' };

@@ -1,4 +1,5 @@
-import { act, cleanup, renderHook } from '@testing-library/react';
+import { renderStudioHook as renderHook, studioTestScope } from '../../../../../test/studio-scope.js';
+import { act, cleanup } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { normalizeCreateRealmPersonaDraft } from '../create-persona-draft.js';
 import { createEmptyDraft } from './draft-utils.js';
@@ -22,7 +23,7 @@ const params = {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.useFakeTimers();
-  storage.persist.mockImplementation(async (_key, value) => ({ ok: true, record: { ...value, updatedAt: '2026-09-12T00:00:00.000Z' } }));
+  storage.persist.mockImplementation(async (_scope, _key, value) => ({ ok: true, record: { ...value, updatedAt: '2026-09-12T00:00:00.000Z' } }));
   storage.history.mockResolvedValue({ ok: true });
 });
 afterEach(() => { cleanup(); vi.useRealTimers(); });
@@ -33,7 +34,7 @@ it('flushes the latest writing when the owner leaves before the debounce complet
   hook.rerender({ ...params, draft: latest, normalizedDraft: normalizeCreateRealmPersonaDraft(latest) });
   await act(async () => { hook.unmount(); });
   expect(storage.persist).toHaveBeenCalledTimes(1);
-  expect(storage.persist).toHaveBeenCalledWith(params.draftKey, expect.objectContaining({ greeting: latest.greeting }));
+  expect(storage.persist).toHaveBeenCalledWith(studioTestScope, params.draftKey, expect.objectContaining({ greeting: latest.greeting }));
   expect(storage.history).toHaveBeenCalledTimes(1);
 });
 

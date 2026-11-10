@@ -1,8 +1,9 @@
+import { type StudioScope } from '@renderer/app-shell/studio-scope.js';
 import type { NimiAIConfigSnapshot, NimiPortableAppAIConfig } from '@nimiplatform/sdk/ai';
-import type { NimiLocalAppClient } from '@nimiplatform/sdk/app';
+import type { NimiAppRuntimeClient } from '@nimiplatform/sdk/app';
 import { openDesktopIntent } from '@nimiplatform/kit/shell/renderer/bridge';
 import { REALM_PERSONA_STUDIO_APP_ID } from '../../../app-identity.js';
-import { getStudioLocalAppClient } from '@renderer/app-shell/studio-platform.js';
+import { getStudioClient } from '@renderer/app-shell/studio-platform.js';
 
 /**
  * Studio App AIConfig access on the Nimi App Access contract. The covered
@@ -11,19 +12,19 @@ import { getStudioLocalAppClient } from '@renderer/app-shell/studio-platform.js'
  */
 
 export type StudioAIConfigClient = {
-  readonly aiConfig: Pick<NimiLocalAppClient['aiConfig'], 'get' | 'overwrite' | 'listOptions'>;
+  readonly aiConfig: Pick<NimiAppRuntimeClient['aiConfig'], 'get' | 'overwrite' | 'listOptions'>;
 };
 export type StudioDesktopIntentOpener = typeof openDesktopIntent;
 
-export function getStudioAIConfigManager(
-  client: StudioAIConfigClient = getStudioLocalAppClient(),
+export function getStudioAIConfigManager(scope: StudioScope,
+  client: StudioAIConfigClient = getStudioClient(scope),
 ): StudioAIConfigClient['aiConfig'] {
   return client.aiConfig;
 }
 
 // @nimi-authority: rule.realm-persona-studio.runtime-ai.r011
-export async function loadStudioAIConfig(
-  client: StudioAIConfigClient = getStudioLocalAppClient(),
+export async function loadStudioAIConfig(scope: StudioScope,
+  client: StudioAIConfigClient = getStudioClient(scope),
 ): Promise<NimiAIConfigSnapshot> {
   const snapshot = await client.aiConfig.get();
   if (snapshot.config) requireStudioAIConfigOwner(snapshot.config);

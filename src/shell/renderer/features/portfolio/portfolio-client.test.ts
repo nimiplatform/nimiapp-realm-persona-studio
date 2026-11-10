@@ -1,3 +1,4 @@
+import { studioTestScope } from '../../../../test/studio-scope.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const personaCharacter = vi.hoisted(() => ({
@@ -11,7 +12,7 @@ const personaCharacter = vi.hoisted(() => ({
 const worldCore = vi.hoisted(() => ({ list: vi.fn(), get: vi.fn() }));
 
 vi.mock('@renderer/app-shell/studio-platform.js', () => ({
-  getStudioLocalAppClient: () => ({ realm: { personaCharacter, worldCore } }),
+  getStudioClient: () => ({ realm: { personaCharacter, worldCore } }),
 }));
 
 import {
@@ -37,7 +38,7 @@ describe('owner PersonaCharacter portfolio client', () => {
   });
 
   it('deletes an owner private Persona through the exact App client acknowledgement', async () => {
-    await expect(deleteOwnerPortfolioPersona('persona-1')).resolves.toEqual({
+    await expect(deleteOwnerPortfolioPersona(studioTestScope, 'persona-1')).resolves.toEqual({
       ok: true,
       source: 'Nimi App Access realm.personaCharacter.delete',
       personaCharacterId: 'persona-1',
@@ -50,7 +51,7 @@ describe('owner PersonaCharacter portfolio client', () => {
       reasonCode: 'content-conflict',
     }));
 
-    await expect(deleteOwnerPortfolioPersona('persona-1')).resolves.toEqual({
+    await expect(deleteOwnerPortfolioPersona(studioTestScope, 'persona-1')).resolves.toEqual({
       ok: false,
       source: 'Nimi App Access realm.personaCharacter.delete',
       failure: 'content-conflict',
@@ -62,7 +63,7 @@ describe('owner PersonaCharacter portfolio client', () => {
       .mockResolvedValueOnce({ items: [persona], nextAfterId: persona.id })
       .mockResolvedValueOnce({ items: [{ ...persona, id: 'persona-2' }] });
 
-    const listed = await listOwnerPortfolioPersonas();
+    const listed = await listOwnerPortfolioPersonas(studioTestScope);
 
     expect(listed.map((item) => item.id)).toEqual(['persona-1', 'persona-2']);
     expect(personaCharacter.listOwned).toHaveBeenNthCalledWith(1, { take: 500 });
@@ -70,7 +71,7 @@ describe('owner PersonaCharacter portfolio client', () => {
   });
 
   it('reads owner detail through getOwned and keeps the canonical safe projection', async () => {
-    const detail = await getOwnerPortfolioPersonaDetail('persona-1');
+    const detail = await getOwnerPortfolioPersonaDetail(studioTestScope, 'persona-1');
 
     expect(personaCharacter.getOwned).toHaveBeenCalledWith('persona-1');
     expect(detail).toMatchObject({
@@ -84,14 +85,14 @@ describe('owner PersonaCharacter portfolio client', () => {
 
   it('keeps Persona detail usable with an explicit unavailable world on WorldCore failure', async () => {
     worldCore.get.mockRejectedValueOnce(Object.assign(new Error('World unavailable'), { reasonCode: 'realm-unavailable' }));
-    expect(await getOwnerPortfolioPersonaDetail(persona.id)).toMatchObject({
+    expect(await getOwnerPortfolioPersonaDetail(studioTestScope, persona.id)).toMatchObject({
       id: persona.id, world: { value: '', status: 'source-unavailable', sourceFailure: 'realm-unavailable' },
     });
   });
 
   it('distinguishes an absent WorldCore match from a failed source read', async () => {
     worldCore.get.mockRejectedValueOnce(Object.assign(new Error('World not found'), { reasonCode: 'not-found' }));
-    const detail = await getOwnerPortfolioPersonaDetail(persona.id);
+    const detail = await getOwnerPortfolioPersonaDetail(studioTestScope, persona.id);
     expect(detail.world.status).toBe('source-unavailable');
     expect(detail.world.sourceFailure).toBe('not-found');
   });
@@ -99,7 +100,7 @@ describe('owner PersonaCharacter portfolio client', () => {
   it('uses the complete owner portfolio only as an advisory handle preflight', async () => {
     personaCharacter.listOwned.mockResolvedValue({ items: [persona] });
 
-    const result = await checkCreateRealmPersonaHandleAvailability('MIRA');
+    const result = await checkCreateRealmPersonaHandleAvailability(studioTestScope, 'MIRA');
 
     expect(result).toMatchObject({
       ok: true,
@@ -110,7 +111,7 @@ describe('owner PersonaCharacter portfolio client', () => {
 
   it('builds and submits the exact App create DTO without caller authority fields', async () => {
     const input = buildRealmCreatePersonaInput(createPayload);
-    const result = await createReviewedRealmPersonaWithProfileSettings(createPayload);
+    const result = await createReviewedRealmPersonaWithProfileSettings(studioTestScope, createPayload);
 
     expect(input).toEqual(createPayload.body);
     expect(input).not.toHaveProperty('account');
@@ -135,7 +136,7 @@ describe('owner PersonaCharacter portfolio client', () => {
       reasonCode: 'content-conflict',
     }));
 
-    const result = await createReviewedRealmPersona(createPayload);
+    const result = await createReviewedRealmPersona(studioTestScope, createPayload);
 
     expect(result).toMatchObject({ ok: false, failure: 'content-conflict', message: 'content-conflict' });
     expect(JSON.stringify(result)).not.toContain('private upstream detail');
@@ -146,7 +147,7 @@ describe('owner PersonaCharacter portfolio client', () => {
       .mockResolvedValueOnce({ items: [persona], nextAfterId: 'cursor-1' })
       .mockResolvedValueOnce({ items: [persona], nextAfterId: 'cursor-1' });
 
-    await expect(listOwnerPortfolioPersonas()).rejects.toMatchObject({ reasonCode: 'contract-invalid' });
+    await expect(listOwnerPortfolioPersonas(studioTestScope)).rejects.toMatchObject({ reasonCode: 'contract-invalid' });
   });
 
   it('fails the complete portfolio on a duplicate persona across pages', async () => {
@@ -154,6 +155,6 @@ describe('owner PersonaCharacter portfolio client', () => {
       .mockResolvedValueOnce({ items: [persona], nextAfterId: 'cursor-1' })
       .mockResolvedValueOnce({ items: [persona] });
 
-    await expect(listOwnerPortfolioPersonas()).rejects.toMatchObject({ reasonCode: 'contract-invalid' });
+    await expect(listOwnerPortfolioPersonas(studioTestScope)).rejects.toMatchObject({ reasonCode: 'contract-invalid' });
   });
 });

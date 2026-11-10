@@ -1,4 +1,5 @@
-import { getStudioLocalAppClient } from '@renderer/app-shell/studio-platform.js';
+import { type StudioScope } from '@renderer/app-shell/studio-scope.js';
+import { getStudioClient } from '@renderer/app-shell/studio-platform.js';
 
 /**
  * Studio text candidate runner on the Nimi App Access contract. Studio submits
@@ -61,10 +62,10 @@ export function isStudioTextRouteUnboundError(error: unknown): boolean {
   return STUDIO_TEXT_ROUTE_UNBOUND_REASON_CODES.includes(value.trim().toUpperCase().replaceAll('-', '_'));
 }
 
-export async function runStudioTextCandidate(
+export async function runStudioTextCandidate(scope: StudioScope,
   prompt: StudioTextCandidatePrompt,
 ): Promise<StudioTextCandidateOutput> {
-  const output = await getStudioLocalAppClient().ai.text.generateCandidate({
+  const output = await getStudioClient(scope).ai.text.generateCandidate({
     messages: [
       { role: 'system', text: prompt.systemText },
       { role: 'user', text: prompt.userText },
@@ -73,6 +74,7 @@ export async function runStudioTextCandidate(
     ...(prompt.params.topP !== undefined ? { topP: prompt.params.topP } : {}),
     ...(prompt.params.maxTokens !== undefined ? { maxTokens: prompt.params.maxTokens } : {}),
   });
+  scope.signal.throwIfAborted();
   return {
     text: output.text,
     finishReason: output.finishReason,
@@ -91,10 +93,10 @@ export class StudioTextCandidateValidationError extends Error {
 // @nimi-authority: rule.realm-persona-studio.runtime-ai.r007
 // A malformed candidate can be regenerated once by AI. Both answers pass the
 // same validator; Studio never repairs fields locally or retries Realm writes.
-export async function runValidatedStudioTextCandidate<T>(
+export async function runValidatedStudioTextCandidate<T>(scope: StudioScope,
   prompt: StudioTextCandidatePrompt,
   validate: (text: string) => T,
-  runner: StudioTextCandidateRunner = runStudioTextCandidate,
+  runner: StudioTextCandidateRunner = runStudioTextCandidate.bind(null, scope),
 ): Promise<{ output: StudioTextCandidateOutput; value: T }> {
   let submitted = prompt;
   for (let attempt = 0; attempt < 2; attempt += 1) {

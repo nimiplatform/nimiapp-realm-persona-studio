@@ -1,6 +1,7 @@
+import { renderStudio as render } from '../../../../../test/studio-scope.js';
 import { useEffect } from 'react';
 import { afterEach, beforeAll, expect, it } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { ensureStudioI18nInitialized } from '../../../i18n/studio-i18n.js';
 import { REALM_PERSONA_HANDLE_CHECK_SOURCE, validateCreateRealmPersonaReadiness, type CreateRealmPersonaDraftInput } from '../create-persona-draft.js';
 import { BehaviorFields } from './behavior-fields.js';

@@ -1,3 +1,4 @@
+import { type StudioScope } from '@renderer/app-shell/studio-scope.js';
 import { createAppUlid, isAppUlid } from '../../app-shell/app-ulid.js';
 import { getStudioProtectedJsonStorage, isStudioStorageNotFoundError, type StudioProtectedJsonStorage } from '../../app-shell/studio-storage.js';
 import type { StudioCopyKey } from '../../i18n/studio-copy.js';
@@ -79,15 +80,15 @@ export const CREATIVE_ASSET_HISTORY_UPDATED_EVENT = 'rps:creative-asset-history-
 const HISTORY_LIMIT_PER_PERSONA = 20;
 const ISO_DATE_TIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/;
 
-let historyWriteQueue: Promise<void> = Promise.resolve();
+const historyWriteQueues = new WeakMap<StudioScope, Promise<void>>();
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function resolveStorage(storage?: CreativeAssetHistoryStorage | null): CreativeAssetHistoryStorage | null {
+function resolveStorage(scope: StudioScope, storage?: CreativeAssetHistoryStorage | null): CreativeAssetHistoryStorage | null {
   if (storage !== undefined) return storage;
-  try { return getStudioProtectedJsonStorage(); } catch { return null; }
+  try { return getStudioProtectedJsonStorage(scope); } catch { return null; }
 }
 
 function nonEmptyText(value: unknown): string | null {
@@ -180,10 +181,10 @@ function normalizeRecord(value: unknown): CreativeAssetHistoryRecord | null {
 }
 
 // @nimi-authority: rule.realm-persona-studio.asset.r009
-async function readStoredCreativeAssetHistory(
+async function readStoredCreativeAssetHistory(scope: StudioScope,
   storage?: CreativeAssetHistoryStorage | null,
 ): Promise<CreativeAssetHistoryLoadResult> {
-  const targetStorage = resolveStorage(storage);
+  const targetStorage = resolveStorage(scope, storage);
   if (!targetStorage) {
     return {
       ok: false,
@@ -225,13 +226,13 @@ async function readStoredCreativeAssetHistory(
   }
 }
 
-async function resolveHistoryPreviews(loaded: CreativeAssetHistoryLoadResult): Promise<CreativeAssetHistoryLoadResult> {
+async function resolveHistoryPreviews(scope: StudioScope, loaded: CreativeAssetHistoryLoadResult): Promise<CreativeAssetHistoryLoadResult> {
   if (!loaded.ok) return loaded;
   let unavailableCount = loaded.unavailableCount;
   const records = await Promise.all(loaded.records.map(async (record) => {
     if (record.previewUrl || !record.artifactIds?.[0]) return record;
     try {
-      const previewUrl = await readStudioMediaArtifactPreview(record.artifactIds[0], record.kind === 'voice-demo-candidate' ? 'audio/' : 'image/');
+      const previewUrl = await readStudioMediaArtifactPreview(scope, record.artifactIds[0], record.kind === 'voice-demo-candidate' ? 'audio/' : 'image/');
       if (previewUrl) return { ...record, previewUrl };
     } catch { /* The canonical artifact may no longer be available. Keep its metadata. */ }
     unavailableCount += 1;
@@ -240,13 +241,13 @@ async function resolveHistoryPreviews(loaded: CreativeAssetHistoryLoadResult): P
   return { ok: true, records, unavailableCount };
 }
 
-export async function loadAllLocalCreativeAssetHistory(
+export async function loadAllLocalCreativeAssetHistory(scope: StudioScope,
   storage?: CreativeAssetHistoryStorage | null,
 ): Promise<CreativeAssetHistoryLoadResult> {
-  return resolveHistoryPreviews(await readStoredCreativeAssetHistory(storage));
+  return resolveHistoryPreviews(scope, await readStoredCreativeAssetHistory(scope, storage));
 }
 
-export async function loadLocalCreativeAssetHistory(
+export async function loadLocalCreativeAssetHistory(scope: StudioScope,
   personaId: string,
   storage?: CreativeAssetHistoryStorage | null,
 ): Promise<CreativeAssetHistoryLoadResult> {
@@ -260,9 +261,9 @@ export async function loadLocalCreativeAssetHistory(
       unavailableCount: 0,
     };
   }
-  const loaded = await readStoredCreativeAssetHistory(storage);
+  const loaded = await readStoredCreativeAssetHistory(scope, storage);
   if (!loaded.ok) return loaded;
-  return resolveHistoryPreviews({ ...loaded, records: loaded.records.filter((record) => record.personaId === normalizedPersonaId).slice(0, HISTORY_LIMIT_PER_PERSONA) });
+  return resolveHistoryPreviews(scope, { ...loaded, records: loaded.records.filter((record) => record.personaId === normalizedPersonaId).slice(0, HISTORY_LIMIT_PER_PERSONA) });
 }
 
 function dispatchCreativeAssetHistoryUpdated(): void {
@@ -270,12 +271,12 @@ function dispatchCreativeAssetHistoryUpdated(): void {
   window.dispatchEvent(new CustomEvent(CREATIVE_ASSET_HISTORY_UPDATED_EVENT));
 }
 
-async function appendCreativeAssetHistoryOnce(
+async function appendCreativeAssetHistoryOnce(scope: StudioScope,
   personaId: string,
   input: CreativeAssetHistoryInput,
   storage?: CreativeAssetHistoryStorage | null,
 ): Promise<CreativeAssetHistoryPersistResult> {
-  const targetStorage = resolveStorage(storage);
+  const targetStorage = resolveStorage(scope, storage);
   const normalizedPersonaId = nonEmptyText(personaId);
   if (!targetStorage || !normalizedPersonaId) {
     return {
@@ -286,7 +287,7 @@ async function appendCreativeAssetHistoryOnce(
       record: null,
     };
   }
-  const loaded = await readStoredCreativeAssetHistory(targetStorage);
+  const loaded = await readStoredCreativeAssetHistory(scope, targetStorage);
   if (!loaded.ok) return { ...loaded, record: null };
   const personaRecords = loaded.records.filter((record) => record.personaId === normalizedPersonaId);
   if (loaded.unavailableCount > 0) return {
@@ -349,12 +350,12 @@ async function appendCreativeAssetHistoryOnce(
   }
 }
 
-export function appendLocalCreativeAssetHistory(
+export function appendLocalCreativeAssetHistory(scope: StudioScope,
   personaId: string,
   input: CreativeAssetHistoryInput,
   storage?: CreativeAssetHistoryStorage | null,
 ): Promise<CreativeAssetHistoryPersistResult> {
-  const operation = historyWriteQueue.then(() => appendCreativeAssetHistoryOnce(personaId, input, storage));
-  historyWriteQueue = operation.then(() => undefined, () => undefined);
+  const operation = (historyWriteQueues.get(scope) ?? Promise.resolve()).then(() => appendCreativeAssetHistoryOnce(scope, personaId, input, storage));
+  historyWriteQueues.set(scope, operation.then(() => undefined, () => undefined));
   return operation;
 }

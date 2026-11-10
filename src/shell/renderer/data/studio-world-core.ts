@@ -1,6 +1,7 @@
-import type { NimiLocalAppClient } from '@nimiplatform/sdk/app';
+import { type StudioScope } from '@renderer/app-shell/studio-scope.js';
+import type { NimiAppRuntimeClient } from '@nimiplatform/sdk/app';
 import type { RealmModel } from '@nimiplatform/sdk/realm/generated';
-import { getStudioLocalAppClient } from '@renderer/app-shell/studio-platform.js';
+import { getStudioClient } from '@renderer/app-shell/studio-platform.js';
 
 /**
  * Studio world reads on the Nimi App Access list and exact-get contracts;
@@ -9,7 +10,7 @@ import { getStudioLocalAppClient } from '@renderer/app-shell/studio-platform.js'
  */
 
 export type StudioWorldCoreDto = RealmModel<'WorldCoreDto'>;
-export type StudioWorldCoreClient = Pick<NimiLocalAppClient, 'realm'>;
+export type StudioWorldCoreClient = Pick<NimiAppRuntimeClient, 'realm'>;
 
 export type StudioWorldCardPresentation = {
   worldId: string;
@@ -52,16 +53,16 @@ export function studioWorldCardPresentation(world: StudioWorldCoreDto): StudioWo
   };
 }
 
-export async function listStudioWorldCores(
+export async function listStudioWorldCores(scope: StudioScope,
   input?: { take?: number },
-  client: StudioWorldCoreClient = getStudioLocalAppClient(),
+  client: StudioWorldCoreClient = getStudioClient(scope),
 ): Promise<readonly StudioWorldCoreDto[]> {
   return client.realm.worldCore.list({ take: input?.take ?? 100 });
 }
 
-export async function getStudioWorldCoreById(
+export async function getStudioWorldCoreById(scope: StudioScope,
   worldId: string,
-  client: StudioWorldCoreClient = getStudioLocalAppClient(),
+  client: StudioWorldCoreClient = getStudioClient(scope),
 ): Promise<StudioWorldCoreDto | null> {
   const normalized = worldId.trim();
   if (!normalized) {
@@ -70,9 +71,9 @@ export async function getStudioWorldCoreById(
   return client.realm.worldCore.get(normalized);
 }
 
-export async function getStudioWorldCores(
+export async function getStudioWorldCores(scope: StudioScope,
   worldIds: readonly string[],
-  client: StudioWorldCoreClient = getStudioLocalAppClient(),
+  client: StudioWorldCoreClient = getStudioClient(scope),
 ): Promise<readonly StudioWorldCoreDto[]> {
   const worlds: StudioWorldCoreDto[] = [];
   for (const id of new Set(worldIds)) worlds.push(await client.realm.worldCore.get(id));
