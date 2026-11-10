@@ -31,6 +31,15 @@ it('does not retry a failed transport', async () => {
   await expect(runValidatedStudioTextCandidate(studioTestScope, prompt, validate, runner)).rejects.toThrow('route unavailable');
   expect(runner).toHaveBeenCalledTimes(1);
 });
+it.each([['length', 'runtime-output-truncated'], ['content-filter', 'runtime-output-filtered']] as const)(
+  'rejects %s even when the JSON is valid and skips format correction', async (finishReason, kind) => {
+    const runner = vi.fn<StudioTextCandidateRunner>(async submitted => ({
+      text: '{"name":"闻灯","rationale":"A guarded bookseller."}', submitted, finishReason, traceId: 'terminal',
+    }));
+    await expect(runValidatedStudioTextCandidate(studioTestScope, prompt, validate, runner)).rejects.toMatchObject({ failure: { kind } });
+    expect(runner).toHaveBeenCalledOnce();
+  },
+);
 it('sends no guessed generation controls for an unset candidate request', async () => {
   generateMock.mockResolvedValue({ text: 'Complete candidate', finishReason: 'stop', traceId: 'trace-1' });
   await runStudioTextCandidate(studioTestScope, { ...prompt, params: {} });

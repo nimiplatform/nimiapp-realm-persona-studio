@@ -1,5 +1,6 @@
 import { type StudioScope } from '@renderer/app-shell/studio-scope.js';
 import { getStudioClient } from '@renderer/app-shell/studio-platform.js';
+import { CreateFlowFailureError } from './create-flow-failure.js';
 
 /**
  * Studio text candidate runner on the Nimi App Access contract. Studio submits
@@ -91,6 +92,14 @@ export class StudioTextCandidateValidationError extends Error {
 }
 
 // @nimi-authority: rule.realm-persona-studio.runtime-ai.r007
+export function requireCompleteStudioTextCandidate(output: StudioTextCandidateOutput): void {
+  if (output.finishReason === 'stop') return;
+  throw new CreateFlowFailureError({
+    kind: output.finishReason === 'length' ? 'runtime-output-truncated' : 'runtime-output-filtered',
+  });
+}
+
+// @nimi-authority: rule.realm-persona-studio.runtime-ai.r007
 // A malformed candidate can be regenerated once by AI. Both answers pass the
 // same validator; Studio never repairs fields locally or retries Realm writes.
 export async function runValidatedStudioTextCandidate<T>(scope: StudioScope,
@@ -101,6 +110,7 @@ export async function runValidatedStudioTextCandidate<T>(scope: StudioScope,
   let submitted = prompt;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const output = await runner(submitted);
+    requireCompleteStudioTextCandidate(output);
     try {
       return { output, value: validate(output.text) };
     } catch (error) {

@@ -1,5 +1,6 @@
 import { type StudioScope } from '@renderer/app-shell/studio-scope.js';
 import {
+  requireCompleteStudioTextCandidate,
   runStudioTextCandidate,
   type StudioTextCandidatePrompt,
   type StudioTextCandidateRunner,
@@ -119,6 +120,7 @@ export async function optimizePersonaImagePrompt(scope: StudioScope,
   try {
     const output = await runner(payload);
     try {
+      requireCompleteStudioTextCandidate(output);
       const prompt = readImagePromptCandidate(output.text);
       return {
         ok: true,

@@ -72,7 +72,7 @@ units:
     kind: rule
     title: Explicit Runtime failures
     modality: must
-    statement: Runtime route-unbound, transport-unavailable, malformed-output, and invalid-payload states are explicit failures.
+    statement: Runtime route-unbound, transport-unavailable, malformed-output, invalid-payload, truncated text and content-filtered text states are explicit failures. An incomplete text result preserves the current input and never starts a format-correction retry.
     condition: Whenever a listed Runtime state occurs.
     failure: Render the corresponding explicit failure and return no Runtime candidate success.
     relations:

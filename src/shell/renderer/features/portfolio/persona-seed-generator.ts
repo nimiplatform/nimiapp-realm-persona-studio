@@ -291,7 +291,7 @@ export async function generatePersonaSeedFromDescription(scope: StudioScope,
       ok: false,
       source: PERSONA_SEED_SOURCE,
       failure: 'persona-seed-generate-failed',
-      cause: createFlowFailureFromUnknown(
+      cause: isCreateFlowFailureError(error) ? error.failure : createFlowFailureFromUnknown(
         isStudioTextRouteUnboundError(error) ? 'runtime-route-unbound' : 'seed-generate-failed',
         error,
       ),

@@ -71,6 +71,8 @@ export type CreateFlowFailureKind =
   | 'runtime-route-unbound'
   | 'runtime-transport-unavailable'
   | 'runtime-output-malformed'
+  | 'runtime-output-truncated'
+  | 'runtime-output-filtered'
   | 'runtime-call-failed'
   // Persona Creation Graph create review (persona-creation-graph).
   | 'graph-missing'
@@ -177,6 +179,8 @@ const CREATE_FLOW_FAILURE_COPY_KEYS: Record<CreateFlowFailureKind, StudioCopyKey
   'runtime-route-unbound': 'create.error.aiRouteUnbound',
   'runtime-transport-unavailable': 'create.error.referenceTransportUnavailable',
   'runtime-output-malformed': 'create.error.referenceNoArtifact',
+  'runtime-output-truncated': 'create.error.textOutputTruncated',
+  'runtime-output-filtered': 'create.error.textOutputFiltered',
   'runtime-call-failed': 'create.error.referenceGenerateFailed',
   'graph-missing': 'create.graph.error.graphMissing',
   'graph-section-missing': 'create.graph.error.sectionMissing',

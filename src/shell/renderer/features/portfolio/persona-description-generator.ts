@@ -1,6 +1,7 @@
 import { type StudioScope } from '@renderer/app-shell/studio-scope.js';
 import {
   isStudioTextRouteUnboundError,
+  requireCompleteStudioTextCandidate,
   runStudioTextCandidate,
   type StudioTextCandidatePrompt,
   type StudioTextCandidateRunner,
@@ -113,6 +114,7 @@ export async function generatePersonaDescriptionCandidate(scope: StudioScope,
   try {
     const output = await runner(payload);
     try {
+      requireCompleteStudioTextCandidate(output);
       const description = readDescriptionCandidate(output.text);
       return {
         ok: true,

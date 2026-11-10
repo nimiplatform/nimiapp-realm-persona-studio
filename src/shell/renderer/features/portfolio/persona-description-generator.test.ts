@@ -13,6 +13,12 @@ function fakeTextCandidateRunner(text: string): StudioTextCandidateRunner {
 }
 
 describe('persona description reroll through the injected text candidate runner', () => {
+  it('does not offer filtered text as a replacement for the existing description', async () => {
+    const result = await generatePersonaDescriptionCandidate(studioTestScope, { locale: 'en', previousDescription: 'Existing.' },
+      async submitted => ({ text: 'A coherent partial description.', submitted, finishReason: 'content-filter', traceId: 'filtered' }));
+    expect(result).toMatchObject({ ok: false, cause: { kind: 'runtime-output-filtered' } });
+    expect(result).not.toHaveProperty('description');
+  });
   it('runs zero-input reroll bound to the active locale', async () => {
     const runner = vi.fn(fakeTextCandidateRunner('  一个经营深夜茶馆的退休侠客，话不多，但记得每位熟客的口味。  '));
 

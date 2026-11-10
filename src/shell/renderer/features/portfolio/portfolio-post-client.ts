@@ -1,5 +1,6 @@
 import { type StudioScope } from '@renderer/app-shell/studio-scope.js';
 import {
+  requireCompleteStudioTextCandidate,
   runStudioTextCandidate,
   type StudioTextCandidatePrompt,
   type StudioTextCandidateRunner,
@@ -241,6 +242,7 @@ export async function proposeReviewedPostCopy(scope: StudioScope,
   try {
     const output = await runner(built.payload);
     try {
+      requireCompleteStudioTextCandidate(output);
       const proposal = normalizeRuntimePostCopyProposal(output.text, draft);
       return {
         ok: true,

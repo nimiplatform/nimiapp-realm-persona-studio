@@ -1,4 +1,5 @@
 import { type StudioScope } from '@renderer/app-shell/studio-scope.js';
+import { isCreateFlowFailureError } from './create-flow-failure.js';
 import type { OwnerPortfolioPersonaDetail } from './portfolio-data.js';
 import {
   buildRuntimePostCopyPrompt,
@@ -50,7 +51,7 @@ export async function requestPostCopyPolish(scope: StudioScope,
     );
     return { ok: true, proposal };
   } catch (error) {
-    if (error instanceof StudioTextCandidateValidationError) {
+    if (error instanceof StudioTextCandidateValidationError || isCreateFlowFailureError(error)) {
       return { ok: false, failure: 'post-copy-polish-invalid-output' };
     }
     return {
