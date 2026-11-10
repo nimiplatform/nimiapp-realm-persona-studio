@@ -1,3 +1,4 @@
+import { personaStorageKey } from '../../app-shell/persona-storage-key.js';
 import { type StudioScope } from '@renderer/app-shell/studio-scope.js';
 import type { LocalPostScheduleCandidate } from './post-draft.js';
 import {
@@ -24,9 +25,9 @@ type LocalScheduleStorage = StudioProtectedJsonStorage;
 
 const SCHEDULE_PREFIX = 'posts/schedules/';
 
-function scheduleKey(personaId: string): string {
+async function scheduleKey(personaId: string): Promise<string> {
   if (!personaId.trim()) throw new Error('Persona id is required for local schedule storage.');
-  return `${SCHEDULE_PREFIX}${encodeURIComponent(personaId)}.json`;
+  return `${SCHEDULE_PREFIX}${await personaStorageKey(personaId)}.json`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -125,7 +126,7 @@ function normalizeRecord(value: unknown, personaId: string): LocalPostScheduleRe
 export async function loadLocalPostSchedule(scope: StudioScope, personaId: string, storage?: LocalScheduleStorage | null): Promise<LocalPostScheduleRecord | null> {
   try {
     const targetStorage = resolveStorage(scope, storage);
-    const document = await targetStorage.readJson(scheduleKey(personaId));
+    const document = await targetStorage.readJson(await scheduleKey(personaId));
     const record = normalizeRecord(document.value, personaId);
     if (!record) throw new Error('Stored local post schedule is invalid.');
     return record;
@@ -163,7 +164,7 @@ export async function saveLocalPostSchedule(scope: StudioScope,
   };
   const targetStorage = resolveStorage(scope, storage);
   try {
-    await targetStorage.writeJson(scheduleKey(personaId), record);
+    await targetStorage.writeJson(await scheduleKey(personaId), record);
   } catch {
     throw new Error('Local post schedule could not be persisted.');
   }
@@ -172,7 +173,7 @@ export async function saveLocalPostSchedule(scope: StudioScope,
 
 export async function clearLocalPostSchedule(scope: StudioScope, personaId: string, storage?: LocalScheduleStorage | null): Promise<void> {
   const targetStorage = resolveStorage(scope, storage);
-  await targetStorage.removeJson(scheduleKey(personaId));
+  await targetStorage.removeJson(await scheduleKey(personaId));
 }
 
 export function isLocalPostScheduleDue(record: LocalPostScheduleRecord, now = new Date()): boolean {

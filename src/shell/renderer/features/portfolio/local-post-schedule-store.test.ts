@@ -8,6 +8,8 @@ import {
 } from './local-post-schedule-store.js';
 import type { LocalPostScheduleCandidate } from './post-draft.js';
 import type { StudioProtectedJsonStorage } from '../../app-shell/studio-storage.js';
+import { personaStorageKey } from '../../app-shell/persona-storage-key.js';
+import { createNimiAppRuntimeStorageClient } from '@nimiplatform/sdk/app';
 
 type ScheduleJson = Awaited<ReturnType<StudioProtectedJsonStorage['readJson']>>['value'];
 
@@ -64,6 +66,19 @@ const candidate: LocalPostScheduleCandidate = {
 };
 
 describe('local post schedule store', () => {
+  it('roundtrips Realm identifiers through the actual SDK JSON path contract', async () => {
+    const owner = createStorage();
+    const storage = createNimiAppRuntimeStorageClient(owner);
+    for (const id of ['thousand-winds-market:wren', 'world/persona', '角色'.repeat(100)]) {
+      const next = structuredClone(candidate);
+      next.postCandidate.personaRef.sourceRef.id = id;
+      const record = await saveLocalPostSchedule(studioTestScope, id, next, storage);
+      expect(await loadLocalPostSchedule(studioTestScope, id, storage)).toEqual(record);
+      await clearLocalPostSchedule(studioTestScope, id, storage);
+      expect(await loadLocalPostSchedule(studioTestScope, id, storage)).toBeNull();
+    }
+    expect(new Set(owner.writeJson.mock.calls.map(([key]) => key)).size).toBe(3);
+  });
   it('persists one app-local executable schedule per persona', async () => {
     const storage = createStorage();
     const record = await saveLocalPostSchedule(studioTestScope, 'persona-1', candidate, storage, new Date('2026-05-21T00:00:00'));
@@ -110,7 +125,7 @@ describe('local post schedule store', () => {
       candidate: oldCandidate,
     };
 
-    await storage.writeJson('posts/schedules/persona-1.json', oldRecord as ScheduleJson);
+    await storage.writeJson(`posts/schedules/${await personaStorageKey('persona-1')}.json`, oldRecord as ScheduleJson);
 
     await expect(loadLocalPostSchedule(studioTestScope, 'persona-1', storage)).rejects.toThrow('Stored local post schedule is invalid');
     await expect(saveLocalPostSchedule(studioTestScope,

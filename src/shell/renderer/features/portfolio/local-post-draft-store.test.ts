@@ -1,6 +1,7 @@
 import { studioTestScope } from '../../../../test/studio-scope.js';
 import { describe, expect, it, vi } from 'vitest';
 import { isAppUlid } from '@renderer/app-shell/app-ulid.js';
+import { createNimiAppRuntimeStorageClient } from '@nimiplatform/sdk/app';
 import {
   deleteLocalPostDraft,
   getLocalPostDraftStoragePath,
@@ -64,7 +65,7 @@ describe('local persona post draft store', () => {
   });
 
   it('persists a local candidate with a stable ULID through protected JSON storage', async () => {
-    const storage = createStorage();
+    const storage = createNimiAppRuntimeStorageClient(createStorage());
     const result = await saveLocalPostDraft(studioTestScope, {
       personaId: 'persona/one',
       caption: '  A source-backed local draft.  ',
@@ -89,7 +90,7 @@ describe('local persona post draft store', () => {
       candidateOnly: true,
       publicTruth: false,
     });
-    expect(getLocalPostDraftStoragePath('persona/one')).toBe('posts/drafts/persona%2Fone.json');
+    expect(await getLocalPostDraftStoragePath('persona/one')).toMatch(/^posts\/drafts\/[a-f0-9]{64}\.json$/);
     expect(await loadLocalPostDrafts(studioTestScope, 'persona/one', storage)).toEqual({ ok: true, records: [result.record] });
   });
 
@@ -141,11 +142,11 @@ describe('local persona post draft store', () => {
       ok: true,
       records: [first.record],
     });
-    expect(storage.values.has(getLocalPostDraftStoragePath('persona-1'))).toBe(true);
+    expect(storage.values.has(await getLocalPostDraftStoragePath('persona-1'))).toBe(true);
 
     expect(await deleteLocalPostDraft(studioTestScope, 'persona-1', first.record.id, storage)).toEqual({ ok: true, records: [] });
-    expect(storage.removeJson).toHaveBeenCalledWith(getLocalPostDraftStoragePath('persona-1'));
-    expect(storage.values.has(getLocalPostDraftStoragePath('persona-1'))).toBe(false);
+    expect(storage.removeJson).toHaveBeenCalledWith(await getLocalPostDraftStoragePath('persona-1'));
+    expect(storage.values.has(await getLocalPostDraftStoragePath('persona-1'))).toBe(false);
     expect(await loadLocalPostDrafts(studioTestScope, 'persona-1', storage)).toEqual({ ok: true, records: [] });
   });
 
@@ -188,7 +189,7 @@ describe('local persona post draft store', () => {
       failure: 'local-post-draft-not-persistable',
     });
 
-    storage.values.set(getLocalPostDraftStoragePath('persona-1'), [{
+    storage.values.set(await getLocalPostDraftStoragePath('persona-1'), [{
       id: result.record.id,
       personaId: 'persona-1',
       caption: 'Stored with an invalid attachment.',
@@ -237,7 +238,7 @@ describe('local persona post draft store', () => {
       failure: 'local-post-draft-delete-failed',
     });
 
-    const path = getLocalPostDraftStoragePath('persona-1');
+    const path = await getLocalPostDraftStoragePath('persona-1');
     // Legacy single-record document shape is not a draft list.
     storage.values.set(path, {
       personaId: 'persona-1',
@@ -298,7 +299,7 @@ describe('local persona post draft store', () => {
 
   it('rejects incomplete stored drafts without adding compatibility defaults', async () => {
     const storage = createStorage();
-    storage.values.set(getLocalPostDraftStoragePath('persona-1'), [{
+    storage.values.set(await getLocalPostDraftStoragePath('persona-1'), [{
       id: '01ARZ3NDEKTSV4RRFFQ69G5FAV',
       personaId: 'persona-1',
       caption: 'Stored before visibility and category existed.',
@@ -313,7 +314,7 @@ describe('local persona post draft store', () => {
       failure: 'local-post-draft-load-failed',
     });
 
-    storage.values.set(getLocalPostDraftStoragePath('persona-1'), [{
+    storage.values.set(await getLocalPostDraftStoragePath('persona-1'), [{
       id: '01ARZ3NDEKTSV4RRFFQ69G5FAV',
       personaId: 'persona-1',
       caption: 'Stored with an unsupported visibility.',

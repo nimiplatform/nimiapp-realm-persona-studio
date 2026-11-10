@@ -1,3 +1,4 @@
+import { personaStorageKey } from '../../app-shell/persona-storage-key.js';
 import { type StudioScope } from '@renderer/app-shell/studio-scope.js';
 import {
   getStudioProtectedJsonStorage,
@@ -198,8 +199,8 @@ function normalizeStoredDraftList(value: unknown, personaId: string): LocalPostD
   return records;
 }
 
-export function getLocalPostDraftStoragePath(personaId: string): string {
-  return `${LOCAL_POST_DRAFT_STORAGE_PATH_PREFIX}${encodeURIComponent(personaId.trim())}.json`;
+export async function getLocalPostDraftStoragePath(personaId: string): Promise<string> {
+  return `${LOCAL_POST_DRAFT_STORAGE_PATH_PREFIX}${await personaStorageKey(personaId)}.json`;
 }
 
 export async function loadLocalPostDrafts(scope: StudioScope,
@@ -216,7 +217,7 @@ export async function loadLocalPostDrafts(scope: StudioScope,
   }
 
   try {
-    const document = await targetStorage.readJson(getLocalPostDraftStoragePath(normalizedPersonaId));
+    const document = await targetStorage.readJson(await getLocalPostDraftStoragePath(normalizedPersonaId));
     const records = normalizeStoredDraftList(document.value, normalizedPersonaId);
     return records
       ? { ok: true, records }
@@ -313,7 +314,7 @@ export async function saveLocalPostDraft(scope: StudioScope,
     const next = [record, ...loaded.records.filter((candidate) => candidate.id !== record.id)];
 
     try {
-      await targetStorage.writeJson(getLocalPostDraftStoragePath(personaId), next);
+      await targetStorage.writeJson(await getLocalPostDraftStoragePath(personaId), next);
       return { ok: true, record, records: next };
     } catch {
       return {
@@ -365,9 +366,9 @@ export async function deleteLocalPostDraft(scope: StudioScope,
 
     try {
       if (next.length === 0) {
-        await targetStorage.removeJson(getLocalPostDraftStoragePath(normalizedPersonaId));
+        await targetStorage.removeJson(await getLocalPostDraftStoragePath(normalizedPersonaId));
       } else {
-        await targetStorage.writeJson(getLocalPostDraftStoragePath(normalizedPersonaId), next);
+        await targetStorage.writeJson(await getLocalPostDraftStoragePath(normalizedPersonaId), next);
       }
       return { ok: true, records: next };
     } catch {

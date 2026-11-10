@@ -98,3 +98,7 @@ pnpm storybook
 - **Registry Admission**: [#86](https://github.com/nimiplatform/nimi-app-registry/pull/86) (macOS arm64 and Windows x64)
 - **Recorded Toolchain Combination**: SDK 0.21.0, Kit/native 0.19.3, App Tools 0.12.1, Nimi Coding 0.6.5
 - **Previously Recorded Platform Checks**: macOS arm64 Catalog install, AI generation of character greeting and traits (Bluebird-743), local candidate persistence, and private Realm profile creation verified. (Windows GUI execution marked as `NOT-VERIFIED`).
+
+### 2026-11-10 Web development check
+
+The admitted local HTTPS source completed official Nimi sign-in and direct Runtime access. The browser read the owner Persona list, WorldCore names and Wren detail. Fixed a real JSON storage path error for Realm identifiers containing punctuation; draft and schedule keys now use a bounded digest. A post draft saved from Web was read again after disconnect/reconnect. SDK-path regression tests, 397 App tests, types/lint and i18n checks passed. Realm publishing, profile replacement and full AI/media workflows were not verified in this check. Local package updates require restarting a running development server before checking the new code.
