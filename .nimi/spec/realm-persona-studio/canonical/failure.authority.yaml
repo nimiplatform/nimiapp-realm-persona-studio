@@ -92,7 +92,7 @@ units:
     kind: rule
     title: Capability-unavailable failure
     modality: must
-    statement: A missing admitted connection leaves the shared Kit access gate active; an unavailable carrier operation or unadmitted Realm or Runtime operation remains an explicit typed failure. Desktop follows Home and Web uses official Nimi login; Studio adds no own login, Runtime defaults bootstrap, portable native binding, generic forwarding or credential fallback.
+    statement: A missing admitted connection leaves the shared Kit access gate active; an unavailable carrier operation or unadmitted Realm or Runtime operation remains an explicit typed failure. Desktop follows Home and Web and Android use official Nimi login; Studio adds no own login, Runtime defaults bootstrap, portable native binding, generic forwarding or credential fallback.
     condition: Whenever a Desktop-supervised protected session is missing, a protected standard-bridge operation is unavailable, or a Realm or Runtime operation is unadmitted.
     failure: Keep private operations unavailable without the current connection and preserve the actual owner failure instead of inventing successful data.
     relations:

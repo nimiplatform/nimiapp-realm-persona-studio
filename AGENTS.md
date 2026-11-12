@@ -7,7 +7,7 @@
 - **App name (English)**: Realm Persona Studio
 - **Canonical Nimi app_id**: `nimi.realm-persona-studio`
 - **Electron App Access id**: `nimi.realm-persona-studio`
-- **One-line**: Owner-facing Desktop and Web creation app for user-owned Realm Personas.
+- **One-line**: Owner-facing Desktop, Web and local Android creation app for user-owned Realm Personas.
 - **Status**: Pre-Alpha, not yet launched.
 
 ## Architecture
@@ -17,7 +17,7 @@
 | Desktop shell | Desktop-supervised Electron 45 | `src-electron/` |
 | Renderer | React 19 + Vite 7 + Tailwind 4 | `src/shell/renderer/` |
 | Routing | react-router-dom 7 | `src/shell/renderer/app-shell/routes.tsx` |
-| Auth & runtime bridge | Shared Kit sessions; protected Desktop or admitted direct Web carrier | `src-electron/`, renderer entries |
+| Auth & runtime bridge | Shared Kit sessions; protected Desktop or admitted direct Web or Android carrier | `src-electron/`, renderer entries |
 | UI components | `@nimiplatform/kit` (npm) | renderer-wide |
 | Platform client | `@nimiplatform/sdk` (npm) | `app-shell/studio-platform.ts` |
 | State | Connection-scoped React state and QueryClient | `App.tsx`, `app-shell/studio-scope.tsx` |
@@ -68,7 +68,7 @@ unavailable — render an explicit "source unavailable" state.
 
 ### Auth boundary
 - Studio does **not** own access or refresh tokens (mirrors parentos PO-SHELL-008 / K-ACCSVC-008).
-- Studio does not implement passwords, token exchange, durable credential custody or Runtime defaults. Desktop follows Home; Web uses the shared Kit official Nimi login and direct carrier.
+- Studio does not implement passwords, token exchange, durable credential custody or Runtime defaults. Desktop follows Home; Web and Android use the shared Kit official Nimi login and direct carrier.
 - Keep query caches, client references, private drafts and pending work inside the captured connection scope. Explicit exits use the existing dirty/pending form guard; invalid identity always retires the view.
 - Registry source admission and first Home confirmation remain real prerequisites. Public operation failures never become empty data or a synthetic successful result.
 

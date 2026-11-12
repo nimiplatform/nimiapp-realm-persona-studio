@@ -9,6 +9,10 @@
     "pnpm": ">=10.0.0"
   },
   "scripts": {
+    "build:mobile": "pnpm run typecheck:renderer && vite build --config vite.mobile.config.ts",
+    "sync:android": "pnpm run build:mobile && cap sync android",
+    "dev:android": "pnpm run sync:android && cap run android --no-sync",
+    "dev:mobile": "nimi-app dev --platform mobile",
     "storybook": "storybook dev -p 6006 --host 127.0.0.1 --no-open --disable-telemetry",
     "build:storybook": "storybook build --output-dir .nimi/local/storybook --disable-telemetry",
     "dev": "nimi-app dev --shell electron",
@@ -27,7 +31,7 @@
     "check:spec-consistency": "pnpm run spec:authority:check",
     "i18n:check": "vitest run src/shell/renderer/i18n/studio-i18n.test.ts",
     "i18n:audit": "node scripts/i18n-audit.mjs",
-    "test": "vitest run",
+    "test": "vitest run && node --test test/platform-build-entry.test.mjs",
     "test:watch": "vitest",
     "validate": "nimi-app check",
     "pack": "nimi-app pack",
@@ -42,8 +46,11 @@
     "build:web": "pnpm run typecheck:renderer && vite build --config vite.web.config.ts --mode web"
   },
   "devDependencies": {
+    "@capacitor/cli": "8.6.0",
     "@electron/packager": "^20.3.0",
     "@eslint/js": "^10.0.1",
+    "@nimiplatform/app-tools": "^0.15.0",
+    "@nimiplatform/nimi-coding": "0.7.0",
     "@storybook/react-vite": "10.6.0",
     "@tailwindcss/vite": "^4.3.0",
     "@testing-library/jest-dom": "^6.9.1",
@@ -64,11 +71,15 @@
     "typescript-eslint": "^8.59.4",
     "vite": "^8.3.3",
     "vitest": "^4.1.7",
-    "yaml": "^2.9.0",
-    "@nimiplatform/app-tools": "^0.14.0",
-    "@nimiplatform/nimi-coding": "0.7.0"
+    "yaml": "^2.9.0"
   },
   "dependencies": {
+    "@capacitor/android": "8.6.0",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/browser": "8.0.5",
+    "@capacitor/core": "8.6.0",
+    "@nimiplatform/kit": "^0.23.0",
+    "@nimiplatform/sdk": "^0.23.0",
     "@tanstack/react-query": "^5.100.11",
     "i18next": "^26.4.2",
     "lucide-react": "^0.577.0",
@@ -77,9 +88,7 @@
     "react-i18next": "^17.0.0",
     "react-router-dom": "^7.15.1",
     "scheduler": "^0.27.0",
-    "zustand": "^5.0.13",
-    "@nimiplatform/sdk": "^0.22.2",
-    "@nimiplatform/kit": "^0.22.1"
+    "zustand": "^5.0.13"
   },
   "main": "dist-electron/main.js",
   "author": "Nimi Team",

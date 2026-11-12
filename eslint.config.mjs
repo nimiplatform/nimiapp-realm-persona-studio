@@ -9,6 +9,10 @@ export default defineConfig([
   globalIgnores([
     'dist/**',
     'dist-web/**',
+    'dist-mobile/**',
+    'android/**/build/**',
+    'android/app/src/main/assets/public/**',
+    'test/platform-build-entry.test.mjs',
     'dist-electron/**',
     'dist-electron-package/**',
     'src-tauri/target/**',

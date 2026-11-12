@@ -17,7 +17,7 @@ units:
   - id: definition.realm-persona-studio.core.realm-core-surfaces
     kind: definition
     title: Realm core surfaces
-    meaning: The admitted current Studio Realm data plane is client.realm.personaCharacter.listOwned, getOwned, create, replace, and delete plus client.realm.worldCore.list and exact get through the admitted App SDK under realm.data; ordinary delete is shown only for an owner-created private PersonaCharacter and preserves Realm not-found, access-denied, and content-conflict failures, while native WorldCore creation remains separately governed by its platform admission and is not added to the Web carrier; post, media publication, materialization, friendCount, unpublish, retirement, and public lifecycle mutation remain unadmitted.
+    meaning: The admitted current Studio Realm data plane is client.realm.personaCharacter.listOwned, getOwned, create, replace, and delete plus client.realm.worldCore.list and exact get through the admitted App SDK under realm.data; ordinary delete is shown only for an owner-created private PersonaCharacter and preserves Realm not-found, access-denied, and content-conflict failures, while native WorldCore creation remains separately governed by its platform admission and is not added to the Web or Android carrier; post, media publication, materialization, friendCount, unpublish, retirement, and public lifecycle mutation remain unadmitted.
   - id: definition.realm-persona-studio.core.local-candidate
     kind: definition
     title: Local candidate
@@ -29,7 +29,7 @@ units:
   - id: definition.realm-persona-studio.core.standard-shell
     kind: definition
     title: Desktop-supervised standard shell
-    meaning: Desktop uses the Desktop-supervised protected standard bridge. Web uses the shared Kit Nimi-account session and an admitted exact HTTPS source to the personal primary Runtime. Realm and Runtime retain identity, resource ownership and operation admission; Studio owns its product state and presentation.
+    meaning: Desktop uses the Desktop-supervised protected standard bridge. Web and Android use the shared Kit Nimi-account session and their admitted platform source and callback to the personal primary Runtime. Realm and Runtime retain identity, resource ownership and operation admission; Studio owns its product state and presentation.
   - id: definition.realm-persona-studio.core.non-current-surfaces
     kind: definition
     title: Non-current surfaces
@@ -182,8 +182,8 @@ units:
     kind: rule
     title: Shared App session and private view lifetime
     modality: must
-    statement: The Web entry uses official Nimi login and Kit session composition with no separate Studio account, and its exact source and first PC Home confirmation remain independent prerequisites. Each connected product view owns its query cache and captures one SDK client and abort signal for Realm resources, AI, drafts, assets, preferences and queued writes. Connection or identity loss retires private data and late work before another scope mounts, with no workflow replay or background publication. Explicit user disconnect or sign-out respects the existing pending-write and unsaved-editor guard; externally invalid identity always closes the private view. Existing Realm hash-CAS, owner review and unavailable publication operations remain unchanged. Local draft files do not acquire automatic concurrent-edit merging.
-    condition: Whenever a Desktop or Web product view mounts, performs work, disconnects or changes its Nimi context.
+    statement: Web and Android entries use official Nimi login and Kit session composition with no separate Studio account, and their exact source and first PC Home confirmation remain independent prerequisites. Each connected product view owns its query cache and captures one SDK client and abort signal for Realm resources, AI, drafts, assets, preferences and queued writes. Connection or identity loss retires private data and late work before another scope mounts, with no workflow replay or background publication. Explicit user disconnect or sign-out respects the existing pending-write and unsaved-editor guard; externally invalid identity always closes the private view. Existing Realm hash-CAS, owner review and unavailable publication operations remain unchanged. Local draft files do not acquire automatic concurrent-edit merging.
+    condition: Whenever a Desktop, Web or Android product view mounts, performs work, disconnects or changes its Nimi context.
     failure: Keep private content unmounted without the admitted connection, preserve unsaved work until explicit user discard where the context is still valid, and never write or display one scope through another.
     relations:
       - type: applies_to

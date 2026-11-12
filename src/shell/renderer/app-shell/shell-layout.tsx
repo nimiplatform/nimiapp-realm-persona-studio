@@ -1,5 +1,6 @@
 import { useStudioScope, type StudioScope } from '@renderer/app-shell/studio-scope.js';
 import { useEffect, useState, type ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 import { AmbientBackground, InlineAlert } from '@nimiplatform/kit/ui';
 import { StudioSidebar, STUDIO_SIDEBAR_PREFERENCE_STORAGE_PATH } from './studio-sidebar/index.js';
 import { getStudioProtectedJsonStorage, isStudioStorageNotFoundError } from './studio-storage.js';
@@ -45,8 +46,18 @@ async function persistSidebarCollapsed(scope: StudioScope, collapsed: boolean): 
 export function ShellLayout({ children }: { children: ReactNode }) {
   const scope = useStudioScope();
   const { t } = useStudioI18n();
+  const location = useLocation();
+  const [compact, setCompact] = useState(() => window.matchMedia('(max-width: 640px)').matches);
+  const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarPreferenceUnavailable, setSidebarPreferenceUnavailable] = useState(false);
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 640px)');
+    const update = () => { setCompact(media.matches); setMobileNavigationOpen(false); };
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+  useEffect(() => { setMobileNavigationOpen(false); }, [location.pathname, location.search]);
   useEffect(() => {
     let cancelled = false;
     void readStoredSidebarCollapsed(scope).then((result) => {
@@ -65,6 +76,10 @@ export function ShellLayout({ children }: { children: ReactNode }) {
     target instanceof Element && target.closest(TITLEBAR_INTERACTIVE_SELECTOR) !== null;
 
   const handleSidebarCollapsedChange = (collapsed: boolean) => {
+    if (compact) {
+      setMobileNavigationOpen(!collapsed);
+      return;
+    }
     setSidebarCollapsed(collapsed);
     void persistSidebarCollapsed(scope, collapsed).then((persisted) => {
       if (!persisted) setSidebarPreferenceUnavailable(true);
@@ -72,12 +87,13 @@ export function ShellLayout({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AmbientBackground variant="mesh" className="ras-shell">
+    <AmbientBackground variant="mesh" className="ras-shell" data-compact={compact}>
       <div className="ras-shell__body">
-        <StudioSidebar collapsed={sidebarCollapsed} onCollapsedChange={handleSidebarCollapsedChange} />
+        <StudioSidebar collapsed={compact ? !mobileNavigationOpen : sidebarCollapsed} onCollapsedChange={handleSidebarCollapsedChange} />
 
         <main
           className="ras-main"
+          hidden={compact && mobileNavigationOpen}
           onMouseDown={(event) => {
             if (event.button !== 0) return;
             if (event.detail > 1) return;

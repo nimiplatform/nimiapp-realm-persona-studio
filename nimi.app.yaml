@@ -17,6 +17,8 @@ local_development:
     realm_url: http://127.0.0.1:3002
     official_web_url: http://localhost:3000
     command: pnpm run dev:web-renderer
+  mobile:
+    command: pnpm run dev:android
 metadata:
   summary: 创建和管理自己的 Realm Persona，维护角色资料与创作草稿。
   icon: src/shell/renderer/assets/brand/studio-logo.png

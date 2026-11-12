@@ -341,6 +341,22 @@ a {
   scrollbar-gutter: stable;
 }
 
+.ras-main[hidden] { display: none; }
+
+@media (max-width: 640px) {
+  #root:not(:has(.ras-shell)) button { min-height: 44px; }
+  .ras-shell[data-compact="true"] .ras-studio-sidebar[data-collapsed="false"] {
+    width: 100%;
+  }
+  .ras-studio-sidebar { --nimi-sizing-sidebar-item-height: 44px; }
+  .ras-studio-sidebar button,
+  .ras-sidebar-brand-switcher { min-width: 44px; min-height: 44px; }
+  .ras-sidebar-brand-switcher__logo { opacity: 0; }
+  .ras-sidebar-brand-switcher__icon { opacity: 1; transform: none; }
+  .ras-main { margin: 8px 0; scrollbar-gutter: auto; }
+  .ras-shell { height: 100dvh; }
+}
+
 /* Sidebar create row: flat nav-row look with a standing neutral fill. */
 
 .ras-sidebar-create {

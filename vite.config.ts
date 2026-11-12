@@ -60,6 +60,7 @@ export default defineConfig(() => {
     },
     plugins: [react(), tailwindcss()],
     optimizeDeps: {
+      entries: ['index.html'],
       // Nimi workspace packages are local authority surfaces during app
       // development. Pre-bundling them creates a stale third truth after
       // Runtime/SDK/kit hard cuts, so only stable external packages are

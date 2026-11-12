@@ -94,7 +94,7 @@ units:
     kind: rule
     title: Local asset shell boundary
     modality: must
-    statement: Local media and JSON persistence use the admitted public SDK App artifact/storage operations through the protected Desktop or direct Web carrier; data remains in its Runtime-owned App partition, and Studio exposes no raw Node filesystem or raw Electron IPC to the renderer.
+    statement: Local media and JSON persistence use the admitted public SDK App artifact/storage operations through the protected Desktop or direct Web or Android carrier; data remains in its Runtime-owned App partition, and Studio exposes no raw Node filesystem or raw Electron IPC to the renderer.
     condition: Whenever Studio resolves a local asset URL or accesses app data, local storage, or local configuration.
     failure: Return typed unavailable when the admitted SDK operation is unavailable, without a raw filesystem, IPC or browser-private-data fallback.
     relations:
