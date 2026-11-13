@@ -196,6 +196,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
     normalizedDraft: normalizeCreateRealmPersonaDraft(seedInput),
     locale,
     actions,
+    flushDraft,
   });
   const { isGeneratingDescription, runDescriptionReroll } = useDescriptionReroll({
     draftKey,
@@ -204,6 +205,7 @@ export function CreateRealmPersonaWorkspace({ onCreated, onOpenCreatedPersona }:
     t,
     isGeneratingSeed,
     updateDraft: actions.updateDraft,
+    flushDraft,
   });
   const referenceImage = useReferenceImage({
     draftKey,

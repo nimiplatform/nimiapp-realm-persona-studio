@@ -43,20 +43,20 @@ export function useAutosaveDraft({
   normalizedDraft,
   t,
   setAutosave,
-}: UseAutosaveDraftParams): () => Promise<void> {
+}: UseAutosaveDraftParams): () => Promise<boolean> {
   const scope = useStudioScope();
   const autosaveSequence = useRef(0);
-  const autosaveQueue = useRef<Promise<void>>(Promise.resolve());
-  const pendingSave = useRef<(() => Promise<void>) | null>(null);
+  const autosaveQueue = useRef<Promise<boolean>>(Promise.resolve(true));
+  const pendingSave = useRef<(() => Promise<boolean>) | null>(null);
   const timer = useRef<number | null>(null);
   const mounted = useRef(true);
   const flush = useCallback(async () => {
     if (timer.current !== null) window.clearTimeout(timer.current);
-    if (scope.signal.aborted) { pendingSave.current = null; return; }
+    if (scope.signal.aborted) { pendingSave.current = null; return false; }
     const pending = pendingSave.current;
     pendingSave.current = null;
     if (pending) autosaveQueue.current = autosaveQueue.current.catch(() => undefined).then(pending);
-    await autosaveQueue.current;
+    return autosaveQueue.current;
   }, [scope]);
   useEffect(() => {
     mounted.current = true;
@@ -80,7 +80,7 @@ export function useAutosaveDraft({
           logCreateFlowFailure('create-flow.autosave', result.failure);
           setAutosave('failed', translateCreateFlowFailure(result.failure, t));
         }
-        return;
+        return false;
       }
       if (draftHistoryLabel) {
         const historyResult = await upsertCreationDraftHistoryEntry(scope, {
@@ -97,13 +97,14 @@ export function useAutosaveDraft({
             logCreateFlowFailure('create-flow.autosave', historyResult.failure);
             setAutosave('failed', translateCreateFlowFailure(historyResult.failure, t));
           }
-          return;
+          return false;
         }
         dispatchCreationDraftHistoryUpdated();
       }
       if (mounted.current && autosaveSequence.current === sequence) {
         setAutosave('saved', null);
       }
+      return true;
     };
     timer.current = window.setTimeout(() => void flush(), CREATION_DRAFT_AUTOSAVE_DEBOUNCE_MS);
     return () => {

@@ -50,7 +50,7 @@ export const studioEnglishCopy = {
 
   'draftBox.title': 'Draft box',
   'draftBox.description': 'Drafts and media waiting for your review — everything is stored in your Runtime’s private App storage.',
-  'draftBox.count': '{{count}} draft{{count, plural, one {} other {s}}}',
+  'draftBox.count': 'Drafts: {{count}}',
   'draftBox.open': 'Open',
   'draftBox.emptyTitle': 'No local drafts',
   'draftBox.emptyDescription': "Generate identity, voice, or scheduled post candidates to see them here.",
@@ -148,7 +148,7 @@ export const studioEnglishCopy = {
   'portfolio.search.placeholder': 'Search name, character ID, world, or state',
   'portfolio.search.ariaLabel': 'Search portfolio',
   'portfolio.sort.label': 'Sort',
-  'portfolio.count.total': '{{count}} persona{{count, plural, one {} other {s}}}',
+  'portfolio.count.total': 'Personas: {{count}}',
   'portfolio.count.filtered': 'Showing {{visible}} of {{total}}',
   'portfolio.refreshAria': 'Refresh portfolio',
   'portfolio.createButton': 'Create persona',

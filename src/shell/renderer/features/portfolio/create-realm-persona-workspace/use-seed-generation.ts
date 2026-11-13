@@ -38,12 +38,14 @@ export function useSeedGeneration({
   normalizedDraft,
   locale,
   actions,
+  flushDraft,
 }: {
   draftKey: string;
   draft: CreateRealmPersonaDraftInput;
   normalizedDraft: NormalizedCreateRealmPersonaDraft;
   locale: StudioLocale;
   actions: SeedActions;
+  flushDraft: () => Promise<boolean>;
 }): { isGeneratingSeed: boolean; runSeedGeneration: () => Promise<void> } {
   const appScope = useStudioScope();
   const [isGeneratingSeed, setIsGeneratingSeed] = useState(false);
@@ -58,7 +60,6 @@ export function useSeedGeneration({
     const requestScope = scope.current;
     const seedDescription = normalizeCreateRealmPersonaDraft(draft).originalDescription;
     setIsGeneratingSeed(true);
-    actions.prepareSeedRun();
     const supplements: PersonaSeedPromptSupplements = {
       speechSupplement: normalizedDraft.speechSupplement,
       boundarySupplement: normalizedDraft.boundarySupplement,
@@ -70,6 +71,9 @@ export function useSeedGeneration({
       },
     };
     try {
+      // Preserve the owner's input before a long model call can outlive this connection.
+      if (!await flushDraft() || appScope.signal.aborted || !scope.current.mounted || scope.current !== requestScope) return;
+      actions.prepareSeedRun();
       const result = await generatePersonaSeedFromDescription(appScope, seedDescription, undefined, supplements, { locale });
       if (!scope.current.mounted || scope.current !== requestScope) return;
       if (result.ok) {
@@ -99,6 +103,7 @@ export function useDescriptionReroll({
   t,
   isGeneratingSeed,
   updateDraft,
+  flushDraft,
 }: {
   draftKey: string;
   normalizedDraft: NormalizedCreateRealmPersonaDraft;
@@ -106,6 +111,7 @@ export function useDescriptionReroll({
   t: StudioTranslator;
   isGeneratingSeed: boolean;
   updateDraft: (patch: { originalDescription: string }) => void;
+  flushDraft: () => Promise<boolean>;
 }): { isGeneratingDescription: boolean; runDescriptionReroll: () => Promise<void> } {
   const appScope = useStudioScope();
   const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
@@ -120,6 +126,7 @@ export function useDescriptionReroll({
     const requestScope = scope.current;
     setIsGeneratingDescription(true);
     try {
+      if (!await flushDraft() || appScope.signal.aborted || !scope.current.mounted || scope.current !== requestScope) return;
       const result = await generatePersonaDescriptionCandidate(appScope, {
         previousDescription: normalizedDraft.originalDescription,
         supplements: {

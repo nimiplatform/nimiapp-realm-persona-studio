@@ -19,19 +19,20 @@ function deferred<T>() {
 }
 const draft = createEmptyDraft();
 const normalizedDraft = normalizeCreateRealmPersonaDraft(draft);
+const flushDraft = async () => true;
 
 it('ignores an old seed after leaving and reopening the same draft', async () => {
   const old = deferred<PersonaSeedGenerationResult>();
   const latest = deferred<PersonaSeedGenerationResult>();
   generation.seed.mockReturnValueOnce(old.promise).mockReturnValueOnce(latest.promise);
   const actions = { prepareSeedRun: vi.fn(), setStageReviewViaSeed: vi.fn(), setSeedResult: vi.fn() };
-  const hook = renderHook(({ draftKey }) => useSeedGeneration({ draftKey, draft, normalizedDraft, locale: 'en', actions }), { initialProps: { draftKey: 'draft-a' } });
+  const hook = renderHook(({ draftKey }) => useSeedGeneration({ draftKey, draft, normalizedDraft, locale: 'en', actions, flushDraft }), { initialProps: { draftKey: 'draft-a' } });
   let first!: Promise<void>;
-  act(() => { first = hook.result.current.runSeedGeneration(); });
+  await act(async () => { first = hook.result.current.runSeedGeneration(); await Promise.resolve(); });
   hook.rerender({ draftKey: 'draft-b' });
   hook.rerender({ draftKey: 'draft-a' });
   let second!: Promise<void>;
-  act(() => { second = hook.result.current.runSeedGeneration(); });
+  await act(async () => { second = hook.result.current.runSeedGeneration(); await Promise.resolve(); });
   const result: PersonaSeedGenerationResult = { ok: false, source: 'Nimi App Access ai.text.generateCandidate', failure: 'persona-seed-invalid-output', cause: { kind: 'seed-output-invalid' }, submitted: null };
   await act(async () => { old.resolve(result); await first; });
   expect(actions.setSeedResult).not.toHaveBeenCalled();
@@ -45,9 +46,9 @@ it('does not replace reopened owner text with an old description reroll', async 
   const old = deferred<PersonaDescriptionGenerationResult>();
   generation.description.mockReturnValueOnce(old.promise);
   const updateDraft = vi.fn();
-  const hook = renderHook(({ draftKey }) => useDescriptionReroll({ draftKey, normalizedDraft, locale: 'en', t: (key) => key, isGeneratingSeed: false, updateDraft }), { initialProps: { draftKey: 'draft-a' } });
+  const hook = renderHook(({ draftKey }) => useDescriptionReroll({ draftKey, normalizedDraft, locale: 'en', t: (key) => key, isGeneratingSeed: false, updateDraft, flushDraft }), { initialProps: { draftKey: 'draft-a' } });
   let request!: Promise<void>;
-  act(() => { request = hook.result.current.runDescriptionReroll(); });
+  await act(async () => { request = hook.result.current.runDescriptionReroll(); await Promise.resolve(); });
   hook.rerender({ draftKey: 'draft-b' });
   hook.rerender({ draftKey: 'draft-a' });
   await act(async () => {
@@ -55,4 +56,17 @@ it('does not replace reopened owner text with an old description reroll', async 
     await request;
   });
   expect(updateDraft).not.toHaveBeenCalled();
+});
+
+it('waits for durable input and does not submit generation when saving fails', async () => {
+  const saved = deferred<boolean>();
+  const actions = { prepareSeedRun: vi.fn(), setStageReviewViaSeed: vi.fn(), setSeedResult: vi.fn() };
+  const hook = renderHook(() => useSeedGeneration({ draftKey: 'draft-a', draft, normalizedDraft, locale: 'en', actions, flushDraft: () => saved.promise }));
+  let request!: Promise<void>;
+  act(() => { request = hook.result.current.runSeedGeneration(); });
+  expect(generation.seed).not.toHaveBeenCalled();
+  await act(async () => { saved.resolve(false); await request; });
+  expect(generation.seed).not.toHaveBeenCalled();
+  expect(actions.prepareSeedRun).not.toHaveBeenCalled();
+  expect(hook.result.current.isGeneratingSeed).toBe(false);
 });

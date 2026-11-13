@@ -40,8 +40,16 @@ it('flushes the latest writing when the owner leaves before the debounce complet
 
 it('flushes explicitly once without a duplicate timer write', async () => {
   const hook = renderHook(() => useAutosaveDraft(params));
-  await act(async () => { await hook.result.current(); });
+  await act(async () => { expect(await hook.result.current()).toBe(true); });
   await act(async () => { vi.advanceTimersByTime(1000); });
   expect(storage.persist).toHaveBeenCalledTimes(1);
   expect(storage.notify).toHaveBeenCalledTimes(1);
+});
+
+it('reports a failed write so dependent AI cannot start with unsaved input', async () => {
+  storage.persist.mockResolvedValue({ ok: false, failure: { kind: 'draft-persist-failed' } });
+  const hook = renderHook(() => useAutosaveDraft(params));
+  await act(async () => { expect(await hook.result.current()).toBe(false); });
+  expect(storage.history).not.toHaveBeenCalled();
+  expect(setAutosave).toHaveBeenLastCalledWith('failed', expect.any(String));
 });
