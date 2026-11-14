@@ -29,6 +29,18 @@ first reconnect after at least 60 seconds idle are **NOT-VERIFIED** pending the
 device slot. No AI, canonical creation/publication or product launch was used for
 these engineering checks; earlier real results retain their stated scope below.
 
+The updated formal HTTPS Web source was subsequently started normally at **4477**
+after confirming the port was free. Official Halliday Continue reused the original
+source approval and read the two existing Personas: **许一舟 / 末班车食堂** and
+**Wren（雷恩） / 千风集**. Missing images/friend counts stayed explicitly unavailable.
+Formal Disconnect retired the private view, and the first Connect restored the
+same portfolio. The Web Local drafts tab actually showed **0**; no existing Web
+draft baseline was established, so this neither verifies the Android Mira draft
+nor demonstrates that it was lost. The App still reads the captured scope's
+protected `creation/history.json`. Android's original source must supply its own
+draft/idle-reconnect result. No AI, new Persona, deletion, permission or Realm
+write was performed in this Web slice.
+
 ## Local Web / Android iteration — 2026-11-13
 
 The 0.1.6 App consumes complete fixed SDK / Kit / Windows source-native `0.23.1-rc.1` and App Tools `0.15.1-rc.1` archives from `.nimi/local/packages/web-android-20261113-rc.1`, with matching declarations, overrides and lockfile. Content changes require a new candidate version. Desktop, Web and Android share the same scoped client, data lifecycle and protected operations; no Realm ownership privilege was added. Test package: `ai.nimi.apps.realmpersonastudio.dev`; client: `nimi.realm-persona-studio.android.dev`; callback: `ai.nimi.apps.realmpersonastudio.dev:/oauth/callback`. Build with JDK 21 / Android SDK, `pnpm sync:android`, then Gradle `assembleDebug`, or `pnpm dev:mobile`. Scheme and loopback cleartext are debug-only.
