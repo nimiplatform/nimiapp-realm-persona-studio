@@ -24,10 +24,19 @@ builds, Capacitor sync and offline Android assembly passed. The new APK is
 `1e7563d88d88b87078184ec41408185ac50f9af858459efb37cafa6d41fcea2e`).
 Its verified signer remains
 `756e56a08527a94e830921233bc80f31121fd0fe57dccef1535e27e9eb0a6585`.
-This candidate's official login, original portfolio/private-draft readback and
-first reconnect after at least 60 seconds idle are **NOT-VERIFIED** pending the
-device slot. No AI, canonical creation/publication or product launch was used for
-these engineering checks; earlier real results retain their stated scope below.
+The candidate was subsequently installed over the original Android package
+without clearing data and opened through the system launcher. Official Halliday
+Continue reused the original source approval. The portfolio still contained the
+original two Personas. Its Local drafts tab contained the original **Mira** /
+**OASIS / CARING** draft `01M79NP9KHFX9PR8WAT4C746XD`, including the stored
+cloud-library introduction, opening line and personality summary. After at least
+**75 seconds** of natural foreground idle, formal Disconnect retired the private
+view; the first Connect restored the two-Persona portfolio and the same Mira
+draft, which reopened as **Automatically saved**. No AI, new draft, canonical
+Persona, publication or data copy was used. Screenshots are
+`.nimi/local/ui-audit/2026-11-15-kit-rc4/01-original-mira-draft.png` and
+`02-first-idle-reconnect-mira.png`. Earlier real results retain their scope below;
+this bounded pass does not diagnose every historical transient failure.
 
 The updated formal HTTPS Web source was subsequently started normally at **4477**
 after confirming the port was free. Official Halliday Continue reused the original
@@ -35,11 +44,12 @@ source approval and read the two existing Personas: **许一舟 / 末班车食�
 **Wren（雷恩） / 千风集**. Missing images/friend counts stayed explicitly unavailable.
 Formal Disconnect retired the private view, and the first Connect restored the
 same portfolio. The Web Local drafts tab actually showed **0**; no existing Web
-draft baseline was established, so this neither verifies the Android Mira draft
-nor demonstrates that it was lost. The App still reads the captured scope's
-protected `creation/history.json`. Android's original source must supply its own
-draft/idle-reconnect result. No AI, new Persona, deletion, permission or Realm
-write was performed in this Web slice.
+draft baseline was established, so that empty Web list did not demonstrate loss
+of the Android Mira draft. The later original Android source read and idle
+reconnect above confirmed Mira remains intact. The App still reads the captured
+scope's protected `creation/history.json`; the two observed source results are
+not a claim of cross-source draft sharing. No AI, new Persona, deletion,
+permission or Realm write was performed in this Web slice.
 
 ## Local Web / Android iteration — 2026-11-13
 
