@@ -1,3 +1,34 @@
+## Android coordination package update — 2026-11-15
+
+The existing 0.1.6 App consumes the complete frozen
+`integration-20261114-android-http-rc.4` cohort from its own `.nimi/local/packages/`:
+SDK **0.24.0-rc.2**, Kit **0.24.0-rc.4**, Windows native **0.24.0-rc.1**, and
+App Tools **0.16.0-rc.2**. Kit keeps the declaration `^0.24.0-rc.1` and uses the
+explicit rc.4 override. Old archives and candidates are preserved. The Android
+plugin now includes `CoordinationHttpClient` and the verified idle-connection fix;
+HTTP automatic retry remains disabled. Earlier intermittent failures are not all
+assigned this cause.
+
+The original Web origin, callback and client ID moved unchanged into
+`local_development.web.local`, as required by the new tool. Use
+`NIMI_DEV_REALM=local` for sync/check and Web/mobile builds, or
+`pnpm dev:web -- --realm local`. Normal package sync refreshed managed projections.
+There is no new source admission, App identity, Realm privilege, model selection,
+canonical Persona or draft format in this upgrade.
+
+Frozen offline installation, App Tools check, renderer/Host types, **402**
+existing product tests and two actual remote-entry build regressions, Web/mobile
+builds, Capacitor sync and offline Android assembly passed. The new APK is
+`.nimi/local/android-candidates/realm-persona-studio-0.1.6-integration-kit-rc4-20261115-063014-debug.apk`
+(**15,848,680 bytes**, SHA-256
+`1e7563d88d88b87078184ec41408185ac50f9af858459efb37cafa6d41fcea2e`).
+Its verified signer remains
+`756e56a08527a94e830921233bc80f31121fd0fe57dccef1535e27e9eb0a6585`.
+This candidate's official login, original portfolio/private-draft readback and
+first reconnect after at least 60 seconds idle are **NOT-VERIFIED** pending the
+device slot. No AI, canonical creation/publication or product launch was used for
+these engineering checks; earlier real results retain their stated scope below.
+
 ## Local Web / Android iteration — 2026-11-13
 
 The 0.1.6 App consumes complete fixed SDK / Kit / Windows source-native `0.23.1-rc.1` and App Tools `0.15.1-rc.1` archives from `.nimi/local/packages/web-android-20261113-rc.1`, with matching declarations, overrides and lockfile. Content changes require a new candidate version. Desktop, Web and Android share the same scoped client, data lifecycle and protected operations; no Realm ownership privilege was added. Test package: `ai.nimi.apps.realmpersonastudio.dev`; client: `nimi.realm-persona-studio.android.dev`; callback: `ai.nimi.apps.realmpersonastudio.dev:/oauth/callback`. Build with JDK 21 / Android SDK, `pnpm sync:android`, then Gradle `assembleDebug`, or `pnpm dev:mobile`. Scheme and loopback cleartext are debug-only.

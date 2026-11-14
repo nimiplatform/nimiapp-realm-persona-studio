@@ -5,10 +5,10 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@nimiplatform/sdk': file:.nimi/local/packages/web-android-20261113-rc.1/nimiplatform-sdk-0.23.1-rc.1.tgz
-  '@nimiplatform/kit': file:.nimi/local/packages/web-android-20261113-rc.1/nimiplatform-kit-0.23.1-rc.1.tgz
-  '@nimiplatform/app-tools': file:.nimi/local/packages/web-android-20261113-rc.1/nimiplatform-app-tools-0.15.1-rc.1.tgz
-  '@nimiplatform/kit-protected-local-win32-x64': file:.nimi/local/packages/web-android-20261113-rc.1/nimiplatform-kit-protected-local-win32-x64-0.23.1-rc.1.tgz
+  '@nimiplatform/sdk': file:.nimi/local/packages/integration-20261114-android-http-rc.4/nimiplatform-sdk-0.24.0-rc.2.tgz
+  '@nimiplatform/kit': file:.nimi/local/packages/integration-20261114-android-http-rc.4/nimiplatform-kit-0.24.0-rc.4.tgz
+  '@nimiplatform/app-tools': file:.nimi/local/packages/integration-20261114-android-http-rc.4/nimiplatform-app-tools-0.16.0-rc.2.tgz
+  '@nimiplatform/kit-protected-local-win32-x64': file:.nimi/local/packages/integration-20261114-android-http-rc.4/nimiplatform-kit-protected-local-win32-x64-0.24.0-rc.1.tgz
 
 importers:
 
@@ -27,11 +27,11 @@ importers:
         specifier: 8.6.0
         version: 8.6.0
       '@nimiplatform/kit':
-        specifier: file:.nimi/local/packages/web-android-20261113-rc.1/nimiplatform-kit-0.23.1-rc.1.tgz
-        version: file:.nimi/local/packages/web-android-20261113-rc.1/nimiplatform-kit-0.23.1-rc.1.tgz(@capacitor/app@8.1.2(@capacitor/core@8.6.0))(@capacitor/browser@8.0.5(@capacitor/core@8.6.0))(@capacitor/core@8.6.0)(@types/node@25.9.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(electron@45.2.3)(react-dom@19.2.6(react@19.2.6))(react-i18next@17.0.16(i18next@26.4.4(typescript@5.9.3))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3))(react@19.2.6)
+        specifier: file:.nimi/local/packages/integration-20261114-android-http-rc.4/nimiplatform-kit-0.24.0-rc.4.tgz
+        version: file:.nimi/local/packages/integration-20261114-android-http-rc.4/nimiplatform-kit-0.24.0-rc.4.tgz(@capacitor/app@8.1.2(@capacitor/core@8.6.0))(@capacitor/browser@8.0.5(@capacitor/core@8.6.0))(@capacitor/core@8.6.0)(@types/node@25.9.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(electron@45.2.3)(react-dom@19.2.6(react@19.2.6))(react-i18next@17.0.16(i18next@26.4.4(typescript@5.9.3))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3))(react@19.2.6)
       '@nimiplatform/sdk':
-        specifier: file:.nimi/local/packages/web-android-20261113-rc.1/nimiplatform-sdk-0.23.1-rc.1.tgz
-        version: file:.nimi/local/packages/web-android-20261113-rc.1/nimiplatform-sdk-0.23.1-rc.1.tgz(@grpc/grpc-js@1.14.6)
+        specifier: file:.nimi/local/packages/integration-20261114-android-http-rc.4/nimiplatform-sdk-0.24.0-rc.2.tgz
+        version: file:.nimi/local/packages/integration-20261114-android-http-rc.4/nimiplatform-sdk-0.24.0-rc.2.tgz(@grpc/grpc-js@1.14.6)
       '@tanstack/react-query':
         specifier: ^5.100.11
         version: 5.100.14(react@19.2.6)
@@ -70,8 +70,8 @@ importers:
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.4.0(jiti@2.7.0))
       '@nimiplatform/app-tools':
-        specifier: file:.nimi/local/packages/web-android-20261113-rc.1/nimiplatform-app-tools-0.15.1-rc.1.tgz
-        version: file:.nimi/local/packages/web-android-20261113-rc.1/nimiplatform-app-tools-0.15.1-rc.1.tgz(vite@8.3.4(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
+        specifier: file:.nimi/local/packages/integration-20261114-android-http-rc.4/nimiplatform-app-tools-0.16.0-rc.2.tgz
+        version: file:.nimi/local/packages/integration-20261114-android-http-rc.4/nimiplatform-app-tools-0.16.0-rc.2.tgz(vite@8.3.4(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
       '@nimiplatform/nimi-coding':
         specifier: 0.7.0
         version: 0.7.0
@@ -855,9 +855,9 @@ packages:
       '@emnapi/core': ^1.7.1 || ^2.0.0-alpha.4
       '@emnapi/runtime': ^1.7.1 || ^2.0.0-alpha.4
 
-  '@nimiplatform/app-tools@file:.nimi/local/packages/web-android-20261113-rc.1/nimiplatform-app-tools-0.15.1-rc.1.tgz':
-    resolution: {integrity: sha512-GZEKsIy72yznn7lNfhdpFbw1lZj/KrKUz++nVbcauqa7cE+kZA66Ya8mEXVEVvEaMz89Z/p/WeDj/LC/+/mXFQ==, tarball: file:.nimi/local/packages/web-android-20261113-rc.1/nimiplatform-app-tools-0.15.1-rc.1.tgz}
-    version: 0.15.1-rc.1
+  '@nimiplatform/app-tools@file:.nimi/local/packages/integration-20261114-android-http-rc.4/nimiplatform-app-tools-0.16.0-rc.2.tgz':
+    resolution: {integrity: sha512-eUTuWYhC/ce3bJMa5sE+/n8iGM1NNd0KVQU/tevq0oGgu2DiSWqf+KbMxjNP2NwNmiM8KAJGiyNq35OkXS8ATQ==, tarball: file:.nimi/local/packages/integration-20261114-android-http-rc.4/nimiplatform-app-tools-0.16.0-rc.2.tgz}
+    version: 0.16.0-rc.2
     engines: {node: '>=24.22.3 <25.0.0'}
     hasBin: true
     peerDependencies:
@@ -866,15 +866,15 @@ packages:
       vite:
         optional: true
 
-  '@nimiplatform/kit-protected-local-win32-x64@file:.nimi/local/packages/web-android-20261113-rc.1/nimiplatform-kit-protected-local-win32-x64-0.23.1-rc.1.tgz':
-    resolution: {integrity: sha512-5DFW+vaWMCjMHmXAMgm+1ib1+WNHFOqFQt9vGLMfp/s7XHT4QGCfutmkgu3CsdAP4mhnNaqoEMa/rxbwKslPQQ==, tarball: file:.nimi/local/packages/web-android-20261113-rc.1/nimiplatform-kit-protected-local-win32-x64-0.23.1-rc.1.tgz}
-    version: 0.23.1-rc.1
+  '@nimiplatform/kit-protected-local-win32-x64@file:.nimi/local/packages/integration-20261114-android-http-rc.4/nimiplatform-kit-protected-local-win32-x64-0.24.0-rc.1.tgz':
+    resolution: {integrity: sha512-HSJOFaTgzyCniQrWSJTu9RnxckCpw5vVJuqzR6LBnMvUjEqnxuJXLi0u7QwNF2DGtJWlDJqRMIxeQl5Z1B9/uA==, tarball: file:.nimi/local/packages/integration-20261114-android-http-rc.4/nimiplatform-kit-protected-local-win32-x64-0.24.0-rc.1.tgz}
+    version: 0.24.0-rc.1
     cpu: [x64]
     os: [win32]
 
-  '@nimiplatform/kit@file:.nimi/local/packages/web-android-20261113-rc.1/nimiplatform-kit-0.23.1-rc.1.tgz':
-    resolution: {integrity: sha512-6RhBzGYOVKTWYKpYRX3jECoBr3CD8xKPUOT4EGLT9TDLbKyNS/ViksoQjb9dWloIXdzC9dDmfLmSbs/nEqIv4A==, tarball: file:.nimi/local/packages/web-android-20261113-rc.1/nimiplatform-kit-0.23.1-rc.1.tgz}
-    version: 0.23.1-rc.1
+  '@nimiplatform/kit@file:.nimi/local/packages/integration-20261114-android-http-rc.4/nimiplatform-kit-0.24.0-rc.4.tgz':
+    resolution: {integrity: sha512-zj6cr7ihswO6G4WAdlX2vobg5Ug3jIPthFpESOKEDOpaQ4humo0DdrBXCHTmCmoyRSWXk6wpCXOyaHv6OpOAvg==, tarball: file:.nimi/local/packages/integration-20261114-android-http-rc.4/nimiplatform-kit-0.24.0-rc.4.tgz}
+    version: 0.24.0-rc.4
     peerDependencies:
       '@capacitor/app': ^8.0.0
       '@capacitor/browser': ^8.0.0
@@ -902,9 +902,9 @@ packages:
     engines: {node: '>=24.0.0', pnpm: '>=10.0.0'}
     hasBin: true
 
-  '@nimiplatform/sdk@file:.nimi/local/packages/web-android-20261113-rc.1/nimiplatform-sdk-0.23.1-rc.1.tgz':
-    resolution: {integrity: sha512-xUwXKYPSmLmyLuK6GMDnKYlQRzCVPgscGeKwJib0WrKMqMcLtRiikp3U7obtfgqPoAvnKE5duWsq5/ZZISIN1Q==, tarball: file:.nimi/local/packages/web-android-20261113-rc.1/nimiplatform-sdk-0.23.1-rc.1.tgz}
-    version: 0.23.1-rc.1
+  '@nimiplatform/sdk@file:.nimi/local/packages/integration-20261114-android-http-rc.4/nimiplatform-sdk-0.24.0-rc.2.tgz':
+    resolution: {integrity: sha512-a3mCQ+e4vh+5w2qm4uxYFzjDUdC57orVRG73T/4O91O+Ry+GIHA5iE5+pqJYZgsHOkFnPIV/NP6jfuxXkdZ3Xw==, tarball: file:.nimi/local/packages/integration-20261114-android-http-rc.4/nimiplatform-sdk-0.24.0-rc.2.tgz}
+    version: 0.24.0-rc.2
     peerDependencies:
       '@grpc/grpc-js': ^1.14.4
     peerDependenciesMeta:
@@ -3553,11 +3553,6 @@ packages:
     resolution: {integrity: sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==}
     hasBin: true
 
-  semver@7.8.1:
-    resolution: {integrity: sha512-rkVq3IXh+4FDGch+KwzX3aV9W3kO54GyEgpvBzSyctDA6Xtd7RJQV1xmXbeQp5v7+VzLOfVqiutSE6GICgPFvg==}
-    engines: {node: '>=10'}
-    hasBin: true
-
   semver@7.8.5:
     resolution: {integrity: sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==}
     engines: {node: '>=10'}
@@ -4328,7 +4323,7 @@ snapshots:
       env-paths: 3.0.0
       graceful-fs: 4.2.11
       progress: 2.0.3
-      semver: 7.8.1
+      semver: 7.8.5
       sumchecker: 3.0.1
     optionalDependencies:
       undici: 7.25.0
@@ -4822,7 +4817,7 @@ snapshots:
       '@tybys/wasm-util': 0.10.3
     optional: true
 
-  '@nimiplatform/app-tools@file:.nimi/local/packages/web-android-20261113-rc.1/nimiplatform-app-tools-0.15.1-rc.1.tgz(vite@8.3.4(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))':
+  '@nimiplatform/app-tools@file:.nimi/local/packages/integration-20261114-android-http-rc.4/nimiplatform-app-tools-0.16.0-rc.2.tgz(vite@8.3.4(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))':
     dependencies:
       pngjs: 7.0.0
       semver: 7.8.5
@@ -4831,13 +4826,13 @@ snapshots:
     optionalDependencies:
       vite: 8.3.4(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0)
 
-  '@nimiplatform/kit-protected-local-win32-x64@file:.nimi/local/packages/web-android-20261113-rc.1/nimiplatform-kit-protected-local-win32-x64-0.23.1-rc.1.tgz':
+  '@nimiplatform/kit-protected-local-win32-x64@file:.nimi/local/packages/integration-20261114-android-http-rc.4/nimiplatform-kit-protected-local-win32-x64-0.24.0-rc.1.tgz':
     optional: true
 
-  '@nimiplatform/kit@file:.nimi/local/packages/web-android-20261113-rc.1/nimiplatform-kit-0.23.1-rc.1.tgz(@capacitor/app@8.1.2(@capacitor/core@8.6.0))(@capacitor/browser@8.0.5(@capacitor/core@8.6.0))(@capacitor/core@8.6.0)(@types/node@25.9.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(electron@45.2.3)(react-dom@19.2.6(react@19.2.6))(react-i18next@17.0.16(i18next@26.4.4(typescript@5.9.3))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3))(react@19.2.6)':
+  '@nimiplatform/kit@file:.nimi/local/packages/integration-20261114-android-http-rc.4/nimiplatform-kit-0.24.0-rc.4.tgz(@capacitor/app@8.1.2(@capacitor/core@8.6.0))(@capacitor/browser@8.0.5(@capacitor/core@8.6.0))(@capacitor/core@8.6.0)(@types/node@25.9.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(electron@45.2.3)(react-dom@19.2.6(react@19.2.6))(react-i18next@17.0.16(i18next@26.4.4(typescript@5.9.3))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3))(react@19.2.6)':
     dependencies:
       '@grpc/grpc-js': 1.14.6
-      '@nimiplatform/sdk': file:.nimi/local/packages/web-android-20261113-rc.1/nimiplatform-sdk-0.23.1-rc.1.tgz(@grpc/grpc-js@1.14.6)
+      '@nimiplatform/sdk': file:.nimi/local/packages/integration-20261114-android-http-rc.4/nimiplatform-sdk-0.24.0-rc.2.tgz(@grpc/grpc-js@1.14.6)
       '@radix-ui/react-avatar': 1.3.1(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@radix-ui/react-dialog': 1.3.1(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@radix-ui/react-popover': 1.3.1(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -4866,7 +4861,7 @@ snapshots:
       '@capacitor/app': 8.1.2(@capacitor/core@8.6.0)
       '@capacitor/browser': 8.0.5(@capacitor/core@8.6.0)
       '@capacitor/core': 8.6.0
-      '@nimiplatform/kit-protected-local-win32-x64': file:.nimi/local/packages/web-android-20261113-rc.1/nimiplatform-kit-protected-local-win32-x64-0.23.1-rc.1.tgz
+      '@nimiplatform/kit-protected-local-win32-x64': file:.nimi/local/packages/integration-20261114-android-http-rc.4/nimiplatform-kit-protected-local-win32-x64-0.24.0-rc.1.tgz
       electron: 45.2.3
       react-dom: 19.2.6(react@19.2.6)
       react-i18next: 17.0.16(i18next@26.4.4(typescript@5.9.3))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3)
@@ -4881,7 +4876,7 @@ snapshots:
       typescript: 5.9.3
       yaml: 2.9.1
 
-  '@nimiplatform/sdk@file:.nimi/local/packages/web-android-20261113-rc.1/nimiplatform-sdk-0.23.1-rc.1.tgz(@grpc/grpc-js@1.14.6)':
+  '@nimiplatform/sdk@file:.nimi/local/packages/integration-20261114-android-http-rc.4/nimiplatform-sdk-0.24.0-rc.2.tgz(@grpc/grpc-js@1.14.6)':
     dependencies:
       '@protobuf-ts/runtime': 2.11.1
     optionalDependencies:
@@ -5847,7 +5842,7 @@ snapshots:
       '@typescript-eslint/visitor-keys': 8.59.4
       debug: 4.4.3
       minimatch: 10.2.5
-      semver: 7.8.1
+      semver: 7.8.5
       tinyglobby: 0.2.16
       ts-api-utils: 2.5.0(typescript@5.9.3)
       typescript: 5.9.3
@@ -7563,8 +7558,6 @@ snapshots:
   scheduler@0.27.0: {}
 
   semver@6.3.1: {}
-
-  semver@7.8.1: {}
 
   semver@7.8.5: {}
 

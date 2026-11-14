@@ -10,13 +10,11 @@ local_development:
   electron:
     renderer_origin: http://127.0.0.1:1450
   web:
-    origin: https://127.0.0.1:4477
-    redirect_uri: https://127.0.0.1:4477/
-    client_id: nimi.realm-persona-studio.web.dev
-    realm_environment_id: dev
-    realm_url: http://127.0.0.1:3002
-    official_web_url: http://localhost:3000
     command: pnpm run dev:web-renderer
+    local:
+      origin: https://127.0.0.1:4477
+      redirect_uri: https://127.0.0.1:4477/
+      client_id: nimi.realm-persona-studio.web.dev
   mobile:
     command: pnpm run dev:android
 metadata:
