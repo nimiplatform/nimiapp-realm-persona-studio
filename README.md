@@ -1,3 +1,9 @@
+## Hosted Web release & public 0.24 RC carrier — 2026-11-20
+
+Version **0.1.7** adopts the published npm pre-release carrier (`@nimiplatform/app-tools` `0.16.0-rc.10`, `@nimiplatform/sdk` `0.24.0-rc.10`, `@nimiplatform/kit` `0.24.0-rc.16`, `@nimiplatform/nimi-coding` `0.7.0`, `electron` `45.4.1`, `vite` `8.3.8`) with frozen public lockfiles and no local `.tgz` overrides. It declares `public_slug: realm-persona-studio`, adds `build:web:release` and the managed `.github/workflows/nimi-web-release.yml` workflow for immutable `web-v*` releases (`https://realm-persona-studio.nimi.xyz`), and keeps the existing native Desktop Catalog release at `0.1.6` while Android stays local-testing only.
+
+Verified locally on Windows x64: `nimi-app check --production`, `nimicoding doctor`, spec authority check (206 units, 0 diagnostics), i18n checks, renderer & Electron typecheck, ESLint (0 warnings), 402 Vitest tests + 2 remote build-entry checks (`web-release` & `mobile`), Storybook build, hosted Web release ZIP inspection (`nimi-web-0.1.7.zip`), Windows native production build & `.nimiapp` pack, and Desktop-supervised Electron PC regression (portfolio, AI Config surface, local draft autosave & reload readback).
+
 ## Android coordination package update — 2026-11-15
 
 The existing 0.1.6 App consumes the complete frozen

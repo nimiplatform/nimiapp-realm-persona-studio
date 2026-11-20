@@ -10,7 +10,7 @@ for (const platform of ['web', 'mobile']) {
   test(`${platform} build starts from its remote session entry`, async () => {
     const result = await build({
       configFile: path.join(root, `vite.${platform}.config.ts`),
-      mode: platform,
+      mode: platform === 'web' ? 'web-release' : platform,
       logLevel: 'silent',
       build: { write: false, minify: false },
     });

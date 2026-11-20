@@ -1,3 +1,7 @@
+## 0.1.7 · Hosted Web release and published 0.24 RC carrier
+
+Adopts published npm `@nimiplatform/sdk` `0.24.0-rc.10`, `@nimiplatform/kit` `0.24.0-rc.16`, `@nimiplatform/app-tools` `0.16.0-rc.10`, and `@nimiplatform/nimi-coding` `0.7.0` with frozen public lockfiles, and adds the hosted Web release build (`public_slug: realm-persona-studio`, `build:web:release`, `.github/workflows/nimi-web-release.yml`) alongside existing Desktop-supervised Electron support. Native Desktop Catalog stays at `0.1.6`; Android remains local-testing only.
+
 ## 0.1.6 · Published platform dependencies
 
 Uses public npm SDK 0.21.0, Kit/native 0.19.3, App Tools 0.12.1 and nimi-coding 0.6.5 with frozen registry lockfiles. Local Nimi tarball overrides are removed; Desktop-supervised development and installed Apps use the same published carrier.
