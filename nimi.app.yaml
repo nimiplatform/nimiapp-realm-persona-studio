@@ -25,6 +25,89 @@ metadata:
   author: Nimi Team
   homepage_url: https://github.com/nimiplatform/nimiapp-realm-persona-studio
   support_url: https://github.com/nimiplatform/nimiapp-realm-persona-studio/issues
+  storefront:
+    category: companions-worlds
+    default_locale: zh
+    locales:
+      zh:
+        tags:
+          - 角色创作
+          - 视觉与声音
+          - Realm 同步
+          - 本地草稿
+        highlights:
+          - title: AI 辅助角色设定与人设共创
+            description: 结合你在 Nimi 中配置的本地或云端模型，共同打磨角色身世、开场白、说话方式与行为边界，所有建议均经你确认后再应用。
+          - title: 视觉形象与私有素材库
+            description: 生成角色肖像与概念图候选，或导入本地参考图至私有素材库，随时整理形象方案并保留草稿关联。
+          - title: 专属音色挑选与台词试听
+            description: 从已配置的语音合成能力中挑选契合音色，输入代表性台词即可在工坊内试听，直观把握角色语气与节奏。
+          - title: 角色手记草稿与 Realm 同步
+            description: 以角色口吻撰写动态草稿与单条本地排程候选，私有草稿留存主 PC，就绪后可将受支持的角色资料同步至 Realm。
+      en:
+        display_name: Realm Persona Studio
+        summary: Create and manage your own Realm Personas—shape character lore, visual candidates, voice auditions, and local drafts before syncing profiles to Realm.
+        introduction: NIMI_APP.en.md
+        tags:
+          - Persona Creation
+          - Visual & Voice
+          - Realm Sync
+          - Local Drafts
+        highlights:
+          - title: AI-Assisted Lore & Persona Co-Writing
+            description: Draft and refine backstories, greetings, speaking habits, and boundaries with your Nimi local or cloud AI—every suggestion awaits your review.
+          - title: Visual Identity & Private Asset Library
+            description: Generate character portrait candidates or import local reference images into your PC private library to organize artwork alongside drafts.
+          - title: Voice Selection & Dialogue Audition
+            description: Choose a preset voice from your configured speech route and synthesize local audition clips to verify tone and pacing in the studio.
+          - title: Local Post Drafts & Realm Profile Sync
+            description: Compose persona-voiced post drafts and a single local schedule candidate on your PC, then sync supported persona profiles to Realm when ready.
+    media:
+      cover:
+        path: assets/storefront/cover-zh.webp
+        locales:
+          en: assets/storefront/cover-en.webp
+      gallery:
+        - id: portfolio-hub
+          kind: image
+          path: assets/storefront/cover-zh.webp
+          locales:
+            en: assets/storefront/cover-en.webp
+          caption:
+            zh: 我的角色总览：在一个工作台管理所有自建 Realm Persona、所属世界与本地草稿
+            en: "My Personas hub: manage all your owned Realm Personas, home worlds, and local drafts in one studio"
+        - id: persona-overview
+          kind: image
+          path: assets/storefront/overview-zh.webp
+          locales:
+            en: assets/storefront/overview-en.webp
+          caption:
+            zh: 角色工作区概览：查看 Realm 已保存资料、下一步待办与本机角色名片预览
+            en: "Persona workspace overview: Realm-saved status, next-step hints, and local profile card preview"
+        - id: persona-settings
+          kind: image
+          path: assets/storefront/settings-zh.webp
+          locales:
+            en: assets/storefront/settings-en.webp
+          caption:
+            zh: 角色设定与创作搭档：结合 AI 建议推敲开场白、说话方式与行为边界，实时预览角色名片
+            en: "Persona settings & AI creative partner: refine greetings, speaking habits, and boundaries with live draft preview"
+        - id: visual-and-voice
+          kind: image
+          path: assets/storefront/identity-zh.webp
+          locales:
+            en: assets/storefront/identity-en.webp
+          caption:
+            zh: 形象与声音工坊：管理角色头像与封面候选，挑选音色并生成台词试听
+            en: "Visual identity & voice audition: manage avatar and cover candidates, pick a voice preset, and audition lines"
+        - id: post-drafts
+          kind: image
+          path: assets/storefront/posts-zh.webp
+          locales:
+            en: assets/storefront/posts-en.webp
+          caption:
+            zh: 动态草稿与本地排程：以角色口吻撰写手记、管理本地草稿列表并保存单条本机排程候选
+            en: "Post drafts & local schedule: compose in-character notes, manage local drafts, and keep one local schedule candidate"
 capability_contract_refs:
   - text.generate
   - image.generate

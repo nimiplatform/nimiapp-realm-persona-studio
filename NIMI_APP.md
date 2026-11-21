@@ -45,3 +45,10 @@
 - **Realm 同步与 AI 路由**：角色资料由当前登录账号通过受保护会话保存至 Realm。AI 共创功能会按你所选的路由处理当次输入；若选择 Cloud 路由，当前请求涉及的草稿内容可能会发送给所选服务商。
 - **账号与连接**：桌面版从 Nimi Home 打开，跟随 Home 当前账号；网页版可从 [Nimi 应用介绍页](https://nimi.ai/apps/realm-persona-studio) 或 [角色工坊正式站](https://realm-persona-studio.nimi.xyz/) 进入，通过 Nimi 官方页面登录并连接主 Runtime，无需另建工坊账号。首次接入该网页来源需要在主 PC 的 Nimi Home（Settings → Account Security → Remote access）核对并允许一次；PC Home 和 Runtime 必须保持运行并能直连。小屏与窄窗口下侧栏默认收起，点击左上角导航按钮可展开菜单；Android 版本目前仅处于本地测试阶段，尚未正式开放。
 - **断开与退出**：主动退出会等待正在保存的内容；尚未保存的编辑会要求确认是否丢弃。网络或身份失效会立即关闭私有视图，实时生成不会自动重放；重新连接后读取已保存内容。关闭网页不会停止 PC Runtime。
+
+---
+
+## 限制与反馈
+
+- **当前边界**：社交动态发帖、媒体上传、定时自动发布、公开发布生命周期与好友数统计等依赖平台侧开放的能力，在暂不可用时会在界面中明确标注为不可用，不会伪造成功或补零。
+- **问题反馈**：使用说明与源码见 [GitHub 仓库](https://github.com/nimiplatform/nimiapp-realm-persona-studio)，遇到问题可通过 [GitHub Issues](https://github.com/nimiplatform/nimiapp-realm-persona-studio/issues) 提交反馈。

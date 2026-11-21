@@ -1,6 +1,10 @@
-## 0.1.7 · Hosted Web release and published 0.24 RC carrier
+## 0.1.7 · Bilingual Storefront, Native Desktop Candidate & Published 0.24 RC Carrier
 
-Adopts published npm `@nimiplatform/sdk` `0.24.0-rc.10`, `@nimiplatform/kit` `0.24.0-rc.16`, `@nimiplatform/app-tools` `0.16.0-rc.10`, and `@nimiplatform/nimi-coding` `0.7.0` with frozen public lockfiles, and adds the hosted Web release build (`public_slug: realm-persona-studio`, `build:web:release`, `.github/workflows/nimi-web-release.yml`) alongside existing Desktop-supervised Electron support. Native Desktop Catalog stays at `0.1.6`; Android remains local-testing only.
+Adopts published npm `@nimiplatform/sdk` `0.24.0-rc.10`, `@nimiplatform/kit` `0.24.0-rc.16`, `@nimiplatform/app-tools` `0.16.0-rc.12`, and `@nimiplatform/nimi-coding` `0.7.0` with frozen public lockfiles.
+
+- Adds bilingual (`zh` / `en`) storefront metadata (`metadata.storefront`), `NIMI_APP.en.md`, category (`companions-worlds`), tags, highlights, and localized 16:9 cover and gallery screenshots from the real Realm Persona Studio interface.
+- Updates the managed native release workflow to package and publish the shared `<app_id>-<version>-storefront-media.zip` bundle alongside native `.nimiapp` packages and `.app-info.json` sidecars.
+- Keeps the admitted hosted Web release (`web-v0.1.7` at `https://realm-persona-studio.nimi.xyz/`) unchanged; Android remains local-testing only.
 
 ## 0.1.6 · Published platform dependencies
 
