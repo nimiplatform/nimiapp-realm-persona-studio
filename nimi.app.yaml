@@ -150,3 +150,10 @@ safety_profile:
   high_impact_decision_uses: []
 storage_policy:
   kind: nimi-mediated-default
+desktop:
+  window:
+    width: 1360
+    height: 860
+    min_width: 1040
+    min_height: 680
+    title_bar_style: native

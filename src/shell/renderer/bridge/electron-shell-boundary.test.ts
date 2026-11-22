@@ -2,55 +2,41 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-describe('studio Desktop-supervised Electron boundary', () => {
-  it('keeps the standard Electron entrypoints and removes app-owned Runtime auth', () => {
-    for (const file of [
+describe('studio managed-web Desktop carrier boundary', () => {
+  it('uses the shared managed-web carrier with no App-owned Electron host', () => {
+    for (const removed of [
       'src-electron/main.ts',
       'src-electron/preload.cts',
+      'src-electron/runtime-auth.ts',
       'tsconfig.electron.json',
       'scripts/bundle-electron-preload.mjs',
+      'scripts/run-electron-dev.mjs',
     ]) {
-      expect(existsSync(join(process.cwd(), file)), file).toBe(true);
+      expect(existsSync(join(process.cwd(), removed)), removed).toBe(false);
     }
-    expect(existsSync(join(process.cwd(), 'src-electron/runtime-auth.ts'))).toBe(false);
+
+    const buildProfile = readFileSync(join(process.cwd(), '.nimi/config/build-profile.yaml'), 'utf8');
+    expect(buildProfile).toContain('build_profile_ref: managed-web-pnpm-vite');
+    expect(buildProfile).toContain('desktop-universal:');
+    expect(buildProfile).toContain('payload_path: dist/renderer');
+    expect(buildProfile).toContain('runtime_entry: payload/index.html');
 
     const packageJson = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8')) as {
       scripts?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+      main?: string;
     };
+    expect(packageJson.main).toBeUndefined();
     expect(packageJson.scripts?.dev).toBe('nimi-app dev --shell electron');
     expect(packageJson.scripts?.['dev:shell']).toBe('nimi-app dev');
-    expect(packageJson.scripts?.['dev:electron']).toBe('nimi-app dev --shell electron');
-    expect(packageJson.scripts?.['build:electron']).toBeTruthy();
-    expect(packageJson.scripts?.['typecheck:electron']).toBeTruthy();
+    expect(packageJson.scripts?.['build:electron']).toBeUndefined();
+    expect(packageJson.scripts?.['typecheck:electron']).toBeUndefined();
+    expect(packageJson.scripts?.postinstall).toBeUndefined();
+    expect(packageJson.devDependencies?.electron).toBeUndefined();
+    expect(packageJson.devDependencies?.['@electron/packager']).toBeUndefined();
   });
 
-  it('installs only the Nimi preload bridge', () => {
-    const source = readFileSync(join(process.cwd(), 'src-electron/preload.cts'), 'utf8');
-
-    expect(source).toContain('installNimiElectronRuntimeBridge');
-    expect(source).not.toContain('contextBridge.exposeInMainWorld');
-    expect(source).not.toContain('nodeIntegration');
-    expect(source).not.toContain('fs');
-  });
-
-  it('binds the fixed native app host without portable authority', () => {
-    const mainSource = readFileSync(join(process.cwd(), 'src-electron/main.ts'), 'utf8');
-
-    expect(mainSource).toContain('registerNimiElectronAppBridge');
-    expect(mainSource).not.toContain('onProtectedSessionFailure');
-    expect(mainSource).toContain('--nimi-dev-renderer-url=');
-    expect(mainSource).not.toContain('createNimiElectronInstalledHost()');
-    expect(mainSource).not.toContain('NIMI_INSTALLED_NIMI_APP_STANDARD_SHELL_CAPABILITY_SET_ID');
-    expect(mainSource).not.toContain('standardShellHost:');
-    expect(mainSource).not.toContain('NIMI_STANDARD_SHELL_COMMANDS');
-    expect(mainSource).not.toMatch(/runtimeAuth|trustedMetadataProvider|additionalArguments|LAUNCH_NONCE|releaseDigest/);
-    expect(mainSource).not.toMatch(/remote-debugging|cdp/i);
-    expect(mainSource).not.toMatch(/ai-config\.(get|set)|runtime\.(unary|streamOpen|streamClose)|auth\.session|oauth\./);
-    expect(mainSource).not.toMatch(/electron\.raw-ipc|node\.raw-fs|local-agent\.runtimeTrustedCaller/);
-    expect(existsSync(join(process.cwd(), 'scripts/run-electron-dev.mjs'))).toBe(false);
-  });
-
-  it('declares App Access domains without retired vocabulary', () => {
+  it('declares App Access domains, window geometry, and mediated storage without retired vocabulary', () => {
     const manifestSource = readFileSync(join(process.cwd(), 'nimi.app.yaml'), 'utf8');
     const retiredManifestKey = ['per', 'missions'].join('');
 
@@ -60,6 +46,8 @@ describe('studio Desktop-supervised Electron boundary', () => {
     expect(manifestSource).not.toContain('agent.local');
     expect(manifestSource).not.toContain(retiredManifestKey);
     expect(manifestSource).toContain('renderer_origin: http://127.0.0.1:1450');
+    expect(manifestSource).toContain('kind: nimi-mediated-default');
+    expect(manifestSource).toContain('title_bar_style: native');
     expect(manifestSource).not.toContain('declared_nimi_api_scopes');
     expect(manifestSource).not.toContain('runtime.artifacts');
   });

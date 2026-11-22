@@ -99,9 +99,9 @@ export default defineConfig(() => {
       strictPort: true,
     },
     build: {
-      outDir: path.resolve(__dirname, 'dist'),
+      outDir: path.resolve(__dirname, 'dist/renderer'),
       emptyOutDir: true,
-      sourcemap: true,
+      sourcemap: false,
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'src/shell/renderer/index.html'),
